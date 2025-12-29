@@ -1,13 +1,16 @@
 import { ReactNode, useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { AdminSidebar } from "./AdminSidebar";
-import { Bell, Search, User } from "lucide-react";
+import { Bell, LogOut, Search, User } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 interface AdminLayoutProps {
   children: ReactNode;
 }
 
 export function AdminLayout({ children }: AdminLayoutProps) {
+  const navigate = useNavigate();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   useEffect(() => {
@@ -50,15 +53,27 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-destructive rounded-full" />
             </button>
             
-            <div className="flex items-center gap-3 pl-4 border-l border-border">
-              <div className="text-right hidden sm:block">
-                <p className="text-sm font-medium">Admin User</p>
-                <p className="text-xs text-muted-foreground">Super Admin</p>
-              </div>
-              <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
-                <User className="w-5 h-5 text-primary" />
-              </div>
-            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <div className="flex items-center gap-3 pl-4 border-l border-border cursor-pointer">
+                  <div className="text-right hidden sm:block">
+                    <p className="text-sm font-medium">Admin User</p>
+                    <p className="text-xs text-muted-foreground">Super Admin</p>
+                  </div>
+                  <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
+                    <User className="w-5 h-5 text-primary" />
+                  </div>
+                </div>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem onClick={() => navigate("/profile")}>
+                  <User className="w-5 h-5 mr-3 text-primary" /> Profile
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/login")}>
+                          <LogOut className="w-5 h-5 mr-3 text-primary flex-shrink-0" />  Logout
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </header>
 

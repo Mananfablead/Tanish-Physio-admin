@@ -18,6 +18,7 @@ import ChatMonitor from "./pages/ChatMonitor";
 import Feedback from "./pages/Feedback";
 import Notifications from "./pages/Notifications";
 import Reports from "./pages/Reports";
+import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -46,6 +47,7 @@ const App = () => (
           <Route path="/feedback" element={<AdminPage><Feedback /></AdminPage>} />
           <Route path="/notifications" element={<AdminPage><Notifications /></AdminPage>} />
           <Route path="/reports" element={<AdminPage><Reports /></AdminPage>} />
+          <Route path="/profile" element={<AdminPage><Profile /></AdminPage>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

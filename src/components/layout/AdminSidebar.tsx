@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   Users,
@@ -16,6 +16,7 @@ import {
   LogOut,
   Activity,
 } from "lucide-react";
+import logo from "../../assets/logo.webp";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -26,7 +27,7 @@ const navItems = [
   { icon: Calendar, label: "Sessions", path: "/sessions" },
   { icon: CreditCard, label: "Subscriptions", path: "/subscriptions" },
   { icon: Wallet, label: "Payments", path: "/payments" },
-  { icon: MessageSquare, label: "Chat Monitor", path: "/chat" },
+  // { icon: MessageSquare, label: "Chat Monitor", path: "/chat" },
   { icon: Star, label: "Feedback", path: "/feedback" },
   { icon: Bell, label: "Notifications", path: "/notifications" },
   { icon: BarChart3, label: "Reports", path: "/reports" },
@@ -35,6 +36,7 @@ const navItems = [
 export function AdminSidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
 
   return (
     <aside
@@ -47,10 +49,11 @@ export function AdminSidebar() {
       <div className="flex h-16 items-center justify-between px-4 border-b border-sidebar-border">
         {!collapsed && (
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-sidebar-primary flex items-center justify-center">
-              <Activity className="w-5 h-5 text-sidebar-primary-foreground" />
-            </div>
-            <span className="font-semibold text-sidebar-accent-foreground">PhysioAdmin</span>
+             <div className="flex-col justify-center relative w-[--sidebar-width] z-10">
+            <Link to="/" className="mb-8">
+            <img src={logo} alt="Logo" className="h-12 w-auto" />
+          </Link>
+          </div>
           </div>
         )}
         <button
@@ -99,6 +102,7 @@ export function AdminSidebar() {
       {/* Footer */}
       <div className="border-t border-sidebar-border p-2">
         <button
+          onClick={() => navigate("/login")}
           className={cn(
             "flex items-center gap-3 px-3 py-2.5 rounded-lg w-full text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors",
             collapsed && "justify-center"

@@ -1,4 +1,13 @@
-import { Users, UserCog, CreditCard, Calendar, DollarSign, Star, Clock, TrendingUp } from "lucide-react";
+import {
+  Users,
+  Stethoscope,
+  CreditCard,
+  DollarSign,
+  Calendar,
+  Clock,
+  Star,
+  TrendingUp
+} from "lucide-react";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { RevenueChart } from "@/components/dashboard/RevenueChart";
 import { SessionsChart } from "@/components/dashboard/SessionsChart";
@@ -41,28 +50,28 @@ export default function Dashboard() {
           value="6,850"
           change={{ value: 12.5, isPositive: true }}
           icon={Users}
-          iconColor="text-info"
+          iconColor="bg-info"
         />
         <StatCard
           title="Active Therapists"
           value="120"
           change={{ value: 8.2, isPositive: true }}
-          icon={UserCog}
-          iconColor="text-success"
+          icon={Stethoscope}
+          iconColor="bg-secondary"
         />
         <StatCard
           title="Active Subscriptions"
           value="4,230"
           change={{ value: 15.3, isPositive: true }}
           icon={CreditCard}
-          iconColor="text-primary"
+          iconColor="bg-primary"
         />
         <StatCard
           title="Total Revenue"
           value="$45,800"
           change={{ value: 18.7, isPositive: true }}
           icon={DollarSign}
-          iconColor="text-success"
+          iconColor="bg-success"
         />
       </div>
 
@@ -72,26 +81,26 @@ export default function Dashboard() {
           title="Upcoming Sessions"
           value="156"
           icon={Calendar}
-          iconColor="text-warning"
+          iconColor="bg-warning"
         />
         <StatCard
           title="Completed Today"
           value="48"
           icon={Clock}
-          iconColor="text-primary"
+          iconColor="bg-primary"
         />
         <StatCard
           title="Avg. Therapist Rating"
           value="4.8"
           icon={Star}
-          iconColor="text-warning"
+          iconColor="bg-warning"
         />
         <StatCard
           title="Conversion Rate"
           value="68%"
           change={{ value: 5.2, isPositive: true }}
           icon={TrendingUp}
-          iconColor="text-success"
+          iconColor="bg-success"
         />
       </div>
 
