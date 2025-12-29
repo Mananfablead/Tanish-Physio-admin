@@ -33,7 +33,7 @@ const navItems = [
   { icon: BarChart3, label: "Reports", path: "/reports" },
 ];
 
-export function AdminSidebar() {
+export function AdminSidebar({ isMobileOpen, onMobileClose }: { isMobileOpen: boolean; onMobileClose: () => void }) {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
@@ -42,7 +42,8 @@ export function AdminSidebar() {
     <aside
       className={cn(
         "fixed left-0 top-0 z-40 h-screen bg-sidebar text-sidebar-foreground transition-all duration-300 flex flex-col",
-        collapsed ? "w-16" : "w-64"
+        collapsed ? "w-16" : "w-64",
+        isMobileOpen ? "flex" : "hidden lg:flex"
       )}
     >
       {/* Logo */}
@@ -81,6 +82,7 @@ export function AdminSidebar() {
               <li key={item.path}>
                 <Link
                   to={item.path}
+                  onClick={onMobileClose}
                   className={cn(
                     "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200",
                     isActive
@@ -102,7 +104,7 @@ export function AdminSidebar() {
       {/* Footer */}
       <div className="border-t border-sidebar-border p-2">
         <button
-          onClick={() => navigate("/login")}
+          onClick={() => { navigate("/login"); onMobileClose(); }}
           className={cn(
             "flex items-center gap-3 px-3 py-2.5 rounded-lg w-full text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors",
             collapsed && "justify-center"

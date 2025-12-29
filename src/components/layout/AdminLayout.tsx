@@ -1,7 +1,7 @@
 import { ReactNode, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { AdminSidebar } from "./AdminSidebar";
-import { Bell, LogOut, Search, User } from "lucide-react";
+import { Bell, LogOut, Search, User, Menu } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
@@ -12,6 +12,7 @@ interface AdminLayoutProps {
 export function AdminLayout({ children }: AdminLayoutProps) {
   const navigate = useNavigate();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     const handleResize = () => {
@@ -32,12 +33,26 @@ export function AdminLayout({ children }: AdminLayoutProps) {
 
   return (
     <div className="min-h-screen bg-background">
-      <AdminSidebar />
+      <AdminSidebar isMobileOpen={mobileMenuOpen} onMobileClose={() => setMobileMenuOpen(false)} />
       
-      <div className="transition-all duration-300 ml-64 peer-[[data-collapsed=true]]:ml-16">
+      {/* Mobile Backdrop */}
+      {mobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-30 lg:hidden" 
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+      
+      <div className="transition-all duration-300 lg:ml-64 lg:peer-[[data-collapsed=true]]:ml-16">
         {/* Top Header */}
         <header className="sticky top-0 z-30 h-16 bg-card border-b border-border flex items-center justify-between px-6">
           <div className="flex items-center gap-4 flex-1">
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="lg:hidden p-2 rounded-lg hover:bg-muted transition-colors"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
             <div className="relative max-w-md w-full">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input

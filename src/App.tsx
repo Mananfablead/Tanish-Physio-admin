@@ -38,7 +38,7 @@ const App = () => (
           <Route path="/login" element={<Login />} />
           <Route path="/" element={<AdminPage><Dashboard /></AdminPage>} />
           <Route path="/users" element={<AdminPage><Users /></AdminPage>} />
-          <Route path="/therapists" element={<AdminPage><Therapists /></AdminPage>} />
+          {/* <Route path="/therapists" element={<AdminPage><Therapists /></AdminPage>} />
           <Route path="/questionnaires" element={<AdminPage><Questionnaires /></AdminPage>} />
           <Route path="/sessions" element={<AdminPage><Sessions /></AdminPage>} />
           <Route path="/subscriptions" element={<AdminPage><Subscriptions /></AdminPage>} />
@@ -46,7 +46,7 @@ const App = () => (
           <Route path="/chat" element={<AdminPage><ChatMonitor /></AdminPage>} />
           <Route path="/feedback" element={<AdminPage><Feedback /></AdminPage>} />
           <Route path="/notifications" element={<AdminPage><Notifications /></AdminPage>} />
-          <Route path="/reports" element={<AdminPage><Reports /></AdminPage>} />
+          <Route path="/reports" element={<AdminPage><Reports /></AdminPage>} /> */}
           <Route path="/profile" element={<AdminPage><Profile /></AdminPage>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
