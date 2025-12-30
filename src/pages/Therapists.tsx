@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, MoreHorizontal, Eye, UserCheck, UserX, Download, Star, Video, FileText, ChevronLeft, ChevronRight, Check, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -12,8 +12,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { useNavigate } from "react-router-dom";
 
-const mockTherapists = [
+const mockStaff = [
   { id: 1, name: "Dr. Sarah Johnson", email: "sarah@clinic.com", specialty: "Sports Injury", rating: 4.9, sessions: 248, status: "active", sessionTypes: ["1-on-1", "Group"] },
   { id: 2, name: "Dr. Michael Chen", email: "michael@clinic.com", specialty: "Rehabilitation", rating: 4.8, sessions: 312, status: "active", sessionTypes: ["1-on-1"] },
   { id: 3, name: "Dr. Lisa Williams", email: "lisa@clinic.com", specialty: "Pain Management", rating: 4.7, sessions: 186, status: "active", sessionTypes: ["Group"] },
@@ -27,238 +28,212 @@ const mockApplications = [
   { id: 3, name: "Dr. Thomas Anderson", email: "thomas@email.com", specialty: "Sports Medicine", submitted: "2024-03-08", status: "rejected" },
 ];
 
-export default function Therapists() {
+const mockSessionHistory = [
+  { id: 1, patient: "John Smith", date: "2024-03-15", time: "10:00 AM", type: "1-on-1", status: "completed", feedback: "Excellent session, very helpful.", rating: 5, performance: "95%" },
+  { id: 2, patient: "Sarah Wilson", date: "2024-03-15", time: "11:30 AM", type: "Group", status: "completed", feedback: "Great group dynamics.", rating: 4, performance: "88%" },
+  { id: 3, patient: "Michael Brown", date: "2024-03-16", time: "02:00 PM", type: "1-on-1", status: "cancelled", feedback: "-", rating: 0, performance: "0%" },
+  { id: 4, patient: "Emily Davis", date: "2024-03-17", time: "09:00 AM", type: "1-on-1", status: "scheduled", feedback: "Pending", rating: 0, performance: "-" },
+];
+
+export default function Staff() {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeTab, setActiveTab] = useState("active");
-  const [selectedTherapist, setSelectedTherapist] = useState<typeof mockTherapists[0] | null>(null);
+  const [selectedStaff, setSelectedStaff] = useState<typeof mockStaff[0] | null>(null);
   const [selectedApplication, setSelectedApplication] = useState<typeof mockApplications[0] | null>(null);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isApplicationOpen, setIsApplicationOpen] = useState(false);
+  const [isAddStaffOpen, setIsAddStaffOpen] = useState(false);
+  const [isViewSessionsOpen, setIsViewSessionsOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
+  const [staffMembers, setStaffMembers] = useState(mockStaff);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState({ name: "", email: "", specialty: "" });
+  const [addForm, setAddForm] = useState({ name: "", email: "", specialty: "", sessionTypes: ["1-on-1"] });
 
-  const filteredTherapists = mockTherapists.filter((therapist) =>
-    therapist.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    therapist.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    therapist.specialty.toLowerCase().includes(searchQuery.toLowerCase())
+  useEffect(() => {
+    if (selectedStaff) {
+      setEditForm({
+        name: selectedStaff.name,
+        email: selectedStaff.email,
+        specialty: selectedStaff.specialty,
+      });
+      setIsEditing(false);
+    }
+  }, [selectedStaff]);
+
+  const filteredStaff = staffMembers.filter((staff) =>
+    staff.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    staff.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    staff.specialty.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const pendingApplications = mockApplications.filter(app => app.status === "pending");
+
+  const handleAddStaff = () => {
+    const newStaff = {
+      id: staffMembers.length + 1,
+      ...addForm,
+      rating: 0,
+      sessions: 0,
+      status: "active" as const,
+      sessionTypes: addForm.sessionTypes
+    };
+    setStaffMembers([...staffMembers, newStaff]);
+    setIsAddStaffOpen(false);
+    setAddForm({ name: "", email: "", specialty: "", sessionTypes: ["1-on-1"] });
+  };
+
+  const handleDeleteStaff = (id: number) => {
+    setStaffMembers(staffMembers.filter(s => s.id !== id));
+    setIsProfileOpen(false);
+  };
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="page-header">
-          <h1 className="page-title">Therapist Management</h1>
-          <p className="page-subtitle">Manage therapist profiles and applications</p>
+          <h1 className="page-title">Staff Management</h1>
+          <p className="page-subtitle">Manage staff profiles and applications</p>
         </div>
-        <Button variant="outline" className="gap-2">
-          <Download className="w-4 h-4" />
-          Export Data
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline"  className="gap-2 bg-primary text-white" onClick={() => setIsAddStaffOpen(true)}>
+            <UserCheck className="w-4 h-4" />
+            Add Staff
+          </Button>
+          <Button variant="outline" className="gap-2">
+            <Download className="w-4 h-4" />
+            Export Data
+          </Button>
+        </div>
       </div>
 
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="active">Active Therapists ({mockTherapists.length})</TabsTrigger>
-          <TabsTrigger value="applications" className="relative">
-            Applications
-            {pendingApplications.length > 0 && (
-              <span className="ml-2 px-1.5 py-0.5 text-xs bg-warning text-warning-foreground rounded-full">
-                {pendingApplications.length}
-              </span>
-            )}
-          </TabsTrigger>
-        </TabsList>
+      {/* Search and Table */}
+      <div className="space-y-4">
+        <div className="relative max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="Search staff members..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10"
+          />
+        </div>
 
-        {/* Active Therapists */}
-        <TabsContent value="active" className="space-y-4 mt-4">
-          <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Search therapists..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-
-          <div className="bg-card rounded-lg border border-border overflow-hidden animate-fade-in">
-            <div className="overflow-x-auto">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Therapist</th>
-                    <th>Specialty</th>
-                    <th>Rating</th>
-                    <th>Sessions</th>
-                    <th>Session Types</th>
-                    <th>Status</th>
-                    <th className="w-12"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredTherapists.map((therapist) => (
-                    <tr key={therapist.id} className="cursor-pointer" onClick={() => {
-                      setSelectedTherapist(therapist);
-                      setIsProfileOpen(true);
-                    }}>
-                      <td>
-                        <div>
-                          <p className="font-medium">{therapist.name}</p>
-                          <p className="text-sm text-muted-foreground">{therapist.email}</p>
-                        </div>
-                      </td>
-                      <td>{therapist.specialty}</td>
-                      <td>
-                        <div className="flex items-center gap-1">
-                          <Star className="w-4 h-4 text-warning fill-warning" />
-                          <span className="font-medium">{therapist.rating}</span>
-                        </div>
-                      </td>
-                      <td>{therapist.sessions}</td>
-                      <td>
-                        <div className="flex gap-1">
-                          {therapist.sessionTypes.map((type) => (
-                            <span key={type} className="status-badge bg-muted text-muted-foreground">
-                              {type}
-                            </span>
-                          ))}
-                        </div>
-                      </td>
-                      <td>
-                        <span className={cn("status-badge", therapist.status === "active" ? "status-active" : "status-inactive")}>
-                          {therapist.status}
-                        </span>
-                      </td>
-                      <td onClick={(e) => e.stopPropagation()}>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                              <MoreHorizontal className="w-4 h-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => {
-                              setSelectedTherapist(therapist);
-                              setIsProfileOpen(true);
-                            }}>
-                              <Eye className="w-4 h-4 mr-2" />
-                              View Profile
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <Video className="w-4 h-4 mr-2" />
-                              View Sessions
-                            </DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive">
-                              <UserX className="w-4 h-4 mr-2" />
-                              Disable Account
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="flex items-center justify-between px-4 py-3 border-t border-border">
-              <p className="text-sm text-muted-foreground">
-                Showing <span className="font-medium">{filteredTherapists.length}</span> therapists
-              </p>
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" disabled>
-                  <ChevronLeft className="w-4 h-4" />
-                </Button>
-                <Button variant="outline" size="sm" className="min-w-[32px]">1</Button>
-                <Button variant="outline" size="sm">
-                  <ChevronRight className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-          </div>
-        </TabsContent>
-
-        {/* Applications */}
-        <TabsContent value="applications" className="space-y-4 mt-4">
-          <div className="bg-card rounded-lg border border-border overflow-hidden animate-fade-in">
-            <div className="overflow-x-auto">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Applicant</th>
-                    <th>Specialty</th>
-                    <th>Submitted</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {mockApplications.map((app) => (
-                    <tr key={app.id}>
-                      <td>
-                        <div>
-                          <p className="font-medium">{app.name}</p>
-                          <p className="text-sm text-muted-foreground">{app.email}</p>
-                        </div>
-                      </td>
-                      <td>{app.specialty}</td>
-                      <td className="text-muted-foreground">{app.submitted}</td>
-                      <td>
-                        <span className={cn(
-                          "status-badge",
-                          app.status === "pending" ? "status-pending" : "status-rejected"
-                        )}>
-                          {app.status}
-                        </span>
-                      </td>
-                      <td>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedApplication(app);
-                              setIsApplicationOpen(true);
-                            }}
-                          >
-                            <FileText className="w-4 h-4 mr-1" />
-                            Review
+        <div className="bg-card rounded-lg border border-border overflow-hidden animate-fade-in">
+          <div className="overflow-x-auto">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Staff Member</th>
+                  <th>Specialty</th>
+                  <th>Rating</th>
+                  <th>Sessions</th>
+                  <th>Session Types</th>
+                  <th>Status</th>
+                  <th className="w-12"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredStaff.map((staff) => (
+                  <tr key={staff.id} className="cursor-pointer" onClick={() => {
+                    setSelectedStaff(staff);
+                    setIsProfileOpen(true);
+                  }}>
+                    <td>
+                      <div>
+                        <p className="font-medium">{staff.name}</p>
+                        <p className="text-sm text-muted-foreground">{staff.email}</p>
+                      </div>
+                    </td>
+                    <td>{staff.specialty}</td>
+                    <td>
+                      <div className="flex items-center gap-1">
+                        <Star className="w-4 h-4 text-warning fill-warning" />
+                        <span className="font-medium">{staff.rating}</span>
+                      </div>
+                    </td>
+                    <td>{staff.sessions}</td>
+                    <td>
+                      <div className="flex gap-1">
+                        {staff.sessionTypes.map((type) => (
+                          <span key={type} className="status-badge bg-muted text-muted-foreground">
+                            {type}
+                          </span>
+                        ))}
+                      </div>
+                    </td>
+                    <td>
+                      <span className={cn("status-badge", staff.status === "active" ? "status-active" : "status-inactive")}>
+                        {staff.status}
+                      </span>
+                    </td>
+                    <td onClick={(e) => e.stopPropagation()}>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreHorizontal className="w-4 h-4" />
                           </Button>
-                          {app.status === "pending" && (
-                            <>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-success hover:text-success">
-                                <Check className="w-4 h-4" />
-                              </Button>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
-                                <X className="w-4 h-4" />
-                              </Button>
-                            </>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => {
+                            setSelectedStaff(staff);
+                            setIsProfileOpen(true);
+                          }}>
+                            <Eye className="w-4 h-4 mr-2" />
+                            View Profile
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => {
+                            navigate(`/staff/sessions/${staff.id}`);
+                          }}>
+                            <Video className="w-4 h-4 mr-2" />
+                            View Sessions
+                          </DropdownMenuItem>
+                          <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteStaff(staff.id)}>
+                            <UserX className="w-4 h-4 mr-2" />
+                            Delete Staff
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="flex items-center justify-between px-4 py-3 border-t border-border">
+            <p className="text-sm text-muted-foreground">
+              Showing <span className="font-medium">{filteredStaff.length}</span> staff members
+            </p>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" disabled>
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+              <Button variant="outline" size="sm" className="min-w-[32px]">1</Button>
+              <Button variant="outline" size="sm">
+                <ChevronRight className="w-4 h-4" />
+              </Button>
             </div>
           </div>
-        </TabsContent>
-      </Tabs>
+        </div>
+      </div>
 
-      {/* Therapist Profile Modal */}
-      <Dialog open={isProfileOpen} onOpenChange={setIsProfileOpen}>
+      {/* Staff Profile Modal */}
+      <Dialog open={isProfileOpen} onOpenChange={(open) => {
+        setIsProfileOpen(open);
+        if (!open) setIsEditing(false);
+      }}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Therapist Profile</DialogTitle>
+            <DialogTitle>Staff Profile</DialogTitle>
           </DialogHeader>
           
-          {selectedTherapist && (
+          {selectedStaff && (
             <Tabs defaultValue="details" className="mt-4">
               <TabsList className="w-full justify-start">
                 <TabsTrigger value="details">Details</TabsTrigger>
+                <TabsTrigger value="history">Session History</TabsTrigger>
                 <TabsTrigger value="performance">Performance</TabsTrigger>
                 <TabsTrigger value="feedback">Feedback</TabsTrigger>
               </TabsList>
@@ -267,28 +242,52 @@ export default function Therapists() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="text-sm text-muted-foreground">Full Name</label>
-                    <p className="font-medium">{selectedTherapist.name}</p>
+                    {isEditing ? (
+                      <Input
+                        value={editForm.name}
+                        onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                        className="mt-1"
+                      />
+                    ) : (
+                      <p className="font-medium">{selectedStaff.name}</p>
+                    )}
                   </div>
                   <div>
                     <label className="text-sm text-muted-foreground">Email</label>
-                    <p className="font-medium">{selectedTherapist.email}</p>
+                    {isEditing ? (
+                      <Input
+                        value={editForm.email}
+                        onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                        className="mt-1"
+                      />
+                    ) : (
+                      <p className="font-medium">{selectedStaff.email}</p>
+                    )}
                   </div>
                   <div>
                     <label className="text-sm text-muted-foreground">Specialty</label>
-                    <p className="font-medium">{selectedTherapist.specialty}</p>
+                    {isEditing ? (
+                      <Input
+                        value={editForm.specialty}
+                        onChange={(e) => setEditForm({ ...editForm, specialty: e.target.value })}
+                        className="mt-1"
+                      />
+                    ) : (
+                      <p className="font-medium">{selectedStaff.specialty}</p>
+                    )}
                   </div>
                   <div>
                     <label className="text-sm text-muted-foreground">Status</label>
                     <p>
-                      <span className={cn("status-badge", selectedTherapist.status === "active" ? "status-active" : "status-inactive")}>
-                        {selectedTherapist.status}
+                      <span className={cn("status-badge", selectedStaff.status === "active" ? "status-active" : "status-inactive")}>
+                        {selectedStaff.status}
                       </span>
                     </p>
                   </div>
                   <div>
                     <label className="text-sm text-muted-foreground">Session Types</label>
                     <div className="flex gap-1 mt-1">
-                      {selectedTherapist.sessionTypes.map((type) => (
+                      {selectedStaff.sessionTypes.map((type) => (
                         <span key={type} className="status-badge bg-muted text-muted-foreground">
                           {type}
                         </span>
@@ -298,24 +297,96 @@ export default function Therapists() {
                 </div>
                 
                 <div className="flex gap-3 pt-4 border-t">
-                  <Button variant="outline" size="sm">Edit Profile</Button>
-                  <Button variant="outline" size="sm">Manage Sessions</Button>
-                  <Button variant="destructive" size="sm">
-                    {selectedTherapist.status === "active" ? "Disable" : "Enable"} Account
+                  {isEditing ? (
+                    <>
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={() => {
+                          setStaffMembers(staffMembers.map(t => t.id === selectedStaff.id ? { ...t, ...editForm } : t));
+                          setIsEditing(false);
+                        }}
+                      >
+                        Save Changes
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setEditForm({
+                            name: selectedStaff.name,
+                            email: selectedStaff.email,
+                            specialty: selectedStaff.specialty,
+                          });
+                          setIsEditing(false);
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                    </>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsEditing(true)}
+                    >
+                      Edit Profile
+                    </Button>
+                  )}
+                  <Button variant="outline" size="sm" onClick={() => navigate(`/staff/sessions/${selectedStaff.id}`)}>Manage Sessions</Button>
+                  <Button variant="destructive" size="sm" onClick={() => handleDeleteStaff(selectedStaff.id)}>
+                    Delete Staff
                   </Button>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="history" className="mt-4">
+                <div className="border rounded-lg overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted">
+                      <tr>
+                        <th className="px-4 py-2 text-left font-medium">Patient</th>
+                        <th className="px-4 py-2 text-left font-medium">Date</th>
+                        <th className="px-4 py-2 text-left font-medium">Type</th>
+                        <th className="px-4 py-2 text-left font-medium">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {mockSessionHistory.map((session) => (
+                        <tr key={session.id}>
+                          <td className="px-4 py-2">{session.patient}</td>
+                          <td className="px-4 py-2">
+                            <div>{session.date}</div>
+                            <div className="text-xs text-muted-foreground">{session.time}</div>
+                          </td>
+                          <td className="px-4 py-2">{session.type}</td>
+                          <td className="px-4 py-2">
+                            <span className={cn(
+                              "text-[10px] px-2 py-0.5 rounded-full font-medium uppercase",
+                              session.status === "completed" ? "bg-success/10 text-success" :
+                              session.status === "cancelled" ? "bg-destructive/10 text-destructive" :
+                              "bg-warning/10 text-warning"
+                            )}>
+                              {session.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </TabsContent>
               
               <TabsContent value="performance" className="mt-4">
                 <div className="grid grid-cols-3 gap-4">
                   <div className="p-4 rounded-lg bg-muted/50 text-center">
-                    <p className="text-3xl font-bold text-primary">{selectedTherapist.sessions}</p>
+                    <p className="text-3xl font-bold text-primary">{selectedStaff.sessions}</p>
                     <p className="text-sm text-muted-foreground">Total Sessions</p>
                   </div>
                   <div className="p-4 rounded-lg bg-muted/50 text-center">
                     <div className="flex items-center justify-center gap-1">
                       <Star className="w-6 h-6 text-warning fill-warning" />
-                      <span className="text-3xl font-bold">{selectedTherapist.rating}</span>
+                      <span className="text-3xl font-bold">{selectedStaff.rating}</span>
                     </div>
                     <p className="text-sm text-muted-foreground">Average Rating</p>
                   </div>
@@ -336,7 +407,7 @@ export default function Therapists() {
                       </div>
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      "Excellent therapist! Very professional and knowledgeable."
+                      "Excellent professional! Very knowledgeable and patient."
                     </p>
                   </div>
                   <div className="p-3 rounded-lg border bg-card">
@@ -357,13 +428,54 @@ export default function Therapists() {
         </DialogContent>
       </Dialog>
 
+      {/* Add Staff Modal */}
+      <Dialog open={isAddStaffOpen} onOpenChange={setIsAddStaffOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add New Staff Member</DialogTitle>
+            <DialogDescription>Fill in the details to add a new staff member.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Full Name</label>
+              <Input
+                placeholder="Dr. John Smith"
+                value={addForm.name}
+                onChange={(e) => setAddForm({ ...addForm, name: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Email Address</label>
+              <Input
+                type="email"
+                placeholder="john@example.com"
+                value={addForm.email}
+                onChange={(e) => setAddForm({ ...addForm, email: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Specialty</label>
+              <Input
+                placeholder="e.g. Physiotherapy"
+                value={addForm.specialty}
+                onChange={(e) => setAddForm({ ...addForm, specialty: e.target.value })}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAddStaffOpen(false)}>Cancel</Button>
+            <Button onClick={handleAddStaff}>Add Staff</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Application Review Modal */}
       <Dialog open={isApplicationOpen} onOpenChange={setIsApplicationOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Review Application</DialogTitle>
             <DialogDescription>
-              Review the therapist's credentials and decide on their application.
+              Review the applicant's credentials and decide on their application.
             </DialogDescription>
           </DialogHeader>
           
@@ -425,6 +537,88 @@ export default function Therapists() {
               </Button>
             </DialogFooter>
           )}
+        </DialogContent>
+      </Dialog>
+      {/* View Sessions Modal */}
+      <Dialog open={isViewSessionsOpen} onOpenChange={setIsViewSessionsOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Session History - {selectedStaff?.name}</DialogTitle>
+            <DialogDescription>
+              Detailed view of all past and upcoming sessions for this staff member.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="mt-4 bg-card rounded-lg border border-border overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Client / Patient</th>
+                    <th>Date & Time</th>
+                    <th>Type</th>
+                    <th>Status</th>
+                    <th>Feedback</th>
+                    <th>Rating</th>
+                    <th>Performance</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {mockSessionHistory.map((session) => (
+                    <tr key={session.id}>
+                      <td>
+                        <div className="font-medium">{session.patient}</div>
+                      </td>
+                      <td>
+                        <div className="text-sm">{session.date}</div>
+                        <div className="text-xs text-muted-foreground">{session.time}</div>
+                      </td>
+                      <td>
+                        <span className="status-badge bg-muted text-muted-foreground">{session.type}</span>
+                      </td>
+                      <td>
+                        <span className={cn(
+                          "status-badge",
+                          session.status === "completed" ? "status-active" :
+                          session.status === "cancelled" ? "status-pending" :
+                          "status-inactive"
+                        )}>
+                          {session.status}
+                        </span>
+                      </td>
+                      <td>
+                        <p className="text-xs max-w-[150px] truncate" title={session.feedback}>
+                          {session.feedback}
+                        </p>
+                      </td>
+                      <td>
+                        {session.rating > 0 ? (
+                          <div className="flex items-center gap-1">
+                            <Star className="w-3 h-3 text-warning fill-warning" />
+                            <span className="text-sm font-medium">{session.rating}</span>
+                          </div>
+                        ) : "-"}
+                      </td>
+                      <td>
+                        <span className={cn(
+                          "font-medium",
+                          parseInt(session.performance) >= 90 ? "text-success" :
+                          parseInt(session.performance) >= 70 ? "text-warning" :
+                          "text-muted-foreground"
+                        )}>
+                          {session.performance}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <DialogFooter className="mt-4">
+            <Button onClick={() => setIsViewSessionsOpen(false)}>Close</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

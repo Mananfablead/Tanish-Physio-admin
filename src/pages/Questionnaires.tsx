@@ -24,6 +24,7 @@ export default function Questionnaires() {
   const [questions, setQuestions] = useState(mockQuestions);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedQuestion, setSelectedQuestion] = useState<typeof mockQuestions[0] | null>(null);
+  const [draggedQuestion, setDraggedQuestion] = useState<typeof mockQuestions[0] | null>(null);
   const [editForm, setEditForm] = useState({
     question: "",
     type: "text" as QuestionType,
@@ -52,10 +53,86 @@ export default function Questionnaires() {
     setIsEditModalOpen(true);
   };
 
+  const deleteQuestion = () => {
+    if (selectedQuestion) {
+      setQuestions(questions.filter(q => q.id !== selectedQuestion.id));
+      setIsEditModalOpen(false);
+      setSelectedQuestion(null);
+    }
+  };
+
+  const saveQuestion = () => {
+    if (!editForm.question.trim()) {
+      return; // Basic validation
+    }
+
+    if (selectedQuestion) {
+      // Edit existing question
+      setQuestions(questions.map(q => 
+        q.id === selectedQuestion.id 
+          ? { 
+              ...q, 
+              question: editForm.question,
+              type: editForm.type,
+              required: editForm.required,
+              options: editForm.type === "mcq" ? editForm.options.filter(opt => opt.trim()) : undefined
+            }
+          : q
+      ));
+    } else {
+      // Add new question
+      const newQuestion = {
+        id: Math.max(...questions.map(q => q.id)) + 1,
+        question: editForm.question,
+        type: editForm.type,
+        required: editForm.required,
+        active: true,
+        order: Math.max(...questions.map(q => q.order)) + 1,
+        options: editForm.type === "mcq" ? editForm.options.filter(opt => opt.trim()) : undefined
+      };
+      setQuestions([...questions, newQuestion]);
+    }
+
+    setIsEditModalOpen(false);
+    setSelectedQuestion(null);
+  };
+
   const toggleQuestion = (id: number) => {
     setQuestions(questions.map(q => 
       q.id === id ? { ...q, active: !q.active } : q
     ));
+  };
+
+  const handleDragStart = (question: typeof mockQuestions[0]) => {
+    setDraggedQuestion(question);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (e: React.DragEvent, targetQuestion: typeof mockQuestions[0]) => {
+    e.preventDefault();
+    
+    if (!draggedQuestion || draggedQuestion.id === targetQuestion.id) {
+      return;
+    }
+
+    const draggedIndex = questions.findIndex(q => q.id === draggedQuestion.id);
+    const targetIndex = questions.findIndex(q => q.id === targetQuestion.id);
+    
+    const newQuestions = [...questions];
+    newQuestions.splice(draggedIndex, 1);
+    newQuestions.splice(targetIndex, 0, draggedQuestion);
+    
+    // Update order
+    const updatedQuestions = newQuestions.map((q, index) => ({
+      ...q,
+      order: index + 1
+    }));
+    
+    setQuestions(updatedQuestions);
+    setDraggedQuestion(null);
   };
 
   const getTypeLabel = (type: string) => {
@@ -125,9 +202,14 @@ export default function Questionnaires() {
           {questions.sort((a, b) => a.order - b.order).map((question) => (
             <div
               key={question.id}
+              draggable
+              onDragStart={() => handleDragStart(question)}
+              onDragOver={handleDragOver}
+              onDrop={(e) => handleDrop(e, question)}
               className={cn(
-                "p-4 flex items-start gap-4 transition-opacity animate-fade-in",
-                !question.active && "opacity-50"
+                "p-4 flex items-start gap-4 transition-opacity animate-fade-in cursor-move",
+                !question.active && "opacity-50",
+                draggedQuestion?.id === question.id && "opacity-50"
               )}
             >
               <button className="mt-1 cursor-grab text-muted-foreground hover:text-foreground">
@@ -276,12 +358,19 @@ export default function Questionnaires() {
           </div>
           
           <DialogFooter className="mt-4">
-            <Button variant="outline" onClick={() => setIsEditModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={() => setIsEditModalOpen(false)}>
-              {selectedQuestion ? "Save Changes" : "Add Question"}
-            </Button>
+            {selectedQuestion && (
+              <Button variant="destructive" onClick={deleteQuestion}>
+                Delete Question
+              </Button>
+            )}
+            <div className="flex gap-2 ml-auto">
+              <Button variant="outline" onClick={() => setIsEditModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={saveQuestion} disabled={!editForm.question.trim()}>
+                {selectedQuestion ? "Save Changes" : "Add Question"}
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>

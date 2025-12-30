@@ -35,7 +35,7 @@ export function StatCard({ title, value, change, icon: Icon, iconColor = "text-p
             </p>
           )}
         </div>
-        <div className={cn("p-2.5 rounded-lg bg-muted/50", iconColor.replace("text-", "bg-").replace(/\/\d+/, "/10"))}>
+        <div className={cn("p-2.5 rounded-lg text-white bg-muted/50", iconColor.replace("text-", "bg-").replace(/\/\d+/, "/10"))}>
           <Icon className={cn("w-5 h-5", iconColor)} />
         </div>
       </div>

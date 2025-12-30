@@ -1,9 +1,10 @@
 import { ReactNode, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { AdminSidebar } from "./AdminSidebar";
-import { Bell, LogOut, Search, User, Menu } from "lucide-react";
+import { Bell, LogOut, Search, User, Menu, ChevronDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -13,6 +14,54 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   const navigate = useNavigate();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Mock notifications data
+  const [notifications] = useState([
+    {
+      id: 1,
+      title: "New user registration",
+      message: "John Doe has registered for the platform",
+      time: "2 minutes ago",
+      unread: true
+    },
+    {
+      id: 2,
+      title: "Session completed",
+      message: "Dr. Sarah Johnson completed a session with Emily Parker",
+      time: "15 minutes ago",
+      unread: true
+    },
+    {
+      id: 3,
+      title: "Payment received",
+      message: "Payment of $50 received from Robert Brown",
+      time: "1 hour ago",
+      unread: false
+    },
+    {
+      id: 4,
+      title: "Subscription expired",
+      message: "Mike Wilson's monthly subscription has expired",
+      time: "2 hours ago",
+      unread: false
+    },
+    {
+      id: 5,
+      title: "New feedback received",
+      message: "Anna Smith left a 5-star review",
+      time: "3 hours ago",
+      unread: false
+    },
+    {
+      id: 6,
+      title: "System maintenance",
+      message: "Scheduled maintenance completed successfully",
+      time: "1 day ago",
+      unread: false
+    }
+  ]);
+
+  const unreadCount = notifications.filter(n => n.unread).length;
 
   useEffect(() => {
     const handleResize = () => {
@@ -63,10 +112,47 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           </div>
 
           <div className="flex items-center gap-4">
-            <button className="relative p-2 rounded-lg hover:bg-muted transition-colors">
-              <Bell className="w-5 h-5 text-muted-foreground" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-destructive rounded-full" />
-            </button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="relative p-2 rounded-lg hover:bg-muted transition-colors">
+                  <Bell className="w-5 h-5 text-muted-foreground" />
+                  {unreadCount > 0 && (
+                    <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-destructive rounded-full" />
+                  )}
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-80">
+                <div className="flex items-center justify-between p-4 border-b">
+                  <h4 className="font-semibold">Notifications</h4>
+                  {unreadCount > 0 && (
+                    <span className="text-xs bg-primary text-primary-foreground px-2 py-1 rounded-full">
+                      {unreadCount} new
+                    </span>
+                  )}
+                </div>
+                <div className="max-h-96 overflow-y-auto">
+                  {notifications.slice(0, 5).map((notification) => (
+                    <DropdownMenuItem key={notification.id} className="flex flex-col items-start p-4 cursor-pointer">
+                      <div className="flex items-start justify-between w-full">
+                        <div className="flex-1">
+                          <p className="font-medium text-sm">{notification.title}</p>
+                          <p className="text-xs text-muted-foreground mt-1">{notification.message}</p>
+                          <p className="text-xs text-muted-foreground mt-2">{notification.time}</p>
+                        </div>
+                        {notification.unread && (
+                          <div className="w-2 h-2 bg-primary rounded-full mt-2 ml-2 flex-shrink-0" />
+                        )}
+                      </div>
+                    </DropdownMenuItem>
+                  ))}
+                </div>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="flex items-center justify-center p-3 cursor-pointer">
+                  <span className="text-sm text-primary font-medium">View all notifications</span>
+                  <ChevronDown className="w-4 h-4 ml-2 rotate-[-90deg]" />
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

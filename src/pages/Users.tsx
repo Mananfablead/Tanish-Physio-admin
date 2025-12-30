@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, Filter, MoreHorizontal, Eye, UserX, RefreshCw, Download, ChevronLeft, ChevronRight } from "lucide-react";
+import * as XLSX from 'xlsx';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,6 +31,12 @@ export default function Users() {
   const [activeFilter, setActiveFilter] = useState("All");
   const [selectedUser, setSelectedUser] = useState<typeof mockUsers[0] | null>(null);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, activeFilter]);
 
   const filteredUsers = mockUsers.filter((user) => {
     const matchesSearch =
@@ -43,6 +50,17 @@ export default function Users() {
     if (activeFilter === "No Subscription") return matchesSearch && user.subscription === "None";
     return matchesSearch;
   });
+
+  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedUsers = filteredUsers.slice(startIndex, endIndex);
 
   const getSubscriptionBadge = (subscription: string) => {
     switch (subscription) {
@@ -64,6 +82,43 @@ export default function Users() {
     setIsProfileOpen(true);
   };
 
+  const exportToExcel = () => {
+    // Prepare data for export
+    const exportData = filteredUsers.map(user => ({
+      'Name': user.name,
+      'Email': user.email,
+      'Phone': user.phone,
+      'Subscription': user.subscription,
+      'Status': user.status,
+      'Join Date': user.joinDate
+    }));
+
+    // Create workbook and worksheet
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(exportData);
+
+    // Auto-size columns
+    const colWidths = [
+      { wch: 20 }, // Name
+      { wch: 30 }, // Email
+      { wch: 15 }, // Phone
+      { wch: 15 }, // Subscription
+      { wch: 10 }, // Status
+      { wch: 12 }  // Join Date
+    ];
+    ws['!cols'] = colWidths;
+
+    // Add worksheet to workbook
+    XLSX.utils.book_append_sheet(wb, ws, 'Users');
+
+    // Generate filename with current date
+    const currentDate = new Date().toISOString().split('T')[0];
+    const filename = `users_export_${currentDate}.xlsx`;
+
+    // Save file
+    XLSX.writeFile(wb, filename);
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -72,7 +127,7 @@ export default function Users() {
           <h1 className="page-title">User Management</h1>
           <p className="page-subtitle">Manage and monitor platform users</p>
         </div>
-        <Button variant="outline" className="gap-2">
+        <Button variant="outline" className="gap-2" onClick={exportToExcel}>
           <Download className="w-4 h-4" />
           Export Users
         </Button>
@@ -121,7 +176,7 @@ export default function Users() {
               </tr>
             </thead>
             <tbody>
-              {filteredUsers.map((user) => (
+              {paginatedUsers.map((user) => (
                 <tr key={user.id} className="cursor-pointer" onClick={() => openUserProfile(user)}>
                   <td className="font-medium">{user.name}</td>
                   <td className="text-muted-foreground">{user.email}</td>
@@ -169,17 +224,35 @@ export default function Users() {
         {/* Pagination */}
         <div className="flex items-center justify-between px-4 py-3 border-t border-border">
           <p className="text-sm text-muted-foreground">
-            Showing <span className="font-medium">{filteredUsers.length}</span> of{" "}
-            <span className="font-medium">{mockUsers.length}</span> users
+            Showing <span className="font-medium">{startIndex + 1}-{Math.min(endIndex, filteredUsers.length)}</span> of{" "}
+            <span className="font-medium">{filteredUsers.length}</span> users
           </p>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" disabled>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage(currentPage - 1)}
+            >
               <ChevronLeft className="w-4 h-4" />
             </Button>
-            <Button variant="outline" size="sm" className="min-w-[32px]">1</Button>
-            <Button variant="ghost" size="sm" className="min-w-[32px]">2</Button>
-            <Button variant="ghost" size="sm" className="min-w-[32px]">3</Button>
-            <Button variant="outline" size="sm">
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+              <Button
+                key={page}
+                variant={currentPage === page ? "outline" : "ghost"}
+                size="sm"
+                className="min-w-[32px]"
+                onClick={() => setCurrentPage(page)}
+              >
+                {page}
+              </Button>
+            ))}
+            <Button 
+              variant="outline" 
+              size="sm"
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage(currentPage + 1)}
+            >
               <ChevronRight className="w-4 h-4" />
             </Button>
           </div>

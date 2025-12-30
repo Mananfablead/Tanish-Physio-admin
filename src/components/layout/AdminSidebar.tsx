@@ -21,14 +21,14 @@ import { cn } from "@/lib/utils";
 
 const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/" },
-  { icon: Users, label: "Users", path: "/users" },
-  { icon: UserCog, label: "Therapists", path: "/therapists" },
+  { icon: Users, label: "Clients", path: "/users" },
+  { icon: UserCog, label: "Staff", path: "/therapists" },
   { icon: ClipboardList, label: "Questionnaires", path: "/questionnaires" },
   { icon: Calendar, label: "Sessions", path: "/sessions" },
   { icon: CreditCard, label: "Subscriptions", path: "/subscriptions" },
   { icon: Wallet, label: "Payments", path: "/payments" },
   // { icon: MessageSquare, label: "Chat Monitor", path: "/chat" },
-  { icon: Star, label: "Feedback", path: "/feedback" },
+  // { icon: Star, label: "Feedback", path: "/feedback" },
   { icon: Bell, label: "Notifications", path: "/notifications" },
   { icon: BarChart3, label: "Reports", path: "/reports" },
 ];
@@ -50,11 +50,13 @@ export function AdminSidebar({ isMobileOpen, onMobileClose }: { isMobileOpen: bo
       <div className="flex h-16 items-center justify-between px-4 border-b border-sidebar-border">
         {!collapsed && (
           <div className="flex items-center gap-2">
-             <div className="flex-col justify-center relative w-[--sidebar-width] z-10">
-            <Link to="/" className="mb-8">
-            <img src={logo} alt="Logo" className="h-12 w-auto" />
-          </Link>
-          </div>
+            <div className="flex-col justify-center relative w-[--sidebar-width] z-10">
+
+              <Link to="/" className="mb-8">
+                <img src={logo} alt="Logo" className="h-12 w-auto" />
+              </Link>
+
+            </div>
           </div>
         )}
         <button
