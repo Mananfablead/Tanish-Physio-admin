@@ -123,7 +123,7 @@ export default function Dashboard() {
         />
         <StatCard
           title="Total Revenue"
-          value="$45,800"
+          value="Rs 45,800"
           change={{ value: 18.7, isPositive: true }}
           icon={DollarSign}
           iconColor="bg-success"

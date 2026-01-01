@@ -24,7 +24,7 @@ export function RevenueChart() {
           <p className="text-sm text-muted-foreground">Monthly revenue overview</p>
         </div>
         <div className="text-right">
-          <p className="text-2xl font-semibold">$45,800</p>
+          <p className="text-2xl font-semibold">Rs 45,800</p>
           <p className="text-xs text-success font-medium">+12.5% this month</p>
         </div>
       </div>

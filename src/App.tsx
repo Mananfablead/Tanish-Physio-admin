@@ -9,6 +9,7 @@ import { AdminLayout } from "@/components/layout/AdminLayout";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Users from "./pages/Users";
+import UserProfile from "./pages/UserProfile";
 import Therapists from "./pages/Therapists";
 import Questionnaires from "./pages/Questionnaires";
 import Sessions from "./pages/Sessions";
@@ -39,6 +40,7 @@ const App = () => (
           <Route path="/login" element={<Login />} />
           <Route path="/" element={<AdminPage><Dashboard /></AdminPage>} />
           <Route path="/users" element={<AdminPage><Users /></AdminPage>} />
+          <Route path="/users/:id" element={<AdminPage><UserProfile /></AdminPage>} />
         <Route path="/therapists" element={<AdminPage><Therapists /></AdminPage>} />
              <Route path="/questionnaires" element={<AdminPage><Questionnaires /></AdminPage>} />
      <Route path="/sessions" element={<AdminPage><Sessions /></AdminPage>} />
