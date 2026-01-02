@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Search, MoreHorizontal, Eye, UserCheck, UserX, Download, Star, Video, FileText, ChevronLeft, ChevronRight, Check, X } from "lucide-react";
+import { Search, MoreHorizontal, Eye, UserCheck, UserX, Download, Star, Video, FileText, ChevronLeft, ChevronRight, Check, X, Mail, Shield, Activity, MessageSquare } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,52 +14,20 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 
-const mockStaff = [
-  { id: 1, name: "Dr. Sarah Johnson", email: "sarah@clinic.com", specialty: "Sports Injury", rating: 4.9, sessions: 248, status: "active", sessionTypes: ["1-on-1", "Group"] },
-  { id: 2, name: "Dr. Michael Chen", email: "michael@clinic.com", specialty: "Rehabilitation", rating: 4.8, sessions: 312, status: "active", sessionTypes: ["1-on-1"] },
-  { id: 3, name: "Dr. Lisa Williams", email: "lisa@clinic.com", specialty: "Pain Management", rating: 4.7, sessions: 186, status: "active", sessionTypes: ["Group"] },
-  { id: 4, name: "Dr. James Brown", email: "james@clinic.com", specialty: "Orthopedic", rating: 4.6, sessions: 94, status: "active", sessionTypes: ["1-on-1"] },
-  { id: 5, name: "Dr. Emma Davis", email: "emma@clinic.com", specialty: "Pediatric", rating: 4.9, sessions: 156, status: "inactive", sessionTypes: ["1-on-1", "Group"] },
-];
-
-const mockApplications = [
-  { id: 1, name: "Dr. Robert Martinez", email: "robert@email.com", specialty: "Neurological", submitted: "2024-03-10", status: "pending" },
-  { id: 2, name: "Dr. Jennifer White", email: "jennifer@email.com", specialty: "Geriatric", submitted: "2024-03-12", status: "pending" },
-  { id: 3, name: "Dr. Thomas Anderson", email: "thomas@email.com", specialty: "Sports Medicine", submitted: "2024-03-08", status: "rejected" },
-];
-
-const mockSessionHistory = [
-  { id: 1, patient: "John Smith", date: "2024-03-15", time: "10:00 AM", type: "1-on-1", status: "completed", feedback: "Excellent session, very helpful.", rating: 5, performance: "95%" },
-  { id: 2, patient: "Sarah Wilson", date: "2024-03-15", time: "11:30 AM", type: "Group", status: "completed", feedback: "Great group dynamics.", rating: 4, performance: "88%" },
-  { id: 3, patient: "Michael Brown", date: "2024-03-16", time: "02:00 PM", type: "1-on-1", status: "cancelled", feedback: "-", rating: 0, performance: "0%" },
-  { id: 4, patient: "Emily Davis", date: "2024-03-17", time: "09:00 AM", type: "1-on-1", status: "scheduled", feedback: "Pending", rating: 0, performance: "-" },
-];
+import { mockStaff, mockApplications, mockSessionHistory } from "@/lib/staff-data";
 
 export default function Staff() {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedStaff, setSelectedStaff] = useState<typeof mockStaff[0] | null>(null);
   const [selectedApplication, setSelectedApplication] = useState<typeof mockApplications[0] | null>(null);
-  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isApplicationOpen, setIsApplicationOpen] = useState(false);
   const [isAddStaffOpen, setIsAddStaffOpen] = useState(false);
   const [isViewSessionsOpen, setIsViewSessionsOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
   const [staffMembers, setStaffMembers] = useState(mockStaff);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editForm, setEditForm] = useState({ name: "", email: "", specialty: "" });
   const [addForm, setAddForm] = useState({ name: "", email: "", specialty: "", sessionTypes: ["1-on-1"] });
 
-  useEffect(() => {
-    if (selectedStaff) {
-      setEditForm({
-        name: selectedStaff.name,
-        email: selectedStaff.email,
-        specialty: selectedStaff.specialty,
-      });
-      setIsEditing(false);
-    }
-  }, [selectedStaff]);
+
 
   const filteredStaff = staffMembers.filter((staff) =>
     staff.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -85,7 +53,6 @@ export default function Staff() {
 
   const handleDeleteStaff = (id: number) => {
     setStaffMembers(staffMembers.filter(s => s.id !== id));
-    setIsProfileOpen(false);
   };
 
   return (
@@ -136,10 +103,7 @@ export default function Staff() {
               </thead>
               <tbody>
                 {filteredStaff.map((staff) => (
-                  <tr key={staff.id} className="cursor-pointer" onClick={() => {
-                    setSelectedStaff(staff);
-                    setIsProfileOpen(true);
-                  }}>
+                  <tr key={staff.id} className="cursor-pointer" onClick={() => navigate(`/therapists/${staff.id}`)}>
                     <td>
                       <div>
                         <p className="font-medium">{staff.name}</p>
@@ -176,10 +140,7 @@ export default function Staff() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => {
-                            setSelectedStaff(staff);
-                            setIsProfileOpen(true);
-                          }}>
+                          <DropdownMenuItem onClick={() => navigate(`/therapists/${staff.id}`)}>
                             <Eye className="w-4 h-4 mr-2" />
                             View Profile
                           </DropdownMenuItem>
@@ -219,214 +180,7 @@ export default function Staff() {
         </div>
       </div>
 
-      {/* Staff Profile Modal */}
-      <Dialog open={isProfileOpen} onOpenChange={(open) => {
-        setIsProfileOpen(open);
-        if (!open) setIsEditing(false);
-      }}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Staff Profile</DialogTitle>
-          </DialogHeader>
-          
-          {selectedStaff && (
-            <Tabs defaultValue="details" className="mt-4">
-              <TabsList className="w-full justify-start">
-                <TabsTrigger value="details">Details</TabsTrigger>
-                <TabsTrigger value="history">Session History</TabsTrigger>
-                <TabsTrigger value="performance">Performance</TabsTrigger>
-                <TabsTrigger value="feedback">Feedback</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="details" className="space-y-4 mt-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm text-muted-foreground">Full Name</label>
-                    {isEditing ? (
-                      <Input
-                        value={editForm.name}
-                        onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                        className="mt-1"
-                      />
-                    ) : (
-                      <p className="font-medium">{selectedStaff.name}</p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="text-sm text-muted-foreground">Email</label>
-                    {isEditing ? (
-                      <Input
-                        value={editForm.email}
-                        onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
-                        className="mt-1"
-                      />
-                    ) : (
-                      <p className="font-medium">{selectedStaff.email}</p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="text-sm text-muted-foreground">Specialty</label>
-                    {isEditing ? (
-                      <Input
-                        value={editForm.specialty}
-                        onChange={(e) => setEditForm({ ...editForm, specialty: e.target.value })}
-                        className="mt-1"
-                      />
-                    ) : (
-                      <p className="font-medium">{selectedStaff.specialty}</p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="text-sm text-muted-foreground">Status</label>
-                    <p>
-                      <span className={cn("status-badge", selectedStaff.status === "active" ? "status-active" : "status-inactive")}>
-                        {selectedStaff.status}
-                      </span>
-                    </p>
-                  </div>
-                  <div>
-                    <label className="text-sm text-muted-foreground">Session Types</label>
-                    <div className="flex gap-1 mt-1">
-                      {selectedStaff.sessionTypes.map((type) => (
-                        <span key={type} className="status-badge bg-muted text-muted-foreground">
-                          {type}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="flex gap-3 pt-4 border-t">
-                  {isEditing ? (
-                    <>
-                      <Button
-                        variant="default"
-                        size="sm"
-                        onClick={() => {
-                          setStaffMembers(staffMembers.map(t => t.id === selectedStaff.id ? { ...t, ...editForm } : t));
-                          setIsEditing(false);
-                        }}
-                      >
-                        Save Changes
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setEditForm({
-                            name: selectedStaff.name,
-                            email: selectedStaff.email,
-                            specialty: selectedStaff.specialty,
-                          });
-                          setIsEditing(false);
-                        }}
-                      >
-                        Cancel
-                      </Button>
-                    </>
-                  ) : (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setIsEditing(true)}
-                    >
-                      Edit Profile
-                    </Button>
-                  )}
-                  <Button variant="outline" size="sm" onClick={() => navigate(`/staff/sessions/${selectedStaff.id}`)}>Manage Sessions</Button>
-                  <Button variant="destructive" size="sm" onClick={() => handleDeleteStaff(selectedStaff.id)}>
-                    Delete Staff
-                  </Button>
-                </div>
-              </TabsContent>
 
-              <TabsContent value="history" className="mt-4">
-                <div className="border rounded-lg overflow-hidden">
-                  <table className="w-full text-sm">
-                    <thead className="bg-muted">
-                      <tr>
-                        <th className="px-4 py-2 text-left font-medium">Patient</th>
-                        <th className="px-4 py-2 text-left font-medium">Date</th>
-                        <th className="px-4 py-2 text-left font-medium">Type</th>
-                        <th className="px-4 py-2 text-left font-medium">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y">
-                      {mockSessionHistory.map((session) => (
-                        <tr key={session.id}>
-                          <td className="px-4 py-2">{session.patient}</td>
-                          <td className="px-4 py-2">
-                            <div>{session.date}</div>
-                            <div className="text-xs text-muted-foreground">{session.time}</div>
-                          </td>
-                          <td className="px-4 py-2">{session.type}</td>
-                          <td className="px-4 py-2">
-                            <span className={cn(
-                              "text-[10px] px-2 py-0.5 rounded-full font-medium uppercase",
-                              session.status === "completed" ? "bg-success/10 text-success" :
-                              session.status === "cancelled" ? "bg-destructive/10 text-destructive" :
-                              "bg-warning/10 text-warning"
-                            )}>
-                              {session.status}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </TabsContent>
-              
-              <TabsContent value="performance" className="mt-4">
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="p-4 rounded-lg bg-muted/50 text-center">
-                    <p className="text-3xl font-bold text-primary">{selectedStaff.sessions}</p>
-                    <p className="text-sm text-muted-foreground">Total Sessions</p>
-                  </div>
-                  <div className="p-4 rounded-lg bg-muted/50 text-center">
-                    <div className="flex items-center justify-center gap-1">
-                      <Star className="w-6 h-6 text-warning fill-warning" />
-                      <span className="text-3xl font-bold">{selectedStaff.rating}</span>
-                    </div>
-                    <p className="text-sm text-muted-foreground">Average Rating</p>
-                  </div>
-                  <div className="p-4 rounded-lg bg-muted/50 text-center">
-                    <p className="text-3xl font-bold text-success">2.3%</p>
-                    <p className="text-sm text-muted-foreground">Cancellation Rate</p>
-                  </div>
-                </div>
-              </TabsContent>
-              
-              <TabsContent value="feedback" className="mt-4">
-                <div className="space-y-3">
-                  <div className="p-3 rounded-lg border bg-card">
-                    <div className="flex items-center justify-between mb-2">
-                      <p className="font-medium">John Doe</p>
-                      <div className="flex items-center gap-1 text-warning text-sm">
-                        {"★".repeat(5)}
-                      </div>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      "Excellent professional! Very knowledgeable and patient."
-                    </p>
-                  </div>
-                  <div className="p-3 rounded-lg border bg-card">
-                    <div className="flex items-center justify-between mb-2">
-                      <p className="font-medium">Emily Parker</p>
-                      <div className="flex items-center gap-1 text-warning text-sm">
-                        {"★".repeat(5)}
-                      </div>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      "Great session, really helped with my recovery."
-                    </p>
-                  </div>
-                </div>
-              </TabsContent>
-            </Tabs>
-          )}
-        </DialogContent>
-      </Dialog>
 
       {/* Add Staff Modal */}
       <Dialog open={isAddStaffOpen} onOpenChange={setIsAddStaffOpen}>
@@ -543,7 +297,7 @@ export default function Staff() {
       <Dialog open={isViewSessionsOpen} onOpenChange={setIsViewSessionsOpen}>
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Session History - {selectedStaff?.name}</DialogTitle>
+            <DialogTitle>Session History</DialogTitle>
             <DialogDescription>
               Detailed view of all past and upcoming sessions for this staff member.
             </DialogDescription>

@@ -13,6 +13,9 @@ import UserProfile from "./pages/UserProfile";
 import Therapists from "./pages/Therapists";
 import Questionnaires from "./pages/Questionnaires";
 import Sessions from "./pages/Sessions";
+import Availability from "./pages/Availability";
+import SessionRecordings from "./pages/SessionRecordings";
+import LiveSessions from "./pages/LiveSessions";
 import Subscriptions from "./pages/Subscriptions";
 import Payments from "./pages/Payments";
 import ChatMonitor from "./pages/ChatMonitor";
@@ -22,6 +25,8 @@ import Reports from "./pages/Reports";
 import Profile from "./pages/Profile";
 import StaffSessions from "./pages/StaffSessions";
 import NotFound from "./pages/NotFound";
+import TherapistProfile from "./pages/TherapistProfile";
+import VideoCallPage from "./pages/VideoCallPage";
 
 const queryClient = new QueryClient();
 
@@ -42,8 +47,13 @@ const App = () => (
           <Route path="/users" element={<AdminPage><Users /></AdminPage>} />
           <Route path="/users/:id" element={<AdminPage><UserProfile /></AdminPage>} />
         <Route path="/therapists" element={<AdminPage><Therapists /></AdminPage>} />
+          <Route path="/therapists/:id" element={<AdminPage><TherapistProfile /></AdminPage>} />
              <Route path="/questionnaires" element={<AdminPage><Questionnaires /></AdminPage>} />
      <Route path="/sessions" element={<AdminPage><Sessions /></AdminPage>} />
+            <Route path="/availability" element={<AdminPage><Availability /></AdminPage>} />
+            <Route path="/session-recordings" element={<AdminPage><SessionRecordings /></AdminPage>} />
+            <Route path="/session-recordings/:userId" element={<AdminPage><SessionRecordings /></AdminPage>} />
+            <Route path="/live-sessions" element={<AdminPage><LiveSessions /></AdminPage>} />
             <Route path="/subscriptions" element={<AdminPage><Subscriptions /></AdminPage>} />
           <Route path="/payments" element={<AdminPage><Payments /></AdminPage>} />
           <Route path="/chat" element={<AdminPage><ChatMonitor /></AdminPage>} />
@@ -52,6 +62,7 @@ const App = () => (
           <Route path="/reports" element={<AdminPage><Reports /></AdminPage>} /> 
           <Route path="/profile" element={<AdminPage><Profile /></AdminPage>} />
           <Route path="/staff/sessions/:id" element={<AdminPage><StaffSessions /></AdminPage>} />
+          <Route path="/video-call/:sessionId" element={<VideoCallPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

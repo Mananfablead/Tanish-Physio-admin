@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Search, MoreHorizontal, Video, Calendar, Clock, User, UserCog, X, RefreshCw, ChevronLeft, ChevronRight, Play, Eye } from "lucide-react";
+import { Search, MoreHorizontal, Video, Calendar, Clock, User, UserCog, X, RefreshCw, ChevronLeft, ChevronRight, Play, Eye, Copy } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,35 +14,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { mockSessions } from "@/lib/session-data";
 
-const mockSessions = {
-  upcoming: [
-    { id: 1, user: "John Doe", therapist: "Dr. Sarah Johnson", date: "2024-03-20", time: "10:00 AM", type: "1-on-1", status: "scheduled" },
-    { id: 2, user: "Emily Parker", therapist: "Dr. Michael Chen", date: "2024-03-20", time: "10:30 AM", type: "1-on-1", status: "scheduled" },
-    { id: 3, user: "Group Session", therapist: "Dr. Lisa Williams", date: "2024-03-20", time: "11:00 AM", type: "Group (8)", status: "scheduled" },
-    { id: 4, user: "Mike Wilson", therapist: "Dr. James Brown", date: "2024-03-20", time: "2:00 PM", type: "1-on-1", status: "scheduled" },
-  ],
-  live: [
-    { id: 5, user: "Anna Smith", therapist: "Dr. Sarah Johnson", date: "2024-03-20", time: "09:30 AM", type: "1-on-1", status: "live", duration: "15 min" },
-  ],
-  completed: [
-    { id: 6, user: "Robert Brown", therapist: "Dr. Michael Chen", date: "2024-03-19", time: "3:00 PM", type: "1-on-1", status: "completed", duration: "45 min" },
-    { id: 7, user: "Lisa Anderson", therapist: "Dr. Lisa Williams", date: "2024-03-19", time: "11:00 AM", type: "1-on-1", status: "completed", duration: "50 min" },
-    { id: 8, user: "David Lee", therapist: "Dr. James Brown", date: "2024-03-18", time: "4:00 PM", type: "1-on-1", status: "completed", duration: "40 min" },
-  ],
-  cancelled: [
-    { id: 9, user: "Sarah Taylor", therapist: "Dr. Sarah Johnson", date: "2024-03-19", time: "2:00 PM", type: "1-on-1", status: "cancelled", reason: "User requested" },
-    { id: 10, user: "James Miller", therapist: "Dr. Michael Chen", date: "2024-03-18", time: "10:00 AM", type: "1-on-1", status: "no-show", reason: "User didn't join" },
-  ],
-};
+// Using mockSessions from session-data.ts
 
 type SessionStatus = "scheduled" | "live" | "completed" | "cancelled" | "no-show";
 
 export default function Sessions() {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("upcoming");
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false);
+  const [isAcceptModalOpen, setIsAcceptModalOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [selectedSession, setSelectedSession] = useState<any>(null);
 
@@ -254,13 +239,25 @@ export default function Sessions() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             {activeTab === "completed" && (
-                              <DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => {
+                                // Navigate to the session recordings page for the specific user
+                                navigate(`/session-recordings/${selectedSession.user.replace(/\s+/g, '-').toLowerCase()}`);
+                              }}>
                                 <Eye className="w-4 h-4 mr-2" />
                                 View Recording
                               </DropdownMenuItem>
                             )}
                             {activeTab === "upcoming" && (
                               <>
+                                {session.status === "pending" && (
+                                  <DropdownMenuItem onClick={() => {
+                                    setSelectedSession(session);
+                                    setIsAcceptModalOpen(true);
+                                  }}>
+                                    <Play className="w-4 h-4 mr-2" />
+                                    Accept Session
+                                  </DropdownMenuItem>
+                                )}
                                 <DropdownMenuItem onClick={() => {
                                   setSelectedSession(session);
                                   setIsRescheduleModalOpen(true);
@@ -278,13 +275,47 @@ export default function Sessions() {
                                   <X className="w-4 h-4 mr-2" />
                                   Cancel Session
                                 </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => {
+                                  if (session.joinLink) {
+                                    navigator.clipboard.writeText(session.joinLink);
+                                    // Here you would typically show a toast notification
+                                  }
+                                }}>
+                                  <Copy className="w-4 h-4 mr-2" />
+                                  Copy Join Link
+                                </DropdownMenuItem>
                               </>
                             )}
                             {activeTab === "live" && (
-                              <DropdownMenuItem>
-                                <Video className="w-4 h-4 mr-2" />
-                                Monitor Session
-                              </DropdownMenuItem>
+                              <>
+                                <DropdownMenuItem onClick={() => {
+                                  if (session.joinLink) {
+                                    // Extract session ID from the mock join link
+                                    const sessionId = session.joinLink.split('/').pop() || session.id.toString();
+                                    // Open the video call page in a new tab
+                                    window.open(`/video-call/${sessionId}`, '_blank', 'width=1200,height=800');
+                                  }
+                                }}>
+                                  <Video className="w-4 h-4 mr-2" />
+                                  Join Session
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => {
+                                  // Navigate to the live sessions page
+                                  navigate('/live-sessions');
+                                }}>
+                                  <Video className="w-4 h-4 mr-2" />
+                                  View All Live Sessions
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => {
+                                  if (session.joinLink) {
+                                    navigator.clipboard.writeText(session.joinLink);
+                                    // Here you would typically show a toast notification
+                                  }
+                                }}>
+                                  <Copy className="w-4 h-4 mr-2" />
+                                  Copy Join Link
+                                </DropdownMenuItem>
+                              </>
                             )}
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -358,6 +389,55 @@ export default function Sessions() {
             </Button>
             <Button variant="destructive" onClick={() => setIsCancelModalOpen(false)}>
               Cancel Session
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Accept Session Modal */}
+      <Dialog open={isAcceptModalOpen} onOpenChange={setIsAcceptModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Accept Session Request</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to accept this session request? The client will be notified and the session will be scheduled.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedSession && (
+            <div className="space-y-4 mt-4">
+              <div className="p-3 rounded-lg bg-muted/50">
+                <p className="text-sm">
+                  <span className="text-muted-foreground">User:</span>{" "}
+                  <span className="font-medium">{selectedSession.user}</span>
+                </p>
+                <p className="text-sm">
+                  <span className="text-muted-foreground">Therapist:</span>{" "}
+                  <span className="font-medium">{selectedSession.therapist}</span>
+                </p>
+                <p className="text-sm">
+                  <span className="text-muted-foreground">Date:</span>{" "}
+                  <span className="font-medium">{selectedSession.date}</span>
+                </p>
+                <p className="text-sm">
+                  <span className="text-muted-foreground">Time:</span>{" "}
+                  <span className="font-medium">{selectedSession.time}</span>
+                </p>
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setIsAcceptModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={() => {
+              // Here you would typically make an API call to accept the session
+              setIsAcceptModalOpen(false);
+              // After accepting, navigate to the live sessions page to join
+              navigate('/live-sessions');
+            }}>
+              Accept Session
             </Button>
           </DialogFooter>
         </DialogContent>

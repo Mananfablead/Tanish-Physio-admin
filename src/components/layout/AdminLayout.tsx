@@ -63,26 +63,14 @@ export function AdminLayout({ children }: AdminLayoutProps) {
 
   const unreadCount = notifications.filter(n => n.unread).length;
 
-  useEffect(() => {
-    const handleResize = () => {
-      const sidebar = document.querySelector('aside');
-      if (sidebar) {
-        setSidebarCollapsed(sidebar.classList.contains('w-16'));
-      }
-    };
-
-    const observer = new MutationObserver(handleResize);
-    const sidebar = document.querySelector('aside');
-    if (sidebar) {
-      observer.observe(sidebar, { attributes: true, attributeFilter: ['class'] });
-    }
-
-    return () => observer.disconnect();
-  }, []);
-
   return (
-    <div className="min-h-screen bg-background">
-      <AdminSidebar isMobileOpen={mobileMenuOpen} onMobileClose={() => setMobileMenuOpen(false)} />
+    <div className="flex h-screen w-screen overflow-hidden">
+      <AdminSidebar 
+        isMobileOpen={mobileMenuOpen} 
+        onMobileClose={() => setMobileMenuOpen(false)} 
+        collapsed={sidebarCollapsed} 
+        onCollapseToggle={() => setSidebarCollapsed(!sidebarCollapsed)} 
+      />
       
       {/* Mobile Backdrop */}
       {mobileMenuOpen && (
@@ -92,9 +80,9 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         />
       )}
       
-      <div className="transition-all duration-300 lg:ml-64 lg:peer-[[data-collapsed=true]]:ml-16">
+      <div className="flex flex-1 flex-col min-w-0">
         {/* Top Header */}
-        <header className="sticky top-0 z-30 h-16 bg-card border-b border-border flex items-center justify-between px-6">
+        <header className="sticky top-0 z-30 h-16 shrink-0 border-b border-border flex items-center justify-between px-6 bg-card">
           <div className="flex items-center gap-4 flex-1">
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -148,7 +136,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                 </div>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem className="flex items-center justify-center p-3 cursor-pointer">
-                  <span className="text-sm text-primary font-medium">View all notifications</span>
+                  <span className="text-sm text-primary font-medium" onClick={() => navigate("/notifications")}>View all notifications</span>
                   <ChevronDown className="w-4 h-4 ml-2 rotate-[-90deg]" />
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -179,7 +167,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         </header>
 
         {/* Main Content */}
-        <main className="p-6">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden p-6">
           {children}
         </main>
       </div>

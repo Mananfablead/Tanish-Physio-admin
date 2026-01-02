@@ -15,6 +15,9 @@ import {
   ChevronLeft,
   LogOut,
   Activity,
+  ClipboardCheck,
+  Clock,
+  Video,
 } from "lucide-react";
 import logo from "../../assets/logo.webp";
 import { cn } from "@/lib/utils";
@@ -25,6 +28,9 @@ const navItems = [
   { icon: UserCog, label: "Staff", path: "/therapists" },
   { icon: ClipboardList, label: "Questionnaires", path: "/questionnaires" },
   { icon: Calendar, label: "Sessions", path: "/sessions" },
+  { icon: Video, label: "Live Sessions", path: "/live-sessions" },
+  { icon: Video, label: "Session Recordings", path: "/session-recordings" },
+  { icon: Clock, label: "Schedule", path: "/availability" },
   { icon: CreditCard, label: "Subscriptions", path: "/subscriptions" },
   { icon: Wallet, label: "Payments", path: "/payments" },
   // { icon: MessageSquare, label: "Chat Monitor", path: "/chat" },
@@ -33,50 +39,53 @@ const navItems = [
   { icon: BarChart3, label: "Reports", path: "/reports" },
 ];
 
-export function AdminSidebar({ isMobileOpen, onMobileClose }: { isMobileOpen: boolean; onMobileClose: () => void }) {
-  const [collapsed, setCollapsed] = useState(false);
+export function AdminSidebar({ isMobileOpen, onMobileClose, collapsed: propCollapsed, onCollapseToggle }: { isMobileOpen: boolean; onMobileClose: () => void; collapsed?: boolean; onCollapseToggle?: () => void }) {
+  const [localCollapsed, setLocalCollapsed] = useState(false);
+  const effectiveCollapsed = propCollapsed !== undefined ? propCollapsed : localCollapsed;
+  const effectiveOnCollapseToggle = onCollapseToggle || (() => setLocalCollapsed(!localCollapsed));
   const location = useLocation();
   const navigate = useNavigate();
 
   return (
     <aside
       className={cn(
-        "fixed left-0 top-0 z-40 h-screen bg-sidebar text-sidebar-foreground transition-all duration-300 flex flex-col",
-        collapsed ? "w-16" : "w-64",
+        "h-full shrink-0 transition-all duration-300 bg-sidebar text-sidebar-foreground flex flex-col",
+        effectiveCollapsed ? "w-16" : "w-64",
         isMobileOpen ? "flex" : "hidden lg:flex"
       )}
+      style={{zIndex: 40}}
     >
       {/* Logo */}
-      <div className="flex h-16 items-center justify-between px-4 border-b border-sidebar-border">
-        {!collapsed && (
+      <div className="flex h-18 items-center justify-between px-4 border-b border-sidebar-border">
+        {!effectiveCollapsed && (
           <div className="flex items-center gap-2">
             <div className="flex-col justify-center relative w-[--sidebar-width] z-10">
 
               <Link to="/" className="mb-8">
-                <img src={logo} alt="Logo" className="h-12 w-auto" />
+                <img src={logo} alt="Logo" className="h-16 w-auto mt-2" />
               </Link>
 
             </div>
           </div>
         )}
         <button
-          onClick={() => setCollapsed(!collapsed)}
+          onClick={effectiveOnCollapseToggle}
           className={cn(
             "p-1.5 rounded-md hover:bg-sidebar-accent transition-colors",
-            collapsed && "mx-auto"
+            effectiveCollapsed && "mx-auto"
           )}
         >
           <ChevronLeft
             className={cn(
               "w-5 h-5 text-sidebar-foreground transition-transform",
-              collapsed && "rotate-180"
+              effectiveCollapsed && "rotate-180"
             )}
           />
         </button>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto py-4 px-2">
+      <nav className="flex-1 overflow-y-auto py-4 px-2 hide-scrollbar">
         <ul className="space-y-1">
           {navItems.map((item) => {
             const isActive = location.pathname === item.path;
@@ -93,7 +102,7 @@ export function AdminSidebar({ isMobileOpen, onMobileClose }: { isMobileOpen: bo
                   )}
                 >
                   <item.icon className="w-5 h-5 flex-shrink-0" />
-                  {!collapsed && (
+                  {!effectiveCollapsed && (
                     <span className="text-sm font-medium">{item.label}</span>
                   )}
                 </Link>
@@ -109,11 +118,11 @@ export function AdminSidebar({ isMobileOpen, onMobileClose }: { isMobileOpen: bo
           onClick={() => { navigate("/login"); onMobileClose(); }}
           className={cn(
             "flex items-center gap-3 px-3 py-2.5 rounded-lg w-full text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors",
-            collapsed && "justify-center"
+            effectiveCollapsed && "justify-center"
           )}
         >
           <LogOut className="w-5 h-5 flex-shrink-0" />
-          {!collapsed && <span className="text-sm font-medium">Logout</span>}
+          {!effectiveCollapsed && <span className="text-sm font-medium">Logout</span>}
         </button>
       </div>
     </aside>

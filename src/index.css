@@ -196,6 +196,14 @@
 }
 
 @layer utilities {
+  .hide-scrollbar {
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+  }
+  .hide-scrollbar::-webkit-scrollbar { /* Chrome, Safari, Opera */
+    display: none;
+  }
+  
   .animate-fade-in {
     animation: fadeIn 0.3s ease-out;
   }

@@ -108,7 +108,7 @@ export default function Dashboard() {
           
         />
         <StatCard
-          title="Active Therapists"
+          title="Active Staff"
           value="120"
           change={{ value: 8.2, isPositive: true }}
           icon={Stethoscope}
