@@ -9,8 +9,8 @@ import logo from "../assets/logo.webp";
 export default function Login() {
   const navigate = useNavigate();
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState("admin@physio.com");
+  const [password, setPassword] = useState("admin123");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");

@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
 import { Search, MoreHorizontal, Plus, Upload, X, Edit, Trash2, Image as ImageIcon } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,6 +16,7 @@ import { cn } from "@/lib/utils";
 import { mockServices } from "@/lib/mock-data";
 
 export default function Services() {
+    const navigate = useNavigate();
     const [searchQuery, setSearchQuery] = useState("");
     const [isAddServiceOpen, setIsAddServiceOpen] = useState(false);
     const [isEditServiceOpen, setIsEditServiceOpen] = useState(false);
@@ -169,7 +171,7 @@ export default function Services() {
                             </thead>
                             <tbody>
                                 {filteredServices.map((service) => (
-                                    <tr key={service.id}>
+                                    <tr key={service.id} className="cursor-pointer" onClick={() => navigate(`/services/${service.id}`)}>
                                         <td>
                                             <div className="flex items-center gap-3">
                                                 <div className="w-10 h-10 rounded-md bg-muted flex items-center justify-center overflow-hidden">
@@ -211,7 +213,8 @@ export default function Services() {
                                                     </Button>
                                                 </DropdownMenuTrigger>
                                                 <DropdownMenuContent align="end">
-                                                    <DropdownMenuItem onClick={() => {
+                                                    <DropdownMenuItem onClick={(e) => {
+                                                        e.stopPropagation();
                                                         setSelectedService(service);
                                                         setServiceForm({
                                                             name: service.name,
@@ -229,7 +232,8 @@ export default function Services() {
                                                     </DropdownMenuItem>
                                                     <DropdownMenuItem
                                                         className="text-destructive"
-                                                        onClick={() => {
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
                                                             setSelectedService(service);
                                                             setIsDeleteServiceOpen(true);
                                                         }}

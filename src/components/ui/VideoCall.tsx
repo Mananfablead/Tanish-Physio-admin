@@ -88,7 +88,7 @@ export function VideoCall({ sessionId, user, therapist, onLeaveCall }: VideoCall
       {/* Main Video Area */}
       <div className="flex-1 relative bg-slate-950 flex overflow-hidden">
         {/* Main Video (Doctor) */}
-        <div className={`flex-1 relative flex items-center justify-center transition-all duration-500 ${showParticipants || showChat ? 'md:mr-80' : ''}`}>
+        <div className={`flex-1 relative flex items-center justify-center transition-all duration-500 ${showParticipants || showChat ? 'md:mr-0' : ''}`}>
           <div className="absolute inset-0 bg-gradient-to-b from-slate-900/50 to-slate-950/50 pointer-events-none" />
 
           <div className="text-center">

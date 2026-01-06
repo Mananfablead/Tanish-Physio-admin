@@ -30,6 +30,7 @@ import VideoCallPage from "./pages/VideoCallPage";
 import Services from "./pages/Services";
 import Bookings from "./pages/Bookings";
 import Courses from "./pages/Courses";
+import ServiceDetails from "./pages/ServiceDetails";
 
 const queryClient = new QueryClient();
 
@@ -66,6 +67,7 @@ const App = () => (
           <Route path="/profile" element={<AdminPage><Profile /></AdminPage>} />
           <Route path="/staff/sessions/:id" element={<AdminPage><StaffSessions /></AdminPage>} />
           <Route path="/services" element={<AdminPage><Services /></AdminPage>} />
+          <Route path="/services/:id" element={<AdminPage><ServiceDetails /></AdminPage>} />
           <Route path="/bookings" element={<AdminPage><Bookings /></AdminPage>} />
           <Route path="/courses" element={<AdminPage><Courses /></AdminPage>} />
           <Route path="/video-call/:sessionId" element={<VideoCallPage />} />

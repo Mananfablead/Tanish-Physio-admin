@@ -39,8 +39,8 @@ const navItems = [
   { icon: Wallet, label: "Payments", path: "/payments" },
   // { icon: MessageSquare, label: "Chat Monitor", path: "/chat" },
   // { icon: Star, label: "Feedback", path: "/feedback" },
-  { icon: Bell, label: "Notifications", path: "/notifications" },
   { icon: BarChart3, label: "Reports", path: "/reports" },
+  { icon: Bell, label: "Notifications", path: "/notifications" },
 
 ];
 
