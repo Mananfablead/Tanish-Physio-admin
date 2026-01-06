@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search, MoreHorizontal, Video, Calendar, Clock, User, UserCog, X, RefreshCw, ChevronLeft, ChevronRight, Play, Eye, Copy } from "lucide-react";
+import { Search, MoreHorizontal, Video, Calendar, Clock, User, UserCog, X, RefreshCw, ChevronLeft, ChevronRight, Play, Eye, Copy, Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -27,8 +27,20 @@ export default function Sessions() {
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false);
   const [isAcceptModalOpen, setIsAcceptModalOpen] = useState(false);
+  const [isCreateSessionModalOpen, setIsCreateSessionModalOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [selectedSession, setSelectedSession] = useState<any>(null);
+
+  // State for creating a new session
+  const [newSession, setNewSession] = useState({
+    user: "",
+    therapist: "",
+    date: "",
+    time: "",
+    type: "1-on-1",
+    duration: "60 min",
+    notes: ""
+  });
 
   const getStatusBadge = (status: SessionStatus) => {
     switch (status) {
@@ -68,6 +80,22 @@ export default function Sessions() {
       session.therapist.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // Function to handle creating a new session
+  const handleCreateSession = () => {
+    // In a real app, this would make an API call to create a session
+    // For now, we'll just close the modal and reset the form
+    setIsCreateSessionModalOpen(false);
+    setNewSession({
+      user: "",
+      therapist: "",
+      date: "",
+      time: "",
+      type: "1-on-1",
+      duration: "60 min",
+      notes: ""
+    });
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -77,6 +105,10 @@ export default function Sessions() {
           <p className="page-subtitle">Monitor and manage all platform sessions</p>
         </div>
         <div className="flex items-center gap-3">
+          <Button onClick={() => setIsCreateSessionModalOpen(true)}>
+            <Plus className="w-4 h-4 mr-2" />
+            Create Session
+          </Button>
           <Select defaultValue="today">
             <SelectTrigger className="w-[140px]">
               <SelectValue placeholder="Filter by date" />
@@ -492,6 +524,119 @@ export default function Sessions() {
             </Button>
             <Button onClick={() => setIsRescheduleModalOpen(false)}>
               Reschedule Session
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Session Modal */}
+      <Dialog open={isCreateSessionModalOpen} onOpenChange={setIsCreateSessionModalOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Create New Session</DialogTitle>
+            <DialogDescription>
+              Schedule a new session for a user with a therapist.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">User</label>
+                <Select value={newSession.user} onValueChange={(value) => setNewSession({...newSession, user: value})}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a user" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">John Doe</SelectItem>
+                    <SelectItem value="2">Emily Parker</SelectItem>
+                    <SelectItem value="3">Mike Wilson</SelectItem>
+                    <SelectItem value="4">Anna Smith</SelectItem>
+                    <SelectItem value="5">Robert Brown</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Therapist</label>
+                <Select value={newSession.therapist} onValueChange={(value) => setNewSession({...newSession, therapist: value})}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a therapist" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">Dr. Sarah Johnson</SelectItem>
+                    <SelectItem value="2">Dr. Michael Chen</SelectItem>
+                    <SelectItem value="3">Dr. Lisa Williams</SelectItem>
+                    <SelectItem value="4">Dr. James Brown</SelectItem>
+                    <SelectItem value="5">Dr. Emma Davis</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Session Type</label>
+                <Select value={newSession.type} onValueChange={(value) => setNewSession({...newSession, type: value})}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1-on-1">1-on-1</SelectItem>
+                    <SelectItem value="group">Group</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Duration</label>
+                <Select value={newSession.duration} onValueChange={(value) => setNewSession({...newSession, duration: value})}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="30 min">30 min</SelectItem>
+                    <SelectItem value="45 min">45 min</SelectItem>
+                    <SelectItem value="60 min">60 min</SelectItem>
+                    <SelectItem value="90 min">90 min</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Date</label>
+                <Input
+                  type="date"
+                  value={newSession.date}
+                  onChange={(e) => setNewSession({...newSession, date: e.target.value})}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Time</label>
+                <Input
+                  type="time"
+                  value={newSession.time}
+                  onChange={(e) => setNewSession({...newSession, time: e.target.value})}
+                />
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Notes</label>
+              <Textarea
+                placeholder="Additional notes about the session..."
+                value={newSession.notes}
+                onChange={(e) => setNewSession({...newSession, notes: e.target.value})}
+                rows={3}
+              />
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCreateSessionModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleCreateSession}>
+              Create Session
             </Button>
           </DialogFooter>
         </DialogContent>

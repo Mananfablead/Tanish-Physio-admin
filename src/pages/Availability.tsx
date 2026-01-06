@@ -135,7 +135,7 @@ const Availability = () => {
       {/* Header */}
       <div className="space-y-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Availability & Schedule</h1>
+           <h1 className="page-title">Availability & Schedule</h1>
           <p className="text-muted-foreground mt-2">
             Manage your availability, holidays, and working hours
           </p>
@@ -172,7 +172,8 @@ const Availability = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+     <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+
         {/* Calendar Section */}
         <div className="lg:col-span-3">
           <Card className="shadow-sm rounded-xl border border-border">
@@ -295,7 +296,8 @@ const Availability = () => {
         </div>
         
         {/* Availability Editor Panel */}
-        <div className="lg:col-span-1 sticky top-4">
+    <div className="lg:col-span-2 sticky top-4">
+
           {selectedDate ? (
             <Card className="shadow-lg rounded-xl border border-border bg-card">
               <CardHeader className="pb-3">

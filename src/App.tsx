@@ -1,4 +1,4 @@
-  import { Toaster } from "@/components/ui/toaster";
+import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -29,6 +29,7 @@ import TherapistProfile from "./pages/TherapistProfile";
 import VideoCallPage from "./pages/VideoCallPage";
 import Services from "./pages/Services";
 import Bookings from "./pages/Bookings";
+import Courses from "./pages/Courses";
 
 const queryClient = new QueryClient();
 
@@ -66,6 +67,7 @@ const App = () => (
           <Route path="/staff/sessions/:id" element={<AdminPage><StaffSessions /></AdminPage>} />
           <Route path="/services" element={<AdminPage><Services /></AdminPage>} />
           <Route path="/bookings" element={<AdminPage><Bookings /></AdminPage>} />
+          <Route path="/courses" element={<AdminPage><Courses /></AdminPage>} />
           <Route path="/video-call/:sessionId" element={<VideoCallPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
