@@ -107,13 +107,13 @@ export default function Dashboard() {
           iconColor="bg-info"
           
         />
-        <StatCard
+        {/* <StatCard
           title="Active Staff"
           value="120"
           change={{ value: 8.2, isPositive: true }}
           icon={Stethoscope}
           iconColor="bg-warning"
-        />
+        /> */}
         <StatCard
           title="Active Subscriptions"
           value="4,230"
@@ -128,16 +128,17 @@ export default function Dashboard() {
           icon={DollarSign}
           iconColor="bg-success"
         />
-      </div>
-
-      {/* Secondary Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Upcoming Sessions"
           value="156"
           icon={Calendar}
           iconColor="bg-warning"
         />
+      </div>
+
+      {/* Secondary Stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        
         <StatCard
           title="Completed Today"
           value="48"
@@ -156,6 +157,12 @@ export default function Dashboard() {
           change={{ value: 5.2, isPositive: true }}
           icon={TrendingUp}
           iconColor="bg-success"
+        />
+        <StatCard
+          title="Total Services"
+          value="250"
+          icon={Stethoscope}
+          iconColor="bg-info"
         />
       </div>
 

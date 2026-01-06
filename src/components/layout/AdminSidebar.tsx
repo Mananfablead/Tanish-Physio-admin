@@ -25,7 +25,7 @@ import { cn } from "@/lib/utils";
 const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/" },
   { icon: Users, label: "Clients", path: "/users" },
-  { icon: UserCog, label: "Staff", path: "/therapists" },
+  // { icon: UserCog, label: "Staff", path: "/therapists" },
   { icon: ClipboardList, label: "Questionnaires", path: "/questionnaires" },
   { icon: Calendar, label: "Sessions", path: "/sessions" },
   { icon: Video, label: "Live Sessions", path: "/live-sessions" },
@@ -37,6 +37,8 @@ const navItems = [
   // { icon: Star, label: "Feedback", path: "/feedback" },
   { icon: Bell, label: "Notifications", path: "/notifications" },
   { icon: BarChart3, label: "Reports", path: "/reports" },
+  { icon: ClipboardList, label: "Services", path: "/services" },
+  { icon: Calendar, label: "Bookings", path: "/bookings" },
 ];
 
 export function AdminSidebar({ isMobileOpen, onMobileClose, collapsed: propCollapsed, onCollapseToggle }: { isMobileOpen: boolean; onMobileClose: () => void; collapsed?: boolean; onCollapseToggle?: () => void }) {
