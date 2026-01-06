@@ -17,4 +17,5 @@ export const mockSessions = {
     { id: 9, user: "Sarah Taylor", therapist: "Dr. Sarah Johnson", date: "2024-03-19", time: "2:00 PM", type: "1-on-1", status: "cancelled", reason: "User requested", joinLink: "/video-call/9" },
     { id: 10, user: "James Miller", therapist: "Dr. Michael Chen", date: "2024-03-18", time: "10:00 AM", type: "1-on-1", status: "no-show", reason: "User didn't join", joinLink: "/video-call/10" },
   ],
+  
 };

@@ -1,5 +1,6 @@
-import { Video, Clock, User } from "lucide-react";
+import { Video, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useNavigate } from "react-router-dom";
 
 const sessions = [
   {
@@ -23,7 +24,7 @@ const sessions = [
     user: "Group Session",
     therapist: "Dr. Lisa Williams",
     time: "11:00 AM",
-    type: "Group (8 participants)",
+    type: "Group(8)",
     status: "scheduled",
   },
   {
@@ -45,11 +46,15 @@ const sessions = [
 ];
 
 export function UpcomingSessions() {
+  const navigate = useNavigate();
+  const handleViewAll = () => {
+    navigate("/sessions");
+  }
   return (
     <div className="bg-card rounded-lg border border-border p-5 animate-fade-in">
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-semibold">Upcoming Sessions</h3>
-        <button className="text-sm text-primary hover:underline">View all</button>
+        <button className="text-sm text-primary hover:underline" onClick={handleViewAll}>View all</button>
       </div>
       
       <div className="space-y-3">

@@ -451,12 +451,20 @@ export default function UserProfile() {
                           </FormLabel>
                           <FormControl>
                             <div className="p-4 rounded-xl border border-primary/30 bg-gradient-to-br from-card to-primary/5">
-                              <Calendar 
-                                mode="single" 
+                              <Calendar
+                                mode="single"
                                 selected={field.value}
                                 onSelect={field.onChange}
-                                className="p-0 w-full rounded-lg border border-border/50"
+                                className="w-full"
+                                classNames={{
+                                  months: "flex flex-col w-full",
+                                  month: "w-full",
+                                  table: "w-full border-collapse",
+                                  head_row: "w-full",
+                                  row: "w-full",
+                                }}
                               />
+
                             </div>
                           </FormControl>
                           <FormMessage />

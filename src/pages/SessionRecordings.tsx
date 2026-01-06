@@ -101,6 +101,19 @@ const SessionRecordings = () => {
     }
   };
 
+  // Close modal when pressing escape key
+  useEffect(() => {
+    const handleEscKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && selectedRecording) {
+        setSelectedRecording(null);
+        setIsPlaying(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleEscKey);
+    return () => window.removeEventListener('keydown', handleEscKey);
+  }, [selectedRecording]);
+
   // Simulate progress for the player
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -126,7 +139,7 @@ const SessionRecordings = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-12">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -344,8 +357,16 @@ const SessionRecordings = () => {
 
       {/* Player Modal */}
       {selectedRecording && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-card rounded-xl border border-border w-full max-w-4xl overflow-hidden">
+        <div 
+          className="fixed inset-0 bg-transparent flex items-center justify-center z-50 p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setSelectedRecording(null);
+              setIsPlaying(false);
+            }
+          }}
+        >
+          <div className="bg-card rounded-xl border border-border w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
             <div className="p-4 border-b border-border flex justify-between items-center">
               <h3 className="text-lg font-semibold">{selectedRecording.user} - Session Recording</h3>
               <Button 
@@ -359,111 +380,113 @@ const SessionRecordings = () => {
                 Close
               </Button>
             </div>
-            <div className="p-6">
-              <div className="relative aspect-video bg-muted rounded-lg overflow-hidden mb-4">
-                <img 
-                  src={selectedRecording.thumbnail} 
-                  alt="Recording thumbnail" 
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <Button 
-                    size="icon" 
-                    variant="secondary" 
-                    className="h-16 w-16 rounded-full bg-white/90 hover:bg-white"
-                    onClick={() => setIsPlaying(!isPlaying)}
-                  >
-                    {isPlaying ? (
-                      <Pause className="h-8 w-8" />
-                    ) : (
-                      <Play className="h-8 w-8 ml-1" />
-                    )}
-                  </Button>
-                </div>
-                <div className="absolute bottom-4 left-4 right-4">
-                  <div className="flex items-center justify-between text-white text-sm mb-1">
-                    <span>Session Recording</span>
-                    <span>{formatDuration(selectedRecording.duration)}</span>
+            <div className="overflow-y-auto flex-1">
+              <div className="p-6">
+                <div className="relative aspect-video bg-muted rounded-lg overflow-hidden mb-4">
+                  <img 
+                    src={selectedRecording.thumbnail} 
+                    alt="Recording thumbnail" 
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <Button 
+                      size="icon" 
+                      variant="secondary" 
+                      className="h-16 w-16 rounded-full bg-white/90 hover:bg-white"
+                      onClick={() => setIsPlaying(!isPlaying)}
+                    >
+                      {isPlaying ? (
+                        <Pause className="h-8 w-8" />
+                      ) : (
+                        <Play className="h-8 w-8 ml-1" />
+                      )}
+                    </Button>
                   </div>
-                  <Progress value={progress} className="h-2" />
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4 mt-4">
-                <div>
-                  <h4 className="font-medium mb-2">Session Details</h4>
-                  <div className="space-y-1 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">User:</span>
-                      <span>{selectedRecording.user}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Therapist:</span>
-                      <span>{selectedRecording.therapist}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Date:</span>
-                      <span>{selectedRecording.date}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Time:</span>
-                      <span>{selectedRecording.time}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Duration:</span>
+                  <div className="absolute bottom-4 left-4 right-4">
+                    <div className="flex items-center justify-between text-white text-sm mb-1">
+                      <span>Session Recording</span>
                       <span>{formatDuration(selectedRecording.duration)}</span>
+                    </div>
+                    <Progress value={progress} className="h-2" />
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                  <div>
+                    <h4 className="font-medium mb-2">Session Details</h4>
+                    <div className="space-y-1 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">User:</span>
+                        <span>{selectedRecording.user}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Therapist:</span>
+                        <span>{selectedRecording.therapist}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Date:</span>
+                        <span>{selectedRecording.date}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Time:</span>
+                        <span>{selectedRecording.time}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Duration:</span>
+                        <span>{formatDuration(selectedRecording.duration)}</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <h4 className="font-medium mb-2">Recording Details</h4>
+                    <div className="space-y-1 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Quality:</span>
+                        <span>{selectedRecording.quality}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Format:</span>
+                        <span>{selectedRecording.format}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">File Size:</span>
+                        <span>{selectedRecording.fileSize}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Type:</span>
+                        <span>{selectedRecording.type}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Status:</span>
+                        <span className="text-success">Available</span>
+                      </div>
                     </div>
                   </div>
                 </div>
                 
-                <div>
-                  <h4 className="font-medium mb-2">Recording Details</h4>
-                  <div className="space-y-1 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Quality:</span>
-                      <span>{selectedRecording.quality}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Format:</span>
-                      <span>{selectedRecording.format}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">File Size:</span>
-                      <span>{selectedRecording.fileSize}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Type:</span>
-                      <span>{selectedRecording.type}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Status:</span>
-                      <span className="text-success">Available</span>
-                    </div>
-                  </div>
+                <div className="flex gap-3 mt-6">
+                  <Button 
+                    className="flex-1"
+                    onClick={() => {
+                      // In a real app, this would play the recording
+                      alert(`Playing recording ${selectedRecording.id}`);
+                    }}
+                  >
+                    <Play className="w-4 h-4 mr-2" />
+                    Play Full Recording
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    onClick={() => {
+                      // In a real app, this would download the recording
+                      alert(`Downloading recording ${selectedRecording.id}`);
+                    }}
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Download
+                  </Button>
                 </div>
-              </div>
-              
-              <div className="flex gap-3 mt-6">
-                <Button 
-                  className="flex-1"
-                  onClick={() => {
-                    // In a real app, this would play the recording
-                    alert(`Playing recording ${selectedRecording.id}`);
-                  }}
-                >
-                  <Play className="w-4 h-4 mr-2" />
-                  Play Full Recording
-                </Button>
-                <Button 
-                  variant="outline"
-                  onClick={() => {
-                    // In a real app, this would download the recording
-                    alert(`Downloading recording ${selectedRecording.id}`);
-                  }}
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  Download
-                </Button>
               </div>
             </div>
           </div>
