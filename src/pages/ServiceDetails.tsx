@@ -55,7 +55,7 @@ export default function ServiceDetails() {
               <div className="flex flex-col md:flex-row gap-6">
                 <div className="flex-shrink-0">
                   <img
-                    src={service.image}
+                    src={"https://images.unsplash.com/photo-1606206873764-fd15e242df52"}
                     alt={service.name}
                     className="w-48 h-48 rounded-lg object-cover"
                   />
