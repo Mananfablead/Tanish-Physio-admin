@@ -177,7 +177,7 @@ export default function Services() {
                                                 <div className="w-10 h-10 rounded-md bg-muted flex items-center justify-center overflow-hidden">
                                                     {service.image ? (
                                                         <img
-                                                            src={service.image}
+                                                            src={"https://images.unsplash.com/photo-1606206873764-fd15e242df52"}
                                                             alt={service.name}
                                                             className="w-full h-full object-cover"
                                                         />

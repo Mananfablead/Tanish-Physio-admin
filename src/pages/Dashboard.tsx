@@ -23,7 +23,7 @@ import '../assets/style.css';
 export default function Dashboard() {
   const exportToPDF = async () => {
     const dashboardElement = document.querySelector('.dashboard-content') as HTMLElement;
-    
+
     if (!dashboardElement) {
       console.error('Dashboard content not found');
       return;
@@ -39,32 +39,32 @@ export default function Dashboard() {
       });
 
       const imgData = canvas.toDataURL('image/png');
-      
+
       // Create PDF
       const pdf = new jsPDF('p', 'mm', 'a4');
-      
+
       // Calculate dimensions to fit A4
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
       const imgWidth = canvas.width;
       const imgHeight = canvas.height;
-      
+
       // Calculate scaling to fit the page
       const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
       const imgScaledWidth = imgWidth * ratio;
       const imgScaledHeight = imgHeight * ratio;
-      
+
       // Center the image
       const x = (pdfWidth - imgScaledWidth) / 2;
       const y = (pdfHeight - imgScaledHeight) / 2;
-      
+
       // Add image to PDF
       pdf.addImage(imgData, 'PNG', x, y, imgScaledWidth, imgScaledHeight);
-      
+
       // Generate filename with current date
       const currentDate = new Date().toISOString().split('T')[0];
       const filename = `dashboard_report_${currentDate}.pdf`;
-      
+
       // Save PDF
       pdf.save(filename);
     } catch (error) {
@@ -105,7 +105,7 @@ export default function Dashboard() {
           change={{ value: 12.5, isPositive: true }}
           icon={Users}
           iconColor="bg-info"
-          
+
         />
         {/* <StatCard
           title="Active Staff"
@@ -123,7 +123,7 @@ export default function Dashboard() {
         />
         <StatCard
           title="Total Revenue"
-          value="Rs 45,800"
+          value="₹45,800"
           change={{ value: 18.7, isPositive: true }}
           icon={DollarSign}
           iconColor="bg-success"
@@ -138,7 +138,7 @@ export default function Dashboard() {
 
       {/* Secondary Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        
+
         <StatCard
           title="Completed Today"
           value="48"
