@@ -31,6 +31,10 @@ export const API = {
   AVAILABILITY: "/availability",
   AVAILABILITY_BY_THERAPIST: "/availability/therapist",
 
+  UPDATE_PROFILE:  "/auth/profile",
+  // users
+  USERS: "/users",
+  USER_BY_ID: "/users/:id",
 };
 
 // Availability API endpoints

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, MoreHorizontal, Eye, UserX, RefreshCw, Download, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, MoreHorizontal, Eye, UserX, RefreshCw, Download, ChevronLeft, ChevronRight, Delete, Trash } from "lucide-react";
 import * as XLSX from 'xlsx';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -11,27 +11,38 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { mockUsers } from "@/lib/mock-data";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchUsers, deleteUser, updateUser } from "@/features/users/userSlice";
+import { RootState } from "@/store";
 
 const filters = ["All", "Active Subscription", "Expired", "No Subscription"];
 
 export default function Users() {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const { list: users, loading } = useSelector((state: RootState) => state.users);
+
+  console.log("list of users", users)
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState("All");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
 
   useEffect(() => {
+    dispatch(fetchUsers());
+  }, [dispatch]);
+
+  useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, activeFilter]);
 
-  const filteredUsers = mockUsers.filter((user) => {
+
+  const filteredUsers = users.filter((user) => {
     const matchesSearch =
-      user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.phone.includes(searchQuery);
-    
+      user.name?.toLowerCase().includes(searchQuery?.toLowerCase()) ||
+      user.email?.toLowerCase().includes(searchQuery?.toLowerCase()) ||
+      user?.phone?.includes(searchQuery);
+
     if (activeFilter === "All") return matchesSearch;
     if (activeFilter === "Active Subscription") return matchesSearch && ["Monthly", "Weekly", "Daily"].includes(user.subscription);
     if (activeFilter === "Expired") return matchesSearch && user.subscription === "Expired";
@@ -51,20 +62,20 @@ export default function Users() {
   const endIndex = startIndex + itemsPerPage;
   const paginatedUsers = filteredUsers.slice(startIndex, endIndex);
 
-  const getSubscriptionBadge = (subscription: string) => {
+  const getSubscriptionBadge = (subscription) => {
     switch (subscription) {
       case "Monthly":
-      case "Weekly":
-      case "Daily":
-        return "status-active";
-      case "Expired":
-        return "status-pending";
-      case "None":
-        return "status-inactive";
+        return "bg-blue-100 text-blue-700";
+      case "Yearly":
+        return "bg-purple-100 text-purple-700";
+      case "Trial":
+        return "bg-yellow-100 text-yellow-700";
+      case "none":
       default:
-        return "status-inactive";
+        return "bg-gray-100 text-gray-600";
     }
   };
+
 
   const openUserProfile = (userId: number) => {
     navigate(`/users/${userId}`);
@@ -100,6 +111,45 @@ export default function Users() {
 
     XLSX.writeFile(wb, filename);
   };
+
+  const handleDeleteUser = (userId) => {
+
+    console.log(userId)
+    if (!window.confirm("Are you sure you want to delete this user?")) return;
+    dispatch(deleteUser(userId));
+  };
+
+
+  const toggleUserStatus = (user) => {
+    if (!user?._id) return;
+
+    const newStatus = user.status === "active" ? "inactive" : "active";
+
+    dispatch(
+      updateUser({
+        userId: user._id,
+        userData: { status: newStatus },
+      })
+    );
+  };
+
+  const getSubscriptionLabel = (subscription) => {
+    if (!subscription || subscription === "none") return "No Subscription";
+    return subscription;
+  };
+
+
+
+  if (loading && users.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-[60vh]">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mb-4"></div>
+          <p className="text-lg text-muted-foreground">Loading users...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -156,14 +206,22 @@ export default function Users() {
             </thead>
             <tbody>
               {paginatedUsers.map((user) => (
-                <tr key={user.id} className="cursor-pointer" onClick={() => openUserProfile(user.id)}>
+                <tr key={user._id} className="cursor-pointer" onClick={() => openUserProfile(user._id)}>
                   <td className="font-medium">{user.name}</td>
                   <td className="text-muted-foreground">{user.email}</td>
                   <td className="text-muted-foreground">{user.phone}</td>
                   <td>
-                    <span className={cn("status-badge", getSubscriptionBadge(user.subscription))}>
-                      {user.subscription}
-                    </span>
+                    <td>
+                      <span
+                        className={cn(
+                          "status-badge px-2 py-1 rounded-full text-xs font-medium",
+                          getSubscriptionBadge(user.subscription)
+                        )}
+                      >
+                        {getSubscriptionLabel(user.subscription)}
+                      </span>
+                    </td>
+
                   </td>
                   <td>
                     <span className={cn("status-badge", user.status === "active" ? "status-active" : "status-inactive")}>
@@ -183,14 +241,18 @@ export default function Users() {
                           <Eye className="w-4 h-4 mr-2" />
                           View Profile
                         </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <RefreshCw className="w-4 h-4 mr-2" />
-                          Reset Access
+                        <DropdownMenuItem onClick={() => handleDeleteUser(user._id)}>
+                          <Trash className="w-4 h-4 mr-2" />
+                          Delete User
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive">
+                        <DropdownMenuItem
+                          onClick={() => toggleUserStatus(user)}
+                          className={user.status === "active" ? "text-destructive" : "text-emerald-600"}
+                        >
                           <UserX className="w-4 h-4 mr-2" />
-                          Deactivate User
+                          {user.status === "active" ? "Deactivate User" : "Activate User"}
                         </DropdownMenuItem>
+
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </td>
@@ -206,9 +268,9 @@ export default function Users() {
             <span className="font-medium">{filteredUsers.length}</span> users
           </p>
           <div className="flex items-center gap-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
+            <Button
+              variant="outline"
+              size="sm"
               disabled={currentPage === 1}
               onClick={() => setCurrentPage(currentPage - 1)}
             >
@@ -225,8 +287,8 @@ export default function Users() {
                 {page}
               </Button>
             ))}
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               size="sm"
               disabled={currentPage === totalPages}
               onClick={() => setCurrentPage(currentPage + 1)}

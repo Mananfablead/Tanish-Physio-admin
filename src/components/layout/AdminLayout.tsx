@@ -5,16 +5,25 @@ import { Bell, LogOut, Search, User, Menu, ChevronDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-
+import { useDispatch, useSelector } from "react-redux";
+import {
+  fetchProfile,
+  logout,
+} from "@/features/auth/authSlice";
 interface AdminLayoutProps {
   children: ReactNode;
 }
 
 export function AdminLayout({ children }: AdminLayoutProps) {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const { user, loading } = useSelector((state: any) => state.auth);
+  console.log("object", user)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
+  useEffect(() => {
+    dispatch(fetchProfile());
+  }, [dispatch]);
   // Mock notifications data
   const [notifications] = useState([
     {
@@ -65,21 +74,21 @@ export function AdminLayout({ children }: AdminLayoutProps) {
 
   return (
     <div className="flex h-screen w-screen overflow-hidden">
-      <AdminSidebar 
-        isMobileOpen={mobileMenuOpen} 
-        onMobileClose={() => setMobileMenuOpen(false)} 
-        collapsed={sidebarCollapsed} 
-        onCollapseToggle={() => setSidebarCollapsed(!sidebarCollapsed)} 
+      <AdminSidebar
+        isMobileOpen={mobileMenuOpen}
+        onMobileClose={() => setMobileMenuOpen(false)}
+        collapsed={sidebarCollapsed}
+        onCollapseToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
       />
-      
+
       {/* Mobile Backdrop */}
       {mobileMenuOpen && (
-        <div 
-          className="fixed inset-0 bg-black/50 z-30 lg:hidden" 
+        <div
+          className="fixed inset-0 bg-black/50 z-30 lg:hidden"
           onClick={() => setMobileMenuOpen(false)}
         />
       )}
-      
+
       <div className="flex flex-1 flex-col min-w-0">
         {/* Top Header */}
         <header className="sticky top-0 z-30 h-16 shrink-0 border-b border-border flex items-center justify-between px-6 bg-card">
@@ -90,13 +99,13 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             >
               <Menu className="w-5 h-5" />
             </button>
-            <div className="relative max-w-md w-full">
+            {/* <div className="relative max-w-md w-full">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 placeholder="Search users, therapists, sessions..."
                 className="pl-10 bg-muted/50 border-0 focus-visible:ring-1"
               />
-            </div>
+            </div> */}
           </div>
 
           <div className="flex items-center gap-4">
@@ -141,13 +150,13 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <div className="flex items-center gap-3 pl-4 border-l border-border cursor-pointer">
                   <div className="text-right hidden sm:block">
-                    <p className="text-sm font-medium">Admin User</p>
-                    <p className="text-xs text-muted-foreground">Super Admin</p>
+                    <p className="text-sm font-medium">{user?.name}</p>
+                    <p className="text-xs text-muted-foreground">{user?.email}</p>
                   </div>
                   <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
                     <User className="w-5 h-5 text-primary" />
@@ -158,8 +167,12 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                 <DropdownMenuItem onClick={() => navigate("/profile")}>
                   <User className="w-5 h-5 mr-3 text-primary" /> Profile
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/login")}>
-                          <LogOut className="w-5 h-5 mr-3 text-primary flex-shrink-0" />  Logout
+                <DropdownMenuItem onClick={() => {
+                  dispatch(logout());
+                  navigate("/login");
+
+                }}>
+                  <LogOut className="w-5 h-5 mr-3 text-primary flex-shrink-0" />  Logout
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
