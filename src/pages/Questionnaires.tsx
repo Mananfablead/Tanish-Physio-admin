@@ -13,7 +13,7 @@ import { fetchQuestionnaires, updateQuestions, createQuestionnaire, deleteQuesti
 // Define types based on backend schema
 interface Question {
   _id?: string;
-  id?: number;
+  id?: number | string;
   question: string;
   type: "text" | "mcq" | "slider";
   required: boolean;
@@ -57,17 +57,21 @@ export default function Questionnaires() {
     dispatch(fetchQuestionnaires() as any);
   }, [dispatch]);
   
+  // Helper function to assign consistent IDs for UI operations
+  const assignQuestionIds = (questionsList: Question[]): Question[] => {
+    return questionsList.map((q, index) => ({
+      ...q,
+      id: q.id ?? index + 1
+    }));
+  };
+
   // Update local questions state when Redux state changes
   useEffect(() => {
     if (questionnaires && questionnaires.length > 0) {
       // Find the active questionnaire or use the first one
       const activeQuestionnaire = questionnaires.find((q: Questionnaire) => q.isActive) || questionnaires[0];
       if (activeQuestionnaire) {
-        // Add temporary id for UI operations if not present
-        const questionsWithIds = activeQuestionnaire.questions.map((q, index) => ({
-          ...q,
-          id: q.id || index + 1
-        }));
+        const questionsWithIds = assignQuestionIds(activeQuestionnaire.questions);
         setQuestions(questionsWithIds);
       }
     }
@@ -97,19 +101,34 @@ export default function Questionnaires() {
   const deleteQuestion = async () => {
     if (selectedQuestion && selectedQuestion._id) {
       // Remove from local state
-      const updatedQuestions = questions.filter(q => q.id !== selectedQuestion.id);
+      const updatedQuestions = questions.filter(q => q.id.toString() !== selectedQuestion!.id.toString());
       setQuestions(updatedQuestions);
       
       // Find the active questionnaire to update
       const activeQuestionnaire = questionnaires.find((q: Questionnaire) => q.isActive) || questionnaires[0];
       
-      if (activeQuestionnaire) {
+      if (activeQuestionnaire && activeQuestionnaire._id) {
         try {
           await dispatch(updateQuestions({ id: activeQuestionnaire._id, questions: updatedQuestions }) as any);
           setIsEditModalOpen(false);
           setSelectedQuestion(null);
         } catch (error) {
           console.error('Error deleting question:', error);
+        }
+      } else {
+        // If no questionnaire exists, create a new one
+        try {
+          const newQuestionnaireData = {
+            title: "Patient Intake Questionnaire",
+            description: "Health intake questions for therapist matching",
+            questions: updatedQuestions,
+            isActive: true
+          };
+          await dispatch(createQuestionnaire(newQuestionnaireData) as any);
+          setIsEditModalOpen(false);
+          setSelectedQuestion(null);
+        } catch (error) {
+          console.error('Error creating questionnaire:', error);
         }
       }
     }
@@ -120,39 +139,39 @@ export default function Questionnaires() {
       return; // Basic validation
     }
 
+    let updatedQuestions;
+    
+    if (selectedQuestion) {
+      // Edit existing question
+      updatedQuestions = questions.map(q => 
+        q.id.toString() === selectedQuestion.id.toString()
+          ? { 
+              ...q, 
+              question: editForm.question,
+              type: editForm.type,
+              required: editForm.required,
+              options: editForm.type === "mcq" ? editForm.options.filter(opt => opt.trim()) : undefined
+            }
+          : q
+      );
+    } else {
+      // Add new question
+      const newQuestion = {
+        id: Math.max(...questions.map(q => typeof q.id === 'number' ? q.id : 0), 0) + 1, // Use max ID + 1
+        question: editForm.question,
+        type: editForm.type,
+        required: editForm.required,
+        active: true,
+        order: Math.max(...questions.map(q => q.order || 0), 0) + 1,
+        options: editForm.type === "mcq" ? editForm.options.filter(opt => opt.trim()) : undefined
+      };
+      updatedQuestions = [...questions, newQuestion];
+    }
+    
     // Find the active questionnaire to update
     const activeQuestionnaire = questionnaires.find((q: Questionnaire) => q.isActive) || questionnaires[0];
     
     if (activeQuestionnaire) {
-      let updatedQuestions;
-      
-      if (selectedQuestion) {
-        // Edit existing question
-        updatedQuestions = questions.map(q => 
-          q.id === selectedQuestion.id 
-            ? { 
-                ...q, 
-                question: editForm.question,
-                type: editForm.type,
-                required: editForm.required,
-                options: editForm.type === "mcq" ? editForm.options.filter(opt => opt.trim()) : undefined
-              }
-            : q
-        );
-      } else {
-        // Add new question
-        const newQuestion = {
-          id: Math.max(...questions.map(q => q.id), 0) + 1,
-          question: editForm.question,
-          type: editForm.type,
-          required: editForm.required,
-          active: true,
-          order: Math.max(...questions.map(q => q.order), 0) + 1,
-          options: editForm.type === "mcq" ? editForm.options.filter(opt => opt.trim()) : undefined
-        };
-        updatedQuestions = [...questions, newQuestion];
-      }
-      
       // Update the questions in the backend
       try {
         await dispatch(updateQuestions({ id: activeQuestionnaire._id, questions: updatedQuestions }) as any);
@@ -162,12 +181,28 @@ export default function Questionnaires() {
       } catch (error) {
         console.error('Error saving question:', error);
       }
+    } else {
+      // If no questionnaire exists, create a new one
+      try {
+        const newQuestionnaireData = {
+          title: "Patient Intake Questionnaire",
+          description: "Health intake questions for therapist matching",
+          questions: updatedQuestions,
+          isActive: true
+        };
+        await dispatch(createQuestionnaire(newQuestionnaireData) as any);
+        setQuestions(updatedQuestions);
+        setIsEditModalOpen(false);
+        setSelectedQuestion(null);
+      } catch (error) {
+        console.error('Error creating questionnaire:', error);
+      }
     }
   };
 
-  const toggleQuestion = async (id: number) => {
+  const toggleQuestion = async (id: number | string) => {
     const updatedQuestions = questions.map(q => 
-      q.id === id ? { ...q, active: !q.active } : q
+      q.id.toString() === id.toString() ? { ...q, active: !q.active } : q
     );
     
     setQuestions(updatedQuestions);
@@ -175,11 +210,24 @@ export default function Questionnaires() {
     // Find the active questionnaire to update
     const activeQuestionnaire = questionnaires.find((q: Questionnaire) => q.isActive) || questionnaires[0];
     
-    if (activeQuestionnaire) {
+    if (activeQuestionnaire && activeQuestionnaire._id) {
       try {
         await dispatch(updateQuestions({ id: activeQuestionnaire._id, questions: updatedQuestions }) as any);
       } catch (error) {
         console.error('Error toggling question:', error);
+      }
+    } else {
+      // If no questionnaire exists, create a new one
+      try {
+        const newQuestionnaireData = {
+          title: "Patient Intake Questionnaire",
+          description: "Health intake questions for therapist matching",
+          questions: updatedQuestions,
+          isActive: true
+        };
+        await dispatch(createQuestionnaire(newQuestionnaireData) as any);
+      } catch (error) {
+        console.error('Error creating questionnaire:', error);
       }
     }
   };
@@ -195,12 +243,12 @@ export default function Questionnaires() {
   const handleDrop = async (e: React.DragEvent, targetQuestion: Question) => {
     e.preventDefault();
     
-    if (!draggedQuestion || draggedQuestion.id === targetQuestion.id) {
+    if (!draggedQuestion || draggedQuestion.id.toString() === targetQuestion.id.toString()) {
       return;
     }
 
-    const draggedIndex = questions.findIndex(q => q.id === draggedQuestion.id);
-    const targetIndex = questions.findIndex(q => q.id === targetQuestion.id);
+    const draggedIndex = questions.findIndex(q => q.id.toString() === draggedQuestion.id.toString());
+    const targetIndex = questions.findIndex(q => q.id.toString() === targetQuestion.id.toString());
     
     const newQuestions = [...questions];
     newQuestions.splice(draggedIndex, 1);
@@ -218,11 +266,24 @@ export default function Questionnaires() {
     // Find the active questionnaire to update
     const activeQuestionnaire = questionnaires.find((q: Questionnaire) => q.isActive) || questionnaires[0];
     
-    if (activeQuestionnaire) {
+    if (activeQuestionnaire && activeQuestionnaire._id) {
       try {
         await dispatch(updateQuestions({ id: activeQuestionnaire._id, questions: updatedQuestions }) as any);
       } catch (error) {
         console.error('Error reordering questions:', error);
+      }
+    } else {
+      // If no questionnaire exists, create a new one
+      try {
+        const newQuestionnaireData = {
+          title: "Patient Intake Questionnaire",
+          description: "Health intake questions for therapist matching",
+          questions: updatedQuestions,
+          isActive: true
+        };
+        await dispatch(createQuestionnaire(newQuestionnaireData) as any);
+      } catch (error) {
+        console.error('Error creating questionnaire:', error);
       }
     }
   };

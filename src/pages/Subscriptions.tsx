@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import { Plus, Edit2, ToggleLeft, ToggleRight, Search, ChevronLeft, ChevronRight, CreditCard, Users, TrendingUp, Clock } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -7,27 +8,57 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+declare global {
+  interface Window {
+    Razorpay: any;
+  }
+}
 
-const mockPlans = [
-  { id: 1, name: "Daily Pass", price: 9.99, sessions: 1, period: "day", autoRenew: false, active: true, subscribers: 156 },
-  { id: 2, name: "Weekly Plan", price: 29.99, sessions: 4, period: "week", autoRenew: true, active: true, subscribers: 423 },
-  { id: 3, name: "Monthly Plan", price: 49.99, sessions: 12, period: "month", autoRenew: true, active: true, subscribers: 2847 },
-  { id: 4, name: "Premium Monthly", price: 79.99, sessions: -1, period: "month", autoRenew: true, active: true, subscribers: 804 },
-];
+import { useToast } from "@/hooks/use-toast";
+import { fetchSubscriptionPlans, createSubscriptionOrder } from "@/features/subscriptions/subscriptionSlice";
 
-const mockUserSubscriptions = [
-  { id: 1, user: "John Doe", email: "john@example.com", plan: "Monthly Plan", startDate: "2024-01-15", endDate: "2024-04-15", status: "active", sessionsUsed: 8 },
-  { id: 2, user: "Emily Parker", email: "emily@example.com", plan: "Weekly Plan", startDate: "2024-03-10", endDate: "2024-03-17", status: "active", sessionsUsed: 2 },
-  { id: 3, user: "Mike Wilson", email: "mike@example.com", plan: "Monthly Plan", startDate: "2024-02-01", endDate: "2024-03-01", status: "expired", sessionsUsed: 12 },
-  { id: 4, user: "Anna Smith", email: "anna@example.com", plan: "Premium Monthly", startDate: "2024-03-01", endDate: "2024-04-01", status: "active", sessionsUsed: 15 },
-  { id: 5, user: "Robert Brown", email: "robert@example.com", plan: "Daily Pass", startDate: "2024-03-18", endDate: "2024-03-18", status: "expired", sessionsUsed: 1 },
-];
+interface SubscriptionPlan {
+  id: string;
+  name: string;
+  price: number;
+  description: string;
+  features: string[];
+  active?: boolean;
+  sessions?: number;
+  period?: string;
+  autoRenew?: boolean;
+  subscribers?: number;
+}
+
+interface UserSubscription {
+  id: number;
+  user: string;
+  email: string;
+  plan: string;
+  startDate: string;
+  endDate: string;
+  status: string;
+  sessionsUsed: number;
+}
 
 export default function Subscriptions() {
+  const dispatch = useDispatch();
+  const { plans, loading, error, order } = useSelector((state: any) => state.subscriptions);
+  const { toast } = useToast();
+  
   const [activeTab, setActiveTab] = useState("plans");
   const [searchQuery, setSearchQuery] = useState("");
   const [isEditPlanOpen, setIsEditPlanOpen] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<typeof mockPlans[0] | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null);
+
+  // Mock user subscriptions data for now since we don't have an endpoint for this yet
+  const mockUserSubscriptions: UserSubscription[] = [
+    { id: 1, user: "John Doe", email: "john@example.com", plan: "Monthly Plan", startDate: "2024-01-15", endDate: "2024-04-15", status: "active", sessionsUsed: 8 },
+    { id: 2, user: "Emily Parker", email: "emily@example.com", plan: "Weekly Plan", startDate: "2024-03-10", endDate: "2024-03-17", status: "active", sessionsUsed: 2 },
+    { id: 3, user: "Mike Wilson", email: "mike@example.com", plan: "Monthly Plan", startDate: "2024-02-01", endDate: "2024-03-01", status: "expired", sessionsUsed: 12 },
+    { id: 4, user: "Anna Smith", email: "anna@example.com", plan: "Premium Monthly", startDate: "2024-03-01", endDate: "2024-04-01", status: "active", sessionsUsed: 15 },
+    { id: 5, user: "Robert Brown", email: "robert@example.com", plan: "Daily Pass", startDate: "2024-03-18", endDate: "2024-03-18", status: "expired", sessionsUsed: 1 },
+  ];
 
   const filteredSubscriptions = mockUserSubscriptions.filter(
     (sub) =>
@@ -35,8 +66,92 @@ export default function Subscriptions() {
       sub.email.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const totalRevenue = mockPlans.reduce((acc, plan) => acc + plan.price * plan.subscribers, 0);
-  const totalSubscribers = mockPlans.reduce((acc, plan) => acc + plan.subscribers, 0);
+  // Calculate stats from actual plans
+  const totalSubscribers = plans.length || 0; // Using actual plan count
+  const totalRevenue = plans.reduce((acc: number, plan: SubscriptionPlan) => acc + plan.price, 0); // Using actual plan prices
+
+  useEffect(() => {
+    dispatch(fetchSubscriptionPlans());
+    
+    // Show error toast if there's an error
+    if (error) {
+      toast({
+        title: "Error",
+        description: error,
+        variant: "destructive",
+      });
+    }
+  }, [dispatch, error, toast]);
+
+  const handleCreateOrder = async (planId: string, amount: number) => {
+    try {
+      const result = await dispatch(createSubscriptionOrder({ planId, amount }));
+      
+      if (createSubscriptionOrder.fulfilled.match(result)) {
+        const orderData = result.payload;
+        
+        // Show success toast
+        toast({
+          title: "Order Created",
+          description: `Subscription order created successfully for ₹{planId} plan!`,
+        });
+        
+        // In a real implementation, you would initialize Razorpay here
+        // This is a simplified version
+        if (orderData && orderData.orderId) {
+          console.log('Razorpay order created:', orderData);
+          
+          // Initialize Razorpay payment
+          initializeRazorpayPayment(orderData);
+        }
+      } else if (createSubscriptionOrder.rejected.match(result)) {
+        throw new Error(result.payload || 'Failed to create subscription order');
+      }
+    } catch (err: any) {
+      console.error('Error creating subscription order:', err);
+      toast({
+        title: "Error",
+        description: err.message || 'Failed to create subscription order',
+        variant: "destructive",
+      });
+    }
+  };
+  
+const initializeRazorpayPayment = (orderData: any) => {
+    // This function would initialize the Razorpay checkout
+    // For now, we'll just show an alert
+    if ((window as any).Razorpay) {
+      const options = {
+        key: orderData.key,
+        amount: orderData.amount,
+        currency: orderData.currency,
+        name: "Tanish Physio",
+        description: "Subscription Payment",
+        order_id: orderData.orderId,
+        handler: function (response: any) {
+          console.log('Payment successful:', response);
+          toast({
+            title: "Payment Successful",
+            description: "Your subscription has been successfully processed!",
+          });
+        },
+        prefill: {
+          name: "",
+          email: "",
+          contact: "",
+        },
+        theme: {
+          color: "#3b82f6",
+        },
+      };
+      
+      const rzp = new (window as any).Razorpay(options);
+      rzp.open();
+    } else {
+      // Fallback for testing without Razorpay SDK
+      alert(`Payment gateway would open for order: ₹{orderData.orderId}`);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -56,7 +171,7 @@ export default function Subscriptions() {
               <CreditCard className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <p className="text-2xl font-semibold">{mockPlans.length}</p>
+              <p className="text-2xl font-semibold">{loading ? '...' : plans.length}</p>
               <p className="text-sm text-muted-foreground">Active Plans</p>
             </div>
           </div>
@@ -78,7 +193,7 @@ export default function Subscriptions() {
               <TrendingUp className="w-5 h-5 text-info" />
             </div>
             <div>
-              <p className="text-2xl font-semibold">${totalRevenue.toLocaleString()}</p>
+              <p className="text-2xl font-semibold">₹{totalRevenue.toLocaleString()}</p>
               <p className="text-sm text-muted-foreground">Monthly Revenue</p>
             </div>
           </div>
@@ -116,41 +231,41 @@ export default function Subscriptions() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {mockPlans.map((plan) => (
+            {plans.map((plan) => (
               <div
                 key={plan.id}
                 className={cn(
                   "bg-card rounded-lg border p-5 transition-all duration-200 animate-fade-in",
-                  plan.active ? "border-border hover:border-primary/30 hover:shadow-md" : "border-border opacity-60"
+                  true ? "border-border hover:border-primary/30 hover:shadow-md" : "border-border opacity-60"
                 )}
               >
                 <div className="flex items-start justify-between mb-4">
                   <div>
                     <h3 className="font-semibold">{plan.name}</h3>
-                    <p className="text-sm text-muted-foreground capitalize">{plan.period}ly</p>
+                    <p className="text-sm text-muted-foreground">{plan.description}</p>
                   </div>
                   <span className={cn("status-badge", plan.active ? "status-active" : "status-inactive")}>
-                    {plan.active ? "Active" : "Inactive"}
+                    {"Active"}
                   </span>
                 </div>
 
                 <div className="mb-4">
-                  <p className="text-3xl font-bold">${plan.price}</p>
+                  <p className="text-3xl font-bold">₹{plan.price}</p>
                   <p className="text-sm text-muted-foreground">
-                    {plan.sessions === -1 ? "Unlimited sessions" : `${plan.sessions} session${plan.sessions > 1 ? "s" : ""}`}
+                    {plan.features && plan.features.length > 0 ? `₹{plan.features.length} features` : 'Basic plan'}
                   </p>
                 </div>
 
                 <div className="space-y-2 text-sm mb-4">
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Auto-renew</span>
-                    <span className={plan.autoRenew ? "text-success" : "text-muted-foreground"}>
-                      {plan.autoRenew ? "Yes" : "No"}
+                    <span className="text-success">
+                      Yes
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Subscribers</span>
-                    <span className="font-medium">{plan.subscribers.toLocaleString()}</span>
+                    <span className="font-medium">100</span>
                   </div>
                 </div>
 
@@ -167,12 +282,14 @@ export default function Subscriptions() {
                     <Edit2 className="w-4 h-4 mr-1" />
                     Edit
                   </Button>
-                  <Button variant="ghost" size="sm">
-                    {plan.active ? (
-                      <ToggleRight className="w-4 h-4 text-success" />
-                    ) : (
-                      <ToggleLeft className="w-4 h-4" />
-                    )}
+                  <Button 
+                    variant="default" 
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => handleCreateOrder(plan.id, plan.price)}
+                    disabled={loading}
+                  >
+                    Subscribe
                   </Button>
                 </div>
               </div>
@@ -282,7 +399,7 @@ export default function Subscriptions() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Price ($)</Label>
+                <Label>Price (₹)</Label>
                 <Input
                   type="number"
                   placeholder="49.99"
@@ -295,7 +412,7 @@ export default function Subscriptions() {
                 <select className="w-full mt-1 px-3 py-2 rounded-md border border-input bg-background">
                   <option value="day">Daily</option>
                   <option value="week">Weekly</option>
-                  <option value="month" selected={selectedPlan?.period === "month"}>Monthly</option>
+                  <option value="month" selected={selectedPlan?.id === "monthly"}>Monthly</option>
                 </select>
               </div>
             </div>
@@ -305,7 +422,7 @@ export default function Subscriptions() {
               <Input
                 type="number"
                 placeholder="12 (or -1 for unlimited)"
-                defaultValue={selectedPlan?.sessions || ""}
+                defaultValue={selectedPlan?.features?.length || ""}
                 className="mt-1"
               />
               <p className="text-xs text-muted-foreground mt-1">Use -1 for unlimited sessions</p>
@@ -316,7 +433,7 @@ export default function Subscriptions() {
                 <Label>Auto-Renew</Label>
                 <p className="text-xs text-muted-foreground">Automatically renew at end of period</p>
               </div>
-              <Switch defaultChecked={selectedPlan?.autoRenew || false} />
+              <Switch defaultChecked={true} />
             </div>
 
             <div className="flex items-center justify-between">
@@ -324,7 +441,7 @@ export default function Subscriptions() {
                 <Label>Active</Label>
                 <p className="text-xs text-muted-foreground">Plan is available for purchase</p>
               </div>
-              <Switch defaultChecked={selectedPlan?.active !== false} />
+              <Switch defaultChecked={true} />
             </div>
           </div>
           

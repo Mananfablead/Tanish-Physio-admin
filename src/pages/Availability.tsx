@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, Sun, Moon, Check, X, Plus, Save, X as XIcon, ChevronLeft, ChevronRight, AlertTriangle, Info } from 'lucide-react';
+import { Calendar, Clock, Sun, Moon, Check, X, Plus, Save, X as XIcon, ChevronLeft, ChevronRight, AlertTriangle, Info, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
@@ -7,6 +7,9 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useToast } from '@/hooks/use-toast';
+import apiClient from '@/api/apiClient';
+
 
 const Availability = () => {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -22,13 +25,42 @@ const Availability = () => {
   // State for warnings
   const [warnings, setWarnings] = useState<string[]>([]);
   
+  // State for loading and availability data
+  const [availabilityData, setAvailabilityData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  
+  const { toast } = useToast();
+  
   // Get today's date for highlighting
   const today = new Date();
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
-  // Mock calendar data
+  // Calendar data from API
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
+  
+  // Fetch availability data from API
+  useEffect(() => {
+    const fetchAvailability = async () => {
+      try {
+        setLoading(true);
+        const response = await apiClient.get('/availability'); // Using direct route for now
+        setAvailabilityData(response.data.data?.availability || []);
+      } catch (error) {
+        console.error('Error fetching availability:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to load availability data',
+          variant: 'destructive',
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchAvailability();
+  }, [toast]);
   
   // Memoize the calendar weeks to avoid regenerating on every render
   const calendarWeeks = React.useMemo(() => {
@@ -41,13 +73,24 @@ const Availability = () => {
       const day = i + 1;
       const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       
-      // Mock status: 0 = available, 1 = booked, 2 = holiday/unavailable
-      const status = Math.floor(Math.random() * 3);
+      // Find availability for this date
+      const availabilityForDate = availabilityData.find(item => item.date === dateStr);
+      
+      // Determine status based on availability data
+      let status = 0; // default to available
+      if (availabilityForDate) {
+        if (availabilityForDate.status === 'booked') {
+          status = 1; // booked
+        } else if (availabilityForDate.status === 'unavailable') {
+          status = 2; // holiday/unavailable
+        }
+      }
       
       return {
         date: dateStr,
         day,
         status, // 0 = available (green), 1 = booked (blue), 2 = holiday (red)
+        availability: availabilityForDate
       };
     });
 
@@ -72,7 +115,7 @@ const Availability = () => {
     }
     
     return weeks;
-  }, [currentMonth, currentYear]);
+  }, [currentMonth, currentYear, availabilityData]);
 
   const handleDateClick = (date: string | null) => {
     setSelectedDate(date);
@@ -88,15 +131,70 @@ const Availability = () => {
   const isToday = (dateStr: string) => dateStr === todayStr;
   const isSelected = (dateStr: string) => dateStr === selectedDate;
 
-  const handleSave = () => {
-    // Mock save functionality
-    console.log('Saving availability for', selectedDate, {
-      startTime,
-      endTime,
-      isAvailable,
-      isHoliday
-    });
-    setSelectedDate(null);
+  const handleSave = async () => {
+    if (!selectedDate) return;
+    
+    try {
+      setSaving(true);
+      
+      // Determine status based on isHoliday flag
+      const status = isHoliday ? 'unavailable' : 'available';
+      
+      // Generate available times based on start and end times
+      const availableTimes = [];
+      if (isAvailable && !isHoliday) {
+        // Simple logic: generate time slots between start and end time
+        const start = new Date(`1970-01-01T${startTime}`);
+        const end = new Date(`1970-01-01T${endTime}`);
+        
+        while (start < end) {
+          availableTimes.push(start.toTimeString().substring(0, 5));
+          start.setHours(start.getHours() + 1);
+        }
+      }
+      
+      // Prepare the availability data
+      const payload = {
+        date: selectedDate,
+        status,
+        availableTimes,
+        therapistId: '60f1b8b3c9e4f2c8b0d1e2f3' // TODO: Replace with actual therapist ID from context
+      };
+      
+      // Check if availability already exists for this date
+      const existingAvailability = availabilityData.find(item => item.date === selectedDate);
+      
+      if (existingAvailability) {
+        // Update existing availability
+        await apiClient.put(`/availability/${existingAvailability._id}`, payload);
+        toast({
+          title: 'Success',
+          description: 'Availability updated successfully',
+        });
+      } else {
+        // Create new availability
+        await apiClient.post('/availability', payload);
+        toast({
+          title: 'Success',
+          description: 'Availability created successfully',
+        });
+      }
+      
+      // Refresh availability data
+      const response = await apiClient.get('/availability');
+      setAvailabilityData(response.data.data?.availability || []);
+      
+      setSelectedDate(null);
+    } catch (error) {
+      console.error('Error saving availability:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to save availability',
+        variant: 'destructive',
+      });
+    } finally {
+      setSaving(false);
+    }
   };
 
   // Function to handle bulk apply
@@ -214,7 +312,14 @@ const Availability = () => {
                 </div>
                 
                 {/* Calendar Grid */}
-                {viewMode === 'month' ? (
+                {loading ? (
+                  <div className="flex justify-center items-center py-16">
+                    <div className="flex flex-col items-center">
+                      <Loader2 className="w-8 h-8 animate-spin text-primary mb-3" />
+                      <p className="text-muted-foreground">Loading availability...</p>
+                    </div>
+                  </div>
+                ) : viewMode === 'month' ? (
                   <div className="grid grid-cols-7 gap-2">
                     {/* Day headers */}
                     {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
@@ -379,9 +484,19 @@ const Availability = () => {
                     <Button 
                       className="w-full mt-4" 
                       onClick={handleSave}
+                      disabled={saving}
                     >
-                      <Save className="w-4 h-4 mr-2" />
-                      Save Changes
+                      {saving ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="w-4 h-4 mr-2" />
+                          Save Changes
+                        </>
+                      )}
                     </Button>
                     {bulkApplyPreview && (
                       <Button 
