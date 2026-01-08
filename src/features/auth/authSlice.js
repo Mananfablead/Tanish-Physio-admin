@@ -12,14 +12,27 @@ export const loginUser = createAsyncThunk(
 
       // token save
       localStorage.setItem("token", res.data.token);
-      console.log(res.data.token)
-      return res.data.user; // { id, name, role, email }
+      console.log(res.data.data);
+      return {
+        user: res.data.data.user,
+        token: res.data.data.token,
+      };
     } catch (err) {
       return rejectWithValue(err.response?.data?.message || "Login failed");
     }
   }
 );
-
+export const logoutUser = createAsyncThunk(
+  "auth/logout",
+  async (_, { rejectWithValue }) => {
+    try {
+      const res = await apiClient.post(API.LOGOUT);
+      return res.data;
+    } catch (err) {
+      return rejectWithValue("Logout failed");
+    }
+  }
+);
 /* =========================
    FETCH PROFILE
 ========================= */
@@ -47,7 +60,6 @@ const initialState = {
   error: null,
 };
 
-
 /* =========================
    SLICE
 ========================= */
@@ -56,13 +68,12 @@ const authSlice = createSlice({
   initialState,
   reducers: {
     logout: (state) => {
-  localStorage.removeItem("token");
-  state.user = null;
-  state.role = null;
-  state.token = null;
-  state.isAuthenticated = false;
-},
-
+      localStorage.removeItem("token");
+      state.user = null;
+      state.role = null;
+      state.token = null;
+      state.isAuthenticated = false;
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -73,11 +84,12 @@ const authSlice = createSlice({
       })
      .addCase(loginUser.fulfilled, (state, action) => {
   state.loading = false;
-  state.user = action.payload;
-  state.role = action.payload.role;
-  state.token = localStorage.getItem("token"); // ✅ SET TOKEN
+  state.user = action.payload.user;
+  state.role = action.payload.user.role;
+  state.token = action.payload.token;
   state.isAuthenticated = true;
 })
+
 
       .addCase(loginUser.rejected, (state, action) => {
         state.loading = false;

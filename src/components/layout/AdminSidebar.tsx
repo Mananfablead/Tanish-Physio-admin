@@ -22,7 +22,8 @@ import {
 } from "lucide-react";
 import logo from "../../assets/logo.webp";
 import { cn } from "@/lib/utils";
-
+import { useDispatch } from "react-redux";
+import { logout } from "@/features/auth/authSlice";
 const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/" },
   { icon: Users, label: "Clients", path: "/users" },
@@ -50,7 +51,7 @@ export function AdminSidebar({ isMobileOpen, onMobileClose, collapsed: propColla
   const effectiveOnCollapseToggle = onCollapseToggle || (() => setLocalCollapsed(!localCollapsed));
   const location = useLocation();
   const navigate = useNavigate();
-
+  const dispatch = useDispatch();
   return (
     <aside
       className={cn(
@@ -58,7 +59,7 @@ export function AdminSidebar({ isMobileOpen, onMobileClose, collapsed: propColla
         effectiveCollapsed ? "w-16" : "w-64",
         isMobileOpen ? "flex" : "hidden lg:flex"
       )}
-      style={{zIndex: 40}}
+      style={{ zIndex: 40 }}
     >
       {/* Logo */}
       <div className="flex h-18 items-center justify-between px-4 border-b border-sidebar-border">
@@ -120,7 +121,11 @@ export function AdminSidebar({ isMobileOpen, onMobileClose, collapsed: propColla
       {/* Footer */}
       <div className="border-t border-sidebar-border p-2">
         <button
-          onClick={() => { navigate("/login"); onMobileClose(); }}
+          onClick={() => {
+            dispatch(logout());
+            navigate("/login");
+            onMobileClose();
+          }}
           className={cn(
             "flex items-center gap-3 px-3 py-2.5 rounded-lg w-full text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors",
             effectiveCollapsed && "justify-center"
