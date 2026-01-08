@@ -18,9 +18,11 @@ apiClient.interceptors.request.use((config) => {
 export default apiClient;
 
 export const API = {
+  // auth 
   LOGIN: "/auth/login",
   LOGOUT: "/auth/logout",
   PROFILE: "/auth/profile",
+
 };
 
 // Questionnaire API endpoints
