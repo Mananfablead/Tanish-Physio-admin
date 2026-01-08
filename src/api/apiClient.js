@@ -22,5 +22,5 @@ export const API = {
   LOGIN: "/auth/login",
   LOGOUT: "/auth/logout",
   PROFILE: "/auth/profile",
-
+  UPDATE_PROFILE:  "/auth/profile",
 };

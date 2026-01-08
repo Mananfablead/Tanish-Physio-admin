@@ -13,7 +13,7 @@ export const loginUser = createAsyncThunk(
       // Ensure we have the token in the response
       const token = res.data.token || res.data.data?.token;
 
-      console.log("token", token)
+      console.log("token", token);
       if (token) {
         // token save
         localStorage.setItem("token", token);
@@ -47,10 +47,13 @@ export const fetchProfile = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const res = await apiClient.get(API.PROFILE);
-      return res.data;
+      return res.data.data;
     } catch (err) {
       // If token is invalid or expired, remove it from localStorage
-      if (err.response?.status === 401 && err.response?.data?.message === "Invalid or expired token") {
+      if (
+        err.response?.status === 401 &&
+        err.response?.data?.message === "Invalid or expired token"
+      ) {
         localStorage.removeItem("token");
         // Optionally redirect to login
         window.location.href = "/login";
@@ -66,7 +69,9 @@ export const updateProfile = createAsyncThunk(
       const res = await apiClient.put(API.UPDATE_PROFILE, profileData);
       return res.data;
     } catch (err) {
-      return rejectWithValue("Profile update failed");
+      return rejectWithValue(
+        err.response?.data?.message || "Profile update failed"
+      );
     }
   }
 );
@@ -136,9 +141,21 @@ const authSlice = createSlice({
         state.error = action.payload;
         state.isAuthenticated = false;
       })
+      .addCase(updateProfile.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
       .addCase(updateProfile.fulfilled, (state, action) => {
-  state.user = action.payload;
-})
+        state.loading = false;
+        state.user = {
+          ...state.user,
+          ...action.payload.data, // ⭐ merge updated fields
+        };
+      })
+      .addCase(updateProfile.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      });
   },
 });
 

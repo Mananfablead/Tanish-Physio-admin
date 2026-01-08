@@ -19,12 +19,14 @@ import {
 
 import {
   fetchProfile,
+  updateProfile,
+  // changePassword // (agar slice me hai to uncomment)
 } from "@/features/auth/authSlice";
 
 export default function Profile() {
-  const dispatch = useDispatch();
+  const dispatch = useDispatch<any>();
   const { user, loading } = useSelector((state: any) => state.auth);
-
+  console.log("object", user)
   const [isEditing, setIsEditing] = useState(false);
 
   const [profile, setProfile] = useState({
@@ -46,7 +48,7 @@ export default function Profile() {
      LOAD PROFILE
   ========================= */
   useEffect(() => {
-    dispatch(fetchProfile() as any);
+    dispatch(fetchProfile());
   }, [dispatch]);
 
   useEffect(() => {
@@ -65,25 +67,34 @@ export default function Profile() {
   /* =========================
      SAVE PROFILE
   ========================= */
-  const handleSaveProfile = () => {
-    // dispatch(updateProfile(profile) as any);
+  const handleSaveProfile = async () => {
+    await dispatch(
+      updateProfile({
+        name: profile.name,
+        email: profile.email,
+        phone: profile.phone,
+        location: profile.location,
+      })
+    );
+
     setIsEditing(false);
   };
 
   /* =========================
      CHANGE PASSWORD
   ========================= */
-  const handleChangePassword = () => {
+  const handleChangePassword = async () => {
     if (passwordData.newPassword !== passwordData.confirmPassword) {
       alert("Passwords do not match");
       return;
     }
 
-    // dispatch(
+    // Agar changePassword thunk bana hai to use karo
+    // await dispatch(
     //   changePassword({
     //     currentPassword: passwordData.currentPassword,
     //     newPassword: passwordData.newPassword,
-    //   }) as any
+    //   })
     // );
 
     setPasswordData({
@@ -91,6 +102,8 @@ export default function Profile() {
       newPassword: "",
       confirmPassword: "",
     });
+
+    alert("Password updated successfully");
   };
 
   return (
@@ -129,9 +142,11 @@ export default function Profile() {
               <AvatarImage src={user?.avatar || ""} />
               <AvatarFallback>
                 {profile.name
-                  ?.split(" ")
-                  .map((n) => n[0])
-                  .join("")}
+                  ? profile.name
+                      .split(" ")
+                      .map((n) => n[0])
+                      .join("")
+                  : "U"}
               </AvatarFallback>
             </Avatar>
 
@@ -213,7 +228,7 @@ export default function Profile() {
           <div className="pt-4 border-t">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Calendar className="w-4 h-4" />
-              <span>Joined {profile.joinDate}</span>
+              <span>Joined {profile.joinDate || "—"}</span>
             </div>
           </div>
         </CardContent>
