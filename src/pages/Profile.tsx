@@ -1,37 +1,114 @@
-import { useState } from "react";
-import { User, Mail, Phone, MapPin, Calendar, Edit } from "lucide-react";
+import { useEffect, useState } from "react";
+import { User, Mail, Phone, MapPin, Calendar, Edit, Lock } from "lucide-react";
+import { useDispatch, useSelector } from "react-redux";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@/components/ui/avatar";
+
+import {
+  fetchProfile,
+} from "@/features/auth/authSlice";
 
 export default function Profile() {
+  const dispatch = useDispatch();
+  const { user, loading } = useSelector((state: any) => state.auth);
+
   const [isEditing, setIsEditing] = useState(false);
+
   const [profile, setProfile] = useState({
-    name: "Admin User",
-    email: "admin@physio.com",
-    phone: "+1 (555) 123-4567",
-    location: "New York, NY",
-    joinDate: "January 2024",
-    role: "Super Admin"
+    name: "",
+    email: "",
+    phone: "",
+    location: "",
+    role: "",
+    joinDate: "",
   });
 
-  const handleSave = () => {
-    // In a real app, this would save to backend
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+
+  /* =========================
+     LOAD PROFILE
+  ========================= */
+  useEffect(() => {
+    dispatch(fetchProfile() as any);
+  }, [dispatch]);
+
+  useEffect(() => {
+    if (user) {
+      setProfile({
+        name: user.name || "",
+        email: user.email || "",
+        phone: user.phone || "",
+        location: user.location || "",
+        role: user.role || "",
+        joinDate: user.joinDate || "",
+      });
+    }
+  }, [user]);
+
+  /* =========================
+     SAVE PROFILE
+  ========================= */
+  const handleSaveProfile = () => {
+    // dispatch(updateProfile(profile) as any);
     setIsEditing(false);
+  };
+
+  /* =========================
+     CHANGE PASSWORD
+  ========================= */
+  const handleChangePassword = () => {
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      alert("Passwords do not match");
+      return;
+    }
+
+    // dispatch(
+    //   changePassword({
+    //     currentPassword: passwordData.currentPassword,
+    //     newPassword: passwordData.newPassword,
+    //   }) as any
+    // );
+
+    setPasswordData({
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: "",
+    });
   };
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* HEADER */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Profile</h1>
-          <p className="text-muted-foreground">Manage your account settings and preferences.</p>
+          <p className="text-muted-foreground">
+            Manage your personal information
+          </p>
         </div>
+
         <Button
-          onClick={() => isEditing ? handleSave() : setIsEditing(true)}
+          onClick={() =>
+            isEditing ? handleSaveProfile() : setIsEditing(true)
+          }
+          disabled={loading}
           variant={isEditing ? "default" : "outline"}
         >
           <Edit className="w-4 h-4 mr-2" />
@@ -39,79 +116,92 @@ export default function Profile() {
         </Button>
       </div>
 
-      {/* Profile Card */}
+      {/* PROFILE CARD */}
       <Card>
         <CardHeader>
           <CardTitle>Personal Information</CardTitle>
         </CardHeader>
+
         <CardContent className="space-y-6">
-          {/* Avatar */}
+          {/* AVATAR */}
           <div className="flex items-center gap-4">
             <Avatar className="w-20 h-20">
-              <AvatarImage src="" alt={profile.name} />
-              <AvatarFallback className="text-lg">
-                {profile.name.split(' ').map(n => n[0]).join('')}
+              <AvatarImage src={user?.avatar || ""} />
+              <AvatarFallback>
+                {profile.name
+                  ?.split(" ")
+                  .map((n) => n[0])
+                  .join("")}
               </AvatarFallback>
             </Avatar>
+
             <div>
               <h3 className="text-lg font-semibold">{profile.name}</h3>
               <p className="text-muted-foreground">{profile.role}</p>
             </div>
           </div>
 
-          {/* Form Fields */}
+          {/* FORM */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* NAME */}
             <div className="space-y-2">
-              <Label htmlFor="name">Full Name</Label>
+              <Label>Full Name</Label>
               <div className="relative">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
-                  id="name"
                   value={profile.name}
-                  onChange={(e) => setProfile({...profile, name: e.target.value})}
+                  onChange={(e) =>
+                    setProfile({ ...profile, name: e.target.value })
+                  }
                   className="pl-10"
                   disabled={!isEditing}
                 />
               </div>
             </div>
 
+            {/* EMAIL */}
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label>Email</Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
-                  id="email"
                   type="email"
                   value={profile.email}
-                  onChange={(e) => setProfile({...profile, email: e.target.value})}
+                  onChange={(e) =>
+                    setProfile({ ...profile, email: e.target.value })
+                  }
                   className="pl-10"
                   disabled={!isEditing}
                 />
               </div>
             </div>
 
+            {/* PHONE */}
             <div className="space-y-2">
-              <Label htmlFor="phone">Phone</Label>
+              <Label>Phone</Label>
               <div className="relative">
                 <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
-                  id="phone"
                   value={profile.phone}
-                  onChange={(e) => setProfile({...profile, phone: e.target.value})}
+                  onChange={(e) =>
+                    setProfile({ ...profile, phone: e.target.value })
+                  }
                   className="pl-10"
                   disabled={!isEditing}
                 />
               </div>
             </div>
 
+            {/* LOCATION */}
             <div className="space-y-2">
-              <Label htmlFor="location">Location</Label>
+              <Label>Location</Label>
               <div className="relative">
                 <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
-                  id="location"
                   value={profile.location}
-                  onChange={(e) => setProfile({...profile, location: e.target.value})}
+                  onChange={(e) =>
+                    setProfile({ ...profile, location: e.target.value })
+                  }
                   className="pl-10"
                   disabled={!isEditing}
                 />
@@ -119,7 +209,7 @@ export default function Profile() {
             </div>
           </div>
 
-          {/* Additional Info */}
+          {/* JOIN DATE */}
           <div className="pt-4 border-t">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Calendar className="w-4 h-4" />
@@ -129,37 +219,60 @@ export default function Profile() {
         </CardContent>
       </Card>
 
-      {/* Change Password Card */}
+      {/* CHANGE PASSWORD */}
       <Card>
         <CardHeader>
-          <CardTitle>Change Password</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Lock className="w-4 h-4" /> Change Password
+          </CardTitle>
         </CardHeader>
+
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="current-password">Current Password</Label>
+            <Label>Current Password</Label>
             <Input
-              id="current-password"
               type="password"
-              placeholder="Enter current password"
+              value={passwordData.currentPassword}
+              onChange={(e) =>
+                setPasswordData({
+                  ...passwordData,
+                  currentPassword: e.target.value,
+                })
+              }
             />
           </div>
+
           <div className="space-y-2">
-            <Label htmlFor="new-password">New Password</Label>
+            <Label>New Password</Label>
             <Input
-              id="new-password"
               type="password"
-              placeholder="Enter new password"
+              value={passwordData.newPassword}
+              onChange={(e) =>
+                setPasswordData({
+                  ...passwordData,
+                  newPassword: e.target.value,
+                })
+              }
             />
           </div>
+
           <div className="space-y-2">
-            <Label htmlFor="confirm-password">Confirm New Password</Label>
+            <Label>Confirm New Password</Label>
             <Input
-              id="confirm-password"
               type="password"
-              placeholder="Confirm new password"
+              value={passwordData.confirmPassword}
+              onChange={(e) =>
+                setPasswordData({
+                  ...passwordData,
+                  confirmPassword: e.target.value,
+                })
+              }
             />
           </div>
-          <Button>Update Password</Button>
+
+          <Button onClick={handleChangePassword} disabled={loading}>
+            Update Password
+          </Button>
         </CardContent>
       </Card>
     </div>
