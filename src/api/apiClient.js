@@ -24,6 +24,6 @@ export const API = {
   PROFILE: "/auth/profile",
   UPDATE_PROFILE:  "/auth/profile",
   // users
-  USERS: "/api/users",
-  USER_BY_ID: "/api/users/:id",
+  USERS: "/users",
+  USER_BY_ID: "/users/:id",
 };
