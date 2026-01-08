@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus, Edit2, GripVertical, ToggleLeft, ToggleRight, Trash2, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -7,32 +7,73 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchQuestionnaires, updateQuestions, createQuestionnaire, deleteQuestionnaire, activateQuestionnaire } from "@/features/questionnaires/questionnaireSlice";
 
-const mockQuestions = [
-  { id: 1, question: "What is your primary concern or area of pain?", type: "text", required: true, active: true, order: 1 },
-  { id: 2, question: "On a scale of 1-10, how would you rate your pain intensity?", type: "slider", required: true, active: true, order: 2 },
-  { id: 3, question: "How long have you been experiencing this issue?", type: "mcq", options: ["Less than 1 week", "1-4 weeks", "1-3 months", "3+ months"], required: true, active: true, order: 3 },
-  { id: 4, question: "Have you received any previous treatment for this condition?", type: "mcq", options: ["No", "Physical therapy", "Medication", "Surgery", "Other"], required: true, active: true, order: 4 },
-  { id: 5, question: "Does the pain affect your daily activities?", type: "mcq", options: ["Not at all", "Slightly", "Moderately", "Severely"], required: true, active: true, order: 5 },
-  { id: 6, question: "Do you have any allergies or medical conditions we should know about?", type: "text", required: false, active: true, order: 6 },
-  { id: 7, question: "What are your goals for therapy?", type: "text", required: false, active: false, order: 7 },
-];
+// Define types based on backend schema
+interface Question {
+  _id?: string;
+  id?: number;
+  question: string;
+  type: "text" | "mcq" | "slider";
+  required: boolean;
+  active: boolean;
+  order: number;
+  options?: string[];
+}
+
+interface Questionnaire {
+  _id: string;
+  title: string;
+  description: string;
+  questions: Question[];
+  isActive: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
 
 type QuestionType = "text" | "mcq" | "slider";
 
 export default function Questionnaires() {
-  const [questions, setQuestions] = useState(mockQuestions);
+  const dispatch = useDispatch();
+  
+  // Get questionnaire state from Redux
+  const { questionnaires, loading, error } = useSelector((state: any) => state.questionnaires);
+  
+  // Use the first (active) questionnaire's questions or fallback to an empty array
+  const [questions, setQuestions] = useState<Question[]>([]);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [selectedQuestion, setSelectedQuestion] = useState<typeof mockQuestions[0] | null>(null);
-  const [draggedQuestion, setDraggedQuestion] = useState<typeof mockQuestions[0] | null>(null);
+  const [selectedQuestion, setSelectedQuestion] = useState<Question | null>(null);
+  const [draggedQuestion, setDraggedQuestion] = useState<Question | null>(null);
   const [editForm, setEditForm] = useState({
     question: "",
     type: "text" as QuestionType,
     required: true,
     options: [""],
   });
+  
+  // Load questionnaires on component mount
+  useEffect(() => {
+    dispatch(fetchQuestionnaires() as any);
+  }, [dispatch]);
+  
+  // Update local questions state when Redux state changes
+  useEffect(() => {
+    if (questionnaires && questionnaires.length > 0) {
+      // Find the active questionnaire or use the first one
+      const activeQuestionnaire = questionnaires.find((q: Questionnaire) => q.isActive) || questionnaires[0];
+      if (activeQuestionnaire) {
+        // Add temporary id for UI operations if not present
+        const questionsWithIds = activeQuestionnaire.questions.map((q, index) => ({
+          ...q,
+          id: q.id || index + 1
+        }));
+        setQuestions(questionsWithIds);
+      }
+    }
+  }, [questionnaires]);
 
-  const openEditModal = (question?: typeof mockQuestions[0]) => {
+  const openEditModal = (question?: Question) => {
     if (question) {
       setSelectedQuestion(question);
       setEditForm({
@@ -53,57 +94,97 @@ export default function Questionnaires() {
     setIsEditModalOpen(true);
   };
 
-  const deleteQuestion = () => {
-    if (selectedQuestion) {
-      setQuestions(questions.filter(q => q.id !== selectedQuestion.id));
-      setIsEditModalOpen(false);
-      setSelectedQuestion(null);
+  const deleteQuestion = async () => {
+    if (selectedQuestion && selectedQuestion._id) {
+      // Remove from local state
+      const updatedQuestions = questions.filter(q => q.id !== selectedQuestion.id);
+      setQuestions(updatedQuestions);
+      
+      // Find the active questionnaire to update
+      const activeQuestionnaire = questionnaires.find((q: Questionnaire) => q.isActive) || questionnaires[0];
+      
+      if (activeQuestionnaire) {
+        try {
+          await dispatch(updateQuestions({ id: activeQuestionnaire._id, questions: updatedQuestions }) as any);
+          setIsEditModalOpen(false);
+          setSelectedQuestion(null);
+        } catch (error) {
+          console.error('Error deleting question:', error);
+        }
+      }
     }
   };
 
-  const saveQuestion = () => {
+  const saveQuestion = async () => {
     if (!editForm.question.trim()) {
       return; // Basic validation
     }
 
-    if (selectedQuestion) {
-      // Edit existing question
-      setQuestions(questions.map(q => 
-        q.id === selectedQuestion.id 
-          ? { 
-              ...q, 
-              question: editForm.question,
-              type: editForm.type,
-              required: editForm.required,
-              options: editForm.type === "mcq" ? editForm.options.filter(opt => opt.trim()) : undefined
-            }
-          : q
-      ));
-    } else {
-      // Add new question
-      const newQuestion = {
-        id: Math.max(...questions.map(q => q.id)) + 1,
-        question: editForm.question,
-        type: editForm.type,
-        required: editForm.required,
-        active: true,
-        order: Math.max(...questions.map(q => q.order)) + 1,
-        options: editForm.type === "mcq" ? editForm.options.filter(opt => opt.trim()) : undefined
-      };
-      setQuestions([...questions, newQuestion]);
+    // Find the active questionnaire to update
+    const activeQuestionnaire = questionnaires.find((q: Questionnaire) => q.isActive) || questionnaires[0];
+    
+    if (activeQuestionnaire) {
+      let updatedQuestions;
+      
+      if (selectedQuestion) {
+        // Edit existing question
+        updatedQuestions = questions.map(q => 
+          q.id === selectedQuestion.id 
+            ? { 
+                ...q, 
+                question: editForm.question,
+                type: editForm.type,
+                required: editForm.required,
+                options: editForm.type === "mcq" ? editForm.options.filter(opt => opt.trim()) : undefined
+              }
+            : q
+        );
+      } else {
+        // Add new question
+        const newQuestion = {
+          id: Math.max(...questions.map(q => q.id), 0) + 1,
+          question: editForm.question,
+          type: editForm.type,
+          required: editForm.required,
+          active: true,
+          order: Math.max(...questions.map(q => q.order), 0) + 1,
+          options: editForm.type === "mcq" ? editForm.options.filter(opt => opt.trim()) : undefined
+        };
+        updatedQuestions = [...questions, newQuestion];
+      }
+      
+      // Update the questions in the backend
+      try {
+        await dispatch(updateQuestions({ id: activeQuestionnaire._id, questions: updatedQuestions }) as any);
+        setQuestions(updatedQuestions);
+        setIsEditModalOpen(false);
+        setSelectedQuestion(null);
+      } catch (error) {
+        console.error('Error saving question:', error);
+      }
     }
-
-    setIsEditModalOpen(false);
-    setSelectedQuestion(null);
   };
 
-  const toggleQuestion = (id: number) => {
-    setQuestions(questions.map(q => 
+  const toggleQuestion = async (id: number) => {
+    const updatedQuestions = questions.map(q => 
       q.id === id ? { ...q, active: !q.active } : q
-    ));
+    );
+    
+    setQuestions(updatedQuestions);
+    
+    // Find the active questionnaire to update
+    const activeQuestionnaire = questionnaires.find((q: Questionnaire) => q.isActive) || questionnaires[0];
+    
+    if (activeQuestionnaire) {
+      try {
+        await dispatch(updateQuestions({ id: activeQuestionnaire._id, questions: updatedQuestions }) as any);
+      } catch (error) {
+        console.error('Error toggling question:', error);
+      }
+    }
   };
 
-  const handleDragStart = (question: typeof mockQuestions[0]) => {
+  const handleDragStart = (question: Question) => {
     setDraggedQuestion(question);
   };
 
@@ -111,7 +192,7 @@ export default function Questionnaires() {
     e.preventDefault();
   };
 
-  const handleDrop = (e: React.DragEvent, targetQuestion: typeof mockQuestions[0]) => {
+  const handleDrop = async (e: React.DragEvent, targetQuestion: Question) => {
     e.preventDefault();
     
     if (!draggedQuestion || draggedQuestion.id === targetQuestion.id) {
@@ -133,6 +214,17 @@ export default function Questionnaires() {
     
     setQuestions(updatedQuestions);
     setDraggedQuestion(null);
+    
+    // Find the active questionnaire to update
+    const activeQuestionnaire = questionnaires.find((q: Questionnaire) => q.isActive) || questionnaires[0];
+    
+    if (activeQuestionnaire) {
+      try {
+        await dispatch(updateQuestions({ id: activeQuestionnaire._id, questions: updatedQuestions }) as any);
+      } catch (error) {
+        console.error('Error reordering questions:', error);
+      }
+    }
   };
 
   const getTypeLabel = (type: string) => {
@@ -163,6 +255,20 @@ export default function Questionnaires() {
 
   return (
     <div className="space-y-6">
+      {/* Loading and Error Indicators */}
+      {loading && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center gap-3">
+          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+          <p className="text-sm text-blue-700">Loading questionnaires...</p>
+        </div>
+      )}
+      
+      {error && (
+        <div className="bg-destructive/15 border border-destructive/30 rounded-lg p-4">
+          <p className="text-sm text-destructive">Error: {typeof error === 'string' ? error : 'An error occurred'}</p>
+        </div>
+      )}
+      
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="page-header">

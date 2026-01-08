@@ -4,6 +4,7 @@ import dashboardReducer from "@/features/dashboard/dashboardSlice";
 import userReducer from "@/features/users/userSlice";
 import sessionReducer from "@/features/sessions/sessionSlice";
 import serviceReducer from "@/features/services/serviceSlice";
+import questionnaireReducer from "@/features/questionnaires/questionnaireSlice";
 
 export const store = configureStore({
   reducer: {
@@ -12,5 +13,6 @@ export const store = configureStore({
     users: userReducer,
     sessions: sessionReducer,
     services: serviceReducer,
+    questionnaires: questionnaireReducer,
   },
 });
