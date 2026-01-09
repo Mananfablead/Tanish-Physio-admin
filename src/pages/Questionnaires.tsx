@@ -1,38 +1,79 @@
-import { useState } from "react";
-import { Plus, Edit2, GripVertical, ToggleLeft, ToggleRight, Trash2, HelpCircle } from "lucide-react";
+import { useState, useEffect } from "react";
+import {
+  Plus,
+  Edit2,
+  GripVertical,
+  ToggleLeft,
+  ToggleRight,
+  Trash2,
+  HelpCircle,
+  Loader2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
-
-const mockQuestions = [
-  { id: 1, question: "What is your primary concern or area of pain?", type: "text", required: true, active: true, order: 1 },
-  { id: 2, question: "On a scale of 1-10, how would you rate your pain intensity?", type: "slider", required: true, active: true, order: 2 },
-  { id: 3, question: "How long have you been experiencing this issue?", type: "mcq", options: ["Less than 1 week", "1-4 weeks", "1-3 months", "3+ months"], required: true, active: true, order: 3 },
-  { id: 4, question: "Have you received any previous treatment for this condition?", type: "mcq", options: ["No", "Physical therapy", "Medication", "Surgery", "Other"], required: true, active: true, order: 4 },
-  { id: 5, question: "Does the pain affect your daily activities?", type: "mcq", options: ["Not at all", "Slightly", "Moderately", "Severely"], required: true, active: true, order: 5 },
-  { id: 6, question: "Do you have any allergies or medical conditions we should know about?", type: "text", required: false, active: true, order: 6 },
-  { id: 7, question: "What are your goals for therapy?", type: "text", required: false, active: false, order: 7 },
-];
+import apiClient, { API } from "@/api/apiClient";
+import { useToast } from "@/hooks/use-toast";
 
 type QuestionType = "text" | "mcq" | "slider";
 
+interface Question {
+  _id?: string;
+  id: number;
+  question: string;
+  type: QuestionType;
+  required: boolean;
+  active: boolean;
+  order: number;
+  options?: string[];
+}
+
+interface Questionnaire {
+  _id: string;
+  title: string;
+  description: string;
+  questions: Question[];
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export default function Questionnaires() {
-  const [questions, setQuestions] = useState(mockQuestions);
+  const [questions, setQuestions] = useState<Question[]>([]);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [selectedQuestion, setSelectedQuestion] = useState<typeof mockQuestions[0] | null>(null);
-  const [draggedQuestion, setDraggedQuestion] = useState<typeof mockQuestions[0] | null>(null);
+  const [selectedQuestion, setSelectedQuestion] = useState<Question | null>(
+    null
+  );
+  const [draggedQuestion, setDraggedQuestion] = useState<Question | null>(null);
   const [editForm, setEditForm] = useState({
     question: "",
     type: "text" as QuestionType,
     required: true,
     options: [""],
   });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const { toast } = useToast();
+  const [questionnaireId, setQuestionnaireId] = useState<string | null>(null);
 
-  const openEditModal = (question?: typeof mockQuestions[0]) => {
+  const openEditModal = (question?: Question) => {
     if (question) {
       setSelectedQuestion(question);
       setEditForm({
@@ -53,57 +94,243 @@ export default function Questionnaires() {
     setIsEditModalOpen(true);
   };
 
-  const deleteQuestion = () => {
+  // Load questionnaire data on component mount
+  useEffect(() => {
+    loadQuestionnaire();
+  }, []);
+
+  const loadQuestionnaire = async () => {
+    try {
+      setLoading(true);
+      const response = await apiClient.get(`${API.QUESTIONNAIRES}/active`);
+
+      if (response.data.success) {
+        const questionnaire = response.data.data;
+        setQuestionnaireId(questionnaire._id);
+        // Update the questions to have proper IDs
+        setQuestions(
+          questionnaire.questions.map((q: any, index: number) => ({
+            ...q,
+            id: index + 1,
+          }))
+        );
+      } else {
+        // If no active questionnaire exists, create a default one
+        const defaultQuestionnaire = {
+          title: "Patient Intake Questionnaire",
+          description: "Health intake questions for therapist matching",
+          questions: [],
+          isActive: true,
+        };
+
+        const createResponse = await apiClient.post(
+          API.QUESTIONNAIRES,
+          defaultQuestionnaire
+        );
+        if (createResponse.data.success) {
+          setQuestionnaireId(createResponse.data.data._id);
+          setQuestions([]);
+        }
+      }
+    } catch (error) {
+      console.error("Error loading questionnaire:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load questionnaire data",
+        variant: "destructive",
+      });
+
+      // Create a default questionnaire if loading fails
+      try {
+        const defaultQuestionnaire = {
+          title: "Patient Intake Questionnaire",
+          description: "Health intake questions for therapist matching",
+          questions: [],
+          isActive: true,
+        };
+
+        const createResponse = await apiClient.post(
+          API.QUESTIONNAIRES,
+          defaultQuestionnaire
+        );
+        if (createResponse.data.success) {
+          setQuestionnaireId(createResponse.data.data._id);
+          setQuestions([]);
+        }
+      } catch (createError) {
+        console.error("Error creating default questionnaire:", createError);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const deleteQuestion = async () => {
     if (selectedQuestion) {
-      setQuestions(questions.filter(q => q.id !== selectedQuestion.id));
+      const updatedQuestions = questions.filter(
+        (q) => q.id !== selectedQuestion!.id
+      );
+      setQuestions(updatedQuestions);
+
+      // Update the backend
+      try {
+        if (questionnaireId) {
+          const response = await apiClient.put(
+            `${API.QUESTIONNAIRE_BY_ID(questionnaireId)}/questions`,
+            {
+              questions: updatedQuestions,
+            }
+          );
+
+          if (response.data.success) {
+            toast({
+              title: "Success",
+              description: "Question deleted successfully",
+            });
+          }
+        }
+      } catch (error) {
+        console.error("Error deleting question:", error);
+        toast({
+          title: "Error",
+          description: "Failed to delete question",
+          variant: "destructive",
+        });
+        // Revert the change if API call fails
+        setQuestions(questions);
+      }
+
       setIsEditModalOpen(false);
       setSelectedQuestion(null);
     }
   };
 
-  const saveQuestion = () => {
+  const saveQuestion = async () => {
     if (!editForm.question.trim()) {
       return; // Basic validation
     }
 
-    if (selectedQuestion) {
-      // Edit existing question
-      setQuestions(questions.map(q => 
-        q.id === selectedQuestion.id 
-          ? { 
-              ...q, 
-              question: editForm.question,
-              type: editForm.type,
-              required: editForm.required,
-              options: editForm.type === "mcq" ? editForm.options.filter(opt => opt.trim()) : undefined
+    setSaving(true);
+    try {
+      if (selectedQuestion) {
+        // Edit existing question
+        const updatedQuestions = questions.map((q) =>
+          q.id === selectedQuestion.id
+            ? {
+                ...q,
+                question: editForm.question,
+                type: editForm.type,
+                required: editForm.required,
+                options:
+                  editForm.type === "mcq"
+                    ? editForm.options.filter((opt) => opt.trim())
+                    : undefined,
+              }
+            : q
+        );
+        setQuestions(updatedQuestions);
+
+        // Update the backend
+        if (questionnaireId) {
+          const response = await apiClient.put(
+            `${API.QUESTIONNAIRE_BY_ID(questionnaireId)}/questions`,
+            {
+              questions: updatedQuestions,
             }
-          : q
-      ));
-    } else {
-      // Add new question
-      const newQuestion = {
-        id: Math.max(...questions.map(q => q.id)) + 1,
-        question: editForm.question,
-        type: editForm.type,
-        required: editForm.required,
-        active: true,
-        order: Math.max(...questions.map(q => q.order)) + 1,
-        options: editForm.type === "mcq" ? editForm.options.filter(opt => opt.trim()) : undefined
-      };
-      setQuestions([...questions, newQuestion]);
+          );
+
+          if (response.data.success) {
+            toast({
+              title: "Success",
+              description: "Question updated successfully",
+            });
+          }
+        }
+      } else {
+        // Add new question
+        const newQuestion = {
+          id: Math.max(...questions.map((q) => q.id), 0) + 1,
+          question: editForm.question,
+          type: editForm.type,
+          required: editForm.required,
+          active: true,
+          order: Math.max(...questions.map((q) => q.order), 0) + 1,
+          options:
+            editForm.type === "mcq"
+              ? editForm.options.filter((opt) => opt.trim())
+              : undefined,
+        };
+        const updatedQuestions = [...questions, newQuestion];
+        setQuestions(updatedQuestions);
+
+        // Update the backend
+        if (questionnaireId) {
+          const response = await apiClient.put(
+            `${API.QUESTIONNAIRE_BY_ID(questionnaireId)}/questions`,
+            {
+              questions: updatedQuestions,
+            }
+          );
+
+          if (response.data.success) {
+            toast({
+              title: "Success",
+              description: "Question added successfully",
+            });
+          }
+        }
+      }
+
+      setIsEditModalOpen(false);
+      setSelectedQuestion(null);
+    } catch (error) {
+      console.error("Error saving question:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save question",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
     }
-
-    setIsEditModalOpen(false);
-    setSelectedQuestion(null);
   };
 
-  const toggleQuestion = (id: number) => {
-    setQuestions(questions.map(q => 
+  const toggleQuestion = async (id: number) => {
+    const updatedQuestions = questions.map((q) =>
       q.id === id ? { ...q, active: !q.active } : q
-    ));
+    );
+    setQuestions(updatedQuestions);
+
+    // Update the backend
+    try {
+      if (questionnaireId) {
+        const response = await apiClient.put(
+          `${API.QUESTIONNAIRE_BY_ID(questionnaireId)}/questions`,
+          {
+            questions: updatedQuestions,
+          }
+        );
+
+        if (response.data.success) {
+          toast({
+            title: "Success",
+            description: "Question status updated successfully",
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Error updating question status:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update question status",
+        variant: "destructive",
+      });
+      // Revert the change if API call fails
+      setQuestions(questions);
+    }
   };
 
-  const handleDragStart = (question: typeof mockQuestions[0]) => {
+  const handleDragStart = (question: Question) => {
     setDraggedQuestion(question);
   };
 
@@ -111,28 +338,58 @@ export default function Questionnaires() {
     e.preventDefault();
   };
 
-  const handleDrop = (e: React.DragEvent, targetQuestion: typeof mockQuestions[0]) => {
+  const handleDrop = async (e: React.DragEvent, targetQuestion: Question) => {
     e.preventDefault();
-    
+
     if (!draggedQuestion || draggedQuestion.id === targetQuestion.id) {
       return;
     }
 
-    const draggedIndex = questions.findIndex(q => q.id === draggedQuestion.id);
-    const targetIndex = questions.findIndex(q => q.id === targetQuestion.id);
-    
+    const draggedIndex = questions.findIndex(
+      (q) => q.id === draggedQuestion.id
+    );
+    const targetIndex = questions.findIndex((q) => q.id === targetQuestion.id);
+
     const newQuestions = [...questions];
     newQuestions.splice(draggedIndex, 1);
     newQuestions.splice(targetIndex, 0, draggedQuestion);
-    
+
     // Update order
     const updatedQuestions = newQuestions.map((q, index) => ({
       ...q,
-      order: index + 1
+      order: index + 1,
     }));
-    
+
     setQuestions(updatedQuestions);
     setDraggedQuestion(null);
+
+    // Save the updated order to backend
+    try {
+      if (questionnaireId) {
+        const response = await apiClient.put(
+          `${API.QUESTIONNAIRE_BY_ID(questionnaireId)}/questions`,
+          {
+            questions: updatedQuestions,
+          }
+        );
+
+        if (response.data.success) {
+          toast({
+            title: "Success",
+            description: "Question order updated successfully",
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Error updating question order:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update question order",
+        variant: "destructive",
+      });
+      // Revert the change if API call fails
+      setQuestions(questions);
+    }
   };
 
   const getTypeLabel = (type: string) => {
@@ -167,121 +424,163 @@ export default function Questionnaires() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="page-header">
           <h1 className="page-title">Questionnaire Management</h1>
-          <p className="page-subtitle">Manage health intake questions for therapist matching</p>
+          <p className="page-subtitle">
+            Manage health intake questions for therapist matching
+          </p>
         </div>
-        <Button className="gap-2" onClick={() => openEditModal()}>
+        <Button
+          className="gap-2"
+          onClick={() => openEditModal()}
+          disabled={loading || saving}
+        >
           <Plus className="w-4 h-4" />
           Add Question
         </Button>
       </div>
 
-      {/* Info Banner */}
-      <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 flex items-start gap-3">
-        <HelpCircle className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-        <div>
-          <p className="font-medium text-sm">Purpose of Questionnaire</p>
-          <p className="text-sm text-muted-foreground mt-1">
-            These questions are shown to users during registration to collect health information. 
-            This data helps match users with appropriate therapists and ensures quality intake.
-          </p>
+      {/* Loading State */}
+      {loading && (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
-      </div>
+      )}
 
-      {/* Questions List */}
-      <div className="bg-card rounded-lg border border-border overflow-hidden">
-        <div className="p-4 border-b border-border bg-muted/30">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">
-              {questions.filter(q => q.active).length} of {questions.length} questions active
-            </p>
-            <p className="text-xs text-muted-foreground">Drag to reorder</p>
+      {!loading && (
+        <>
+          {/* Info Banner */}
+          <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 flex items-start gap-3">
+            <HelpCircle className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-medium text-sm">Purpose of Questionnaire</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                These questions are shown to users during registration to
+                collect health information. This data helps match users with
+                appropriate therapists and ensures quality intake.
+              </p>
+            </div>
           </div>
-        </div>
 
-        <div className="divide-y divide-border">
-          {questions.sort((a, b) => a.order - b.order).map((question) => (
-            <div
-              key={question.id}
-              draggable
-              onDragStart={() => handleDragStart(question)}
-              onDragOver={handleDragOver}
-              onDrop={(e) => handleDrop(e, question)}
-              className={cn(
-                "p-4 flex items-start gap-4 transition-opacity animate-fade-in cursor-move",
-                !question.active && "opacity-50",
-                draggedQuestion?.id === question.id && "opacity-50"
-              )}
-            >
-              <button className="mt-1 cursor-grab text-muted-foreground hover:text-foreground">
-                <GripVertical className="w-5 h-5" />
-              </button>
-
-              <div className="flex-1 min-w-0">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1">
-                    <p className="font-medium">{question.question}</p>
-                    <div className="flex items-center gap-2 mt-2">
-                      <span className={cn("status-badge", getTypeBadgeColor(question.type))}>
-                        {getTypeLabel(question.type)}
-                      </span>
-                      {question.required && (
-                        <span className="status-badge bg-destructive/15 text-destructive">Required</span>
-                      )}
-                    </div>
-                    {question.type === "mcq" && question.options && (
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        {question.options.map((opt, idx) => (
-                          <span key={idx} className="text-xs px-2 py-1 bg-muted rounded">
-                            {opt}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => openEditModal(question)}
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </Button>
-                    <button
-                      onClick={() => toggleQuestion(question.id)}
-                      className="p-1.5 rounded hover:bg-muted"
-                    >
-                      {question.active ? (
-                        <ToggleRight className="w-6 h-6 text-success" />
-                      ) : (
-                        <ToggleLeft className="w-6 h-6 text-muted-foreground" />
-                      )}
-                    </button>
-                  </div>
-                </div>
+          {/* Questions List */}
+          <div className="bg-card rounded-lg border border-border overflow-hidden">
+            <div className="p-4 border-b border-border bg-muted/30">
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-muted-foreground">
+                  {questions.filter((q) => q.active).length} of{" "}
+                  {questions.length} questions active
+                </p>
+                <p className="text-xs text-muted-foreground">Drag to reorder</p>
               </div>
             </div>
-          ))}
-        </div>
-      </div>
+
+            <div className="divide-y divide-border">
+              {questions
+                .sort((a, b) => a.order - b.order)
+                .map((question) => (
+                  <div
+                    key={question.id}
+                    draggable
+                    onDragStart={() => handleDragStart(question)}
+                    onDragOver={handleDragOver}
+                    onDrop={(e) => handleDrop(e, question)}
+                    className={cn(
+                      "p-4 flex items-start gap-4 transition-opacity animate-fade-in cursor-move",
+                      !question.active && "opacity-50",
+                      draggedQuestion?.id === question.id && "opacity-50"
+                    )}
+                  >
+                    <button
+                      className="mt-1 cursor-grab text-muted-foreground hover:text-foreground"
+                      disabled={saving}
+                    >
+                      <GripVertical className="w-5 h-5" />
+                    </button>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1">
+                          <p className="font-medium">{question.question}</p>
+                          <div className="flex items-center gap-2 mt-2">
+                            <span
+                              className={cn(
+                                "status-badge",
+                                getTypeBadgeColor(question.type)
+                              )}
+                            >
+                              {getTypeLabel(question.type)}
+                            </span>
+                            {question.required && (
+                              <span className="status-badge bg-destructive/15 text-destructive">
+                                Required
+                              </span>
+                            )}
+                          </div>
+                          {question.type === "mcq" && question.options && (
+                            <div className="flex flex-wrap gap-1 mt-2">
+                              {question.options.map((opt, idx) => (
+                                <span
+                                  key={idx}
+                                  className="text-xs px-2 py-1 bg-muted rounded"
+                                >
+                                  {opt}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => openEditModal(question)}
+                            disabled={saving}
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </Button>
+                          <button
+                            onClick={() => toggleQuestion(question.id)}
+                            className="p-1.5 rounded hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled={saving}
+                          >
+                            {question.active ? (
+                              <ToggleRight className="w-6 h-6 text-success" />
+                            ) : (
+                              <ToggleLeft className="w-6 h-6 text-muted-foreground" />
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Edit/Create Modal */}
       <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>{selectedQuestion ? "Edit Question" : "Add New Question"}</DialogTitle>
+            <DialogTitle>
+              {selectedQuestion ? "Edit Question" : "Add New Question"}
+            </DialogTitle>
             <DialogDescription>
-              {selectedQuestion ? "Update the question details below." : "Create a new intake question."}
+              {selectedQuestion
+                ? "Update the question details below."
+                : "Create a new intake question."}
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4 mt-4">
             <div>
               <Label>Question Text</Label>
               <Input
                 placeholder="Enter your question..."
                 value={editForm.question}
-                onChange={(e) => setEditForm({ ...editForm, question: e.target.value })}
+                onChange={(e) =>
+                  setEditForm({ ...editForm, question: e.target.value })
+                }
                 className="mt-1"
               />
             </div>
@@ -290,7 +589,9 @@ export default function Questionnaires() {
               <Label>Question Type</Label>
               <Select
                 value={editForm.type}
-                onValueChange={(value) => setEditForm({ ...editForm, type: value as QuestionType })}
+                onValueChange={(value) =>
+                  setEditForm({ ...editForm, type: value as QuestionType })
+                }
               >
                 <SelectTrigger className="mt-1">
                   <SelectValue />
@@ -324,7 +625,9 @@ export default function Questionnaires() {
                           size="icon"
                           className="text-destructive"
                           onClick={() => {
-                            const newOptions = editForm.options.filter((_, i) => i !== index);
+                            const newOptions = editForm.options.filter(
+                              (_, i) => i !== index
+                            );
                             setEditForm({ ...editForm, options: newOptions });
                           }}
                         >
@@ -336,7 +639,12 @@ export default function Questionnaires() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setEditForm({ ...editForm, options: [...editForm.options, ""] })}
+                    onClick={() =>
+                      setEditForm({
+                        ...editForm,
+                        options: [...editForm.options, ""],
+                      })
+                    }
                   >
                     <Plus className="w-4 h-4 mr-1" />
                     Add Option
@@ -348,27 +656,51 @@ export default function Questionnaires() {
             <div className="flex items-center justify-between">
               <div>
                 <Label>Required</Label>
-                <p className="text-xs text-muted-foreground">Users must answer this question</p>
+                <p className="text-xs text-muted-foreground">
+                  Users must answer this question
+                </p>
               </div>
               <Switch
                 checked={editForm.required}
-                onCheckedChange={(checked) => setEditForm({ ...editForm, required: checked })}
+                onCheckedChange={(checked) =>
+                  setEditForm({ ...editForm, required: checked })
+                }
               />
             </div>
           </div>
-          
+
           <DialogFooter className="mt-4">
             {selectedQuestion && (
-              <Button variant="destructive" onClick={deleteQuestion}>
+              <Button
+                variant="destructive"
+                onClick={deleteQuestion}
+                disabled={saving}
+              >
                 Delete Question
               </Button>
             )}
             <div className="flex gap-2 ml-auto">
-              <Button variant="outline" onClick={() => setIsEditModalOpen(false)}>
+              <Button
+                variant="outline"
+                onClick={() => setIsEditModalOpen(false)}
+                disabled={saving}
+              >
                 Cancel
               </Button>
-              <Button onClick={saveQuestion} disabled={!editForm.question.trim()}>
-                {selectedQuestion ? "Save Changes" : "Add Question"}
+              <Button
+                onClick={saveQuestion}
+                disabled={!editForm.question.trim() || saving}
+              >
+                {saving ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {selectedQuestion ? "Saving..." : "Adding..."}
+                  </>
+                ) : selectedQuestion ? (
+                  "Save Changes"
+                ) : (
+                  "Add Question"
+                )}
               </Button>
             </div>
           </DialogFooter>

@@ -49,6 +49,11 @@ export const API = {
   // 👤 Users (Admin)
   USERS: "/users",
   USER_BY_ID: (id) => `/users/${id}`,
+
+  // 📝 Questionnaires
+  QUESTIONNAIRES: "/questionnaires",
+  QUESTIONNAIRE_BY_ID: (id) => `/questionnaires/${id}`,
+  ACTIVE_QUESTIONNAIRE: "/questionnaires/active",
 };
 
 export default apiClient;
