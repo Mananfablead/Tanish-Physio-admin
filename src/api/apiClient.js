@@ -22,6 +22,7 @@ export const API = {
   LOGIN: "/auth/login",
   LOGOUT: "/auth/logout",
   PROFILE: "/auth/profile",
+  FORGOT_PASSWORD: "/auth/forgot-password",
   
   // subscriptions
   SUBSCRIPTIONS: "/subscriptions",
@@ -32,6 +33,8 @@ export const API = {
   AVAILABILITY_BY_THERAPIST: "/availability/therapist",
 
   UPDATE_PROFILE:  "/auth/profile",
+  UPDATE_PASSWORD: "/auth/update-password",
+  UPDATE_PROFILE_PICTURE: "/auth/profile-picture",
   // users
   USERS: "/users",
   USER_BY_ID: "/users/:id",

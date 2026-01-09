@@ -234,18 +234,21 @@ import { Label } from "@/components/ui/label";
 import logo from "../assets/logo.webp";
 
 // 🔴 Redux
-import { loginUser } from "@/features/auth/authSlice";
+import { loginUser, forgotPassword } from "@/features/auth/authSlice";
 import { useDispatch, useSelector } from "react-redux";
+import { store } from "@/store";
+
+type RootState = ReturnType<typeof store.getState>;
 
 export default function Login() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  const { loading, error, isAuthenticated, token } = useSelector(
-    (state) => state.auth
+  const { loading, error, isAuthenticated, token, forgotPasswordSuccess } = useSelector(
+    (state: RootState) => state.auth
   );
 
-  const [email, setEmail] = useState("admin@example.com");
+  const [email, setEmail] = useState("mananfablead@gmail.com");
   const [password, setPassword] = useState("admin2025");
   const [showPassword, setShowPassword] = useState(false);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
@@ -259,6 +262,12 @@ useEffect(() => {
     navigate("/", { replace: true });
   }
 }, [isAuthenticated, navigate]);
+
+useEffect(() => {
+  if (forgotPasswordSuccess) {
+    setSuccessMessage(forgotPasswordSuccess);
+  }
+}, [forgotPasswordSuccess]);
 
 
 
@@ -277,7 +286,7 @@ useEffect(() => {
   };
 
   /* =========================
-     FORGOT PASSWORD (UI ONLY)
+     FORGOT PASSWORD
   ========================= */
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -285,10 +294,7 @@ useEffect(() => {
 
     if (!email) return;
 
-    // 👉 future me API lagegi
-    setTimeout(() => {
-      setSuccessMessage("Password reset link has been sent to your email.");
-    }, 800);
+    dispatch(forgotPassword(email));
   };
 
   return (
@@ -430,7 +436,10 @@ useEffect(() => {
                 type="button"
                 variant="ghost"
                 className="w-full"
-                onClick={() => setIsForgotPassword(false)}
+                onClick={() => {
+                  setIsForgotPassword(false);
+                  setSuccessMessage("");
+                }}
               >
                 Back to Login
               </Button>
