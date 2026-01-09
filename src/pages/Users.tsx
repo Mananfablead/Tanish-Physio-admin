@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchUsers, deleteUser, updateUser } from "@/features/users/userSlice";
 import { RootState } from "@/store";
+import PageLoader from "@/components/PageLoader";
 
 const filters = ["All", "Active Subscription", "Expired", "No Subscription"];
 
@@ -141,15 +142,11 @@ export default function Users() {
 
 
   if (loading && users.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-[60vh]">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mb-4"></div>
-          <p className="text-lg text-muted-foreground">Loading users...</p>
-        </div>
-      </div>
-    );
-  }
+    return <PageLoader text="Loading users..." />;
+}
+
+
+
 
   return (
     <div className="space-y-6">

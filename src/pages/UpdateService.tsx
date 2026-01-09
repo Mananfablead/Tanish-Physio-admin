@@ -1,6 +1,6 @@
-import { useState, useRef } from "react";
-import { useNavigate } from "react-router-dom";
-import { useDispatch } from "react-redux";
+import { useState, useRef, useEffect } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -19,13 +19,15 @@ import {
 } from "@/components/ui/card";
 import { ArrowLeft, Upload, X, Loader2 } from "lucide-react";
 import {
-    createService,
+    fetchServiceById,
+    updateService,
     fetchServices,
 } from "@/features/services/serviceSlice";
 
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
 
-export default function AddService() {
+export default function UpdateService() {
+    const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const dispatch = useDispatch();
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -38,15 +40,44 @@ export default function AddService() {
         duration: "",
         category: "Therapy",
         status: "active" as "active" | "inactive",
-        features: [""] as string[],
-        prerequisites: [""] as string[],
-        benefits: [""] as string[],
+        features: [] as string[],
+        prerequisites: [] as string[],
+        benefits: [] as string[],
     });
 
     const [durationError, setDurationError] = useState("");
     const [imageError, setImageError] = useState("");
     const [imagePreview, setImagePreview] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [initialImage, setInitialImage] = useState<string | null>(null);
+
+    const { currentService: service, loading: serviceLoading } = useSelector((state: any) => state.services);
+
+    useEffect(() => {
+        if (id) {
+            dispatch(fetchServiceById(id));
+        }
+    }, [id, dispatch]);
+
+    useEffect(() => {
+        if (service && id === service._id) {
+            setServiceForm({
+                name: service.name || "",
+                description: service.description || "",
+                price: (service.price || service.price === 0) ? service.price.toString() : "",
+                duration: service.duration || "",
+                category: service.category || "Therapy",
+                status: (service.status === 'active' || service.status === 'inactive') 
+                    ? service.status as "active" | "inactive" 
+                    : "active",
+                features: service.features || [],
+                prerequisites: service.prerequisites || [],
+                benefits: service.benefits || [],
+            });
+            setImagePreview(service.image || null);
+            setInitialImage(service.image || null);
+        }
+    }, [service, id]);
 
     /* ================= IMAGE ================= */
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -74,7 +105,7 @@ export default function AddService() {
     };
 
     /* ================= SUBMIT ================= */
-    const handleAddService = async () => {
+    const handleUpdateService = async () => {
         const durationRegex = /^\d+\s*(min|mins|minutes)$/i;
         if (!durationRegex.test(serviceForm.duration)) {
             setDurationError('Duration must be like "60 min"');
@@ -90,16 +121,16 @@ export default function AddService() {
             duration: serviceForm.duration,
             category: serviceForm.category,
             status: serviceForm.status,
-            image: imagePreview || "",
+            image: imagePreview || initialImage || "",
             features: serviceForm.features.filter(Boolean),
             benefits: serviceForm.benefits.filter(Boolean),
             prerequisites: serviceForm.prerequisites.filter(Boolean),
         };
 
-        const res = await dispatch(createService(payload) as any);
+        const res = await dispatch(updateService({ id: id, serviceData: payload }) as any);
         setIsLoading(false);
 
-        if (createService.fulfilled.match(res)) {
+        if (updateService.fulfilled.match(res)) {
             dispatch(fetchServices());
             navigate("/services");
         }
@@ -130,6 +161,19 @@ export default function AddService() {
         setServiceForm({ ...serviceForm, [key]: arr });
     };
 
+    /* ================= LOADING STATE ================= */
+    if (serviceLoading && !service) {
+        return (
+            <div className="p-6">
+                <Card>
+                    <CardContent className="p-6 text-center">
+                        <p className="text-lg font-medium">Loading...</p>
+                    </CardContent>
+                </Card>
+            </div>
+        );
+    }
+
     /* ================= UI ================= */
     return (
         <div className="space-y-6">
@@ -138,7 +182,7 @@ export default function AddService() {
                 <Button variant="outline" size="sm" onClick={() => navigate("/services")}>
                     <ArrowLeft className="w-4 h-4 mr-2" /> Back
                 </Button>
-                <h1 className="text-2xl font-bold">Add New Service</h1>
+                <h1 className="text-2xl font-bold">Update Service</h1>
             </div>
 
             <Card>
@@ -220,48 +264,47 @@ export default function AddService() {
                     </div>
 
                     {/* ===== ARRAY SECTIONS ===== */}
-                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-  {(["features", "benefits", "prerequisites"] as const).map((key) => (
-    <div key={key} className="space-y-2">
-      <div className="flex justify-between items-center">
-        <h4 className="font-medium capitalize">{key}</h4>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => addItem(key)}
-        >
-          Add
-        </Button>
-      </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {(["features", "benefits", "prerequisites"] as const).map((key) => (
+                            <div key={key} className="space-y-2">
+                                <div className="flex justify-between items-center">
+                                    <h4 className="font-medium capitalize">{key}</h4>
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => addItem(key)}
+                                    >
+                                        Add
+                                    </Button>
+                                </div>
 
-      {(serviceForm[key] as string[]).map((item, i) => (
-        <div key={i} className="flex gap-2">
-          <Input
-            value={item}
-            onChange={(e) =>
-              updateArray(key, i, e.target.value)
-            }
-            placeholder={`Enter ${key}`}
-          />
-          <Button
-            size="icon"
-            variant="outline"
-            onClick={() => removeItem(key, i)}
-          >
-            <X className="w-4 h-4" />
-          </Button>
-        </div>
-      ))}
+                                {(serviceForm[key] as string[]).map((item, i) => (
+                                    <div key={i} className="flex gap-2">
+                                        <Input
+                                            value={item}
+                                            onChange={(e) =>
+                                                updateArray(key, i, e.target.value)
+                                            }
+                                            placeholder={`Enter ${key}`}
+                                        />
+                                        <Button
+                                            size="icon"
+                                            variant="outline"
+                                            onClick={() => removeItem(key, i)}
+                                        >
+                                            <X className="w-4 h-4" />
+                                        </Button>
+                                    </div>
+                                ))}
 
-      {(serviceForm[key] as string[]).length === 0 && (
-        <p className="text-sm text-muted-foreground italic text-center">
-          No {key} added
-        </p>
-      )}
-    </div>
-  ))}
-</div>
-
+                                {(serviceForm[key] as string[]).length === 0 && (
+                                    <p className="text-sm text-muted-foreground italic text-center">
+                                        No {key} added
+                                    </p>
+                                )}
+                            </div>
+                        ))}
+                    </div>
 
                     {/* Image */}
                     <div>
@@ -300,16 +343,16 @@ export default function AddService() {
                     {/* Actions */}
                     <div className="flex gap-3">
                         <Button
-                            onClick={handleAddService}
+                            onClick={handleUpdateService}
                             disabled={!serviceForm.name || !serviceForm.price || !!imageError || isLoading}
                         >
                             {isLoading ? (
                                 <>
                                     <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                                    Adding...
+                                    Updating...
                                 </>
                             ) : (
-                                "Add Service"
+                                "Update Service"
                             )}
                         </Button>
                         <Button variant="outline" onClick={() => navigate("/services")} disabled={isLoading}>
