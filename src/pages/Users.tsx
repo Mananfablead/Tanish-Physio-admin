@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchUsers, deleteUser, updateUser } from "@/features/users/userSlice";
 import { RootState } from "@/store";
+import PageLoader from "@/components/PageLoader";
 
 const filters = ["All", "Active Subscription", "Expired", "No Subscription"];
 
@@ -141,15 +142,11 @@ export default function Users() {
 
 
   if (loading && users.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-[60vh]">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mb-4"></div>
-          <p className="text-lg text-muted-foreground">Loading users...</p>
-        </div>
-      </div>
-    );
-  }
+    return <PageLoader text="Loading users..." />;
+}
+
+
+
 
   return (
     <div className="space-y-6">
@@ -174,7 +171,7 @@ export default function Users() {
             className="pl-10"
           />
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
+        {/* <div className="flex items-center gap-2 flex-wrap">
           {filters.map((filter) => (
             <button
               key={filter}
@@ -187,7 +184,7 @@ export default function Users() {
               {filter}
             </button>
           ))}
-        </div>
+        </div> */}
       </div>
 
       <div className="bg-card rounded-lg border border-border overflow-hidden animate-fade-in">
@@ -237,7 +234,7 @@ export default function Users() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => openUserProfile(user.id)}>
+                        <DropdownMenuItem onClick={() => openUserProfile(user._id)}>
                           <Eye className="w-4 h-4 mr-2" />
                           View Profile
                         </DropdownMenuItem>

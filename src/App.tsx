@@ -114,6 +114,8 @@ import Profile from "./pages/Profile";
 import StaffSessions from "./pages/StaffSessions";
 import Services from "./pages/Services";
 import ServiceDetails from "./pages/ServiceDetails";
+import AddService from "./pages/AddService";
+import UpdateService from "./pages/UpdateService";
 import Bookings from "./pages/Bookings";
 import Courses from "./pages/Courses";
 import VideoCallPage from "./pages/VideoCallPage";
@@ -336,6 +338,28 @@ const App = () => (
               <ProtectedRoute>
                 <AdminPage>
                   <ServiceDetails />
+                </AdminPage>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/add-service"
+            element={
+              <ProtectedRoute>
+                <AdminPage>
+                  <AddService />
+                </AdminPage>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/services/:id/edit"
+            element={
+              <ProtectedRoute>
+                <AdminPage>
+                  <UpdateService />
                 </AdminPage>
               </ProtectedRoute>
             }
