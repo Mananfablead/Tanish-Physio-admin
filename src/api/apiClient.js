@@ -35,9 +35,11 @@ export const API = {
   // users
   USERS: "/users",
   USER_BY_ID: "/users/:id",
+  
+  // services
+  SERVICES: "/services",
+  SERVICE_BY_ID: "/services/:id",
 };
-
-// Availability API endpoints
 export const availabilityAPI = {
   // Get all availability
   getAll: () => apiClient.get(API.AVAILABILITY),
@@ -54,8 +56,6 @@ export const availabilityAPI = {
   // Delete availability
   delete: (id) => apiClient.delete(`${API.AVAILABILITY}/${id}`),
 };
-
-// Questionnaire API endpoints
 export const questionnaireAPI = {
   // Get all questionnaires
   getAll: () => apiClient.get('/questionnaires'),
@@ -140,12 +140,28 @@ export const questionnaireAPI = {
   // Activate questionnaire
   activate: (id) => apiClient.put(`/questionnaires/${id}/activate`),
 };
-
-// Subscription API endpoints
 export const subscriptionAPI = {
   // Get all subscription plans
   getPlans: () => apiClient.get(API.SUBSCRIPTIONS),
   
   // Create subscription order
   createOrder: (data) => apiClient.post(API.SUBSCRIPTIONS_CREATE_ORDER, data),
+};
+
+// Service API endpoints
+export const serviceAPI = {
+  // Get all services
+  getAll: () => apiClient.get(API.SERVICES),
+  
+  // Get service by ID
+  getById: (id) => apiClient.get(`${API.SERVICE_BY_ID.replace(':id', id)}`),
+  
+  // Create service
+  create: (data) => apiClient.post(API.SERVICES, data),
+  
+  // Update service
+  update: (id, data) => apiClient.put(`${API.SERVICE_BY_ID.replace(':id', id)}`, data),
+  
+  // Delete service
+  delete: (id) => apiClient.delete(`${API.SERVICE_BY_ID.replace(':id', id)}`),
 };

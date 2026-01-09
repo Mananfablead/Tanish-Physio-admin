@@ -174,7 +174,7 @@ export default function Users() {
             className="pl-10"
           />
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
+        {/* <div className="flex items-center gap-2 flex-wrap">
           {filters.map((filter) => (
             <button
               key={filter}
@@ -187,7 +187,7 @@ export default function Users() {
               {filter}
             </button>
           ))}
-        </div>
+        </div> */}
       </div>
 
       <div className="bg-card rounded-lg border border-border overflow-hidden animate-fade-in">
@@ -237,7 +237,7 @@ export default function Users() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => openUserProfile(user.id)}>
+                        <DropdownMenuItem onClick={() => openUserProfile(user._id)}>
                           <Eye className="w-4 h-4 mr-2" />
                           View Profile
                         </DropdownMenuItem>
