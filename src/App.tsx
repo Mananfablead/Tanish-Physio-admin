@@ -116,6 +116,7 @@ import Services from "./pages/Services";
 import ServiceDetails from "./pages/ServiceDetails";
 import AddService from "./pages/AddService";
 import UpdateService from "./pages/UpdateService";
+import AddSubscription from "./pages/AddSubscription";
 import Bookings from "./pages/Bookings";
 import Courses from "./pages/Courses";
 import VideoCallPage from "./pages/VideoCallPage";
@@ -271,6 +272,17 @@ const App = () => (
               <ProtectedRoute>
                 <AdminPage>
                   <Subscriptions />
+                </AdminPage>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/add-subscription"
+            element={
+              <ProtectedRoute>
+                <AdminPage>
+                  <AddSubscription />
                 </AdminPage>
               </ProtectedRoute>
             }

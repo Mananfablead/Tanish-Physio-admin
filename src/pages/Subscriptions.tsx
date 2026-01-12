@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { Link } from "react-router-dom";
 declare global {
   interface Window {
     Razorpay: any;
@@ -18,7 +19,8 @@ import { useToast } from "@/hooks/use-toast";
 import { fetchSubscriptionPlans, createSubscriptionOrder, fetchAllSubscriptionPlans, createSubscriptionPlan, updateSubscriptionPlan, deleteSubscriptionPlan, fetchSubscriptionPlanById } from "@/features/subscriptions/subscriptionSlice";
 
 interface SubscriptionPlan {
-  _id: string;
+  _id?: string;
+  id?: string;
   name: string;
   price: number;
   description: string;
@@ -27,6 +29,7 @@ interface SubscriptionPlan {
   active?: boolean;
   sessions?: number;
   period?: string;
+  duration?: string;
   autoRenew?: boolean;
   subscribers?: number;
 }
@@ -61,13 +64,12 @@ export default function Subscriptions() {
     features: [""], // Array of features
     duration: "",
     autoRenew: true,
-    planId: "",
   });
 
   // We'll use a separate state for user subscriptions once we have the endpoint
   // For now, we'll focus on admin functionality for subscription plans
   const [userSubscriptions, setUserSubscriptions] = useState<UserSubscription[]>([]);
-  const [isCreatingPlan, setIsCreatingPlan] = useState(false);
+
 
   const filteredSubscriptions = userSubscriptions.filter(
     (sub) =>
@@ -102,7 +104,7 @@ export default function Subscriptions() {
         description: selectedPlan.description || "",
         status: selectedPlan.status || "active",
         features: selectedPlan.features || [""],
-        duration: selectedPlan.period || "",
+        duration: selectedPlan.duration || selectedPlan.period || "",
         autoRenew: selectedPlan.autoRenew !== undefined ? selectedPlan.autoRenew : true,
       });
     } else if (!isEditPlanOpen) {
@@ -248,11 +250,9 @@ export default function Subscriptions() {
     setSelectedPlan(null);
   };
 
-  // Handle save plan (both create and update)
+  // Handle save plan (update only)
   const handleSavePlan = async () => {
     try {
-      let result;
-
       if (selectedPlan) {
         // Update existing plan - format data according to API expectation
         const updateData = {
@@ -260,8 +260,11 @@ export default function Subscriptions() {
           price: planForm.price,
           description: planForm.description,
           status: planForm.status,
+          duration: planForm.duration,
+          features: planForm.features,
+          autoRenew: planForm.autoRenew,
         };
-        result = await dispatch(updateSubscriptionPlan({ id: selectedPlan._id, planData: updateData }));
+        const result = await dispatch(updateSubscriptionPlan({ id: selectedPlan._id || selectedPlan.id, planData: updateData }));
 
         if (updateSubscriptionPlan.fulfilled.match(result)) {
           toast({
@@ -270,28 +273,8 @@ export default function Subscriptions() {
           });
           setIsEditPlanOpen(false);
           resetForm();
+          dispatch(fetchAllSubscriptionPlans());
         }
-        dispatch(fetchAllSubscriptionPlans());
-      } else {
-        // Create new plan - format data according to API expectation
-        const createData = {
-          ...planForm,
-          status: planForm.status,
-        };
-        result = await dispatch(createSubscriptionPlan(createData));
-
-        if (createSubscriptionPlan.fulfilled.match(result)) {
-          toast({
-            title: "Success",
-            description: "Subscription plan created successfully!",
-          });
-          setIsEditPlanOpen(false);
-          resetForm();
-        }
-      }
-
-      if (result.meta.requestStatus !== "fulfilled") {
-        throw new Error(result.payload || 'Operation failed');
       }
     } catch (err: any) {
       console.error('Error saving subscription plan:', err);
@@ -396,12 +379,11 @@ export default function Subscriptions() {
         {/* Plans Tab */}
         <TabsContent value="plans" className="mt-4">
           <div className="flex justify-end mb-4">
-            <Button className="gap-2" onClick={() => {
-              setSelectedPlan(null);
-              setIsEditPlanOpen(true);
-            }}>
-              <Plus className="w-4 h-4" />
-              Create Plan
+            <Button className="gap-2" asChild>
+              <Link to="/add-subscription">
+                <Plus className="w-4 h-4" />
+                Create Plan
+              </Link>
             </Button>
           </div>
 
@@ -463,19 +445,19 @@ export default function Subscriptions() {
                     <Edit2 className="w-4 h-4 mr-1" />
                     Edit
                   </Button>
-                  {/* <Button 
+                  <Button 
                     variant="default" 
                     size="sm"
                     className="flex-1"
-                    onClick={() => handleCreateOrder(plan._id, plan.price)}
+                    onClick={() => handleCreateOrder(plan._id || plan.id, plan.price)}
                     disabled={loading}
                   >
                     Subscribe
-                  </Button> */}
+                  </Button>
                   <Button
                     variant="destructive"
                     size="sm"
-                    onClick={() => handleDeletePlan(plan._id)}
+                    onClick={() => handleDeletePlan(plan._id || plan.id)}
                     disabled={loading}
                   >
                     Delete
@@ -577,25 +559,8 @@ export default function Subscriptions() {
           </DialogHeader>
 
           <div className="space-y-4 mt-4">
-            {!selectedPlan &&
-              <div>
-                <Label htmlFor="plan">Plan</Label>
-                <select
-                  id="planId"
-                  name="planId"   // ✅ MUST match state key
-                  value={planForm.planId}
-                  onChange={handleInputChange}
-                  className="w-full mt-1 px-3 py-2 rounded-md border border-input bg-background"
-                >
-                  <option value="">Select Plan Type</option>
-                  <option value="daily">Daily</option>
-                  <option value="weekly">Weekly</option>
-                  <option value="monthly">Monthly</option>
-                  <option value="quarterly">Quarterly</option>
-                  <option value="yearly">Yearly</option>
-                </select>
 
-              </div>}
+            {!isEditPlanOpen &&
             <div>
               <Label htmlFor="name">Plan Name</Label>
               <Input
@@ -606,7 +571,7 @@ export default function Subscriptions() {
                 onChange={handleInputChange}
                 className="mt-1"
               />
-            </div>
+            </div>}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="price">Price (₹)</Label>
@@ -620,7 +585,7 @@ export default function Subscriptions() {
                   className="mt-1"
                 />
               </div>
-              {!selectedPlan &&
+              {!isEditPlanOpen &&
                 <div>
                   <Label htmlFor="duration">Duration</Label>
                   <select
@@ -639,6 +604,7 @@ export default function Subscriptions() {
             </div>
 
 
+            {!isEditPlanOpen &&
             <div>
               <Label htmlFor="description">Description</Label>
               <textarea
@@ -649,54 +615,54 @@ export default function Subscriptions() {
                 onChange={handleInputChange}
                 className="w-full p-2 border rounded-md mt-1 min-h-[80px]"
               />
-            </div>
+            </div>}
 
-            {!selectedPlan &&
+            {!isEditPlanOpen &&
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <Label>Features</Label>
+                <Button type="button" variant="outline" size="sm" onClick={addFeature}>
+                  Add Feature
+                </Button>
+              </div>
+              <div className="space-y-2">
+                {planForm.features.map((feature, index) => (
+                  <div key={index} className="flex gap-2">
+                    <Input
+                      placeholder={`Feature ${index + 1}`}
+                      value={feature}
+                      onChange={(e) => handleFeatureChange(index, e.target.value)}
+                      className="flex-1"
+                    />
+                    {planForm.features.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={() => removeFeature(index)}
+                        className="h-9 w-9"
+                      >
+                        <span className="text-red-500">-</span>
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>}
+
+            {!isEditPlanOpen &&
+            <div className="flex items-center justify-between">
               <div>
-                <div className="flex items-center justify-between mb-2">
-                  <Label>Features</Label>
-                  <Button type="button" variant="outline" size="sm" onClick={addFeature}>
-                    Add Feature
-                  </Button>
-                </div>
-                <div className="space-y-2">
-                  {planForm.features.map((feature, index) => (
-                    <div key={index} className="flex gap-2">
-                      <Input
-                        placeholder={`Feature ${index + 1}`}
-                        value={feature}
-                        onChange={(e) => handleFeatureChange(index, e.target.value)}
-                        className="flex-1"
-                      />
-                      {planForm.features.length > 1 && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          onClick={() => removeFeature(index)}
-                          className="h-9 w-9"
-                        >
-                          <span className="text-red-500">-</span>
-                        </Button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>}
-
-            {!selectedPlan &&
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label>Auto-Renew</Label>
-                  <p className="text-xs text-muted-foreground">Automatically renew at end of period</p>
-                </div>
-                <Switch
-                  id="autoRenew"
-                  name="autoRenew"
-                  checked={planForm.autoRenew}
-                  onCheckedChange={(checked) => setPlanForm(prev => ({ ...prev, autoRenew: checked }))}
-                />
-              </div>}
+                <Label>Auto-Renew</Label>
+                <p className="text-xs text-muted-foreground">Automatically renew at end of period</p>
+              </div>
+              <Switch
+                id="autoRenew"
+                name="autoRenew"
+                checked={planForm.autoRenew}
+                onCheckedChange={(checked) => setPlanForm(prev => ({ ...prev, autoRenew: checked }))}
+              />
+            </div>}
 
 
             <div className="flex items-center justify-between">
@@ -724,7 +690,7 @@ export default function Subscriptions() {
               Cancel
             </Button>
             <Button onClick={handleSavePlan}>
-              {selectedPlan ? "Save Changes" : "Create Plan"}
+              Save Changes
             </Button>
           </DialogFooter>
         </DialogContent>
