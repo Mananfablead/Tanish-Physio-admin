@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { 
   ChevronLeft, 
@@ -13,20 +13,58 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { mockStaff } from "@/lib/staff-data";
+import { useSelector, useDispatch } from "react-redux";
+import { fetchTherapistById, updateTherapist, deleteTherapist } from "@/features/therapistSlice";
 
 export default function TherapistProfile() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const therapistId = parseInt(id || "0");
-  const therapist = mockStaff.find((t) => t.id === therapistId);
+  const dispatch: any = useDispatch();
+  const { singleTherapist, loading, error } = useSelector((state: any) => state.therapists);
+  
+  useEffect(() => {
+    if (id) {
+      dispatch(fetchTherapistById(id));
+    }
+  }, [dispatch, id]);
+  
+  const therapist = singleTherapist;
 
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({
-    name: therapist?.name || "",
-    email: therapist?.email || "",
-    specialty: therapist?.specialty || ""
+    name: "",
+    email: "",
+    title: "",
+    specialty: "",
+    bio: "",
+    education: "",
+    experience: "",
+    languages: ["English"],
+    sessionTypes: ["1-on-1"],
+    licenseNumber: "",
+    licenseExpiry: "",
+    hourlyRate: 0
   });
+
+  // Update editForm when therapist data changes
+  useEffect(() => {
+    if (therapist) {
+      setEditForm({
+        name: therapist.name || "",
+        email: therapist.email || "",
+        title: therapist.title || "",
+        specialty: therapist.specialty || "",
+        bio: therapist.bio || "",
+        education: therapist.education || "",
+        experience: therapist.experience || "",
+        languages: therapist.languages || ["English"],
+        sessionTypes: therapist.sessionTypes || ["1-on-1"],
+        licenseNumber: therapist.licenseNumber || "",
+        licenseExpiry: therapist.licenseExpiry || "",
+        hourlyRate: therapist.hourlyRate || 0
+      });
+    }
+  }, [therapist]);
 
   if (!therapist) {
     return (
@@ -39,25 +77,49 @@ export default function TherapistProfile() {
     );
   }
 
-  const handleSave = () => {
-    // In a real app, this would make an API call to save changes
-    setIsEditing(false);
-    // Update therapist data in state if needed
+  const handleSave = async () => {
+    try {
+      if (therapist) {
+        await dispatch(updateTherapist({ id: therapist.id, therapistData: editForm }));
+        setIsEditing(false);
+        // Refresh the therapist data
+        dispatch(fetchTherapistById(therapist.id));
+      }
+    } catch (error) {
+      console.error('Failed to save therapist:', error);
+    }
   };
 
   const handleCancel = () => {
     // Reset form to original values
     setEditForm({
-      name: therapist.name,
-      email: therapist.email,
-      specialty: therapist.specialty
+      name: therapist?.name || "",
+      email: therapist?.email || "",
+      title: therapist?.title || "",
+      specialty: therapist?.specialty || "",
+      bio: therapist?.bio || "",
+      education: therapist?.education || "",
+      experience: therapist?.experience || "",
+      languages: therapist?.languages || ["English"],
+      sessionTypes: therapist?.sessionTypes || ["1-on-1"],
+      licenseNumber: therapist?.licenseNumber || "",
+      licenseExpiry: therapist?.licenseExpiry || "",
+      hourlyRate: therapist?.hourlyRate || 0
     });
     setIsEditing(false);
   };
 
-  const handleDelete = () => {
-    // In a real app, this would make an API call to delete the therapist
-    navigate("/therapists");
+  const handleDelete = async () => {
+    if (window.confirm('Are you sure you want to delete this therapist?')) {
+      try {
+        if (therapist) {
+          await dispatch(deleteTherapist(therapist.id));
+          navigate("/therapists");
+        }
+      } catch (error) {
+        console.error('Failed to delete therapist:', error);
+      }
+    }
   };
 
   return (
@@ -180,12 +242,158 @@ export default function TherapistProfile() {
                   <div>
                     <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Session Types</p>
                     <div className="flex gap-1 mt-2">
-                      {therapist.sessionTypes.map((type, index) => (
+                      {(therapist.sessionTypes || []).map((type, index) => (
                         <span key={index} className="status-badge bg-muted text-muted-foreground">
                           {type}
                         </span>
                       ))}
                     </div>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                    <Shield className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Title</p>
+                    {isEditing ? (
+                      <input
+                        value={editForm.title}
+                        onChange={(e) => setEditForm({...editForm, title: e.target.value})}
+                        className="w-full mt-1 px-3 py-2 border rounded-md"
+                      />
+                    ) : (
+                      <p className="text-sm font-semibold text-foreground">{therapist.title}</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                    <Shield className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Bio</p>
+                    {isEditing ? (
+                      <textarea
+                        value={editForm.bio}
+                        onChange={(e) => setEditForm({...editForm, bio: e.target.value})}
+                        className="w-full mt-1 px-3 py-2 border rounded-md"
+                      />
+                    ) : (
+                      <p className="text-sm font-semibold text-foreground">{therapist.bio}</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                    <Shield className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Education</p>
+                    {isEditing ? (
+                      <input
+                        value={editForm.education}
+                        onChange={(e) => setEditForm({...editForm, education: e.target.value})}
+                        className="w-full mt-1 px-3 py-2 border rounded-md"
+                      />
+                    ) : (
+                      <p className="text-sm font-semibold text-foreground">{therapist.education}</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                    <Shield className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Experience</p>
+                    {isEditing ? (
+                      <input
+                        value={editForm.experience}
+                        onChange={(e) => setEditForm({...editForm, experience: e.target.value})}
+                        className="w-full mt-1 px-3 py-2 border rounded-md"
+                      />
+                    ) : (
+                      <p className="text-sm font-semibold text-foreground">{therapist.experience}</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                    <Shield className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">License Number</p>
+                    {isEditing ? (
+                      <input
+                        value={editForm.licenseNumber}
+                        onChange={(e) => setEditForm({...editForm, licenseNumber: e.target.value})}
+                        className="w-full mt-1 px-3 py-2 border rounded-md"
+                      />
+                    ) : (
+                      <p className="text-sm font-semibold text-foreground">{therapist.licenseNumber}</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                    <Shield className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">License Expiry</p>
+                    {isEditing ? (
+                      <input
+                        type="date"
+                        value={editForm.licenseExpiry}
+                        onChange={(e) => setEditForm({...editForm, licenseExpiry: e.target.value})}
+                        className="w-full mt-1 px-3 py-2 border rounded-md"
+                      />
+                    ) : (
+                      <p className="text-sm font-semibold text-foreground">{therapist.licenseExpiry}</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                    <Shield className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Hourly Rate</p>
+                    {isEditing ? (
+                      <input
+                        type="number"
+                        value={editForm.hourlyRate || ''}
+                        onChange={(e) => setEditForm({...editForm, hourlyRate: Number(e.target.value)})}
+                        className="w-full mt-1 px-3 py-2 border rounded-md"
+                      />
+                    ) : (
+                      <p className="text-sm font-semibold text-foreground">₹{therapist.hourlyRate}</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                    <Shield className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Languages</p>
+                    {isEditing ? (
+                      <input
+                        value={editForm.languages?.join(', ') || ''}
+                        onChange={(e) => setEditForm({...editForm, languages: e.target.value.split(',').map(lang => lang.trim())})}
+                        className="w-full mt-1 px-3 py-2 border rounded-md"
+                      />
+                    ) : (
+                      <p className="text-sm font-semibold text-foreground">{therapist.languages?.join(', ')}</p>
+                    )}
                   </div>
                 </div>
               </div>

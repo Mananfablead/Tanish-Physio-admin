@@ -13,46 +13,85 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
-
-import { mockStaff, mockApplications, mockSessionHistory } from "@/lib/staff-data";
+import { useSelector, useDispatch } from "react-redux";
+import { fetchTherapists, deleteTherapist, createTherapist } from "@/features/therapistSlice";
 
 export default function Staff() {
   const navigate = useNavigate();
+  const dispatch: any = useDispatch();
+  const { list: staffMembers, loading, error } = useSelector((state: any) => state.therapists);
+
+  console.log("staffMembers", staffMembers);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedApplication, setSelectedApplication] = useState<typeof mockApplications[0] | null>(null);
+  const [selectedApplication, setSelectedApplication] = useState<any | null>(null);
   const [isApplicationOpen, setIsApplicationOpen] = useState(false);
   const [isAddStaffOpen, setIsAddStaffOpen] = useState(false);
   const [isViewSessionsOpen, setIsViewSessionsOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
-  const [staffMembers, setStaffMembers] = useState(mockStaff);
-  const [addForm, setAddForm] = useState({ name: "", email: "", specialty: "", sessionTypes: ["1-on-1"] });
+  const [addForm, setAddForm] = useState({ 
+    name: "", 
+    email: "", 
+    title: "", 
+    specialty: "", 
+    bio: "", 
+    education: "", 
+    experience: "",
+    languages: ["English"],
+    sessionTypes: ["1-on-1"],
+    licenseNumber: "",
+    licenseExpiry: "",
+    hourlyRate: 0
+  });
+
+  useEffect(() => {
+    dispatch(fetchTherapists());
+  }, [dispatch]);
 
 
 
   const filteredStaff = staffMembers.filter((staff) =>
-    staff.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    staff.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    staff.specialty.toLowerCase().includes(searchQuery.toLowerCase())
+    staff.name?.toLowerCase()?.includes(searchQuery?.toLowerCase()) ||
+    staff.email?.toLowerCase()?.includes(searchQuery?.toLowerCase()) ||
+    staff.specialty?.toLowerCase()?.includes(searchQuery?.toLowerCase())
   );
 
-  const pendingApplications = mockApplications.filter(app => app.status === "pending");
+  const pendingApplications = [];// Placeholder for future implementation
 
-  const handleAddStaff = () => {
-    const newStaff = {
-      id: staffMembers.length + 1,
-      ...addForm,
-      rating: 0,
-      sessions: 0,
-      status: "active" as const,
-      sessionTypes: addForm.sessionTypes
-    };
-    setStaffMembers([...staffMembers, newStaff]);
-    setIsAddStaffOpen(false);
-    setAddForm({ name: "", email: "", specialty: "", sessionTypes: ["1-on-1"] });
+  const handleAddStaff = async () => {
+    try {
+      await dispatch(createTherapist(addForm));
+      setIsAddStaffOpen(false);
+      setAddForm({ 
+        name: "", 
+        email: "", 
+        title: "", 
+        specialty: "", 
+        bio: "", 
+        education: "", 
+        experience: "",
+        languages: ["English"],
+        sessionTypes: ["1-on-1"],
+        licenseNumber: "",
+        licenseExpiry: "",
+        hourlyRate: 0
+      });
+      // Refresh the list
+      dispatch(fetchTherapists());
+    } catch (error) {
+      console.error('Failed to add staff:', error);
+    }
   };
 
-  const handleDeleteStaff = (id: number) => {
-    setStaffMembers(staffMembers.filter(s => s.id !== id));
+  const handleDeleteStaff = async (id: number) => {
+    if (window.confirm('Are you sure you want to delete this therapist?')) {
+      try {
+        await dispatch(deleteTherapist(id));
+        // Refresh the list
+        dispatch(fetchTherapists());
+      } catch (error) {
+        console.error('Failed to delete staff:', error);
+      }
+    }
   };
 
   return (
@@ -103,7 +142,7 @@ export default function Staff() {
               </thead>
               <tbody>
                 {filteredStaff.map((staff) => (
-                  <tr key={staff.id} className="cursor-pointer" onClick={() => navigate(`/therapists/${staff.id}`)}>
+                  <tr key={staff._id} className="cursor-pointer" onClick={() => navigate(`/therapists/${staff._id}`)}>
                     <td>
                       <div>
                         <p className="font-medium">{staff.name}</p>
@@ -140,12 +179,12 @@ export default function Staff() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => navigate(`/therapists/${staff.id}`)}>
+                          <DropdownMenuItem onClick={() => navigate(`/therapists/${staff._id}`)}>
                             <Eye className="w-4 h-4 mr-2" />
                             View Profile
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => {
-                            navigate(`/staff/sessions/${staff.id}`);
+                            navigate(`/staff/sessions/${staff._id}`);
                           }}>
                             <Video className="w-4 h-4 mr-2" />
                             View Sessions
@@ -183,45 +222,132 @@ export default function Staff() {
 
 
       {/* Add Staff Modal */}
-      <Dialog open={isAddStaffOpen} onOpenChange={setIsAddStaffOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Add New Staff Member</DialogTitle>
-            <DialogDescription>Fill in the details to add a new staff member.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Full Name</label>
-              <Input
-                placeholder="Dr. John Smith"
-                value={addForm.name}
-                onChange={(e) => setAddForm({ ...addForm, name: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Email Address</label>
-              <Input
-                type="email"
-                placeholder="john@example.com"
-                value={addForm.email}
-                onChange={(e) => setAddForm({ ...addForm, email: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Specialty</label>
-              <Input
-                placeholder="e.g. Physiotherapy"
-                value={addForm.specialty}
-                onChange={(e) => setAddForm({ ...addForm, specialty: e.target.value })}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAddStaffOpen(false)}>Cancel</Button>
-            <Button onClick={handleAddStaff}>Add Staff</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+   <Dialog open={isAddStaffOpen} onOpenChange={setIsAddStaffOpen}>
+  <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden">
+    <DialogHeader>
+      <DialogTitle>Add New Staff Member</DialogTitle>
+      <DialogDescription>
+        Fill in the details to add a new staff member.
+      </DialogDescription>
+    </DialogHeader>
+
+    {/* SCROLLABLE FORM */}
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4 max-h-[60vh] overflow-y-auto pr-2">
+      
+      <div className="space-y-2">
+        <label className="text-sm font-medium">Full Name</label>
+        <Input
+          placeholder="Dr. John Smith"
+          value={addForm.name}
+          onChange={(e) => setAddForm({ ...addForm, name: e.target.value })}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <label className="text-sm font-medium">Email Address</label>
+        <Input
+          type="email"
+          placeholder="john@example.com"
+          value={addForm.email}
+          onChange={(e) => setAddForm({ ...addForm, email: e.target.value })}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <label className="text-sm font-medium">Title</label>
+        <Input
+          placeholder="Sports Injury Specialist"
+          value={addForm.title}
+          onChange={(e) => setAddForm({ ...addForm, title: e.target.value })}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <label className="text-sm font-medium">Specialty</label>
+        <Input
+          placeholder="Physiotherapy"
+          value={addForm.specialty}
+          onChange={(e) => setAddForm({ ...addForm, specialty: e.target.value })}
+        />
+      </div>
+
+      <div className="space-y-2 md:col-span-2">
+        <label className="text-sm font-medium">Bio</label>
+        <Textarea
+          placeholder="Experienced orthopedic therapist"
+          value={addForm.bio}
+          onChange={(e) => setAddForm({ ...addForm, bio: e.target.value })}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <label className="text-sm font-medium">Education</label>
+        <Input
+          placeholder="MD in Orthopedics"
+          value={addForm.education}
+          onChange={(e) => setAddForm({ ...addForm, education: e.target.value })}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <label className="text-sm font-medium">Experience</label>
+        <Input
+          placeholder="5 years"
+          value={addForm.experience}
+          onChange={(e) => setAddForm({ ...addForm, experience: e.target.value })}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <label className="text-sm font-medium">License Number</label>
+        <Input
+          placeholder="LIC123456"
+          value={addForm.licenseNumber}
+          onChange={(e) =>
+            setAddForm({ ...addForm, licenseNumber: e.target.value })
+          }
+        />
+      </div>
+
+      <div className="space-y-2">
+        <label className="text-sm font-medium">License Expiry</label>
+        <Input
+          type="date"
+          value={addForm.licenseExpiry}
+          onChange={(e) =>
+            setAddForm({ ...addForm, licenseExpiry: e.target.value })
+          }
+        />
+      </div>
+
+      <div className="space-y-2">
+        <label className="text-sm font-medium">Hourly Rate</label>
+        <Input
+          type="number"
+          placeholder="1000"
+          value={addForm.hourlyRate || ""}
+          onChange={(e) =>
+            setAddForm({
+              ...addForm,
+              hourlyRate: Number(e.target.value),
+            })
+          }
+        />
+      </div>
+
+    </div>
+
+    <DialogFooter className="pt-2">
+      <Button size="sm" variant="outline" onClick={() => setIsAddStaffOpen(false)}>
+        Cancel
+      </Button>
+      <Button size="sm" onClick={handleAddStaff}>
+        Add Staff
+      </Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
+
 
       {/* Application Review Modal */}
       <Dialog open={isApplicationOpen} onOpenChange={setIsApplicationOpen}>
@@ -318,53 +444,11 @@ export default function Staff() {
                   </tr>
                 </thead>
                 <tbody>
-                  {mockSessionHistory.map((session) => (
-                    <tr key={session.id}>
-                      <td>
-                        <div className="font-medium">{session.patient}</div>
-                      </td>
-                      <td>
-                        <div className="text-sm">{session.date}</div>
-                        <div className="text-xs text-muted-foreground">{session.time}</div>
-                      </td>
-                      <td>
-                        <span className="status-badge bg-muted text-muted-foreground">{session.type}</span>
-                      </td>
-                      <td>
-                        <span className={cn(
-                          "status-badge",
-                          session.status === "completed" ? "status-active" :
-                          session.status === "cancelled" ? "status-pending" :
-                          "status-inactive"
-                        )}>
-                          {session.status}
-                        </span>
-                      </td>
-                      <td>
-                        <p className="text-xs max-w-[150px] truncate" title={session.feedback}>
-                          {session.feedback}
-                        </p>
-                      </td>
-                      <td>
-                        {session.rating > 0 ? (
-                          <div className="flex items-center gap-1">
-                            <Star className="w-3 h-3 text-warning fill-warning" />
-                            <span className="text-sm font-medium">{session.rating}</span>
-                          </div>
-                        ) : "-"}
-                      </td>
-                      <td>
-                        <span className={cn(
-                          "font-medium",
-                          parseInt(session.performance) >= 90 ? "text-success" :
-                          parseInt(session.performance) >= 70 ? "text-warning" :
-                          "text-muted-foreground"
-                        )}>
-                          {session.performance}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
+                  <tr>
+                    <td colSpan={7} className="text-center py-8 text-muted-foreground">
+                      Session history data will be available in the therapist's profile
+                    </td>
+                  </tr>
                 </tbody>
               </table>
             </div>
