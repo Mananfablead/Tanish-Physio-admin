@@ -27,7 +27,6 @@ export default function Sessions() {
   const [activeTab, setActiveTab] = useState("upcoming");
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false);
-  const [isAcceptModalOpen, setIsAcceptModalOpen] = useState(false);
   const [isCreateSessionModalOpen, setIsCreateSessionModalOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [selectedSession, setSelectedSession] = useState<any>(null);
@@ -38,12 +37,11 @@ export default function Sessions() {
 
   // State for creating a new session
   const [newSession, setNewSession] = useState({
-    user: "",
-    therapist: "",
+    bookingId: "",
     date: "",
     time: "",
     type: "1-on-1",
-    duration: "60 min",
+    status: "scheduled",
     notes: ""
   });
 
@@ -85,8 +83,8 @@ export default function Sessions() {
 
   const filteredSessions = getCurrentSessions().filter(
     (session) =>
-      session.user.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      session.therapist.toLowerCase().includes(searchQuery.toLowerCase())
+      (session.bookingId || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (session.type || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   // Function to handle creating a new session
@@ -95,12 +93,11 @@ export default function Sessions() {
       await dispatch(createSession(newSession));
       setIsCreateSessionModalOpen(false);
       setNewSession({
-        user: "",
-        therapist: "",
+        bookingId: "",
         date: "",
         time: "",
         type: "1-on-1",
-        duration: "60 min",
+        status: "scheduled",
         notes: ""
       });
       // Refresh sessions list
@@ -210,7 +207,7 @@ export default function Sessions() {
           <div className="relative max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Search by user or therapist..."
+              placeholder="Search by booking ID or session type..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"
@@ -225,13 +222,13 @@ export default function Sessions() {
               <table className="data-table">
                 <thead>
                   <tr>
-                    <th>User</th>
-                    <th>Therapist</th>
+                    <th>Booking ID</th>
+                    <th>Session Type</th>
                     <th>Date & Time</th>
-                    <th>Type</th>
+                    <th>Format</th>
                     <th>Status</th>
-                    {(activeTab === "live" || activeTab === "completed") && <th>Duration</th>}
-                    {activeTab === "cancelled" && <th>Reason</th>}
+                    {(activeTab === "live" || activeTab === "completed") && <th>Notes</th>}
+                    {activeTab === "cancelled" && <th>Notes</th>}
                     <th className="w-12"></th>
                   </tr>
                 </thead>
@@ -243,7 +240,7 @@ export default function Sessions() {
                           <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
                             <User className="w-4 h-4 text-muted-foreground" />
                           </div>
-                          <span className="font-medium">{session.user}</span>
+                          <span className="font-medium">{session.bookingId || 'N/A'}</span>
                         </div>
                       </td>
                       <td>
@@ -251,7 +248,7 @@ export default function Sessions() {
                           <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
                             <UserCog className="w-4 h-4 text-primary" />
                           </div>
-                          <span>{session.therapist}</span>
+                          <span>{session.type}</span>
                         </div>
                       </td>
                       <td>
@@ -271,10 +268,10 @@ export default function Sessions() {
                         </span>
                       </td>
                       {(activeTab === "live" || activeTab === "completed") && (
-                        <td className="text-muted-foreground">{session.duration}</td>
+                        <td className="text-muted-foreground">{session.notes || 'N/A'}</td>
                       )}
                       {activeTab === "cancelled" && (
-                        <td className="text-muted-foreground">{session.reason}</td>
+                        <td className="text-muted-foreground">{session.notes || 'N/A'}</td>
                       )}
                       <td>
                         <DropdownMenu>
@@ -284,26 +281,8 @@ export default function Sessions() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            {activeTab === "completed" && (
-                              <DropdownMenuItem onClick={() => {
-                                // Navigate to the session recordings page for the specific user
-                                navigate(`/session-recordings/${selectedSession.user.replace(/\s+/g, '-').toLowerCase()}`);
-                              }}>
-                                <Eye className="w-4 h-4 mr-2" />
-                                View Recording
-                              </DropdownMenuItem>
-                            )}
                             {activeTab === "upcoming" && (
                               <>
-                                {session.status === "pending" && (
-                                  <DropdownMenuItem onClick={() => {
-                                    setSelectedSession(session);
-                                    setIsAcceptModalOpen(true);
-                                  }}>
-                                    <Play className="w-4 h-4 mr-2" />
-                                    Accept Session
-                                  </DropdownMenuItem>
-                                )}
                                 <DropdownMenuItem onClick={() => {
                                   setSelectedSession(session);
                                   setIsRescheduleModalOpen(true);
@@ -336,7 +315,7 @@ export default function Sessions() {
                               <>
                                 <DropdownMenuItem onClick={() => {
                                   if (session.joinLink) {
-                                    // Extract session ID from the mock join link
+                                    // Extract session ID from the join link
                                     const sessionId = session.joinLink.split('/').pop() || session.id.toString();
                                     // Open the video call page in a new tab
                                     window.open(`/video-call/${sessionId}`, '_blank', 'width=1200,height=800');
@@ -360,6 +339,17 @@ export default function Sessions() {
                                 }}>
                                   <Copy className="w-4 h-4 mr-2" />
                                   Copy Join Link
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                            {activeTab === "completed" && (
+                               <>
+                                <DropdownMenuItem onClick={() => {
+                                  // Navigate to the session recordings page
+                                  navigate(`/session-recordings/${session.bookingId || session.id}`);
+                                }}>
+                                  <Eye className="w-4 h-4 mr-2" />
+                                  View Recording
                                 </DropdownMenuItem>
                               </>
                             )}
@@ -404,12 +394,12 @@ export default function Sessions() {
             <div className="space-y-4 mt-4">
               <div className="p-3 rounded-lg bg-muted/50">
                 <p className="text-sm">
-                  <span className="text-muted-foreground">User:</span>{" "}
-                  <span className="font-medium">{selectedSession.user}</span>
+                  <span className="text-muted-foreground">Booking ID:</span>{" "}
+                  <span className="font-medium">{selectedSession.bookingId || 'N/A'}</span>
                 </p>
                 <p className="text-sm">
-                  <span className="text-muted-foreground">Therapist:</span>{" "}
-                  <span className="font-medium">{selectedSession.therapist}</span>
+                  <span className="text-muted-foreground">Type:</span>{" "}
+                  <span className="font-medium">{selectedSession.type}</span>
                 </p>
                 <p className="text-sm">
                   <span className="text-muted-foreground">Scheduled:</span>{" "}
@@ -435,7 +425,7 @@ export default function Sessions() {
             </Button>
             <Button variant="destructive" onClick={async () => {
               try {
-                await dispatch(updateSession({ id: selectedSession.id, sessionData: { status: 'cancelled', reason: cancelReason } }));
+                await dispatch(updateSession({ id: selectedSession.id, sessionData: { status: 'cancelled', notes: cancelReason } }));
                 setIsCancelModalOpen(false);
                 setCancelReason('');
                 dispatch(fetchSessions());
@@ -444,60 +434,6 @@ export default function Sessions() {
               }
             }}>
               Cancel Session
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Accept Session Modal */}
-      <Dialog open={isAcceptModalOpen} onOpenChange={setIsAcceptModalOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Accept Session Request</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to accept this session request? The client will be notified and the session will be scheduled.
-            </DialogDescription>
-          </DialogHeader>
-          
-          {selectedSession && (
-            <div className="space-y-4 mt-4">
-              <div className="p-3 rounded-lg bg-muted/50">
-                <p className="text-sm">
-                  <span className="text-muted-foreground">User:</span>{" "}
-                  <span className="font-medium">{selectedSession.user}</span>
-                </p>
-                <p className="text-sm">
-                  <span className="text-muted-foreground">Therapist:</span>{" "}
-                  <span className="font-medium">{selectedSession.therapist}</span>
-                </p>
-                <p className="text-sm">
-                  <span className="text-muted-foreground">Date:</span>{" "}
-                  <span className="font-medium">{selectedSession.date}</span>
-                </p>
-                <p className="text-sm">
-                  <span className="text-muted-foreground">Time:</span>{" "}
-                  <span className="font-medium">{selectedSession.time}</span>
-                </p>
-              </div>
-            </div>
-          )}
-          
-          <DialogFooter className="mt-4">
-            <Button variant="outline" onClick={() => setIsAcceptModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={async () => {
-              try {
-                await dispatch(updateSession({ id: selectedSession.id, sessionData: { status: 'scheduled' } }));
-                setIsAcceptModalOpen(false);
-                dispatch(fetchSessions());
-                // After accepting, navigate to the live sessions page to join
-                navigate('/live-sessions');
-              } catch (error) {
-                console.error('Failed to accept session:', error);
-              }
-            }}>
-              Accept Session
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -516,6 +452,10 @@ export default function Sessions() {
           {selectedSession && (
             <div className="space-y-4 mt-4">
               <div className="p-3 rounded-lg bg-muted/50">
+                <p className="text-sm">
+                  <span className="text-muted-foreground">Booking ID:</span>{" "}
+                  <span className="font-medium">{selectedSession.bookingId || 'N/A'}</span>
+                </p>
                 <p className="text-sm">
                   <span className="text-muted-foreground">Current:</span>{" "}
                   <span className="font-medium">{selectedSession.date} at {selectedSession.time}</span>
@@ -592,35 +532,12 @@ export default function Sessions() {
           <div className="space-y-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">User</label>
-                <Select value={newSession.user} onValueChange={(value) => setNewSession({...newSession, user: value})}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a user" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1">John Doe</SelectItem>
-                    <SelectItem value="2">Emily Parker</SelectItem>
-                    <SelectItem value="3">Mike Wilson</SelectItem>
-                    <SelectItem value="4">Anna Smith</SelectItem>
-                    <SelectItem value="5">Robert Brown</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Therapist</label>
-                <Select value={newSession.therapist} onValueChange={(value) => setNewSession({...newSession, therapist: value})}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a therapist" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1">Dr. Sarah Johnson</SelectItem>
-                    <SelectItem value="2">Dr. Michael Chen</SelectItem>
-                    <SelectItem value="3">Dr. Lisa Williams</SelectItem>
-                    <SelectItem value="4">Dr. James Brown</SelectItem>
-                    <SelectItem value="5">Dr. Emma Davis</SelectItem>
-                  </SelectContent>
-                </Select>
+                <label className="text-sm font-medium">Booking ID</label>
+                <Input
+                  placeholder="Enter booking ID"
+                  value={newSession.bookingId}
+                  onChange={(e) => setNewSession({...newSession, bookingId: e.target.value})}
+                />
               </div>
               
               <div className="space-y-2">
@@ -637,16 +554,16 @@ export default function Sessions() {
               </div>
               
               <div className="space-y-2">
-                <label className="text-sm font-medium">Duration</label>
-                <Select value={newSession.duration} onValueChange={(value) => setNewSession({...newSession, duration: value})}>
+                <label className="text-sm font-medium">Status</label>
+                <Select value={newSession.status} onValueChange={(value) => setNewSession({...newSession, status: value})}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="30 min">30 min</SelectItem>
-                    <SelectItem value="45 min">45 min</SelectItem>
-                    <SelectItem value="60 min">60 min</SelectItem>
-                    <SelectItem value="90 min">90 min</SelectItem>
+                    <SelectItem value="scheduled">Scheduled</SelectItem>
+                    <SelectItem value="live">Live</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Plus, Edit2, ToggleLeft, ToggleRight, Search, ChevronLeft, ChevronRight, CreditCard, Users, TrendingUp, Clock } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Plus, Edit2, ToggleLeft, ToggleRight, Search, ChevronLeft, ChevronRight, CreditCard, Users, TrendingUp, Clock, Eye, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -17,6 +18,7 @@ declare global {
 
 import { useToast } from "@/hooks/use-toast";
 import { fetchSubscriptionPlans, createSubscriptionOrder, fetchAllSubscriptionPlans, createSubscriptionPlan, updateSubscriptionPlan, deleteSubscriptionPlan, fetchSubscriptionPlanById } from "@/features/subscriptions/subscriptionSlice";
+import PageLoader from "@/components/PageLoader";
 
 interface SubscriptionPlan {
   _id?: string;
@@ -47,6 +49,7 @@ interface UserSubscription {
 
 export default function Subscriptions() {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { plans, loading, error, order } = useSelector((state: any) => state.subscriptions);
   const { toast } = useToast();
 
@@ -113,39 +116,7 @@ export default function Subscriptions() {
     }
   }, [selectedPlan, isEditPlanOpen]);
 
-  const handleCreateOrder = async (planId: string, amount: number) => {
-    try {
-      const result = await dispatch(createSubscriptionOrder({ planId, amount }));
 
-      if (createSubscriptionOrder.fulfilled.match(result)) {
-        const orderData = result.payload;
-
-        // Show success toast
-        toast({
-          title: "Order Created",
-          description: `Subscription order created successfully for ₹{planId} plan!`,
-        });
-
-        // In a real implementation, you would initialize Razorpay here
-        // This is a simplified version
-        if (orderData && orderData.orderId) {
-          console.log('Razorpay order created:', orderData);
-
-          // Initialize Razorpay payment
-          initializeRazorpayPayment(orderData);
-        }
-      } else if (createSubscriptionOrder.rejected.match(result)) {
-        throw new Error(result.payload || 'Failed to create subscription order');
-      }
-    } catch (err: any) {
-      console.error('Error creating subscription order:', err);
-      toast({
-        title: "Error",
-        description: err.message || 'Failed to create subscription order',
-        variant: "destructive",
-      });
-    }
-  };
 
   const initializeRazorpayPayment = (orderData: any) => {
     // This function would initialize the Razorpay checkout
@@ -288,8 +259,7 @@ export default function Subscriptions() {
 
   // Handle delete plan
   const handleDeletePlan = async (planId: string) => {
-    if (window.confirm("Are you sure you want to delete this subscription plan?")) {
-      try {
+    try {
         const result = await dispatch(deleteSubscriptionPlan(planId));
 
         if (deleteSubscriptionPlan.fulfilled.match(result)) {
@@ -297,6 +267,7 @@ export default function Subscriptions() {
             title: "Success",
             description: "Subscription plan deleted successfully!",
           });
+          dispatch(fetchAllSubscriptionPlans());
         } else {
           throw new Error(result.payload || 'Failed to delete subscription plan');
         }
@@ -308,9 +279,10 @@ export default function Subscriptions() {
           variant: "destructive",
         });
       }
-    }
   };
-
+  if (loading || !plans) {
+    return <PageLoader text="Loading plans..." />;
+  }
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -322,7 +294,7 @@ export default function Subscriptions() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
         <div className="stat-card">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-primary/10">
@@ -356,44 +328,36 @@ export default function Subscriptions() {
             </div>
           </div>
         </div>
-        <div className="stat-card">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-warning/10">
-              <Clock className="w-5 h-5 text-warning" />
-            </div>
-            <div>
-              <p className="text-2xl font-semibold">68%</p>
-              <p className="text-sm text-muted-foreground">Renewal Rate</p>
-            </div>
-          </div>
-        </div>
+
       </div>
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="plans">Subscription Plans</TabsTrigger>
-          <TabsTrigger value="subscriptions">User Subscriptions</TabsTrigger>
-        </TabsList>
+        <div className="flex items-center justify-between mb-4">
+          <TabsList>
+            <TabsTrigger value="plans">Subscription Plans</TabsTrigger>
+            <TabsTrigger value="subscriptions">User Subscriptions</TabsTrigger>
+          </TabsList>
+
+          <Button className="gap-2" asChild>
+            <Link to="/add-subscription">
+              <Plus className="w-4 h-4" />
+              Create Plan
+            </Link>
+          </Button>
+        </div>
 
         {/* Plans Tab */}
         <TabsContent value="plans" className="mt-4">
-          <div className="flex justify-end mb-4">
-            <Button className="gap-2" asChild>
-              <Link to="/add-subscription">
-                <Plus className="w-4 h-4" />
-                Create Plan
-              </Link>
-            </Button>
-          </div>
+
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {plans.map((plan) => (
+
               <div
-                key={plan.id}
                 className={cn(
                   "bg-card rounded-lg border p-5 transition-all duration-200 animate-fade-in",
-                  true ? "border-border hover:border-primary/30 hover:shadow-md" : "border-border opacity-60"
+                  "border-border hover:border-primary/30 hover:shadow-md"
                 )}
               >
                 <div className="flex items-start justify-between mb-4">
@@ -432,38 +396,48 @@ export default function Subscriptions() {
                   </div>
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex gap-2 justify-end">
+              
+
+                  {/* VIEW */}
                   <Button
                     variant="outline"
                     size="sm"
-                    className="flex-1"
-                    onClick={() => {
+                    asChild
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Link to={`/subscriptions/${plan._id || plan.id}`}>
+                      <Eye className="w-4 h-4" />
+                    </Link>
+                  </Button>
+    {/* EDIT */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
                       setSelectedPlan(plan);
                       setIsEditPlanOpen(true);
                     }}
                   >
-                    <Edit2 className="w-4 h-4 mr-1" />
-                    Edit
+                    <Edit2 className="w-4 h-4" />
                   </Button>
-                  <Button 
-                    variant="default" 
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => handleCreateOrder(plan._id || plan.id, plan.price)}
-                    disabled={loading}
-                  >
-                    Subscribe
-                  </Button>
+                  {/* DELETE */}
                   <Button
                     variant="destructive"
                     size="sm"
-                    onClick={() => handleDeletePlan(plan._id || plan.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeletePlan(plan._id || plan.id);
+                    }}
                     disabled={loading}
                   >
-                    Delete
+                    <Trash2 className="w-4 h-4" />
                   </Button>
                 </div>
+
               </div>
+
             ))}
           </div>
         </TabsContent>
@@ -560,7 +534,7 @@ export default function Subscriptions() {
 
           <div className="space-y-4 mt-4">
 
-            {!isEditPlanOpen &&
+
             <div>
               <Label htmlFor="name">Plan Name</Label>
               <Input
@@ -571,7 +545,7 @@ export default function Subscriptions() {
                 onChange={handleInputChange}
                 className="mt-1"
               />
-            </div>}
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="price">Price (₹)</Label>
@@ -604,7 +578,6 @@ export default function Subscriptions() {
             </div>
 
 
-            {!isEditPlanOpen &&
             <div>
               <Label htmlFor="description">Description</Label>
               <textarea
@@ -615,54 +588,54 @@ export default function Subscriptions() {
                 onChange={handleInputChange}
                 className="w-full p-2 border rounded-md mt-1 min-h-[80px]"
               />
-            </div>}
+            </div>
 
             {!isEditPlanOpen &&
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <Label>Features</Label>
-                <Button type="button" variant="outline" size="sm" onClick={addFeature}>
-                  Add Feature
-                </Button>
-              </div>
-              <div className="space-y-2">
-                {planForm.features.map((feature, index) => (
-                  <div key={index} className="flex gap-2">
-                    <Input
-                      placeholder={`Feature ${index + 1}`}
-                      value={feature}
-                      onChange={(e) => handleFeatureChange(index, e.target.value)}
-                      className="flex-1"
-                    />
-                    {planForm.features.length > 1 && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        onClick={() => removeFeature(index)}
-                        className="h-9 w-9"
-                      >
-                        <span className="text-red-500">-</span>
-                      </Button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>}
-
-            {!isEditPlanOpen &&
-            <div className="flex items-center justify-between">
               <div>
-                <Label>Auto-Renew</Label>
-                <p className="text-xs text-muted-foreground">Automatically renew at end of period</p>
-              </div>
-              <Switch
-                id="autoRenew"
-                name="autoRenew"
-                checked={planForm.autoRenew}
-                onCheckedChange={(checked) => setPlanForm(prev => ({ ...prev, autoRenew: checked }))}
-              />
-            </div>}
+                <div className="flex items-center justify-between mb-2">
+                  <Label>Features</Label>
+                  <Button type="button" variant="outline" size="sm" onClick={addFeature}>
+                    Add Feature
+                  </Button>
+                </div>
+                <div className="space-y-2">
+                  {planForm.features.map((feature, index) => (
+                    <div key={index} className="flex gap-2">
+                      <Input
+                        placeholder={`Feature ${index + 1}`}
+                        value={feature}
+                        onChange={(e) => handleFeatureChange(index, e.target.value)}
+                        className="flex-1"
+                      />
+                      {planForm.features.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          onClick={() => removeFeature(index)}
+                          className="h-9 w-9"
+                        >
+                          <span className="text-red-500">-</span>
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>}
+
+            {!isEditPlanOpen &&
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label>Auto-Renew</Label>
+                  <p className="text-xs text-muted-foreground">Automatically renew at end of period</p>
+                </div>
+                <Switch
+                  id="autoRenew"
+                  name="autoRenew"
+                  checked={planForm.autoRenew}
+                  onCheckedChange={(checked) => setPlanForm(prev => ({ ...prev, autoRenew: checked }))}
+                />
+              </div>}
 
 
             <div className="flex items-center justify-between">

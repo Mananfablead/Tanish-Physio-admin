@@ -36,7 +36,7 @@ const navItems = [
   { icon: BookOpen, label: "Courses", path: "/courses" },
   { icon: Clock, label: "Schedule", path: "/availability" },
   { icon: ClipboardList, label: "Questionnaires", path: "/questionnaires" },
-  { icon: CreditCard, label: "Subscriptions", path: "/subscriptions" },
+ { icon: CreditCard, label: "Plans & Subscriptions", path: "/subscriptions" },
   { icon: Wallet, label: "Payments", path: "/payments" },
   // { icon: MessageSquare, label: "Chat Monitor", path: "/chat" },
   // { icon: Star, label: "Feedback", path: "/feedback" },

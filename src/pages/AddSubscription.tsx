@@ -6,259 +6,267 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { createSubscriptionPlan } from "@/features/subscriptions/subscriptionSlice";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+
+/* ---------------- CONSTANTS ---------------- */
+
+const planOptions = [
+    { label: "Daily", value: "daily" },
+    { label: "Weekly", value: "weekly" },
+    { label: "Monthly", value: "monthly" },
+    { label: "Quarterly", value: "quarterly" },
+    { label: "Yearly", value: "yearly" },
+];
+
+const durationOptions = [
+    { label: "Monthly", value: "monthly" },
+    { label: "Yearly", value: "yearly" },
+];
+
+const planValidityMap: Record<string, number> = {
+    daily: 1,
+    weekly: 1,
+    monthly: 1,
+    quarterly: 3,
+    yearly: 12,
+};
+
+/* ---------------- COMPONENT ---------------- */
 
 export default function AddSubscription() {
+      const navigate = useNavigate();
     const dispatch = useDispatch();
     const { toast } = useToast();
 
-    // State for the plan form
     const [planForm, setPlanForm] = useState({
+        planId: "",
         name: "",
         price: 0,
         description: "",
-        status: "active", // Using status instead of active
-        features: [""], // Array of features
-        duration: "monthly",
+        features: [""],
+        status: "active",
+        duration: "monthly",          // backend enum-safe
+        validityInMonths: 1,           // real duration
         autoRenew: true,
     });
 
-    // Handle form input changes
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-        const { name, value, type } = e.target;
+    /* ------------ HANDLERS ------------ */
 
-        if (type === "checkbox") {
-            const target = e.target as HTMLInputElement;
-            if (name === "status") {
-                setPlanForm(prev => ({
-                    ...prev,
-                    [name]: target.checked ? 'active' : 'inactive'
-                }));
-            } else {
-                setPlanForm(prev => ({
-                    ...prev,
-                    [name]: target.checked
-                }));
-            }
-        } else {
-            setPlanForm(prev => ({
-                ...prev,
-                [name]: name === "price" ? Number(value) : value
-            }));
-        }
+    const handleInputChange = (
+        e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+    ) => {
+        const { name, value } = e.target;
+        setPlanForm((prev) => ({
+            ...prev,
+            [name]: name === "price" ? Number(value) : value,
+        }));
     };
 
-    // Handle feature changes
     const handleFeatureChange = (index: number, value: string) => {
-        const newFeatures = [...planForm.features];
-        newFeatures[index] = value;
-        setPlanForm(prev => ({
-            ...prev,
-            features: newFeatures
-        }));
+        const updated = [...planForm.features];
+        updated[index] = value;
+        setPlanForm((prev) => ({ ...prev, features: updated }));
     };
 
-    // Add a new feature input
-    const addFeature = () => {
-        setPlanForm(prev => ({
-            ...prev,
-            features: [...prev.features, ""]
-        }));
-    };
+    const addFeature = () =>
+        setPlanForm((prev) => ({ ...prev, features: [...prev.features, ""] }));
 
-    // Remove a feature
-    const removeFeature = (index: number) => {
-        if (planForm.features.length <= 1) return;
-        const newFeatures = planForm.features.filter((_, i) => i !== index);
-        setPlanForm(prev => ({
+    const removeFeature = (index: number) =>
+        setPlanForm((prev) => ({
             ...prev,
-            features: newFeatures
+            features: prev.features.filter((_, i) => i !== index),
         }));
-    };
 
-    // Handle save plan (create only)
     const handleSavePlan = async () => {
         try {
-            // Create new plan - format data according to API expectation
-            const createData = {
+            const payload = {
                 ...planForm,
-                status: planForm.status,
+                duration: "monthly",
             };
-            const result = await dispatch(createSubscriptionPlan(createData));
+
+            const result = await dispatch(createSubscriptionPlan(payload));
 
             if (createSubscriptionPlan.fulfilled.match(result)) {
                 toast({
                     title: "Success",
                     description: "Subscription plan created successfully!",
                 });
-                // Reset form after successful creation
+
                 setPlanForm({
+                    planId: "",
                     name: "",
                     price: 0,
                     description: "",
-                    status: "active",
                     features: [""],
+                    status: "active",
                     duration: "monthly",
+                    validityInMonths: 1,
                     autoRenew: true,
                 });
+                navigate("/subscriptions");
             } else {
-                throw new Error(result.payload || 'Failed to create subscription plan');
+                throw new Error("Failed to create plan");
             }
         } catch (err: any) {
-            console.error('Error saving subscription plan:', err);
             toast({
                 title: "Error",
-                description: err.message || 'Failed to save subscription plan',
+                description: err.message || "Something went wrong",
                 variant: "destructive",
             });
         }
     };
 
+    /* ---------------- UI ---------------- */
+
     return (
         <div className="space-y-6 p-6">
             <div className="flex justify-between items-center">
                 <div>
-                    <h1 className="text-2xl font-bold">Add New Subscription Plan</h1>
-                    <p className="text-muted-foreground">Create a new subscription plan for users</p>
+                    <h1 className="text-2xl font-bold">Add Subscription Plan</h1>
+                    <p className="text-muted-foreground">
+                        Create a new subscription plan
+                    </p>
                 </div>
                 <Button variant="outline" asChild>
-                    <Link to="/subscriptions">Back to Subscriptions</Link>
+                    <Link to="/subscriptions">Back</Link>
                 </Button>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="bg-card p-6 rounded-lg border">
-                    <h2 className="text-lg font-semibold mb-4">Plan Details</h2>
+                {/* LEFT */}
+                <div className="bg-card p-6 rounded-lg border space-y-4">
+                    <div>
+                        <Label>Plan Type</Label>
+                        <select
+                            className="w-full mt-1 p-2 border rounded"
+                            value={planForm.planId}
+                            onChange={(e) =>
+                                setPlanForm((prev) => ({
+                                    ...prev,
+                                    planId: e.target.value,
+                                    validityInMonths:
+                                        planValidityMap[e.target.value] || 1,
+                                }))
+                            }
+                        >
+                            <option value="">Select Plan</option>
+                            {planOptions.map((p) => (
+                                <option key={p.value} value={p.value}>
+                                    {p.label}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
 
-                    <div className="space-y-4">
+                    <div>
+                        <Label>Plan Name</Label>
+                        <Input
+                            name="name"
+                            value={planForm.name}
+                            onChange={handleInputChange}
+                        />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <Label htmlFor="name">Plan Name</Label>
+                            <Label>Price (₹)</Label>
                             <Input
-                                id="name"
-                                name="name"
-                                placeholder="e.g., Monthly Plan"
-                                value={planForm.name}
+                                name="price"
+                                type="number"
+                                value={planForm.price}
                                 onChange={handleInputChange}
-                                className="mt-1"
                             />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <Label htmlFor="price">Price (₹)</Label>
-                                <Input
-                                    id="price"
-                                    name="price"
-                                    type="number"
-                                    placeholder="49.99"
-                                    value={planForm.price}
-                                    onChange={handleInputChange}
-                                    className="mt-1"
-                                />
-                            </div>
-                            <div>
-                                <Label htmlFor="duration">Duration</Label>
-                                <select
-                                    id="duration"
-                                    name="duration"
-                                    value={planForm.duration}
-                                    onChange={handleInputChange}
-                                    className="w-full mt-1 px-3 py-2 rounded-md border border-input bg-background"
-                                >
-                                    <option value="daily">Daily</option>
-                                    <option value="weekly">Weekly</option>
-                                    <option value="monthly">Monthly</option>
-                                    <option value="yearly">Yearly</option>
-                                </select>
-                            </div>
                         </div>
 
                         <div>
-                            <Label htmlFor="description">Description</Label>
-                            <textarea
-                                id="description"
-                                name="description"
-                                placeholder="Describe the subscription plan"
-                                value={planForm.description}
+                            <Label>Billing Duration</Label>
+                            <select
+                                name="duration"
+                                value={planForm.duration}
                                 onChange={handleInputChange}
-                                className="w-full p-2 border rounded-md mt-1 min-h-[80px]"
-                            />
+                                className="w-full mt-1 p-2 border rounded"
+                            >
+                                {durationOptions.map((d) => (
+                                    <option key={d.value} value={d.value}>
+                                        {d.label}
+                                    </option>
+                                ))}
+                            </select>
                         </div>
+                    </div>
+
+                    <div>
+                        <Label>Description</Label>
+                        <textarea
+                            name="description"
+                            value={planForm.description}
+                            onChange={handleInputChange}
+                            className="w-full p-2 border rounded mt-1"
+                        />
                     </div>
                 </div>
 
-                <div className="bg-card p-6 rounded-lg border">
-                    <h2 className="text-lg font-semibold mb-4">Plan Configuration</h2>
-
-                    <div className="space-y-6">
-                        <div>
-                            <div className="flex items-center justify-between mb-2">
-                                <Label>Features</Label>
-                                <Button type="button" variant="outline" size="sm" onClick={addFeature}>
-                                    Add Feature
-                                </Button>
-                            </div>
-                            <div className="space-y-2">
-                                {planForm.features.map((feature, index) => (
-                                    <div key={index} className="flex gap-2">
-                                        <Input
-                                            placeholder={`Feature ${index + 1}`}
-                                            value={feature}
-                                            onChange={(e) => handleFeatureChange(index, e.target.value)}
-                                            className="flex-1"
-                                        />
-                                        {planForm.features.length > 1 && (
-                                            <Button
-                                                type="button"
-                                                variant="outline"
-                                                size="icon"
-                                                onClick={() => removeFeature(index)}
-                                                className="h-9 w-9"
-                                            >
-                                                <span className="text-red-500">-</span>
-                                            </Button>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
+                {/* RIGHT */}
+                <div className="bg-card p-6 rounded-lg border space-y-4">
+                    <div>
+                        <div className="flex justify-between mb-2">
+                            <Label>Features</Label>
+                            <Button size="sm" variant="outline" onClick={addFeature}>
+                                Add Feature
+                            </Button>
                         </div>
 
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <Label>Auto-Renew</Label>
-                                <p className="text-xs text-muted-foreground">Automatically renew at end of period</p>
+                        {planForm.features.map((f, i) => (
+                            <div key={i} className="flex gap-2 mb-2">
+                                <Input
+                                    value={f}
+                                    onChange={(e) =>
+                                        handleFeatureChange(i, e.target.value)
+                                    }
+                                />
+                                {planForm.features.length > 1 && (
+                                    <Button
+                                        variant="outline"
+                                        size="icon"
+                                        onClick={() => removeFeature(i)}
+                                    >
+                                        −
+                                    </Button>
+                                )}
                             </div>
-                            <Switch
-                                id="autoRenew"
-                                name="autoRenew"
-                                checked={planForm.autoRenew}
-                                onCheckedChange={(checked) => setPlanForm(prev => ({ ...prev, autoRenew: checked }))}
-                            />
-                        </div>
+                        ))}
+                    </div>
 
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <Label>Active</Label>
-                                <p className="text-xs text-muted-foreground">Plan is available for purchase</p>
-                            </div>
-                            <Switch
-                                id="status"
-                                name="status"
-                                checked={planForm.status === 'active'}
-                                onCheckedChange={(checked) => setPlanForm(prev => ({ ...prev, status: checked ? 'active' : 'inactive' }))}
-                            />
-                        </div>
+                    <div className="flex justify-between items-center">
+                        <Label>Auto Renew</Label>
+                        <Switch
+                            checked={planForm.autoRenew}
+                            onCheckedChange={(v) =>
+                                setPlanForm((p) => ({ ...p, autoRenew: v }))
+                            }
+                        />
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                        <Label>Active</Label>
+                        <Switch
+                            checked={planForm.status === "active"}
+                            onCheckedChange={(v) =>
+                                setPlanForm((p) => ({
+                                    ...p,
+                                    status: v ? "active" : "inactive",
+                                }))
+                            }
+                        />
                     </div>
                 </div>
             </div>
 
-            <div className="flex justify-end gap-4 pt-4">
+            <div className="flex justify-end gap-4">
                 <Button variant="outline" asChild>
                     <Link to="/subscriptions">Cancel</Link>
                 </Button>
-                <Button onClick={handleSavePlan}>
-                    Create Plan
-                </Button>
+                <Button onClick={handleSavePlan}>Create Plan</Button>
             </div>
         </div>
     );
