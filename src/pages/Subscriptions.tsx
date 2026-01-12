@@ -61,13 +61,12 @@ export default function Subscriptions() {
     features: [""], // Array of features
     duration: "",
     autoRenew: true,
-    planId: "",
   });
 
   // We'll use a separate state for user subscriptions once we have the endpoint
   // For now, we'll focus on admin functionality for subscription plans
   const [userSubscriptions, setUserSubscriptions] = useState<UserSubscription[]>([]);
-  const [isCreatingPlan, setIsCreatingPlan] = useState(false);
+
 
   const filteredSubscriptions = userSubscriptions.filter(
     (sub) =>
