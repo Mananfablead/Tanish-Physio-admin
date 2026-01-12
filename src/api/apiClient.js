@@ -15,6 +15,33 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
+// Response interceptor to handle token expiration
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401 || error.response?.status === 403) {
+      // Check if this is a token expiration/invalid token error
+      const isTokenError = error.response?.data?.message?.includes('Invalid or expired token') || 
+                          error.response?.data?.message?.includes('Access token required') ||
+                          error.response?.data?.message?.includes('User not found');
+      
+      if (isTokenError) {
+        // Remove token from localStorage
+        localStorage.removeItem("token");
+        
+        // Update the Redux store by dispatching logout
+        // Dispatch logout action to clear the auth state
+        const event = new CustomEvent('tokenExpired', { detail: { message: 'Token expired' }});
+        window.dispatchEvent(event);
+        
+        // Redirect to login page
+        window.location.href = "/login";
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 export default apiClient;
 
 export const API = {
@@ -23,6 +50,7 @@ export const API = {
   LOGOUT: "/auth/logout",
   PROFILE: "/auth/profile",
   FORGOT_PASSWORD: "/auth/forgot-password",
+  RESET_PASSWORD: "/auth/reset-password",
   
   // subscriptions
   SUBSCRIPTIONS: "/subscriptions",

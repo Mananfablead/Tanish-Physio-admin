@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, Sun, Moon, Check, X, Plus, Save, X as XIcon, ChevronLeft, ChevronRight, AlertTriangle, Info, Loader2 } from 'lucide-react';
+import { Calendar, Clock, Sun, Moon, Check, X, Plus, Save, X as XIcon, ChevronLeft, ChevronRight, AlertTriangle, Info, Loader2, MoreHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
@@ -8,10 +8,22 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import apiClient from '@/api/apiClient';
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState } from '@/types/store';
+import { 
+  getAllAvailability, 
+  createAvailability, 
+  updateAvailability,
+  setSelectedAvailability,
+  clearSelectedAvailability
+} from '@/features/availability/availabilitySlice';
 
 
 const Availability = () => {
+  const dispatch = useDispatch();
+  const { availability, loading: isLoading, error } = useSelector((state: RootState) => state.availability);
+  const { user: currentUser } = useSelector((state: RootState) => state.auth);
+  
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [startTime, setStartTime] = useState('09:00');
   const [endTime, setEndTime] = useState('17:00');
@@ -25,9 +37,7 @@ const Availability = () => {
   // State for warnings
   const [warnings, setWarnings] = useState<string[]>([]);
   
-  // State for loading and availability data
-  const [availabilityData, setAvailabilityData] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // State for saving
   const [saving, setSaving] = useState(false);
   
   const { toast } = useToast();
@@ -35,32 +45,23 @@ const Availability = () => {
   // Get today's date for highlighting
   const today = new Date();
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  
+  // Function to check if a date is in the past
+  const isPastDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return date < today;
+  };
 
   // Calendar data from API
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   
-  // Fetch availability data from API
+  // Fetch availability data from Redux store
   useEffect(() => {
-    const fetchAvailability = async () => {
-      try {
-        setLoading(true);
-        const response = await apiClient.get('/availability'); // Using direct route for now
-        setAvailabilityData(response.data.data?.availability || []);
-      } catch (error) {
-        console.error('Error fetching availability:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to load availability data',
-          variant: 'destructive',
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchAvailability();
-  }, [toast]);
+    dispatch(getAllAvailability());
+  }, [dispatch]);
   
   // Memoize the calendar weeks to avoid regenerating on every render
   const calendarWeeks = React.useMemo(() => {
@@ -74,7 +75,7 @@ const Availability = () => {
       const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       
       // Find availability for this date
-      const availabilityForDate = availabilityData.find(item => item.date === dateStr);
+      const availabilityForDate = availability.find(item => item.date === dateStr);
       
       // Determine status based on availability data
       let status = 0; // default to available
@@ -115,16 +116,38 @@ const Availability = () => {
     }
     
     return weeks;
-  }, [currentMonth, currentYear, availabilityData]);
+  }, [currentMonth, currentYear, availability]);
 
   const handleDateClick = (date: string | null) => {
     setSelectedDate(date);
     if (date) {
-      // Reset to default values when a date is selected
-      setStartTime('09:00');
-      setEndTime('17:00');
-      setIsAvailable(true);
-      setIsHoliday(false);
+      // Find existing availability for this date
+      const existingAvailability = availability.find(item => item.date === date);
+      
+      if (existingAvailability) {
+        // Load existing availability data
+        setStartTime(existingAvailability.availableTimes?.[0] || '09:00');
+        
+        // Calculate end time based on the last available time slot
+        const availableTimes = existingAvailability.availableTimes || [];
+        if (availableTimes.length > 0) {
+          const lastTime = availableTimes[availableTimes.length - 1];
+          const [hours, minutes] = lastTime.split(':').map(Number);
+          const endTime = new Date(0, 0, 0, hours + 1, minutes);
+          setEndTime(endTime.toTimeString().substring(0, 5));
+        } else {
+          setEndTime('17:00');
+        }
+        
+        setIsHoliday(existingAvailability.status === 'unavailable');
+        setIsAvailable(existingAvailability.status !== 'unavailable');
+      } else {
+        // Reset to default values when a date is selected
+        setStartTime('09:00');
+        setEndTime('17:00');
+        setIsAvailable(true);
+        setIsHoliday(false);
+      }
     }
   };
 
@@ -158,31 +181,30 @@ const Availability = () => {
         date: selectedDate,
         status,
         availableTimes,
-        therapistId: '60f1b8b3c9e4f2c8b0d1e2f3' // TODO: Replace with actual therapist ID from context
+        therapistId: currentUser?._id // Use actual therapist ID from current user
       };
       
       // Check if availability already exists for this date
-      const existingAvailability = availabilityData.find(item => item.date === selectedDate);
+      const existingAvailability = availability.find(item => item.date === selectedDate);
       
       if (existingAvailability) {
         // Update existing availability
-        await apiClient.put(`/availability/${existingAvailability._id}`, payload);
+        await dispatch(updateAvailability({ id: existingAvailability._id, availabilityData: payload }));
         toast({
           title: 'Success',
           description: 'Availability updated successfully',
         });
       } else {
         // Create new availability
-        await apiClient.post('/availability', payload);
+        await dispatch(createAvailability(payload));
         toast({
           title: 'Success',
           description: 'Availability created successfully',
         });
       }
       
-      // Refresh availability data
-      const response = await apiClient.get('/availability');
-      setAvailabilityData(response.data.data?.availability || []);
+      // Refresh the availability data to ensure UI updates immediately
+      await dispatch(getAllAvailability());
       
       setSelectedDate(null);
     } catch (error) {
@@ -312,7 +334,7 @@ const Availability = () => {
                 </div>
                 
                 {/* Calendar Grid */}
-                {loading ? (
+                {isLoading ? (
                   <div className="flex justify-center items-center py-16">
                     <div className="flex flex-col items-center">
                       <Loader2 className="w-8 h-8 animate-spin text-primary mb-3" />
@@ -336,12 +358,14 @@ const Availability = () => {
                       return (
                         <div 
                           key={index} 
-                          className={`h-16 p-2 border rounded-lg flex flex-col items-center justify-center transition-all cursor-pointer relative ${
+                          className={`h-16 p-2 border rounded-lg flex flex-col items-center justify-center transition-all ${
                             day 
-                              ? `${getStatusColor(day.status)} ${isCurrentDay ? 'ring-2 ring-primary ring-offset-2' : ''} ${isCurrentSelected ? 'ring-2 ring-primary-foreground ring-offset-2' : ''}`
+                              ? isPastDate(day.date)
+                                ? 'opacity-50 cursor-not-allowed bg-gray-100 border-gray-200'
+                                : `cursor-pointer ${getStatusColor(day.status)} ${isCurrentDay ? 'ring-2 ring-primary ring-offset-2' : ''} ${isCurrentSelected ? 'ring-2 ring-primary ring-offset-2 ring-blue-500' : ''}`
                               : 'border-transparent'
-                          } ${day ? 'hover:shadow-sm hover:scale-[1.02]' : ''}`}
-                          onClick={() => day && handleDateClick(day.date)}
+                          } ${day && !isPastDate(day.date) ? 'hover:shadow-sm hover:scale-[1.02]' : ''}`}
+                          onClick={() => day && !isPastDate(day.date) && handleDateClick(day.date)}
                         >
                           {day ? (
                             <>
@@ -361,19 +385,187 @@ const Availability = () => {
                       );
                     })}
                   </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center py-16 text-center">
-                    <Calendar className="w-12 h-12 text-muted-foreground mb-4" />
-                    <h3 className="text-lg font-medium mb-2">{viewMode === 'day' ? 'Day View' : 'Week View'}</h3>
-                    <p className="text-muted-foreground max-w-md">
-                      {viewMode === 'day' 
-                        ? 'Day view shows detailed availability for a single day with hourly breakdown.'
-                        : 'Week view shows availability across all days in the selected week.'}
-                    </p>
-                    <div className="mt-4 flex gap-2">
-                      <Button onClick={() => setViewMode('month')}>
+                ) : viewMode === 'day' ? (
+                  // Day View - Show detailed information for selected date or current date
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-medium">
+                        {selectedDate 
+                          ? `Day View: ${new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}`
+                          : `Day View: ${new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}`}
+                      </h3>
+                      <Button variant="outline" size="sm" onClick={() => setViewMode('month')}>
                         Switch to Month View
                       </Button>
+                    </div>
+                    
+                    <div className="space-y-4">
+                      {/* Day availability summary */}
+                      <Card className="border">
+                        <CardHeader>
+                          <CardTitle className="flex items-center gap-2">
+                            <Calendar className="w-5 h-5" />
+                            Availability Details
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="p-3 bg-primary/5 rounded-lg">
+                                <p className="text-sm text-muted-foreground">Status</p>
+                                <p className="font-medium">
+                                  {(() => {
+                                    const dateToCheck = selectedDate || todayStr;
+                                    const dayAvailability = availability.find(item => item.date === dateToCheck);
+                                    if (dayAvailability) {
+                                      return dayAvailability.status === 'unavailable' ? 'Holiday/Not Available' : 'Available';
+                                    }
+                                    return 'Available';
+                                  })()}
+                                </p>
+                              </div>
+                              <div className="p-3 bg-primary/5 rounded-lg">
+                                <p className="text-sm text-muted-foreground">Working Hours</p>
+                                <p className="font-medium">
+                                  {(() => {
+                                    const dateToCheck = selectedDate || todayStr;
+                                    const dayAvailability = availability.find(item => item.date === dateToCheck);
+                                    if (dayAvailability && dayAvailability.availableTimes && dayAvailability.availableTimes.length > 0) {
+                                      return `${dayAvailability.availableTimes[0]} - ${dayAvailability.availableTimes[dayAvailability.availableTimes.length - 1]}`;
+                                    }
+                                    return 'Not set';
+                                  })()}
+                                </p>
+                              </div>
+                            </div>
+                            
+                            <div>
+                              <p className="text-sm text-muted-foreground mb-2">Available Time Slots</p>
+                              <div className="flex flex-wrap gap-2">
+                                {(() => {
+                                  const dateToCheck = selectedDate || todayStr;
+                                  const dayAvailability = availability.find(item => item.date === dateToCheck);
+                                  if (dayAvailability && dayAvailability.availableTimes && dayAvailability.availableTimes.length > 0) {
+                                    return dayAvailability.availableTimes.map((time, index) => (
+                                      <Badge key={index} variant="secondary" className="px-3 py-1">
+                                        {time}
+                                      </Badge>
+                                    ));
+                                  }
+                                  return <p className="text-muted-foreground">No time slots set</p>;
+                                })()}
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                      
+                      {/* Bookings for the day */}
+                      <Card className="border">
+                        <CardHeader>
+                          <CardTitle className="flex items-center gap-2">
+                            <Clock className="w-5 h-5" />
+                            Bookings
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-muted-foreground">No bookings for this day</p>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </div>
+                ) : (
+                  // Week View - Show information for the week
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-medium">
+                        Week View: {(() => {
+                          const date = selectedDate ? new Date(selectedDate) : new Date();
+                          const startOfWeek = new Date(date);
+                          const day = startOfWeek.getDay();
+                          const diff = startOfWeek.getDate() - day;
+                          startOfWeek.setDate(diff);
+                          
+                          const endOfWeek = new Date(startOfWeek);
+                          endOfWeek.setDate(startOfWeek.getDate() + 6);
+                          
+                          return `${startOfWeek.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${endOfWeek.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+                        })()}
+                      </h3>
+                      <Button variant="outline" size="sm" onClick={() => setViewMode('month')}>
+                        Switch to Month View
+                      </Button>
+                    </div>
+                    
+                    <div className="grid grid-cols-7 gap-2">
+                      {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, index) => (
+                        <div key={day} className="text-center p-2 font-medium text-sm">
+                          {day}
+                        </div>
+                      ))}
+                      
+                      {(() => {
+                        const date = selectedDate ? new Date(selectedDate) : new Date();
+                        const startOfWeek = new Date(date);
+                        const day = startOfWeek.getDay();
+                        const diff = startOfWeek.getDate() - day;
+                        startOfWeek.setDate(diff);
+                        
+                        const weekDays = [];
+                        for (let i = 0; i < 7; i++) {
+                          const dayDate = new Date(startOfWeek);
+                          dayDate.setDate(startOfWeek.getDate() + i);
+                          
+                          const dateStr = `${dayDate.getFullYear()}-${String(dayDate.getMonth() + 1).padStart(2, '0')}-${String(dayDate.getDate()).padStart(2, '0')}`;
+                          
+                          const dayAvailability = availability.find(item => item.date === dateStr);
+                          const status = dayAvailability ? 
+                            (dayAvailability.status === 'booked' ? 1 : 
+                             dayAvailability.status === 'unavailable' ? 2 : 0) : 0;
+                          
+                          const isCurrentDay = dateStr === todayStr;
+                          const isCurrentSelected = dateStr === selectedDate;
+                          
+                          weekDays.push(
+                            <div 
+                              key={i}
+                              className={`p-2 border rounded-lg flex flex-col items-center justify-center transition-all ${
+                                isPastDate(dateStr)
+                                  ? 'opacity-50 cursor-not-allowed bg-gray-100 border-gray-200'
+                                  : `cursor-pointer ${getStatusColor(status)} ${isCurrentDay ? 'ring-2 ring-primary ring-offset-2' : ''} ${isCurrentSelected ? 'ring-2 ring-primary ring-offset-2 ring-blue-500' : ''}`
+                              } ${!isPastDate(dateStr) ? 'hover:shadow-sm hover:scale-[1.02]' : ''}`}
+                              onClick={() => !isPastDate(dateStr) && handleDateClick(dateStr)}
+                            >
+                              <span className={`text-sm font-medium ${isCurrentDay ? 'font-bold' : ''}`}>
+                                {dayDate.getDate()}
+                              </span>
+                              <div className="flex justify-center mt-1">
+                                <div className={`w-2 h-2 rounded-full ${
+                                  status === 0 ? 'bg-green-500' :
+                                  status === 1 ? 'bg-blue-500' :
+                                  'bg-red-500'
+                                }`} />
+                              </div>
+                            </div>
+                          );
+                        }
+                        return weekDays;
+                      })()}
+                    </div>
+                    
+                    <div className="flex flex-wrap gap-4 pt-4 border-t border-border">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                        <span className="text-sm">Available</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                        <span className="text-sm">Booked</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-red-500"></div>
+                        <span className="text-sm">Holiday/Not Available</span>
+                      </div>
                     </div>
                   </div>
                 )}

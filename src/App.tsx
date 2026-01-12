@@ -120,6 +120,7 @@ import Bookings from "./pages/Bookings";
 import Courses from "./pages/Courses";
 import VideoCallPage from "./pages/VideoCallPage";
 import NotFound from "./pages/NotFound";
+import ResetPassword from "./pages/ResetPassword";
 import { useDispatch } from "react-redux";
 import { useEffect } from "react";
 
@@ -140,6 +141,15 @@ const App = () => (
             element={
               <PublicRoute>
                 <Login />
+              </PublicRoute>
+            }
+          />
+
+          <Route
+            path="/reset-password/:token"
+            element={
+              <PublicRoute>
+                <ResetPassword />
               </PublicRoute>
             }
           />

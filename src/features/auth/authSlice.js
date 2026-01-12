@@ -81,13 +81,29 @@ export const forgotPassword = createAsyncThunk(
   }
 );
 
-export const logoutUser = createAsyncThunk(
-  "auth/logout",
-  async (_, { rejectWithValue }) => {
+export const resetPassword = createAsyncThunk(
+  "auth/resetPassword",
+  async ({ token, password }, { rejectWithValue }) => {
     try {
-      const res = await apiClient.post(API.LOGOUT);
+      const res = await apiClient.post(`${API.RESET_PASSWORD}/${token}`, { password });
       return res.data;
     } catch (err) {
+      return rejectWithValue(err.response?.data?.message || "Failed to reset password");
+    }
+  }
+);
+
+export const logoutUser = createAsyncThunk(
+  "auth/logout",
+  async (_, { dispatch, rejectWithValue }) => {
+    try {
+      const res = await apiClient.post(API.LOGOUT);
+      // Also dispatch the local logout action to clear the state
+      dispatch(logout());
+      return res.data;
+    } catch (err) {
+      // Even if backend logout fails, still clear local state
+      dispatch(logout());
       return rejectWithValue("Logout failed");
     }
   }
@@ -102,15 +118,6 @@ export const fetchProfile = createAsyncThunk(
       const res = await apiClient.get(API.PROFILE);
       return res.data.data;
     } catch (err) {
-      // If token is invalid or expired, remove it from localStorage
-      if (
-        err.response?.status === 401 &&
-        err.response?.data?.message === "Invalid or expired token"
-      ) {
-        localStorage.removeItem("token");
-        // Optionally redirect to login
-        window.location.href = "/login";
-      }
       return rejectWithValue(err.response?.data?.message || "Unauthorized");
     }
   }
@@ -250,6 +257,20 @@ const authSlice = createSlice({
         state.forgotPasswordSuccess = action.payload.message || "Password reset link has been sent to your email.";
       })
       .addCase(forgotPassword.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      
+      // RESET PASSWORD
+      .addCase(resetPassword.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(resetPassword.fulfilled, (state, action) => {
+        state.loading = false;
+        state.forgotPasswordSuccess = action.payload.message || "Password reset successfully!";
+      })
+      .addCase(resetPassword.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       });

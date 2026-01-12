@@ -6,6 +6,7 @@ import sessionReducer from "@/features/sessions/sessionSlice";
 import serviceReducer from "@/features/services/serviceSlice";
 import questionnaireReducer from "@/features/questionnaires/questionnaireSlice";
 import subscriptionReducer from "@/features/subscriptions/subscriptionSlice";
+import availabilityReducer from "@/features/availability/availabilitySlice";
 
 export const store = configureStore({
   reducer: {
@@ -16,5 +17,11 @@ export const store = configureStore({
     services: serviceReducer,
     questionnaires: questionnaireReducer,
     subscriptions: subscriptionReducer,
+    availability: availabilityReducer,
   },
+});
+
+// Listen for token expiration event and dispatch logout
+window.addEventListener('tokenExpired', () => {
+  store.dispatch({ type: 'auth/logout' });
 });
