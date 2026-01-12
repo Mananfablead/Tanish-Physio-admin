@@ -18,7 +18,8 @@ import { useToast } from "@/hooks/use-toast";
 import { fetchSubscriptionPlans, createSubscriptionOrder, fetchAllSubscriptionPlans, createSubscriptionPlan, updateSubscriptionPlan, deleteSubscriptionPlan, fetchSubscriptionPlanById } from "@/features/subscriptions/subscriptionSlice";
 
 interface SubscriptionPlan {
-  _id: string;
+  _id?: string;
+  id?: string;
   name: string;
   price: number;
   description: string;
@@ -27,6 +28,7 @@ interface SubscriptionPlan {
   active?: boolean;
   sessions?: number;
   period?: string;
+  duration?: string;
   autoRenew?: boolean;
   subscribers?: number;
 }
@@ -247,11 +249,9 @@ export default function Subscriptions() {
     setSelectedPlan(null);
   };
 
-  // Handle save plan (both create and update)
+  // Handle save plan (update only)
   const handleSavePlan = async () => {
     try {
-      let result;
-
       if (selectedPlan) {
         // Update existing plan - format data according to API expectation
         const updateData = {
@@ -259,8 +259,11 @@ export default function Subscriptions() {
           price: planForm.price,
           description: planForm.description,
           status: planForm.status,
+          duration: planForm.duration,
+          features: planForm.features,
+          autoRenew: planForm.autoRenew,
         };
-        result = await dispatch(updateSubscriptionPlan({ id: selectedPlan._id, planData: updateData }));
+        const result = await dispatch(updateSubscriptionPlan({ id: selectedPlan._id, planData: updateData }));
 
         if (updateSubscriptionPlan.fulfilled.match(result)) {
           toast({
@@ -269,28 +272,8 @@ export default function Subscriptions() {
           });
           setIsEditPlanOpen(false);
           resetForm();
+          dispatch(fetchAllSubscriptionPlans());
         }
-        dispatch(fetchAllSubscriptionPlans());
-      } else {
-        // Create new plan - format data according to API expectation
-        const createData = {
-          ...planForm,
-          status: planForm.status,
-        };
-        result = await dispatch(createSubscriptionPlan(createData));
-
-        if (createSubscriptionPlan.fulfilled.match(result)) {
-          toast({
-            title: "Success",
-            description: "Subscription plan created successfully!",
-          });
-          setIsEditPlanOpen(false);
-          resetForm();
-        }
-      }
-
-      if (result.meta.requestStatus !== "fulfilled") {
-        throw new Error(result.payload || 'Operation failed');
       }
     } catch (err: any) {
       console.error('Error saving subscription plan:', err);
@@ -395,12 +378,11 @@ export default function Subscriptions() {
         {/* Plans Tab */}
         <TabsContent value="plans" className="mt-4">
           <div className="flex justify-end mb-4">
-            <Button className="gap-2" onClick={() => {
-              setSelectedPlan(null);
-              setIsEditPlanOpen(true);
-            }}>
-              <Plus className="w-4 h-4" />
-              Create Plan
+            <Button className="gap-2" asChild>
+              <a href="/add-subscription">
+                <Plus className="w-4 h-4" />
+                Create Plan
+              </a>
             </Button>
           </div>
 
@@ -576,25 +558,7 @@ export default function Subscriptions() {
           </DialogHeader>
 
           <div className="space-y-4 mt-4">
-            {!selectedPlan &&
-              <div>
-                <Label htmlFor="plan">Plan</Label>
-                <select
-                  id="planId"
-                  name="planId"   // ✅ MUST match state key
-                  value={planForm.planId}
-                  onChange={handleInputChange}
-                  className="w-full mt-1 px-3 py-2 rounded-md border border-input bg-background"
-                >
-                  <option value="">Select Plan Type</option>
-                  <option value="daily">Daily</option>
-                  <option value="weekly">Weekly</option>
-                  <option value="monthly">Monthly</option>
-                  <option value="quarterly">Quarterly</option>
-                  <option value="yearly">Yearly</option>
-                </select>
 
-              </div>}
             <div>
               <Label htmlFor="name">Plan Name</Label>
               <Input
