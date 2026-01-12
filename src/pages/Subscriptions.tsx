@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { Link } from "react-router-dom";
 declare global {
   interface Window {
     Razorpay: any;
@@ -103,7 +104,7 @@ export default function Subscriptions() {
         description: selectedPlan.description || "",
         status: selectedPlan.status || "active",
         features: selectedPlan.features || [""],
-        duration: selectedPlan.period || "",
+        duration: selectedPlan.duration || selectedPlan.period || "",
         autoRenew: selectedPlan.autoRenew !== undefined ? selectedPlan.autoRenew : true,
       });
     } else if (!isEditPlanOpen) {
@@ -263,7 +264,7 @@ export default function Subscriptions() {
           features: planForm.features,
           autoRenew: planForm.autoRenew,
         };
-        const result = await dispatch(updateSubscriptionPlan({ id: selectedPlan._id, planData: updateData }));
+        const result = await dispatch(updateSubscriptionPlan({ id: selectedPlan._id || selectedPlan.id, planData: updateData }));
 
         if (updateSubscriptionPlan.fulfilled.match(result)) {
           toast({
@@ -379,10 +380,10 @@ export default function Subscriptions() {
         <TabsContent value="plans" className="mt-4">
           <div className="flex justify-end mb-4">
             <Button className="gap-2" asChild>
-              <a href="/add-subscription">
+              <Link to="/add-subscription">
                 <Plus className="w-4 h-4" />
                 Create Plan
-              </a>
+              </Link>
             </Button>
           </div>
 
@@ -444,19 +445,19 @@ export default function Subscriptions() {
                     <Edit2 className="w-4 h-4 mr-1" />
                     Edit
                   </Button>
-                  {/* <Button 
+                  <Button 
                     variant="default" 
                     size="sm"
                     className="flex-1"
-                    onClick={() => handleCreateOrder(plan._id, plan.price)}
+                    onClick={() => handleCreateOrder(plan._id || plan.id, plan.price)}
                     disabled={loading}
                   >
                     Subscribe
-                  </Button> */}
+                  </Button>
                   <Button
                     variant="destructive"
                     size="sm"
-                    onClick={() => handleDeletePlan(plan._id)}
+                    onClick={() => handleDeletePlan(plan._id || plan.id)}
                     disabled={loading}
                   >
                     Delete
@@ -559,6 +560,7 @@ export default function Subscriptions() {
 
           <div className="space-y-4 mt-4">
 
+            {!isEditPlanOpen &&
             <div>
               <Label htmlFor="name">Plan Name</Label>
               <Input
@@ -569,7 +571,7 @@ export default function Subscriptions() {
                 onChange={handleInputChange}
                 className="mt-1"
               />
-            </div>
+            </div>}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="price">Price (₹)</Label>
@@ -583,7 +585,7 @@ export default function Subscriptions() {
                   className="mt-1"
                 />
               </div>
-              {!selectedPlan &&
+              {!isEditPlanOpen &&
                 <div>
                   <Label htmlFor="duration">Duration</Label>
                   <select
@@ -602,6 +604,7 @@ export default function Subscriptions() {
             </div>
 
 
+            {!isEditPlanOpen &&
             <div>
               <Label htmlFor="description">Description</Label>
               <textarea
@@ -612,54 +615,54 @@ export default function Subscriptions() {
                 onChange={handleInputChange}
                 className="w-full p-2 border rounded-md mt-1 min-h-[80px]"
               />
-            </div>
+            </div>}
 
-            {!selectedPlan &&
+            {!isEditPlanOpen &&
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <Label>Features</Label>
+                <Button type="button" variant="outline" size="sm" onClick={addFeature}>
+                  Add Feature
+                </Button>
+              </div>
+              <div className="space-y-2">
+                {planForm.features.map((feature, index) => (
+                  <div key={index} className="flex gap-2">
+                    <Input
+                      placeholder={`Feature ${index + 1}`}
+                      value={feature}
+                      onChange={(e) => handleFeatureChange(index, e.target.value)}
+                      className="flex-1"
+                    />
+                    {planForm.features.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={() => removeFeature(index)}
+                        className="h-9 w-9"
+                      >
+                        <span className="text-red-500">-</span>
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>}
+
+            {!isEditPlanOpen &&
+            <div className="flex items-center justify-between">
               <div>
-                <div className="flex items-center justify-between mb-2">
-                  <Label>Features</Label>
-                  <Button type="button" variant="outline" size="sm" onClick={addFeature}>
-                    Add Feature
-                  </Button>
-                </div>
-                <div className="space-y-2">
-                  {planForm.features.map((feature, index) => (
-                    <div key={index} className="flex gap-2">
-                      <Input
-                        placeholder={`Feature ${index + 1}`}
-                        value={feature}
-                        onChange={(e) => handleFeatureChange(index, e.target.value)}
-                        className="flex-1"
-                      />
-                      {planForm.features.length > 1 && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          onClick={() => removeFeature(index)}
-                          className="h-9 w-9"
-                        >
-                          <span className="text-red-500">-</span>
-                        </Button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>}
-
-            {!selectedPlan &&
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label>Auto-Renew</Label>
-                  <p className="text-xs text-muted-foreground">Automatically renew at end of period</p>
-                </div>
-                <Switch
-                  id="autoRenew"
-                  name="autoRenew"
-                  checked={planForm.autoRenew}
-                  onCheckedChange={(checked) => setPlanForm(prev => ({ ...prev, autoRenew: checked }))}
-                />
-              </div>}
+                <Label>Auto-Renew</Label>
+                <p className="text-xs text-muted-foreground">Automatically renew at end of period</p>
+              </div>
+              <Switch
+                id="autoRenew"
+                name="autoRenew"
+                checked={planForm.autoRenew}
+                onCheckedChange={(checked) => setPlanForm(prev => ({ ...prev, autoRenew: checked }))}
+              />
+            </div>}
 
 
             <div className="flex items-center justify-between">
@@ -687,7 +690,7 @@ export default function Subscriptions() {
               Cancel
             </Button>
             <Button onClick={handleSavePlan}>
-              {selectedPlan ? "Save Changes" : "Create Plan"}
+              Save Changes
             </Button>
           </DialogFooter>
         </DialogContent>
