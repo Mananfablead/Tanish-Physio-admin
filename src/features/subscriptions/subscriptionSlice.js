@@ -6,7 +6,7 @@ export const fetchSubscriptionPlans = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const res = await subscriptionAPI.getPlans();
-      return res.data.data.plans;
+      return res.data.data?.plans || res.data.data || res.data || [];
     } catch (err) {
       return rejectWithValue(err.response?.data?.message || "Subscription plans fetch failed");
     }
