@@ -7,6 +7,7 @@ import {
   ToggleRight,
   Trash2,
   HelpCircle,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -37,33 +38,11 @@ import {
   activateQuestionnaire,
 } from "@/features/questionnaires/questionnaireSlice";
 
-// Define types based on backend schema
-interface Question {
-  _id?: string;
-  id?: number | string;
-  question: string;
-  type: "text" | "mcq" | "slider";
-  required: boolean;
-  active: boolean;
-  order: number;
-  options?: string[];
-}
-
-interface Questionnaire {
-  _id: string;
-  title: string;
-  description: string;
-  questions: Question[];
-  isActive: boolean;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
 type QuestionType = "text" | "mcq" | "slider";
 
 interface Question {
   _id?: string;
-  id: number;
+  id?: number | string;
   question: string;
   type: QuestionType;
   required: boolean;
@@ -78,8 +57,8 @@ interface Questionnaire {
   description: string;
   questions: Question[];
   isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export default function Questionnaires() {
@@ -103,6 +82,7 @@ export default function Questionnaires() {
     required: true,
     options: [""],
   });
+  const [saving, setSaving] = useState(false);
 
   // Load questionnaires on component mount
   useEffect(() => {
@@ -113,7 +93,7 @@ export default function Questionnaires() {
   const assignQuestionIds = (questionsList: Question[]): Question[] => {
     return questionsList.map((q, index) => ({
       ...q,
-      id: q.id ?? index + 1,
+      id: q.id ?? (index + 1).toString(),
     }));
   };
 
@@ -158,7 +138,7 @@ export default function Questionnaires() {
     if (selectedQuestion && selectedQuestion._id) {
       // Remove from local state
       const updatedQuestions = questions.filter(
-        (q) => q.id.toString() !== selectedQuestion!.id.toString()
+        (q) => String(q.id) !== String(selectedQuestion!.id)
       );
       setQuestions(updatedQuestions);
 
@@ -209,7 +189,7 @@ export default function Questionnaires() {
     if (selectedQuestion) {
       // Edit existing question
       updatedQuestions = questions.map((q) =>
-        q.id.toString() === selectedQuestion.id.toString()
+        String(q.id) === String(selectedQuestion.id)
           ? {
               ...q,
               question: editForm.question,
@@ -284,7 +264,7 @@ export default function Questionnaires() {
 
   const toggleQuestion = async (id: number | string) => {
     const updatedQuestions = questions.map((q) =>
-      q.id.toString() === id.toString() ? { ...q, active: !q.active } : q
+      String(q.id) === String(id) ? { ...q, active: !q.active } : q
     );
 
     setQuestions(updatedQuestions);
@@ -334,16 +314,16 @@ export default function Questionnaires() {
 
     if (
       !draggedQuestion ||
-      draggedQuestion.id.toString() === targetQuestion.id.toString()
+      String(draggedQuestion.id) === String(targetQuestion.id)
     ) {
       return;
     }
 
     const draggedIndex = questions.findIndex(
-      (q) => q.id.toString() === draggedQuestion.id.toString()
+      (q) => String(q.id) === String(draggedQuestion.id)
     );
     const targetIndex = questions.findIndex(
-      (q) => q.id.toString() === targetQuestion.id.toString()
+      (q) => String(q.id) === String(targetQuestion.id)
     );
 
     const newQuestions = [...questions];
