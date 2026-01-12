@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, MoreHorizontal, Video, Calendar, Clock, User, UserCog, X, RefreshCw, ChevronLeft, ChevronRight, Play, Eye, Copy, Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
@@ -14,14 +14,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { mockSessions } from "@/lib/session-data";
-
-// Using mockSessions from session-data.ts
+import { useSelector, useDispatch } from "react-redux";
+import { fetchSessions, createSession, updateSession, deleteSession } from "@/features/sessions/sessionSlice";
 
 type SessionStatus = "scheduled" | "live" | "completed" | "cancelled" | "no-show";
 
 export default function Sessions() {
   const navigate = useNavigate();
+  const dispatch: any = useDispatch();
+  const { list: sessions = [], loading, error } = useSelector((state: any) => state.sessions);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("upcoming");
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
@@ -30,6 +31,10 @@ export default function Sessions() {
   const [isCreateSessionModalOpen, setIsCreateSessionModalOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [selectedSession, setSelectedSession] = useState<any>(null);
+
+  useEffect(() => {
+    dispatch(fetchSessions());
+  }, [dispatch]);
 
   // State for creating a new session
   const [newSession, setNewSession] = useState({
@@ -41,6 +46,10 @@ export default function Sessions() {
     duration: "60 min",
     notes: ""
   });
+
+  // State for rescheduling
+  const [rescheduleDate, setRescheduleDate] = useState("");
+  const [rescheduleTime, setRescheduleTime] = useState("");
 
   const getStatusBadge = (status: SessionStatus) => {
     switch (status) {
@@ -62,13 +71,13 @@ export default function Sessions() {
   const getCurrentSessions = () => {
     switch (activeTab) {
       case "upcoming":
-        return mockSessions.upcoming;
+        return (sessions || []).filter((session: any) => session.status === 'scheduled');
       case "live":
-        return mockSessions.live;
+        return (sessions || []).filter((session: any) => session.status === 'live');
       case "completed":
-        return mockSessions.completed;
+        return (sessions || []).filter((session: any) => session.status === 'completed');
       case "cancelled":
-        return mockSessions.cancelled;
+        return (sessions || []).filter((session: any) => session.status === 'cancelled');
       default:
         return [];
     }
@@ -81,19 +90,24 @@ export default function Sessions() {
   );
 
   // Function to handle creating a new session
-  const handleCreateSession = () => {
-    // In a real app, this would make an API call to create a session
-    // For now, we'll just close the modal and reset the form
-    setIsCreateSessionModalOpen(false);
-    setNewSession({
-      user: "",
-      therapist: "",
-      date: "",
-      time: "",
-      type: "1-on-1",
-      duration: "60 min",
-      notes: ""
-    });
+  const handleCreateSession = async () => {
+    try {
+      await dispatch(createSession(newSession));
+      setIsCreateSessionModalOpen(false);
+      setNewSession({
+        user: "",
+        therapist: "",
+        date: "",
+        time: "",
+        type: "1-on-1",
+        duration: "60 min",
+        notes: ""
+      });
+      // Refresh sessions list
+      dispatch(fetchSessions());
+    } catch (error) {
+      console.error('Failed to create session:', error);
+    }
   };
 
   return (
@@ -130,7 +144,7 @@ export default function Sessions() {
               <Calendar className="w-5 h-5 text-info" />
             </div>
             <div>
-              <p className="text-2xl font-semibold">{mockSessions.upcoming.length}</p>
+              <p className="text-2xl font-semibold">{(sessions || []).filter((session: any) => session.status === 'scheduled').length}</p>
               <p className="text-sm text-muted-foreground">Upcoming</p>
             </div>
           </div>
@@ -141,7 +155,7 @@ export default function Sessions() {
               <Play className="w-5 h-5 text-success" />
             </div>
             <div>
-              <p className="text-2xl font-semibold">{mockSessions.live.length}</p>
+              <p className="text-2xl font-semibold">{(sessions || []).filter((session: any) => session.status === 'live').length}</p>
               <p className="text-sm text-muted-foreground">Live Now</p>
             </div>
           </div>
@@ -152,7 +166,7 @@ export default function Sessions() {
               <Video className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <p className="text-2xl font-semibold">{mockSessions.completed.length}</p>
+              <p className="text-2xl font-semibold">{(sessions || []).filter((session: any) => session.status === 'completed').length}</p>
               <p className="text-sm text-muted-foreground">Completed</p>
             </div>
           </div>
@@ -163,7 +177,7 @@ export default function Sessions() {
               <X className="w-5 h-5 text-warning" />
             </div>
             <div>
-              <p className="text-2xl font-semibold">{mockSessions.cancelled.length}</p>
+              <p className="text-2xl font-semibold">{(sessions || []).filter((session: any) => session.status === 'cancelled').length}</p>
               <p className="text-sm text-muted-foreground">Cancelled</p>
             </div>
           </div>
@@ -176,14 +190,14 @@ export default function Sessions() {
           <TabsTrigger value="upcoming">
             Upcoming
             <span className="ml-1.5 px-1.5 py-0.5 text-xs bg-info/20 text-info rounded-full">
-              {mockSessions.upcoming.length}
+              {(sessions || []).filter((session: any) => session.status === 'scheduled').length}
             </span>
           </TabsTrigger>
           <TabsTrigger value="live" className="relative">
             Live
-            {mockSessions.live.length > 0 && (
+            {(sessions || []).filter((session: any) => session.status === 'live').length > 0 && (
               <span className="ml-1.5 px-1.5 py-0.5 text-xs bg-success/20 text-success rounded-full animate-pulse">
-                {mockSessions.live.length}
+                {(sessions || []).filter((session: any) => session.status === 'live').length}
               </span>
             )}
           </TabsTrigger>
@@ -419,7 +433,16 @@ export default function Sessions() {
             <Button variant="outline" onClick={() => setIsCancelModalOpen(false)}>
               Keep Session
             </Button>
-            <Button variant="destructive" onClick={() => setIsCancelModalOpen(false)}>
+            <Button variant="destructive" onClick={async () => {
+              try {
+                await dispatch(updateSession({ id: selectedSession.id, sessionData: { status: 'cancelled', reason: cancelReason } }));
+                setIsCancelModalOpen(false);
+                setCancelReason('');
+                dispatch(fetchSessions());
+              } catch (error) {
+                console.error('Failed to cancel session:', error);
+              }
+            }}>
               Cancel Session
             </Button>
           </DialogFooter>
@@ -463,11 +486,16 @@ export default function Sessions() {
             <Button variant="outline" onClick={() => setIsAcceptModalOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={() => {
-              // Here you would typically make an API call to accept the session
-              setIsAcceptModalOpen(false);
-              // After accepting, navigate to the live sessions page to join
-              navigate('/live-sessions');
+            <Button onClick={async () => {
+              try {
+                await dispatch(updateSession({ id: selectedSession.id, sessionData: { status: 'scheduled' } }));
+                setIsAcceptModalOpen(false);
+                dispatch(fetchSessions());
+                // After accepting, navigate to the live sessions page to join
+                navigate('/live-sessions');
+              } catch (error) {
+                console.error('Failed to accept session:', error);
+              }
             }}>
               Accept Session
             </Button>
@@ -497,11 +525,16 @@ export default function Sessions() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium">New Date</label>
-                  <Input type="date" className="mt-1" />
+                  <Input 
+                    type="date" 
+                    className="mt-1" 
+                    value={rescheduleDate}
+                    onChange={(e) => setRescheduleDate(e.target.value)}
+                  />
                 </div>
                 <div>
                   <label className="text-sm font-medium">New Time</label>
-                  <Select>
+                  <Select value={rescheduleTime} onValueChange={setRescheduleTime}>
                     <SelectTrigger className="mt-1">
                       <SelectValue placeholder="Select time" />
                     </SelectTrigger>
@@ -522,7 +555,24 @@ export default function Sessions() {
             <Button variant="outline" onClick={() => setIsRescheduleModalOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={() => setIsRescheduleModalOpen(false)}>
+            <Button onClick={async () => {
+              try {
+                await dispatch(updateSession({ 
+                  id: selectedSession.id, 
+                  sessionData: { 
+                    status: 'scheduled',
+                    date: rescheduleDate,
+                    time: rescheduleTime
+                  } 
+                }));
+                setIsRescheduleModalOpen(false);
+                setRescheduleDate('');
+                setRescheduleTime('');
+                dispatch(fetchSessions());
+              } catch (error) {
+                console.error('Failed to reschedule session:', error);
+              }
+            }}>
               Reschedule Session
             </Button>
           </DialogFooter>

@@ -7,6 +7,9 @@ import serviceReducer from "@/features/services/serviceSlice";
 import questionnaireReducer from "@/features/questionnaires/questionnaireSlice";
 import subscriptionReducer from "@/features/subscriptions/subscriptionSlice";
 import availabilityReducer from "@/features/availability/availabilitySlice";
+import therapistReducer from "@/features/therapistSlice";
+import bookingReducer from "@/features/bookings/bookingSlice";
+import notificationReducer from "@/features/notifications/notificationSlice";
 
 export const store = configureStore({
   reducer: {
@@ -18,6 +21,9 @@ export const store = configureStore({
     questionnaires: questionnaireReducer,
     subscriptions: subscriptionReducer,
     availability: availabilityReducer,
+    therapists: therapistReducer,
+    notifications: notificationReducer,
+    bookings: bookingReducer,
   },
 });
 
