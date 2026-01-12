@@ -16,12 +16,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { cn } from "@/lib/utils";
 import { useSelector, useDispatch } from "react-redux";
 import { fetchSessions, createSession, updateSession, deleteSession } from "@/features/sessions/sessionSlice";
+import { fetchBookings } from "@/features/bookings/bookingSlice";
 
 type SessionStatus = "scheduled" | "live" | "completed" | "cancelled" | "no-show";
 
 export default function Sessions() {
   const navigate = useNavigate();
   const dispatch: any = useDispatch();
+  const { list: bookings, loading: bookingsLoading, error: bookingsError } = useSelector((state: any) => state.bookings);
+
   const { list: sessions = [], loading, error } = useSelector((state: any) => state.sessions);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("upcoming");
@@ -33,6 +36,7 @@ export default function Sessions() {
 
   useEffect(() => {
     dispatch(fetchSessions());
+    dispatch(fetchBookings());
   }, [dispatch]);
 
   // State for creating a new session
@@ -106,6 +110,7 @@ export default function Sessions() {
       console.error('Failed to create session:', error);
     }
   };
+  console.log("bookings", bookings)
 
   return (
     <div className="space-y-6">
@@ -343,7 +348,7 @@ export default function Sessions() {
                               </>
                             )}
                             {activeTab === "completed" && (
-                               <>
+                              <>
                                 <DropdownMenuItem onClick={() => {
                                   // Navigate to the session recordings page
                                   navigate(`/session-recordings/${session.bookingId || session.id}`);
@@ -389,7 +394,7 @@ export default function Sessions() {
               Are you sure you want to cancel this session? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
-          
+
           {selectedSession && (
             <div className="space-y-4 mt-4">
               <div className="p-3 rounded-lg bg-muted/50">
@@ -418,7 +423,7 @@ export default function Sessions() {
               </div>
             </div>
           )}
-          
+
           <DialogFooter className="mt-4">
             <Button variant="outline" onClick={() => setIsCancelModalOpen(false)}>
               Keep Session
@@ -448,7 +453,7 @@ export default function Sessions() {
               Select a new date and time for this session.
             </DialogDescription>
           </DialogHeader>
-          
+
           {selectedSession && (
             <div className="space-y-4 mt-4">
               <div className="p-3 rounded-lg bg-muted/50">
@@ -465,9 +470,9 @@ export default function Sessions() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium">New Date</label>
-                  <Input 
-                    type="date" 
-                    className="mt-1" 
+                  <Input
+                    type="date"
+                    className="mt-1"
                     value={rescheduleDate}
                     onChange={(e) => setRescheduleDate(e.target.value)}
                   />
@@ -490,20 +495,20 @@ export default function Sessions() {
               </div>
             </div>
           )}
-          
+
           <DialogFooter className="mt-4">
             <Button variant="outline" onClick={() => setIsRescheduleModalOpen(false)}>
               Cancel
             </Button>
             <Button onClick={async () => {
               try {
-                await dispatch(updateSession({ 
-                  id: selectedSession.id, 
-                  sessionData: { 
+                await dispatch(updateSession({
+                  id: selectedSession.id,
+                  sessionData: {
                     status: 'scheduled',
                     date: rescheduleDate,
                     time: rescheduleTime
-                  } 
+                  }
                 }));
                 setIsRescheduleModalOpen(false);
                 setRescheduleDate('');
@@ -528,21 +533,36 @@ export default function Sessions() {
               Schedule a new session for a user with a therapist.
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Booking ID</label>
-                <Input
-                  placeholder="Enter booking ID"
-                  value={newSession.bookingId}
-                  onChange={(e) => setNewSession({...newSession, bookingId: e.target.value})}
-                />
+                <label className="text-sm font-medium">Booking</label>
+
+                <select
+                  className="w-full p-2 border rounded-md"
+                  value={newSession.bookingId || ""}
+                  onChange={(e) =>
+                    setNewSession({
+                      ...newSession,
+                      bookingId: e.target.value,
+                    })
+                  }
+                >
+                  <option value="">Select Booking</option>
+
+                  {bookings.map((booking) => (
+                    <option key={booking._id} value={booking._id}>
+                     {booking.serviceName}
+                    </option>
+                  ))}
+                </select>
               </div>
-              
+
+
               <div className="space-y-2">
                 <label className="text-sm font-medium">Session Type</label>
-                <Select value={newSession.type} onValueChange={(value) => setNewSession({...newSession, type: value})}>
+                <Select value={newSession.type} onValueChange={(value) => setNewSession({ ...newSession, type: value })}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -552,10 +572,10 @@ export default function Sessions() {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div className="space-y-2">
                 <label className="text-sm font-medium">Status</label>
-                <Select value={newSession.status} onValueChange={(value) => setNewSession({...newSession, status: value})}>
+                <Select value={newSession.status} onValueChange={(value) => setNewSession({ ...newSession, status: value })}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -567,37 +587,37 @@ export default function Sessions() {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div className="space-y-2">
                 <label className="text-sm font-medium">Date</label>
                 <Input
                   type="date"
                   value={newSession.date}
-                  onChange={(e) => setNewSession({...newSession, date: e.target.value})}
+                  onChange={(e) => setNewSession({ ...newSession, date: e.target.value })}
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <label className="text-sm font-medium">Time</label>
                 <Input
                   type="time"
                   value={newSession.time}
-                  onChange={(e) => setNewSession({...newSession, time: e.target.value})}
+                  onChange={(e) => setNewSession({ ...newSession, time: e.target.value })}
                 />
               </div>
             </div>
-            
+
             <div className="space-y-2">
               <label className="text-sm font-medium">Notes</label>
               <Textarea
                 placeholder="Additional notes about the session..."
                 value={newSession.notes}
-                onChange={(e) => setNewSession({...newSession, notes: e.target.value})}
+                onChange={(e) => setNewSession({ ...newSession, notes: e.target.value })}
                 rows={3}
               />
             </div>
           </div>
-          
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsCreateSessionModalOpen(false)}>
               Cancel
