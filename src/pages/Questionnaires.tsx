@@ -32,10 +32,12 @@ import { cn } from "@/lib/utils";
 import { useDispatch, useSelector } from "react-redux";
 import {
   fetchQuestionnaires,
-  updateQuestions,
+  fetchActiveQuestionnaire,
+  updateQuestionnaire,
   createQuestionnaire,
   deleteQuestionnaire,
   activateQuestionnaire,
+  addQuestionToQuestionnaire,
 } from "@/features/questionnaires/questionnaireSlice";
 
 type QuestionType = "text" | "mcq" | "slider";
@@ -87,6 +89,7 @@ export default function Questionnaires() {
   // Load questionnaires on component mount
   useEffect(() => {
     dispatch(fetchQuestionnaires() as any);
+    dispatch(fetchActiveQuestionnaire() as any);
   }, [dispatch]);
 
   // Helper function to assign consistent IDs for UI operations
@@ -136,45 +139,29 @@ export default function Questionnaires() {
 
   const deleteQuestion = async () => {
     if (selectedQuestion && selectedQuestion._id) {
-      // Remove from local state
-      const updatedQuestions = questions.filter(
-        (q) => String(q.id) !== String(selectedQuestion!.id)
-      );
-      setQuestions(updatedQuestions);
-
-      // Find the active questionnaire to update
+      // Find the active questionnaire to delete
       const activeQuestionnaire =
         questionnaires.find((q: Questionnaire) => q.isActive) ||
         questionnaires[0];
 
       if (activeQuestionnaire && activeQuestionnaire._id) {
         try {
+          // Delete the entire questionnaire as per API contract
           await dispatch(
-            updateQuestions({
-              id: activeQuestionnaire._id,
-              questions: updatedQuestions,
-            }) as any
+            deleteQuestionnaire(activeQuestionnaire._id) as any
           );
           setIsEditModalOpen(false);
           setSelectedQuestion(null);
+          
+          // Clear questions state
+          setQuestions([]);
         } catch (error) {
-          console.error("Error deleting question:", error);
+          console.error("Error deleting questionnaire:", error);
         }
       } else {
-        // If no questionnaire exists, create a new one
-        try {
-          const newQuestionnaireData = {
-            title: "Patient Intake Questionnaire",
-            description: "Health intake questions for therapist matching",
-            questions: updatedQuestions,
-            isActive: true,
-          };
-          await dispatch(createQuestionnaire(newQuestionnaireData) as any);
-          setIsEditModalOpen(false);
-          setSelectedQuestion(null);
-        } catch (error) {
-          console.error("Error creating questionnaire:", error);
-        }
+        // If no questionnaire exists, just close the modal
+        setIsEditModalOpen(false);
+        setSelectedQuestion(null);
       }
     }
   };
@@ -184,11 +171,9 @@ export default function Questionnaires() {
       return; // Basic validation
     }
 
-    let updatedQuestions;
-
     if (selectedQuestion) {
-      // Edit existing question
-      updatedQuestions = questions.map((q) =>
+      // Edit existing question - update the entire questionnaire
+      let updatedQuestions = questions.map((q) =>
         String(q.id) === String(selectedQuestion.id)
           ? {
               ...q,
@@ -202,14 +187,50 @@ export default function Questionnaires() {
             }
           : q
       );
+
+      // Find the active questionnaire to update
+      const activeQuestionnaire =
+        questionnaires.find((q: Questionnaire) => q.isActive) ||
+        questionnaires[0];
+
+      if (activeQuestionnaire) {
+        // Update the questions in the backend
+        try {
+          await dispatch(
+            updateQuestionnaire({
+              id: activeQuestionnaire._id,
+              data: {
+                ...activeQuestionnaire,
+                questions: updatedQuestions
+              }
+            }) as any
+          );
+          setQuestions(updatedQuestions);
+          setIsEditModalOpen(false);
+          setSelectedQuestion(null);
+        } catch (error) {
+          console.error("Error saving question:", error);
+        }
+      } else {
+        // If no questionnaire exists, create a new one
+        try {
+          const newQuestionnaireData = {
+            title: "Patient Intake Questionnaire",
+            description: "Health intake questions for therapist matching",
+            questions: updatedQuestions,
+            isActive: true,
+          };
+          await dispatch(createQuestionnaire(newQuestionnaireData) as any);
+          setQuestions(updatedQuestions);
+          setIsEditModalOpen(false);
+          setSelectedQuestion(null);
+        } catch (error) {
+          console.error("Error creating questionnaire:", error);
+        }
+      }
     } else {
-      // Add new question
+      // Add new question - immediately call API to add the question
       const newQuestion = {
-        id:
-          Math.max(
-            ...questions.map((q) => (typeof q.id === "number" ? q.id : 0)),
-            0
-          ) + 1, // Use max ID + 1
         question: editForm.question,
         type: editForm.type,
         required: editForm.required,
@@ -220,44 +241,53 @@ export default function Questionnaires() {
             ? editForm.options.filter((opt) => opt.trim())
             : undefined,
       };
-      updatedQuestions = [...questions, newQuestion];
-    }
 
-    // Find the active questionnaire to update
-    const activeQuestionnaire =
-      questionnaires.find((q: Questionnaire) => q.isActive) ||
-      questionnaires[0];
+      // Find the active questionnaire to add the question to
+      const activeQuestionnaire =
+        questionnaires.find((q: Questionnaire) => q.isActive) ||
+        questionnaires[0];
 
-    if (activeQuestionnaire) {
-      // Update the questions in the backend
-      try {
-        await dispatch(
-          updateQuestions({
-            id: activeQuestionnaire._id,
-            questions: updatedQuestions,
-          }) as any
-        );
-        setQuestions(updatedQuestions);
-        setIsEditModalOpen(false);
-        setSelectedQuestion(null);
-      } catch (error) {
-        console.error("Error saving question:", error);
-      }
-    } else {
-      // If no questionnaire exists, create a new one
-      try {
-        const newQuestionnaireData = {
-          title: "Patient Intake Questionnaire",
-          description: "Health intake questions for therapist matching",
-          questions: updatedQuestions,
-          isActive: true,
-        };
-        await dispatch(createQuestionnaire(newQuestionnaireData) as any);
-        setQuestions(updatedQuestions);
-        setIsEditModalOpen(false);
-        setSelectedQuestion(null);
-      } catch (error) {
-        console.error("Error creating questionnaire:", error);
+      if (activeQuestionnaire && activeQuestionnaire._id) {
+        try {
+          const result = await dispatch(
+            addQuestionToQuestionnaire({
+              id: activeQuestionnaire._id,
+              question: newQuestion,
+            }) as any
+          );
+          
+          // Update local state with the response
+          if (result.payload && result.payload.questions) {
+            // Assign IDs for UI operations
+            const questionsWithIds = assignQuestionIds(result.payload.questions);
+            setQuestions(questionsWithIds);
+          }
+          
+          setIsEditModalOpen(false);
+          setSelectedQuestion(null);
+        } catch (error) {
+          console.error("Error adding question:", error);
+        }
+      } else {
+        // If no questionnaire exists, create a new one with this question
+        try {
+          const newQuestionnaireData = {
+            title: "Patient Intake Questionnaire",
+            description: "Health intake questions for therapist matching",
+            questions: [newQuestion],
+            isActive: true,
+          };
+          await dispatch(createQuestionnaire(newQuestionnaireData) as any);
+          
+          // Update local state
+          const questionsWithIds = assignQuestionIds([newQuestion]);
+          setQuestions(questionsWithIds);
+          
+          setIsEditModalOpen(false);
+          setSelectedQuestion(null);
+        } catch (error) {
+          console.error("Error creating questionnaire:", error);
+        }
       }
     }
   };
@@ -277,9 +307,12 @@ export default function Questionnaires() {
     if (activeQuestionnaire && activeQuestionnaire._id) {
       try {
         await dispatch(
-          updateQuestions({
+          updateQuestionnaire({
             id: activeQuestionnaire._id,
-            questions: updatedQuestions,
+            data: {
+              ...activeQuestionnaire,
+              questions: updatedQuestions
+            }
           }) as any
         );
       } catch (error) {
@@ -347,9 +380,12 @@ export default function Questionnaires() {
     if (activeQuestionnaire && activeQuestionnaire._id) {
       try {
         await dispatch(
-          updateQuestions({
+          updateQuestionnaire({
             id: activeQuestionnaire._id,
-            questions: updatedQuestions,
+            data: {
+              ...activeQuestionnaire,
+              questions: updatedQuestions
+            }
           }) as any
         );
       } catch (error) {
@@ -595,6 +631,7 @@ export default function Questionnaires() {
                   <SelectItem value="text">Free Text</SelectItem>
                   <SelectItem value="mcq">Multiple Choice</SelectItem>
                   <SelectItem value="slider">Slider (1-10)</SelectItem>
+                  <SelectItem value="skalaeton">Skalaeton</SelectItem>
                 </SelectContent>
               </Select>
             </div>

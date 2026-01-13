@@ -91,6 +91,10 @@ export const API = {
   // bookings
   BOOKINGS: "/bookings",
   BOOKING_BY_ID: "/bookings/:id",
+
+  // questionnaires
+  QUESTIONNAIRES: "/questionnaires",
+  QUESTIONNAIRE_BY_ID: "/questionnaires/:id",
 };
 export const availabilityAPI = {
   // Get all availability
@@ -110,13 +114,13 @@ export const availabilityAPI = {
 };
 export const questionnaireAPI = {
   // Get all questionnaires
-  getAll: () => apiClient.get('/questionnaires'),
+  getAll: () => apiClient.get(API.QUESTIONNAIRES),
 
   // Get active questionnaire
-  getActive: () => apiClient.get('/questionnaires/active'),
+  getActive: () => apiClient.get(`${API.QUESTIONNAIRES}/active`),
 
   // Get questionnaire by ID
-  getById: (id) => apiClient.get(`/questionnaires/${id}`),
+  getById: (id) => apiClient.get(`${API.QUESTIONNAIRE_BY_ID.replace(':id', id)}`),
 
   // Create new questionnaire
   create: (data) => {
@@ -139,7 +143,7 @@ export const questionnaireAPI = {
       ...data,
       questions: normalizedQuestions
     };
-    return apiClient.post('/questionnaires', payload);
+    return apiClient.post(API.QUESTIONNAIRES, payload);
   },
 
   // Update questionnaire
@@ -163,34 +167,16 @@ export const questionnaireAPI = {
       ...data,
       questions: normalizedQuestions
     };
-    return apiClient.put(`/questionnaires/${id}`, payload);
+    return apiClient.put(`${API.QUESTIONNAIRE_BY_ID.replace(':id', id)}`, payload);
   },
 
-  // Update only questions of a questionnaire
-  updateQuestions: (id, questions) => {
-    // Normalize questions according to backend contract
-    const normalizedQuestions = questions ? questions.map((q, index) => ({
-      question: String(q.question),
-      type: String(q.type),
-      order: Number(
-        q.order !== undefined && q.order !== null
-          ? q.order
-          : index + 1
-      ),
-      required: Boolean(q.required),
-      active: q.active !== undefined ? Boolean(q.active) : true,
-      min: q.min,
-      max: q.max
-    })) : [];
 
-    return apiClient.put(`/questionnaires/${id}/questions`, { questions: normalizedQuestions });
-  },
 
   // Delete questionnaire
-  delete: (id) => apiClient.delete(`/questionnaires/${id}`),
+  delete: (id) => apiClient.delete(`${API.QUESTIONNAIRE_BY_ID.replace(':id', id)}`),
 
   // Activate questionnaire
-  activate: (id) => apiClient.put(`/questionnaires/${id}/activate`),
+  activate: (id) => apiClient.put(`${API.QUESTIONNAIRE_BY_ID.replace(':id', id)}/activate`),
 };
 export const subscriptionAPI = {
   // Get all subscription plans

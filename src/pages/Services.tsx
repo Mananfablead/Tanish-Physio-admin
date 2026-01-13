@@ -107,7 +107,7 @@ export default function Services() {
                 </thead>
                 <tbody>
                   {filteredServices.map((service) => (
-                    <tr key={service._id || service.id} className="cursor-pointer" onClick={() => navigate(`/services/${service._id || service.id}`)}>
+                    <tr key={service._id || service.id} className={cn("cursor-pointer", (service.status === "inactive" || service.status === false) ? "opacity-70" : "")} onClick={() => navigate(`/services/${service._id || service.id}`)}>
                       <td>
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-md bg-muted flex items-center justify-center overflow-hidden">
@@ -121,7 +121,12 @@ export default function Services() {
                               <ImageIcon className="w-5 h-5 text-muted-foreground" />
                             )}
                           </div>
-                          <span className="font-medium">{service.name}</span>
+                          <div>
+                            <span className="font-medium">{service.name}</span>
+                            {(service.status === "inactive" || service.status === false) && (
+                              <span className="ml-2 text-xs text-muted-foreground">(Inactive)</span>
+                            )}
+                          </div>
                         </div>
                       </td>
                       <td className="max-w-xs">
