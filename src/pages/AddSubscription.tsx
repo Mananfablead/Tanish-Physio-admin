@@ -77,44 +77,49 @@ export default function AddSubscription() {
             features: prev.features.filter((_, i) => i !== index),
         }));
 
-    const handleSavePlan = async () => {
-        try {
-            const payload = {
-                ...planForm,
-                duration: "monthly",
-            };
+ const handleSavePlan = async () => {
+  try {
+    if (!planForm.planId) {
+      toast({
+        title: "Validation Error",
+        description: "Please select a Plan Type",
+        variant: "destructive",
+      });
+      return;
+    }
 
-            const result = await dispatch(createSubscriptionPlan(payload));
-
-            if (createSubscriptionPlan.fulfilled.match(result)) {
-                toast({
-                    title: "Success",
-                    description: "Subscription plan created successfully!",
-                });
-
-                setPlanForm({
-                    planId: "",
-                    name: "",
-                    price: 0,
-                    description: "",
-                    features: [""],
-                    status: "active",
-                    duration: "monthly",
-                    validityInMonths: 1,
-                    autoRenew: true,
-                });
-                navigate("/subscriptions");
-            } else {
-                throw new Error("Failed to create plan");
-            }
-        } catch (err: any) {
-            toast({
-                title: "Error",
-                description: err.message || "Something went wrong",
-                variant: "destructive",
-            });
-        }
+    const payload = {
+      ...planForm,
+      duration: planForm.duration,
     };
+
+    const result = await dispatch(createSubscriptionPlan(payload));
+
+    if (createSubscriptionPlan.fulfilled.match(result)) {
+      toast({
+        title: "Success",
+        description: "Subscription plan created successfully!",
+      });
+
+      navigate("/subscriptions");
+    } else {
+      // ✅ BACKEND MESSAGE EXTRACT
+      const errorMessage =
+        result.payload?.message ||
+        result.error?.message ||
+        "Failed to create plan";
+
+      throw new Error(errorMessage);
+    }
+  } catch (err: any) {
+    toast({
+      title: "Error",
+      description: err.message, // 👈 EXACT backend message
+      variant: "destructive",
+    });
+  }
+};
+
 
     /* ---------------- UI ---------------- */
 
@@ -151,7 +156,9 @@ export default function AddSubscription() {
                         >
                             <option value="">Select Plan</option>
                             {planOptions.map((p) => (
-                                <option key={p.value} value={p.value}>
+                                <option key={p.value} value={p.value}
+                                disabled={planOptions.some((pl: any) => pl.planId === p.value)}
+                                >
                                     {p.label}
                                 </option>
                             ))}
@@ -266,7 +273,9 @@ export default function AddSubscription() {
                 <Button variant="outline" asChild>
                     <Link to="/subscriptions">Cancel</Link>
                 </Button>
-                <Button onClick={handleSavePlan}>Create Plan</Button>
+                <Button
+                    disabled={!planForm.name || !planForm.price || !planForm.duration || !planForm.features.length}
+                onClick={handleSavePlan}>Create Plan</Button>
             </div>
         </div>
     );

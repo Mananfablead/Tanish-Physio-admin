@@ -301,7 +301,7 @@ export default function AddService() {
                     <div className="flex gap-3">
                         <Button
                             onClick={handleAddService}
-                            disabled={!serviceForm.name || !serviceForm.price || !!imageError || isLoading}
+                            disabled={!serviceForm.name || !serviceForm.price || !serviceForm.duration || !serviceForm.features || !!imageError || isLoading}
                         >
                             {isLoading ? (
                                 <>
