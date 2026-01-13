@@ -431,7 +431,9 @@ const handleDeleteBooking = async (id: number) => {
             >
               Cancel
             </Button>
-            <Button onClick={isEditing ? handleUpdateBooking : handleCreateBooking}>
+            <Button onClick={isEditing ? handleUpdateBooking : handleCreateBooking}
+              disabled={!bookingForm.clientName || !bookingForm.date || !bookingForm.time}
+            >
               {isEditing ? "Update Booking" : "Create Booking"}
             </Button>
           </DialogFooter>
