@@ -85,7 +85,7 @@ export default function Bookings() {
     booking.serviceName?.toLowerCase().includes(searchQuery?.toLowerCase()) ||
     booking.clientName?.toLowerCase().includes(searchQuery?.toLowerCase()) ||
     booking.therapistName?.toLowerCase().includes(searchQuery?.toLowerCase()) ||
-    booking.status?.toLowerCase().includes(searchQuery?.toLowerCase()) 
+    booking.status?.toLowerCase().includes(searchQuery?.toLowerCase())
   );
 
   /* ===========================
@@ -110,7 +110,7 @@ export default function Bookings() {
       console.error('Failed to create booking:', error);
     }
   };
-  
+
 
   /* ===========================
      UPDATE BOOKING DETAILS
@@ -149,18 +149,18 @@ export default function Bookings() {
   /* ===========================
      DELETE BOOKING
   =========================== */
-const handleDeleteBooking = async (id: number) => {
-  try {
-    await dispatch(deleteBooking(id)).unwrap();
+  const handleDeleteBooking = async (id: number) => {
+    try {
+      await dispatch(deleteBooking(id)).unwrap();
 
-    // Optional: only if backend doesn't return updated list
-    dispatch(fetchBookings());
+      // Optional: only if backend doesn't return updated list
+      dispatch(fetchBookings());
 
-    toast({ title: "Booking deleted successfully", variant: "default" });
-  } catch (error) {
-    toast({ title: "Failed to delete booking", variant: "destructive" } );
-  }
-};
+      toast({ title: "Booking deleted successfully", variant: "default" });
+    } catch (error) {
+      toast({ title: "Failed to delete booking", variant: "destructive" });
+    }
+  };
 
 
   /* ===========================
@@ -325,6 +325,7 @@ const handleDeleteBooking = async (id: number) => {
                 disabled={servicesLoading || isEditing}
               >
                 <option value="">Select a service</option>
+                
                 {(services ?? []).map((service) => (
                   <option key={service._id || service.id} value={service._id || service.id}>
                     {service.name}
@@ -363,32 +364,32 @@ const handleDeleteBooking = async (id: number) => {
               </div>
             </div>
 
-  <div className="space-y-2">
-  <label className="text-sm font-medium">Client</label>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Client</label>
 
-  <select
-    className="w-full p-2 border rounded-md"
-    value={bookingForm.clientName || ""}
-    onChange={(e) =>
-      setBookingForm({
-        ...bookingForm,
-        clientName: e.target.value,
-      })
-    }
-    disabled={usersLoading || isEditing}
-  >
-    <option value="">Select a client</option>
+              <select
+                className="w-full p-2 border rounded-md"
+                value={bookingForm.clientName || ""}
+                onChange={(e) =>
+                  setBookingForm({
+                    ...bookingForm,
+                    clientName: e.target.value,
+                  })
+                }
+                disabled={usersLoading || isEditing}
+              >
+                <option value="">Select a client</option>
 
-    {(users ?? []).map((user) => {
-      const displayName = user.name || user.email;
-      return (
-        <option key={user.id} value={displayName}>
-          {displayName}
-        </option>
-      );
-    })}
-  </select>
-</div>
+                {(users ?? []).map((user) => {
+                  const displayName = user.name || user.email;
+                  return (
+                    <option key={user.id} value={displayName}>
+                      {displayName}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
 
 
             <div className="space-y-2">
