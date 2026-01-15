@@ -439,14 +439,6 @@ export default function Questionnaires() {
         </div>
       )}
 
-      {error && (
-        <div className="bg-destructive/15 border border-destructive/30 rounded-lg p-4">
-          <p className="text-sm text-destructive">
-            Error: {typeof error === "string" ? error : "An error occurred"}
-          </p>
-        </div>
-      )}
-
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="page-header">

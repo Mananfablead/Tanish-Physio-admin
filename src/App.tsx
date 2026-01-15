@@ -1,88 +1,3 @@
-// import { Toaster } from "@/components/ui/toaster";
-// import { Toaster as Sonner } from "@/components/ui/sonner";
-// import { TooltipProvider } from "@/components/ui/tooltip";
-// import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-// import { BrowserRouter, Routes, Route } from "react-router-dom";
-// import { AdminLayout } from "@/components/layout/AdminLayout";
-// import ProtectedRoute from "@/routes/ProtectedRoute";
-// import PublicRoute from "@/routes/PublicRoute";
-
-// // Pages
-// import Login from "./pages/Login";
-// import Dashboard from "./pages/Dashboard";
-// import Users from "./pages/Users";
-// import UserProfile from "./pages/UserProfile";
-// import Therapists from "./pages/Therapists";
-// import Questionnaires from "./pages/Questionnaires";
-// import Sessions from "./pages/Sessions";
-// import Availability from "./pages/Availability";
-// import SessionRecordings from "./pages/SessionRecordings";
-// import LiveSessions from "./pages/LiveSessions";
-// import Subscriptions from "./pages/Subscriptions";
-// import Payments from "./pages/Payments";
-// import ChatMonitor from "./pages/ChatMonitor";
-// import Feedback from "./pages/Feedback";
-// import Notifications from "./pages/Notifications";
-// import Reports from "./pages/Reports";
-// import Profile from "./pages/Profile";
-// import StaffSessions from "./pages/StaffSessions";
-// import NotFound from "./pages/NotFound";
-// import TherapistProfile from "./pages/TherapistProfile";
-// import VideoCallPage from "./pages/VideoCallPage";
-// import Services from "./pages/Services";
-// import Bookings from "./pages/Bookings";
-// import Courses from "./pages/Courses";
-// import ServiceDetails from "./pages/ServiceDetails";
-
-// const queryClient = new QueryClient();
-
-// // Wrapper component for pages that need the admin layout
-// const AdminPage = ({ children }: { children: React.ReactNode }) => (
-//   <AdminLayout>{children}</AdminLayout>
-// );
-
-// const App = () => (
-//   <QueryClientProvider client={queryClient}>
-//     <TooltipProvider>
-//       <Toaster />
-//       <Sonner />
-//       <BrowserRouter>
-//         <Routes>
-//           <Route path="/login" element={<Login />} />
-//           <Route path="/" element={<AdminPage><Dashboard /></AdminPage>} />
-//           <Route path="/users" element={<AdminPage><Users /></AdminPage>} />
-//           <Route path="/users/:id" element={<AdminPage><UserProfile /></AdminPage>} />
-//           <Route path="/therapists" element={<AdminPage><Therapists /></AdminPage>} />
-//           <Route path="/therapists/:id" element={<AdminPage><TherapistProfile /></AdminPage>} />
-//           <Route path="/questionnaires" element={<AdminPage><Questionnaires /></AdminPage>} />
-//           <Route path="/sessions" element={<AdminPage><Sessions /></AdminPage>} />
-//           <Route path="/availability" element={<AdminPage><Availability /></AdminPage>} />
-//           <Route path="/session-recordings" element={<AdminPage><SessionRecordings /></AdminPage>} />
-//           <Route path="/session-recordings/:userId" element={<AdminPage><SessionRecordings /></AdminPage>} />
-//           <Route path="/live-sessions" element={<AdminPage><LiveSessions /></AdminPage>} />
-//           <Route path="/subscriptions" element={<AdminPage><Subscriptions /></AdminPage>} />
-//           <Route path="/payments" element={<AdminPage><Payments /></AdminPage>} />
-//           <Route path="/chat" element={<AdminPage><ChatMonitor /></AdminPage>} />
-//           <Route path="/feedback" element={<AdminPage><Feedback /></AdminPage>} />
-//           <Route path="/notifications" element={<AdminPage><Notifications /></AdminPage>} />
-//           <Route path="/reports" element={<AdminPage><Reports /></AdminPage>} />
-//           <Route path="/profile" element={<AdminPage><Profile /></AdminPage>} />
-//           <Route path="/staff/sessions/:id" element={<AdminPage><StaffSessions /></AdminPage>} />
-//           <Route path="/services" element={<AdminPage><Services /></AdminPage>} />
-//           <Route path="/services/:id" element={<AdminPage><ServiceDetails /></AdminPage>} />
-//           <Route path="/bookings" element={<AdminPage><Bookings /></AdminPage>} />
-//           <Route path="/courses" element={<AdminPage><Courses /></AdminPage>} />
-//           <Route path="/video-call/:sessionId" element={<VideoCallPage />} />
-//           <Route path="*" element={<NotFound />} />
-//         </Routes>
-//       </BrowserRouter>
-//     </TooltipProvider>
-//   </QueryClientProvider>
-// );
-
-// export default App;
-
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -120,6 +35,9 @@ import AddSubscription from "./pages/AddSubscription";
 import SubscriptionDetails from "./pages/SubscriptionDetails";
 import Bookings from "./pages/Bookings";
 import Courses from "./pages/Courses";
+import CMS from "./pages/CMS";
+import ContentDetails from "./pages/ContentDetails";
+import Testimonials from "./pages/Testimonials";
 import VideoCallPage from "./pages/VideoCallPage";
 import NotFound from "./pages/NotFound";
 import ResetPassword from "./pages/ResetPassword";
@@ -334,6 +252,16 @@ const App = () => (
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/testimonials"
+            element={
+              <ProtectedRoute>
+                <AdminPage>
+                  <Testimonials />
+                </AdminPage>
+              </ProtectedRoute>
+            }
+          />
 
           <Route
             path="/profile"
@@ -418,6 +346,39 @@ const App = () => (
               <ProtectedRoute>
                 <AdminPage>
                   <Courses />
+                </AdminPage>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/cms"
+            element={
+              <ProtectedRoute>
+                <AdminPage>
+                  <CMS />
+                </AdminPage>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/cms/:id"
+            element={
+              <ProtectedRoute>
+                <AdminPage>
+                  <ContentDetails />
+                </AdminPage>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/testimonials"
+            element={
+              <ProtectedRoute>
+                <AdminPage>
+                  <Testimonials />
                 </AdminPage>
               </ProtectedRoute>
             }
