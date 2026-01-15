@@ -130,18 +130,18 @@ export const questionnaireAPI = {
   create: (data) => {
     // Format questions according to the specified API structure
     const formattedQuestions = data.questions ? data.questions.map((q, index) => ({
-      question: q.question,
-      type: q.type,
-      order: q.order !== undefined ? q.order : index + 1,
-      required: q.required !== undefined ? q.required : true,
-      active: q.active !== undefined ? q.active : true,
-      options: q.options || undefined
+      question: String(q.question),
+      type: String(q.type),
+      order: Number(q.order !== undefined ? q.order : index + 1),
+      required: Boolean(q.required !== undefined ? q.required : true),
+      active: Boolean(q.active !== undefined ? q.active : true),
+      options: q.options || []
     })) : [];
 
     const payload = {
-      title: data.title || "Health Assessment Questionnaire",
-      description: data.description || "Please answer these health-related questions",
-      isActive: data.isActive !== undefined ? data.isActive : true,
+      title: String(data.title || "Health Assessment Questionnaire"),
+      description: String(data.description || "Please answer these health-related questions"),
+      isActive: Boolean(data.isActive !== undefined ? data.isActive : true),
       questions: formattedQuestions
     };
     return apiClient.post(API.QUESTIONNAIRES, payload);
@@ -160,18 +160,28 @@ export const questionnaireAPI = {
       ),
       required: Boolean(q.required),
       active: q.active !== undefined ? Boolean(q.active) : true,
+      options: q.options || [],
       min: q.min,
       max: q.max
     })) : [];
 
     const payload = {
-      ...data,
-      questions: normalizedQuestions
+      title: data.title,
+      description: data.description,
+      questions: normalizedQuestions,
+      isActive: data.isActive
     };
     return apiClient.put(`${API.QUESTIONNAIRE_BY_ID.replace(':id', id)}`, payload);
   },
 
 
+
+  // Update questions in questionnaire
+  updateQuestions: (id, data) => {
+    // Ensure data is in the correct format { questions: Question[] }
+    const payload = Array.isArray(data) ? { questions: data } : data;
+    return apiClient.put(`${API.QUESTIONNAIRE_BY_ID.replace(':id', id)}/questions`, payload);
+  },
 
   // Delete questionnaire
   delete: (id) => apiClient.delete(`${API.QUESTIONNAIRE_BY_ID.replace(':id', id)}`),

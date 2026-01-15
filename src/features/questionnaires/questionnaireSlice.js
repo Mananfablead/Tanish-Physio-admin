@@ -62,21 +62,37 @@ export const updateQuestionnaire = createAsyncThunk(
   }
 );
 
-// Thunk to add a question by creating a new questionnaire (always uses POST)
+// Thunk to add a question to the active questionnaire
 export const addQuestionToQuestionnaire = createAsyncThunk(
   "questionnaires/addQuestionToQuestionnaire",
-  async ({ question }, { rejectWithValue }) => {
+  async ({ question }, { rejectWithValue, getState }) => {
     try {
-      // Always create a new questionnaire with the question (POST call)
-      const questionnaireData = {
-        title: "Health Assessment Questionnaire",
-        description: "Please answer these health-related questions",
-        isActive: true,
-        questions: [question]
-      };
+      const state = getState();
+      let activeQuestionnaire = state.questionnaires.questionnaires.find(q => q.isActive) || 
+                               state.questionnaires.currentQuestionnaire;
       
-      const response = await questionnaireAPI.create(questionnaireData);
-      return response.data.data;
+      if (!activeQuestionnaire) {
+        // If no active questionnaire exists, create a new one
+        const questionnaireData = {
+          title: "Health Assessment Questionnaire",
+          description: "Please answer these health-related questions",
+          isActive: true,
+          questions: [question]
+        };
+        
+        const response = await questionnaireAPI.create(questionnaireData);
+        return response.data.data;
+      } else {
+        // Add question to the existing active questionnaire
+        const updatedQuestions = [...activeQuestionnaire.questions, question];
+        const updatedQuestionnaire = {
+          ...activeQuestionnaire,
+          questions: updatedQuestions
+        };
+        
+        const response = await questionnaireAPI.update(activeQuestionnaire._id, updatedQuestionnaire);
+        return response.data.data;
+      }
     } catch (error) {
       return rejectWithValue(error.response?.data || error.message);
     }
@@ -168,13 +184,18 @@ const questionnaireSlice = createSlice({
       .addCase(fetchActiveQuestionnaire.fulfilled, (state, action) => {
         state.loading = false;
         state.currentQuestionnaire = action.payload;
-        // Update questionnaires list if the active questionnaire is not already in the list
+        // Update questionnaires list - only keep active questionnaire in sync
         const existingIndex = state.questionnaires.findIndex(q => q._id === action.payload._id);
         if (existingIndex === -1) {
           state.questionnaires.push(action.payload);
         } else {
           state.questionnaires[existingIndex] = action.payload;
         }
+        // Also update any other questionnaires to inactive if they're not the active one
+        state.questionnaires = state.questionnaires.map(q => ({
+          ...q,
+          isActive: q._id === action.payload._id
+        }));
       })
       .addCase(fetchActiveQuestionnaire.rejected, (state, action) => {
         state.loading = false;
