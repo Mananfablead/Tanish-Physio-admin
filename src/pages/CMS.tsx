@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Plus, Edit, Trash2, Eye, FileText, Image, Link, Calendar, User } from "lucide-react";
+import { Search, Plus, Edit, Trash2, Eye, FileText, Image, Link, Calendar, User, File, CheckCircle, Clock, Layers } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -194,46 +194,68 @@ export default function CMS() {
             </div>
 
             {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <Card>
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium">Total Content</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{contents.length}</div>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium">Published</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-green-600">
-                            {contents.filter(c => c.status === "published").length}
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium">Drafts</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-yellow-600">
-                            {contents.filter(c => c.status === "draft").length}
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium">Pages</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">
-                            {contents.filter(c => c.type === "page").length}
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
+       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+  <div className="stat-card">
+    <div className="flex items-center justify-between">
+      {/* Text */}
+      <div>
+        <p className="text-2xl font-semibold">{contents.length}</p>
+        <p className="text-sm text-muted-foreground">Total Content</p>
+      </div>
+
+      {/* Icon */}
+      <div className="p-2 rounded-lg bg-success/10">
+        <File className="w-5 h-5 text-success" />
+      </div>
+    </div>
+  </div>
+
+  <div className="stat-card">
+    <div className="flex items-center justify-between">
+      <div>
+        <p className="text-2xl font-semibold">
+          {contents.filter(c => c.status === "published").length}
+        </p>
+        <p className="text-sm text-muted-foreground">Published</p>
+      </div>
+
+      <div className="p-2 rounded-lg bg-primary/10">
+        <CheckCircle className="w-5 h-5 text-primary" />
+      </div>
+    </div>
+  </div>
+
+  <div className="stat-card">
+    <div className="flex items-center justify-between">
+      <div>
+        <p className="text-2xl font-semibold">
+          {contents.filter(c => c.status === "draft").length}
+        </p>
+        <p className="text-sm text-muted-foreground">Drafts</p>
+      </div>
+
+      <div className="p-2 rounded-lg bg-destructive/10">
+        <Clock className="w-5 h-5 text-destructive" />
+      </div>
+    </div>
+  </div>
+
+  <div className="stat-card">
+    <div className="flex items-center justify-between">
+      <div>
+        <p className="text-2xl font-semibold">
+          {contents.filter(c => c.type === "page").length}
+        </p>
+        <p className="text-sm text-muted-foreground">Pages</p>
+      </div>
+
+      <div className="p-2 rounded-lg bg-warning/10">
+        <Layers className="w-5 h-5 text-warning" />
+      </div>
+    </div>
+  </div>
+</div>
+
 
             {/* Search and Filters */}
             <div className="flex flex-col sm:flex-row gap-4">
@@ -290,8 +312,8 @@ export default function CMS() {
                                     </TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex items-center justify-end gap-2">
-                                            <Button 
-                                                variant="ghost" 
+                                            <Button
+                                                variant="ghost"
                                                 size="icon"
                                                 onClick={() => handleView(content)}
                                             >

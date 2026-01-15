@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Search, Plus, Edit, Trash2, Star, User, Calendar, Award, Filter } from "lucide-react";
+import { Search, Plus, Edit, Trash2, Star, User, Calendar, Award, Filter, CheckCircle, MessageSquare, Clock } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -228,40 +228,76 @@ export default function Testimonials() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total Reviews</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{testimonials.length}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Pending Approval</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">{pendingCount}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Approved</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">{approvedCount}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Featured</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{featuredCount}</div>
-          </CardContent>
-        </Card>
+   <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+  {/* Total Reviews */}
+  <Card>
+    <CardContent className="flex items-center justify-between p-6">
+      <div>
+        <p className="text-sm font-medium text-muted-foreground">
+          Total Reviews
+        </p>
+        <p className="text-2xl font-bold">
+          {testimonials.length}
+        </p>
       </div>
+      <div className="p-2 rounded-lg bg-primary/10">
+        <MessageSquare className="w-5 h-5 text-primary" />
+      </div>
+    </CardContent>
+  </Card>
+
+  {/* Pending Approval */}
+  <Card>
+    <CardContent className="flex items-center justify-between p-6">
+      <div>
+        <p className="text-sm font-medium text-muted-foreground">
+          Pending Approval
+        </p>
+        <p className="text-2xl font-bold text-yellow-600">
+          {pendingCount}
+        </p>
+      </div>
+      <div className="p-2 rounded-lg bg-yellow-500/10">
+        <Clock className="w-5 h-5 text-yellow-600" />
+      </div>
+    </CardContent>
+  </Card>
+
+  {/* Approved */}
+  <Card>
+    <CardContent className="flex items-center justify-between p-6">
+      <div>
+        <p className="text-sm font-medium text-muted-foreground">
+          Approved
+        </p>
+        <p className="text-2xl font-bold text-green-600">
+          {approvedCount}
+        </p>
+      </div>
+      <div className="p-2 rounded-lg bg-green-500/10">
+        <CheckCircle className="w-5 h-5 text-green-600" />
+      </div>
+    </CardContent>
+  </Card>
+
+  {/* Featured */}
+  <Card>
+    <CardContent className="flex items-center justify-between p-6">
+      <div>
+        <p className="text-sm font-medium text-muted-foreground">
+          Featured
+        </p>
+        <p className="text-2xl font-bold text-blue-600">
+          {featuredCount}
+        </p>
+      </div>
+      <div className="p-2 rounded-lg bg-blue-500/10">
+        <Star className="w-5 h-5 text-blue-600" />
+      </div>
+    </CardContent>
+  </Card>
+</div>
+
 
       {/* Search and Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
