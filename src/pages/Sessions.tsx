@@ -46,7 +46,7 @@ export default function Sessions() {
     time: "",
     type: "1-on-1",
     status: "scheduled",
-    notes: ""
+    // notes: ""
   });
 
   // State for rescheduling
@@ -71,30 +71,65 @@ export default function Sessions() {
   };
 
   const getCurrentSessions = () => {
+    const currentSessions = (sessions || []).map((session: any) => ({
+      ...session,
+      // Normalize bookingId to be a string for consistent access
+      bookingId: typeof session.bookingId === 'object' 
+        ? (session.bookingId._id || session.bookingId.id || session.bookingId.serviceName)
+        : session.bookingId,
+      // Also normalize other nested objects
+      therapistId: typeof session.therapistId === 'object' 
+        ? (session.therapistId._id || session.therapistId.id || session.therapistId.name)
+        : session.therapistId,
+      userId: typeof session.userId === 'object' 
+        ? (session.userId._id || session.userId.id || session.userId)
+        : session.userId,
+    }));
+    
     switch (activeTab) {
       case "upcoming":
-        return (sessions || []).filter((session: any) => session.status === 'scheduled');
+        return currentSessions.filter((session: any) => session.status === 'scheduled');
       case "live":
-        return (sessions || []).filter((session: any) => session.status === 'live');
+        return currentSessions.filter((session: any) => session.status === 'live');
       case "completed":
-        return (sessions || []).filter((session: any) => session.status === 'completed');
+        return currentSessions.filter((session: any) => session.status === 'completed');
       case "cancelled":
-        return (sessions || []).filter((session: any) => session.status === 'cancelled');
+        return currentSessions.filter((session: any) => session.status === 'cancelled');
       default:
         return [];
     }
   };
+const filteredSessions = getCurrentSessions().filter((session) => {
+  const query = searchQuery?.toLowerCase() || "";
 
-  const filteredSessions = getCurrentSessions().filter(
-    (session) =>
-      (session.bookingId || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (session.type || '').toLowerCase().includes(searchQuery.toLowerCase())
+  // Handle both string IDs and nested objects for bookingId
+  const bookingIdValue = typeof session.bookingId === 'object' 
+    ? session.bookingId._id || session.bookingId.id || session.bookingId.serviceName || ''
+    : session.bookingId || '';
+
+  const bookingNameValue = typeof session.bookingId === 'object'
+    ? session.bookingId.serviceName || ''
+    : '';
+
+  return (
+    String(bookingIdValue).toLowerCase().includes(query) ||
+    String(bookingNameValue).toLowerCase().includes(query) ||
+    String(session.type ?? "").toLowerCase().includes(query)
   );
+});
+
 
   // Function to handle creating a new session
   const handleCreateSession = async () => {
     try {
-      await dispatch(createSession(newSession));
+      // Prepare the session data for API submission
+      const sessionData = {
+        ...newSession,
+        // Ensure bookingId is a string if it exists
+        bookingId: newSession.bookingId || undefined,
+      };
+      
+      await dispatch(createSession(sessionData));
       setIsCreateSessionModalOpen(false);
       setNewSession({
         bookingId: "",
@@ -245,7 +280,11 @@ export default function Sessions() {
                           <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
                             <User className="w-4 h-4 text-muted-foreground" />
                           </div>
-                          <span className="font-medium">{session.bookingId || 'N/A'}</span>
+                          <span className="font-medium">
+                            {typeof session.bookingId === 'object' 
+                              ? session.bookingId.serviceName || session.bookingId._id || session.bookingId.id || 'N/A'
+                              : session.bookingId || 'N/A'}
+                          </span>
                         </div>
                       </td>
                       <td>
@@ -400,7 +439,11 @@ export default function Sessions() {
               <div className="p-3 rounded-lg bg-muted/50">
                 <p className="text-sm">
                   <span className="text-muted-foreground">Booking ID:</span>{" "}
-                  <span className="font-medium">{selectedSession.bookingId || 'N/A'}</span>
+                  <span className="font-medium">
+                    {typeof selectedSession.bookingId === 'object' 
+                      ? selectedSession.bookingId.serviceName || selectedSession.bookingId._id || selectedSession.bookingId.id || 'N/A'
+                      : selectedSession.bookingId || 'N/A'}
+                  </span>
                 </p>
                 <p className="text-sm">
                   <span className="text-muted-foreground">Type:</span>{" "}
@@ -459,7 +502,11 @@ export default function Sessions() {
               <div className="p-3 rounded-lg bg-muted/50">
                 <p className="text-sm">
                   <span className="text-muted-foreground">Booking ID:</span>{" "}
-                  <span className="font-medium">{selectedSession.bookingId || 'N/A'}</span>
+                  <span className="font-medium">
+                    {typeof selectedSession.bookingId === 'object' 
+                      ? selectedSession.bookingId.serviceName || selectedSession.bookingId._id || selectedSession.bookingId.id || 'N/A'
+                      : selectedSession.bookingId || 'N/A'}
+                  </span>
                 </p>
                 <p className="text-sm">
                   <span className="text-muted-foreground">Current:</span>{" "}
@@ -551,11 +598,11 @@ export default function Sessions() {
                 >
                   <option value="">Select Booking</option>
 
-                  {bookings.map((booking) => (
-                    <option key={booking._id} value={booking._id}>
-                     {booking.serviceName}
+                  {bookings && Array.isArray(bookings) ? bookings.map((booking) => (
+                    <option key={booking._id || booking.id} value={booking._id || booking.id}>
+                     {booking.serviceName || booking.name || 'Unnamed Booking'}
                     </option>
-                  ))}
+                  )) : null}
                 </select>
               </div>
 
@@ -607,7 +654,7 @@ export default function Sessions() {
               </div>
             </div>
 
-            <div className="space-y-2">
+            {/* <div className="space-y-2">
               <label className="text-sm font-medium">Notes</label>
               <Textarea
                 placeholder="Additional notes about the session..."
@@ -615,7 +662,7 @@ export default function Sessions() {
                 onChange={(e) => setNewSession({ ...newSession, notes: e.target.value })}
                 rows={3}
               />
-            </div>
+            </div> */}
           </div>
 
           <DialogFooter>
