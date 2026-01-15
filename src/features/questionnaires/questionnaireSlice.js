@@ -62,26 +62,21 @@ export const updateQuestionnaire = createAsyncThunk(
   }
 );
 
-// Thunk to add a question by creating/updating a questionnaire
+// Thunk to add a question by creating a new questionnaire (always uses POST)
 export const addQuestionToQuestionnaire = createAsyncThunk(
   "questionnaires/addQuestionToQuestionnaire",
-  async ({ id, question }, { rejectWithValue }) => {
+  async ({ question }, { rejectWithValue }) => {
     try {
-      // Get the current questionnaire
-      const response = await questionnaireAPI.getById(id);
-      const currentQuestionnaire = response.data.data;
-      
-      // Add the new question to the existing questions array
-      const updatedQuestions = [...currentQuestionnaire.questions, question];
-      
-      // Update the entire questionnaire with the new question
-      const updateData = {
-        ...currentQuestionnaire,
-        questions: updatedQuestions
+      // Always create a new questionnaire with the question (POST call)
+      const questionnaireData = {
+        title: "Health Assessment Questionnaire",
+        description: "Please answer these health-related questions",
+        isActive: true,
+        questions: [question]
       };
       
-      const updateResponse = await questionnaireAPI.update(id, updateData);
-      return updateResponse.data.data;
+      const response = await questionnaireAPI.create(questionnaireData);
+      return response.data.data;
     } catch (error) {
       return rejectWithValue(error.response?.data || error.message);
     }

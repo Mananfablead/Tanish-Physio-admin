@@ -14,6 +14,7 @@ import {
   getAllAvailability, 
   createAvailability, 
   updateAvailability,
+  bulkUpdateAvailability,
   setSelectedAvailability,
   clearSelectedAvailability
 } from '@/features/availability/availabilitySlice';
@@ -33,12 +34,14 @@ const Availability = () => {
   
   // State for bulk apply preview
   const [bulkApplyPreview, setBulkApplyPreview] = useState<boolean>(false);
+  const [bulkApplyDates, setBulkApplyDates] = useState<string[]>([]);
   
   // State for warnings
   const [warnings, setWarnings] = useState<string[]>([]);
   
   // State for saving
   const [saving, setSaving] = useState(false);
+  const [bulkSaving, setBulkSaving] = useState(false);
   
   const { toast } = useToast();
   
@@ -221,15 +224,103 @@ const Availability = () => {
 
   // Function to handle bulk apply
   const handleBulkApply = () => {
+    // Get all dates in current month view that don't have availability set
+    const datesWithoutAvailability = calendarWeeks
+      .flat()
+      .filter(day => day && day.date && !isPastDate(day.date) && !day.availability)
+      .map(day => day.date);
+    
+    if (datesWithoutAvailability.length === 0) {
+      toast({
+        title: 'No Dates Available',
+        description: 'All dates in this view already have availability set',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    setBulkApplyDates(datesWithoutAvailability);
     setBulkApplyPreview(true);
-    // Add warning about bulk apply
-    setWarnings(['Bulk apply will update all selected dates with the same availability settings']);
+    setWarnings([`Bulk apply will update ${datesWithoutAvailability.length} dates with the same availability settings`]);
   };
-
+  
   // Function to clear bulk apply preview
   const clearBulkApplyPreview = () => {
     setBulkApplyPreview(false);
+    setBulkApplyDates([]);
     setWarnings([]);
+  };
+  
+  // Function to execute bulk update
+  const executeBulkUpdate = async () => {
+    if (bulkApplyDates.length === 0) return;
+    
+    try {
+      setBulkSaving(true);
+      
+      // Determine status based on isHoliday flag
+      const status = isHoliday ? 'unavailable' : 'available';
+      
+      // Generate available times based on start and end times
+      const availableTimes = [];
+      if (isAvailable && !isHoliday) {
+        // Simple logic: generate time slots between start and end time
+        const start = new Date(`1970-01-01T${startTime}`);
+        const end = new Date(`1970-01-01T${endTime}`);
+        
+        while (start < end) {
+          availableTimes.push(start.toTimeString().substring(0, 5));
+          start.setHours(start.getHours() + 1);
+        }
+      }
+      
+      // Process each date individually since backend bulk update affects entire month
+      const promises = bulkApplyDates.map(async (date) => {
+        const payload = {
+          date,
+          status,
+          availableTimes,
+          therapistId: currentUser?._id
+        };
+        
+        // Check if availability already exists for this date
+        const existingAvailability = availability.find(item => item.date === date);
+        
+        if (existingAvailability) {
+          // Update existing availability
+          return dispatch(updateAvailability({ 
+            id: existingAvailability._id, 
+            availabilityData: payload 
+          }));
+        } else {
+          // Create new availability
+          return dispatch(createAvailability(payload));
+        }
+      });
+      
+      // Execute all updates concurrently
+      await Promise.all(promises);
+      
+      toast({
+        title: 'Success',
+        description: `Successfully updated availability for ${bulkApplyDates.length} dates`,
+      });
+      
+      // Refresh the availability data
+      await dispatch(getAllAvailability());
+      
+      // Clear bulk apply state
+      clearBulkApplyPreview();
+    } catch (error) {
+      console.error('Error bulk updating availability:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to bulk update availability',
+        variant: 'destructive',
+      });
+    } finally {
+      setBulkSaving(false);
+    }
   };
 
   const getStatusColor = (status: number) => {
@@ -354,6 +445,7 @@ const Availability = () => {
                     {calendarWeeks.flat().map((day, index) => {
                       const isCurrentDay = day && isToday(day.date);
                       const isCurrentSelected = day && isSelected(day.date);
+                      const isInBulkApply = bulkApplyPreview && day && bulkApplyDates.includes(day.date);
                       
                       return (
                         <div 
@@ -362,7 +454,7 @@ const Availability = () => {
                             day 
                               ? isPastDate(day.date)
                                 ? 'opacity-50 cursor-not-allowed bg-gray-100 border-gray-200'
-                                : `cursor-pointer ${getStatusColor(day.status)} ${isCurrentDay ? 'ring-2 ring-primary ring-offset-2' : ''} ${isCurrentSelected ? 'ring-2 ring-primary ring-offset-2 ring-blue-500' : ''}`
+                                : `cursor-pointer ${getStatusColor(day.status)} ${isCurrentDay ? 'ring-2 ring-primary ring-offset-2' : ''} ${isCurrentSelected ? 'ring-2 ring-primary ring-offset-2 ring-blue-500' : ''} ${isInBulkApply ? 'ring-2 ring-blue-500 ring-offset-2 bg-blue-50' : ''}`
                               : 'border-transparent'
                           } ${day && !isPastDate(day.date) ? 'hover:shadow-sm hover:scale-[1.02]' : ''}`}
                           onClick={() => day && !isPastDate(day.date) && handleDateClick(day.date)}
@@ -373,11 +465,13 @@ const Availability = () => {
                                 {day.day}
                               </span>
                               <div className="flex justify-center mt-1">
-                                <div className={`w-2 h-2 rounded-full ${
-                                  day.status === 0 ? 'bg-green-500' :
-                                  day.status === 1 ? 'bg-blue-500' :
-                                  'bg-red-500'
-                                }`} />
+                                {day.availability && (
+                                  <div className={`w-2 h-2 rounded-full ${
+                                    day.status === 0 ? 'bg-green-500' :
+                                    day.status === 1 ? 'bg-blue-500' :
+                                    'bg-red-500'
+                                  }`} />
+                                )}
                               </div>
                             </>
                           ) : null}
@@ -525,6 +619,7 @@ const Availability = () => {
                           
                           const isCurrentDay = dateStr === todayStr;
                           const isCurrentSelected = dateStr === selectedDate;
+                          const isInBulkApply = bulkApplyPreview && bulkApplyDates.includes(dateStr);
                           
                           weekDays.push(
                             <div 
@@ -532,7 +627,7 @@ const Availability = () => {
                               className={`p-2 border rounded-lg flex flex-col items-center justify-center transition-all ${
                                 isPastDate(dateStr)
                                   ? 'opacity-50 cursor-not-allowed bg-gray-100 border-gray-200'
-                                  : `cursor-pointer ${getStatusColor(status)} ${isCurrentDay ? 'ring-2 ring-primary ring-offset-2' : ''} ${isCurrentSelected ? 'ring-2 ring-primary ring-offset-2 ring-blue-500' : ''}`
+                                  : `cursor-pointer ${getStatusColor(status)} ${isCurrentDay ? 'ring-2 ring-primary ring-offset-2' : ''} ${isCurrentSelected ? 'ring-2 ring-primary ring-offset-2 ring-blue-500' : ''} ${isInBulkApply ? 'ring-2 ring-blue-500 ring-offset-2 bg-blue-50' : ''}`
                               } ${!isPastDate(dateStr) ? 'hover:shadow-sm hover:scale-[1.02]' : ''}`}
                               onClick={() => !isPastDate(dateStr) && handleDateClick(dateStr)}
                             >
@@ -540,11 +635,13 @@ const Availability = () => {
                                 {dayDate.getDate()}
                               </span>
                               <div className="flex justify-center mt-1">
-                                <div className={`w-2 h-2 rounded-full ${
-                                  status === 0 ? 'bg-green-500' :
-                                  status === 1 ? 'bg-blue-500' :
-                                  'bg-red-500'
-                                }`} />
+                                {dayAvailability && (
+                                  <div className={`w-2 h-2 rounded-full ${
+                                    status === 0 ? 'bg-green-500' :
+                                    status === 1 ? 'bg-blue-500' :
+                                    'bg-red-500'
+                                  }`} />
+                                )}
                               </div>
                             </div>
                           );
@@ -673,31 +770,59 @@ const Availability = () => {
                   </div>
                   
                   <div className="space-y-2">
-                    <Button 
-                      className="w-full mt-4" 
-                      onClick={handleSave}
-                      disabled={saving}
-                    >
-                      {saving ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Saving...
-                        </>
-                      ) : (
-                        <>
-                          <Save className="w-4 h-4 mr-2" />
-                          Save Changes
-                        </>
-                      )}
-                    </Button>
-                    {bulkApplyPreview && (
-                      <Button 
-                        className="w-full" 
-                        variant="outline"
-                        onClick={clearBulkApplyPreview}
-                      >
-                        Cancel Bulk Apply
-                      </Button>
+                    {!bulkApplyPreview ? (
+                      <>
+                        <Button 
+                          className="w-full mt-4" 
+                          onClick={handleSave}
+                          disabled={saving}
+                        >
+                          {saving ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              Saving...
+                            </>
+                          ) : (
+                            <>
+                              <Save className="w-4 h-4 mr-2" />
+                              Save Changes
+                            </>
+                          )}
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <Button 
+                          className="w-full mt-4" 
+                          onClick={executeBulkUpdate}
+                          disabled={bulkSaving || bulkApplyDates.length === 0}
+                        >
+                          {bulkSaving ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              Applying to {bulkApplyDates.length} dates...
+                            </>
+                          ) : (
+                            <>
+                              <Save className="w-4 h-4 mr-2" />
+                              Apply to {bulkApplyDates.length} Dates
+                            </>
+                          )}
+                        </Button>
+                        <Button 
+                          className="w-full" 
+                          variant="outline"
+                          onClick={clearBulkApplyPreview}
+                        >
+                          Cancel Bulk Apply
+                        </Button>
+                        <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                          <p className="text-sm text-blue-800 font-medium">Bulk Apply Preview</p>
+                          <p className="text-xs text-blue-600 mt-1">
+                            Will apply these settings to {bulkApplyDates.length} dates without existing availability
+                          </p>
+                        </div>
+                      </>
                     )}
                   </div>
                 </div>

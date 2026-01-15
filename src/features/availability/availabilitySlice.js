@@ -77,6 +77,21 @@ export const deleteAvailability = createAsyncThunk(
 );
 
 /* =========================
+   BULK UPDATE AVAILABILITY
+========================= */
+export const bulkUpdateAvailability = createAsyncThunk(
+  "availability/bulkUpdate",
+  async (bulkData, { rejectWithValue }) => {
+    try {
+      const response = await availabilityAPI.bulkUpdate(bulkData);
+      return response.data.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || "Failed to bulk update availability");
+    }
+  }
+);
+
+/* =========================
    INITIAL STATE
 ========================= */
 const initialState = {
@@ -174,6 +189,21 @@ const availabilitySlice = createSlice({
         state.availability = state.availability.filter(item => item._id !== action.payload);
       })
       .addCase(deleteAvailability.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      
+      // BULK UPDATE AVAILABILITY
+      .addCase(bulkUpdateAvailability.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(bulkUpdateAvailability.fulfilled, (state, action) => {
+        state.loading = false;
+        // Replace the entire availability array with the updated data
+        state.availability = action.payload;
+      })
+      .addCase(bulkUpdateAvailability.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       });

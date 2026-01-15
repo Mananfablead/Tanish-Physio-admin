@@ -249,7 +249,7 @@ export default function Login() {
   );
 
   const [email, setEmail] = useState("mananfablead@gmail.com");
-  const [password, setPassword] = useState("admin2025");
+  const [password, setPassword] = useState("admin2026");
   const [showPassword, setShowPassword] = useState(false);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
@@ -390,7 +390,7 @@ useEffect(() => {
                   </button>
                 </div>
               </div>
-
+{/* 
               <div className="flex justify-between text-sm">
                 <label className="flex items-center gap-2">
                   <input type="checkbox" />
@@ -403,7 +403,7 @@ useEffect(() => {
                 >
                   Forgot password?
                 </button>
-              </div>
+              </div> */}
 
               <Button className="w-full" size="lg" disabled={loading}>
                 {loading ? "Signing in..." : "Sign in"}

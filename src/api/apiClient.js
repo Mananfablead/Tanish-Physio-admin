@@ -62,11 +62,12 @@ export const API = {
   // availability
   AVAILABILITY: "/availability",
   AVAILABILITY_BY_THERAPIST: "/availability/therapist",
+ 
 
   UPDATE_PROFILE:  "/auth/profile",
   UPDATE_PASSWORD: "/auth/update-password",
   UPDATE_PROFILE_PICTURE: "/auth/profile-picture",
-  UPDATE_PROFILE: "/auth/profile",
+  // Update profile
   // users
   USERS: "/users",
   USER_BY_ID: "/users/:id",
@@ -111,6 +112,9 @@ export const availabilityAPI = {
 
   // Delete availability
   delete: (id) => apiClient.delete(`${API.AVAILABILITY}/${id}`),
+  
+  // Bulk update availability
+  bulkUpdate: (data) => apiClient.post(`${API.AVAILABILITY}/bulk-update`, data),
 };
 export const questionnaireAPI = {
   // Get all questionnaires
@@ -124,24 +128,21 @@ export const questionnaireAPI = {
 
   // Create new questionnaire
   create: (data) => {
-    // Normalize questions according to backend contract
-    const normalizedQuestions = data.questions ? data.questions.map((q, index) => ({
-      question: String(q.question),
-      type: String(q.type),
-      order: Number(
-        q.order !== undefined && q.order !== null
-          ? q.order
-          : index + 1
-      ),
-      required: Boolean(q.required),
-      active: q.active !== undefined ? Boolean(q.active) : true,
-      min: q.min,
-      max: q.max
+    // Format questions according to the specified API structure
+    const formattedQuestions = data.questions ? data.questions.map((q, index) => ({
+      question: q.question,
+      type: q.type,
+      order: q.order !== undefined ? q.order : index + 1,
+      required: q.required !== undefined ? q.required : true,
+      active: q.active !== undefined ? q.active : true,
+      options: q.options || undefined
     })) : [];
 
     const payload = {
-      ...data,
-      questions: normalizedQuestions
+      title: data.title || "Health Assessment Questionnaire",
+      description: data.description || "Please answer these health-related questions",
+      isActive: data.isActive !== undefined ? data.isActive : true,
+      questions: formattedQuestions
     };
     return apiClient.post(API.QUESTIONNAIRES, payload);
   },
