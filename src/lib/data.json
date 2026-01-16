@@ -1,0 +1,156 @@
+{
+  "hero": {
+    "id": 1,
+    "heading": "Start Your Recovery Journey Today",
+    "subHeading": "Connect with certified physiotherapists from home. Get personalized treatment plans and video consultations tailored to your needs.",
+    "description": "",
+    "ctaText": "Start Your Recovery",
+    "secondaryCtaText": "Continue as Guest",
+    "image": "https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2073&q=80",
+    "isTherapistAvailable": true,
+    "trustedBy": "Trusted by 10,000+ patients",
+    "certifiedTherapists": true,
+    "rating": "4.9/5 Rating",
+    "features": [
+      "HIPAA Compliant",
+      "Certified Therapists",
+      "4.9/5 Rating"
+    ],
+    "isPublic": true
+  },
+  "steps": [
+    {
+      "id": 1,
+      "title": "Answer Health Questions",
+      "description": "Complete a quick assessment about your condition, pain areas, and recovery goals.",
+      "icon": "ClipboardList",
+      "image": "https://images.unsplash.com/photo-1576091160399-112ba8d25d1f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80",
+      "isPublic": true
+    },
+    {
+      "id": 2,
+      "title": "Choose a Physiotherapist",
+      "description": "Browse certified therapists matched to your needs. Review profiles, ratings, and specializations.",
+      "icon": "UserCheck",
+      "image": "https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2073&q=80",
+      "isPublic": true
+    },
+    {
+      "id": 3,
+      "title": "Start Video Sessions",
+      "description": "Connect via secure video calls. Get personalized exercises and track your progress.",
+      "icon": "Video",
+      "image": "https://images.unsplash.com/photo-1530026405186-ed1f139313f8?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1974&q=80",
+      "isPublic": true
+    }
+  ],
+  "conditions": {
+    "id": 1,
+    "title": "Conditions We Treat",
+    "description": "Our experts specialize in a wide range of physical conditions to help you get back to your best self.",
+    "conditions": [
+      { "name": "Neck Pain", "icon": "Activity" },
+      { "name": "Back Pain", "icon": "Bone" },
+      { "name": "Knee Pain", "icon": "HeartPulse" },
+      { "name": "Shoulder Pain", "icon": "Zap" },
+      { "name": "Sports Injury", "icon": "Dumbbell" },
+      { "name": "Post-Surgery", "icon": "Stethoscope" },
+      { "name": "Sciatica", "icon": "Activity" },
+      { "name": "Arthritis", "icon": "Bone" },
+      { "name": "Spinal Cord", "icon": "Activity" },
+      { "name": "Hip Pain", "icon": "Zap" },
+      { "name": "Muscle Strain", "icon": "Activity" },
+      { "name": "Ligament Tear", "icon": "HeartPulse" }
+    ],
+    "image": "/images/conditions.jpg",
+    "isPublic": true
+  },
+  "whyUs": {
+    "id": 1,
+    "title": "Professional Care, Personalized for You",
+    "description": "Experience the convenience of virtual physiotherapy without compromising on quality. Our platform connects you with the best care, anytime, anywhere.",
+    "stats": [
+      { "label": "Happy Patients", "value": "10K+", "description": "Successfully treated worldwide" },
+      { "label": "Therapists", "value": "500+", "description": "Certified medical experts" },
+      { "label": "Sessions", "value": "50K+", "description": "Virtual consultations completed" },
+      { "label": "Avg Rating", "value": "4.9", "description": "Based on patient reviews" }
+    ],
+    "features": [
+      "Certified and experienced physiotherapists",
+      "Personalized treatment plans",
+      "Flexible scheduling - 24/7 availability",
+      "Progress tracking and exercise videos",
+      "Affordable subscription plans",
+      "Secure video consultations"
+    ],
+    "isPublic": true
+  },
+  "faq": [
+    {
+      "id": 1,
+      "question": "Is online physiotherapy effective?",
+      "answer": "Yes, research shows that virtual physiotherapy is highly effective for many conditions. It combines professional guidance with home-based exercises that are easy to follow and track.",
+      "isPublic": true
+    },
+    {
+      "id": 2,
+      "question": "Do I need any special equipment?",
+      "answer": "Most sessions can be done with minimal equipment found at home (like towels or chairs). If specific equipment is needed, your therapist will guide you on alternatives or what to purchase.",
+      "isPublic": true
+    },
+    {
+      "id": 3,
+      "question": "Can I cancel my subscription anytime?",
+      "answer": "Absolutely! We offer flexible plans with no long-term contracts. You can cancel or pause your subscription at any time through your dashboard.",
+      "isPublic": true
+    },
+    {
+      "id": 4,
+      "question": "Is my personal and medical data secure?",
+      "answer": "We take your privacy seriously. Our platform is fully secure, and all your sessions and medical data are encrypted and stored securely.",
+      "isPublic": true
+    },
+    {
+      "id": 5,
+      "question": "Are the video sessions recorded?",
+      "answer": "No, sessions are not recorded without your explicit consent. Your privacy is our priority, and all consultations are private between you and your therapist.",
+      "isPublic": true
+    }
+  ],
+  "terms": {
+    "id": 1,
+    "title": "Terms & Conditions",
+    "content": "These terms and conditions outline the rules and regulations for the use of our services...",
+    "lastUpdated": "January 15, 2026",
+    "version": "1.2.0",
+    "isPublic": true
+  },
+  "featuredTherapist": {
+    "id": 1,
+    "name": "Dr. Alex Rivera",
+    "specialty": "Sports & Orthopedic Physiotherapist",
+    "experience": "12+ Years Experience",
+    "rating": "4.9 Rating",
+    "description": "Specialized in sports injuries, post-surgery rehabilitation, and chronic pain management. Known for personalized recovery plans and fast results through virtual physiotherapy.",
+    "image": "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80",
+    "availableToday": true,
+    "ctaText": "Start Assessment",
+    "viewProfileText": "View Full Profile",
+    "isPublic": true
+  },
+  "contact": {
+    "id": 1,
+    "title": "Contact Us",
+    "description": "Have questions or need assistance? Reach out to our team for support.",
+    "email": "contact@tanishphysio.com",
+    "phone": "+1 (555) 123-4567",
+    "address": "123 Wellness Street, Health City, HC 12345",
+    "hours": "Monday-Friday: 8:00 AM - 8:00 PM\nSaturday: 9:00 AM - 5:00 PM\nSunday: Closed",
+    "socialLinks": [
+      { "platform": "Facebook", "url": "https://facebook.com/tanishphysio" },
+      { "platform": "Twitter", "url": "https://twitter.com/tanishphysio" },
+      { "platform": "Instagram", "url": "https://instagram.com/tanishphysio" }
+    ],
+    "isPublic": true
+  }
+}

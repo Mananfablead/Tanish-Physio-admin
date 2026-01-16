@@ -1,17 +1,61 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import cmsData from "@/lib/data.json";
 import {
     Tabs,
     TabsContent,
     TabsList,
     TabsTrigger,
 } from "@/components/ui/tabs";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { PlusCircle, MinusCircle, Edit3, Trash2, Save, X, Eye, Layers, CheckCircle, Clock, File, Plus, Edit, Settings, FileImage, Upload } from "lucide-react";
+import { 
+    PlusCircle, 
+    MinusCircle, 
+    Edit3, 
+    Trash2, 
+    Save, 
+    X, 
+    Eye, 
+    Layers, 
+    CheckCircle, 
+    Clock, 
+    File, 
+    Plus, 
+    Edit, 
+    Settings, 
+    FileImage, 
+    Upload,
+    ClipboardList,
+    UserCheck,
+    Video,
+    Star,
+    Shield,
+    Award,
+    ArrowRight,
+    Users,
+    Activity,
+    Bone,
+    HeartPulse,
+    Zap,
+    Dumbbell,
+    Stethoscope,
+    Mail,
+    Phone,
+    MapPin,
+    Globe,
+    FileText
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
     Dialog,
@@ -23,55 +67,135 @@ import {
     DialogClose,
 } from "@/components/ui/dialog";
 
+// Define TypeScript interfaces
+interface CMSData {
+    hero: HeroData;
+    steps: StepData[];
+    conditions: ConditionsSectionData;
+    whyUs: WhyUsData;
+    faq: FaqData[];
+    terms: TermsData;
+    featuredTherapist: TeamMemberData;
+    contact: ContactData;
+}
+
+interface HeroData {
+    id: number;
+    heading: string;
+    subHeading: string;
+    description: string;
+    ctaText: string;
+    secondaryCtaText: string;
+    image: string;
+    isTherapistAvailable: boolean;
+    trustedBy: string;
+    certifiedTherapists: boolean;
+    rating: string;
+    features: string[];
+    isPublic: boolean;
+}
+
+interface StepData {
+    id: number;
+    title: string;
+    description: string;
+    icon: string;
+    image: string;
+    isPublic: boolean;
+}
+
+interface ConditionData {
+    name: string;
+    icon: string;
+}
+
+interface ConditionsSectionData {
+    id: number;
+    title: string;
+    description: string;
+    conditions: ConditionData[];
+    image: string;
+    isPublic: boolean;
+}
+
+interface StatData {
+    label: string;
+    value: string;
+    description: string;
+}
+
+interface WhyUsData {
+    id: number;
+    title: string;
+    description: string;
+    stats: StatData[];
+    features: string[];
+    isPublic: boolean;
+}
+
+interface FaqData {
+    id: number;
+    question: string;
+    answer: string;
+    isPublic: boolean;
+}
+
+interface TermsData {
+    id: number;
+    title: string;
+    content: string;
+    lastUpdated?: string;
+    version?: string;
+    isPublic: boolean;
+}
+
+interface TeamMemberData {
+    id: number;
+    name: string;
+    specialty: string;
+    experience: string;
+    rating: string;
+    description: string;
+    image: string;
+    availableToday: boolean;
+    ctaText: string;
+    viewProfileText: string;
+    isPublic: boolean;
+}
+
+interface SocialLink {
+    platform: string;
+    url: string;
+}
+
+interface ContactData {
+    id: number;
+    title: string;
+    description: string;
+    email: string;
+    phone: string;
+    address: string;
+    hours: string;
+    socialLinks: SocialLink[];
+    isPublic: boolean;
+}
+
+// Import sub-components
+import ConditionsSection from "./cms-components/ConditionsSection";
+import ContactSection from "./cms-components/ContactSection";
+import TeamSection from "./cms-components/TeamSection";
+import HeroSection from "./cms-components/HeroSection";
+import StepsSection from "./cms-components/StepsSection";
+import WhyUsSection from "./cms-components/WhyUsSection";
+import FaqSection from "./cms-components/FaqSection";
+import TermsSection from "./cms-components/TermsSection";
+
 export default function CMS() {
-    // Initialize with sample data for homepage sections
-    const [data, setData] = useState({
-        hero: {
-            id: 1,
-            heading: "Professional Physiotherapy Services",
-            subHeading: "Recover, Strengthen, and Improve Your Quality of Life",
-            description: "Our expert team of physiotherapists provides personalized care to help you overcome pain and improve mobility.",
-            ctaText: "Book a Session",
-            image: "/images/hero-image.jpg",
-        },
-        steps: [
-            { id: 1, title: "Consultation", description: "Initial assessment with our expert physiotherapist", icon: "stethoscope", image: "/images/consultation.jpg" },
-            { id: 2, title: "Diagnosis", description: "Detailed evaluation to identify the root cause", icon: "clipboard", image: "/images/diagnosis.jpg" },
-            { id: 3, title: "Treatment", description: "Personalized therapy sessions tailored to your needs", icon: "heart-pulse", image: "/images/treatment.jpg" },
-        ],
-        conditions: {
-            id: 1,
-            title: "Conditions We Treat",
-            description: "We specialize in treating various conditions to help you regain your health and mobility.",
-            conditions: "Muscle Pain, Back Pain, Neck Pain, Knee Pain, Sports Injuries, Post-Surgery Recovery",
-            image: "/images/conditions.jpg"
-        },
-        whyUs: {
-            id: 1,
-            title: "Why Choose Our Physiotherapy?",
-            description: "With years of experience and a team of certified professionals, we provide the highest quality care.",
-            stats: {
-                patients: "10K+ Happy Patients",
-                therapists: "500+ Therapists",
-                sessions: "50K+ Sessions",
-                rating: "4.9 Rating",
-            },
-        },
-        faq: [
-            { id: 1, question: "How long is a typical session?", answer: "Our sessions typically last 45-60 minutes." },
-            { id: 2, question: "Do I need a referral?", answer: "No, you can book directly with us." },
-        ],
-        terms: {
-            id: 1,
-            title: "Terms & Conditions",
-            content: "These terms and conditions outline the rules and regulations for the use of our services...",
-        },
-        seo: {
-            id: 1,
-            metaTitle: "Professional Physiotherapy Services | Tanish Physio",
-            metaDescription: "Experience professional physiotherapy services with our expert team. Book your session today.",
-        },
-    });
+    // Initialize with data from JSON file
+    const [data, setData] = useState<CMSData>(cmsData);
+    
+    // State for mobile dropdown selection
+    const [activeTab, setActiveTab] = useState("hero");
 
     // State for managing edit modes
     const [editingSections, setEditingSections] = useState({
@@ -81,7 +205,8 @@ export default function CMS() {
         whyus: false,
         faq: {},
         terms: false,
-        seo: false,
+        contact: false,
+        featuredTherapist: false,
     });
 
     // Modal state
@@ -115,7 +240,7 @@ export default function CMS() {
                 // Adding a new step
                 setData(prev => ({
                     ...prev,
-                    steps: [...prev.steps, { ...updatedData, id: Date.now() }]
+                    steps: [...prev.steps, { ...updatedData, id: Date.now(), isPublic: true }]
                 }));
             } else {
                 // Updating an existing step
@@ -141,7 +266,7 @@ export default function CMS() {
                 // Adding a new FAQ
                 setData(prev => ({
                     ...prev,
-                    faq: [...prev.faq, { ...updatedData, id: Date.now() }]
+                    faq: [...prev.faq, { ...updatedData, id: Date.now(), isPublic: true }]
                 }));
             } else {
                 // Updating an existing FAQ
@@ -288,431 +413,342 @@ export default function CMS() {
     };
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div className="page-header">
-                    <h1 className="page-title">Content Management System</h1>
-                    <p className="page-subtitle">
+                <div>
+                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Content Management System</h1>
+                    <p className="text-muted-foreground mt-2 text-sm sm:text-base">
                         Manage website sections as per homepage layout
                     </p>
                 </div>
-                <Badge variant="secondary" className="text-sm">
+                <Badge variant="secondary" className="text-xs sm:text-sm px-2 py-1 sm:px-3 sm:py-1 h-6 sm:h-8">
                     {Object.keys(data).length} Sections
                 </Badge>
             </div>
 
             {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="stat-card">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-primary/10">
-                            <Layers className="w-5 h-5 text-primary" />
-                        </div>
-                        <div>
-                            <p className="text-2xl font-semibold">{Object.keys(data).length}</p>
-                            <p className="text-sm text-muted-foreground">Total Sections</p>
-                        </div>
-                    </div>
-                </div>
-                <div className="stat-card">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-success/10">
-                            <Edit3 className="w-5 h-5 text-success" />
-                        </div>
-                        <div>
-                            <p className="text-2xl font-semibold">{Object.keys(editingSections).filter(key => editingSections[key]).length}</p>
-                            <p className="text-sm text-muted-foreground">Editable</p>
-                        </div>
-                    </div>
-                </div>
-                <div className="stat-card">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-info/10">
-                            <Save className="w-5 h-5 text-info" />
-                        </div>
-                        <div>
-                            <p className="text-2xl font-semibold">{data.steps.length + data.faq.length}</p>
-                            <p className="text-sm text-muted-foreground">Steps: {data.steps.length}, FAQs: {data.faq.length}</p>
-                        </div>
-                    </div>
-                </div>
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                {/* Calculate public/non-public counts */}
+                {(() => {
+                    // Count public and non-public for each section type
+                    let totalPublic = 0;
+                    let totalNonPublic = 0;
+                    
+                    // Count sections individually
+                    // Hero section
+                    if (data.hero.isPublic) totalPublic++; else totalNonPublic++;
+                    
+                    // Steps section (treat as single section - check first step as representative)
+                    if (data.steps.length > 0 && data.steps[0].isPublic) totalPublic++; else totalNonPublic++;
+                    
+                    // Conditions section
+                    if (data.conditions.isPublic) totalPublic++; else totalNonPublic++;
+                    
+                    // Why Us section
+                    if (data.whyUs.isPublic) totalPublic++; else totalNonPublic++;
+                    
+                    // FAQ section (treat as single section - check first FAQ as representative)
+                    if (data.faq.length > 0 && data.faq[0].isPublic) totalPublic++; else totalNonPublic++;
+                    
+                    // Terms section
+                    if (data.terms.isPublic) totalPublic++; else totalNonPublic++;
+                    
+                    // Featured Therapist section
+                    if (data.featuredTherapist.isPublic) totalPublic++; else totalNonPublic++;
+                    
+                    // Contact section
+                    if (data.contact.isPublic) totalPublic++; else totalNonPublic++;
+                    
+                    return (
+                        <>
+                            <Card>
+                                <CardContent className="p-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 sm:p-3 rounded-lg bg-blue-100">
+                                            <Layers className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
+                                        </div>
+                                        <div>
+                                            <p className="text-xl sm:text-2xl font-semibold">{totalPublic + totalNonPublic}</p>
+                                            <p className="text-xs sm:text-sm text-muted-foreground">Total Sections</p>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                            <Card>
+                                <CardContent className="p-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 sm:p-3 rounded-lg bg-green-100">
+                                            <Eye className="w-5 h-5 sm:w-6 sm:h-6 text-green-600" />
+                                        </div>
+                                        <div>
+                                            <p className="text-xl sm:text-2xl font-semibold">{totalPublic}</p>
+                                            <p className="text-xs sm:text-sm text-muted-foreground">Public</p>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                            <Card>
+                                <CardContent className="p-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 sm:p-3 rounded-lg bg-orange-100">
+                                            <Shield className="w-5 h-5 sm:w-6 sm:h-6 text-orange-600" />
+                                        </div>
+                                        <div>
+                                            <p className="text-xl sm:text-2xl font-semibold">{totalNonPublic}</p>
+                                            <p className="text-xs sm:text-sm text-muted-foreground">Not Public</p>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                            <Card>
+                                <CardContent className="p-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 sm:p-3 rounded-lg bg-purple-100">
+                                            <Edit3 className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600" />
+                                        </div>
+                                        <div>
+                                            <p className="text-xl sm:text-2xl font-semibold">{Object.keys(editingSections).filter(key => editingSections[key]).length}</p>
+                                            <p className="text-xs sm:text-sm text-muted-foreground">Active Editing</p>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </>
+                    );
+                })()}
             </div>
 
-            <Tabs defaultValue="hero" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-7">
-                    <TabsTrigger value="hero">Hero</TabsTrigger>
-                    <TabsTrigger value="steps">
-                        How It Works ({data.steps.length})
+            {/* Mobile/Tablet Dropdown */}
+            <div className="lg:hidden w-full mb-4">
+                <Select value={activeTab} onValueChange={setActiveTab}>
+                    <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select a section" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="hero">Hero</SelectItem>
+                        <SelectItem value="steps">Steps ({data.steps.length})</SelectItem>
+                        <SelectItem value="conditions">Conditions</SelectItem>
+                        <SelectItem value="whyus">Why Us</SelectItem>
+                        <SelectItem value="faq">FAQ ({data.faq.length})</SelectItem>
+                        <SelectItem value="contact">Contact</SelectItem>
+                        <SelectItem value="featuredTherapist">Therapists</SelectItem>
+                        <SelectItem value="terms">Terms and Condition</SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
+
+            {/* Desktop Tabs */}
+            <Tabs defaultValue="hero" className="hidden lg:block w-full">
+                <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-8">
+                    <TabsTrigger value="hero" className="text-xs sm:text-sm">Hero</TabsTrigger>
+                    <TabsTrigger value="steps" className="text-xs sm:text-sm">
+                        Steps ({data.steps.length})
                     </TabsTrigger>
-                    <TabsTrigger value="conditions">Conditions</TabsTrigger>
-                    <TabsTrigger value="whyus">Why Choose Us</TabsTrigger>
-                    <TabsTrigger value="faq">
+                    <TabsTrigger value="conditions" className="text-xs sm:text-sm">Conditions</TabsTrigger>
+                    <TabsTrigger value="whyus" className="text-xs sm:text-sm">Why Us</TabsTrigger>
+                    <TabsTrigger value="faq" className="text-xs sm:text-sm">
                         FAQ ({data.faq.length})
                     </TabsTrigger>
-                    <TabsTrigger value="terms">Terms</TabsTrigger>
-                    <TabsTrigger value="seo">SEO</TabsTrigger>
+                    <TabsTrigger value="contact" className="text-xs sm:text-sm">Contact</TabsTrigger>
+                    <TabsTrigger value="featuredTherapist" className="text-xs sm:text-sm">Therapists</TabsTrigger>
+                    <TabsTrigger value="terms" className="text-xs sm:text-sm">Terms & Condition</TabsTrigger>
                 </TabsList>
 
                 {/* HERO */}
                 <TabsContent value="hero">
-                    <div className="bg-card rounded-lg border border-border overflow-hidden animate-fade-in">
-                        <div className="p-6">
-                            <div className="flex flex-row items-center justify-between mb-6">
-                                <h2 className="text-2xl font-bold tracking-tight">Hero Section</h2>
-                                <Button size="sm" variant="outline" onClick={() => openEditModal('hero', data.hero)}>
-                                    <Edit3 className="w-4 h-4 mr-2" /> Edit
-                                </Button>
-                            </div>
-
-                            <div className="space-y-6">
-                                <div className="flex flex-col md:flex-row gap-6">
-                                    <div className="flex-1 space-y-4">
-                                        <div>
-                                            <span className="font-medium text-sm text-muted-foreground">Main Heading:</span>
-                                            <p className="text-lg font-semibold mt-1">{data.hero.heading}</p>
-                                        </div>
-                                        <div>
-                                            <span className="font-medium text-sm text-muted-foreground">Sub Heading:</span>
-                                            <p className="mt-1">{data.hero.subHeading}</p>
-                                        </div>
-                                        <div>
-                                            <span className="font-medium text-sm text-muted-foreground">Description:</span>
-                                            <p className="mt-1">{data.hero.description}</p>
-                                        </div>
-                                        <div>
-                                            <span className="font-medium text-sm text-muted-foreground">CTA Button:</span>
-                                            <p className="mt-1 font-medium text-primary">{data.hero.ctaText}</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex-1">
-                                        <div className="aspect-video bg-muted rounded-lg border flex items-center justify-center overflow-hidden">
-                                            {data.hero.image ? (
-                                                <img
-                                                    src={data.hero.image}
-                                                    alt="Hero section"
-                                                    className="w-full h-full object-cover"
-                                                />
-                                            ) : (
-                                                <div className="text-center text-muted-foreground">
-                                                    <FileImage className="mx-auto h-10 w-10" />
-                                                    <p className="text-sm mt-2">No image uploaded</p>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    <HeroSection 
+                        data={data.hero} 
+                        onEdit={openEditModal} 
+                        onTogglePublic={(section, value) => updateData(section, 'isPublic', value)}
+                    />
                 </TabsContent>
 
                 {/* HOW IT WORKS */}
-                <TabsContent value="steps" className="space-y-4">
-                    <div className="bg-card rounded-lg border border-border overflow-hidden animate-fade-in">
-                        <div className="p-6">
-                            <div className="flex flex-row items-center justify-between mb-6">
-                                <h2 className="text-2xl font-bold tracking-tight">How It Works Steps</h2>
-                                <Button size="sm" variant="outline" onClick={addStep}>
-                                    <PlusCircle className="w-4 h-4 mr-2" /> Add Step
-                                </Button>
-                            </div>
-                            
-                            <div className="overflow-x-auto">
-                                <table className="data-table">
-                                    <thead>
-                                        <tr>
-                                            <th>#</th>
-                                            <th>Title</th>
-                                            <th>Description</th>
-                                            <th>Icon</th>
-                                            <th>Image</th>
-                                            <th>Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {data.steps.map((step) => (
-                                            <tr key={step.id}>
-                                                <td className="font-mono text-sm">{step.id}</td>
-                                                <td>
-                                                    <div className="font-medium">{step.title}</div>
-                                                </td>
-                                                <td>
-                                                    <div className="text-sm text-muted-foreground">{step.description}</div>
-                                                </td>
-                                                <td>
-                                                    <Badge variant="secondary" className="text-xs">
-                                                        {step.icon}
-                                                    </Badge>
-                                                </td>
-                                                <td>
-                                                    {step.image ? (
-                                                        <div className="w-10 h-10 rounded-md overflow-hidden border">
-                                                            <img
-                                                                src={step.image}
-                                                                alt="Step"
-                                                                className="w-full h-full object-cover"
-                                                            />
-                                                        </div>
-                                                    ) : (
-                                                        <span className="text-xs text-muted-foreground">No image</span>
-                                                    )}
-                                                </td>
-                                                <td>
-                                                    <div className="flex items-center gap-1">
-                                                        <Button variant="ghost" size="sm" onClick={() => openEditModal('step', step)}>
-                                                            <Edit className="w-4 h-4" />
-                                                        </Button>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            onClick={() => deleteStep(step.id)}
-                                                            disabled={data.steps.length <= 1}
-                                                        >
-                                                            <Trash2 className="w-4 h-4" />
-                                                        </Button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
+                <TabsContent value="steps" className="space-y-3 sm:space-y-4">
+                    <StepsSection 
+                        data={data.steps} 
+                        onAdd={addStep} 
+                        onDelete={deleteStep} 
+                        onEdit={(item) => openEditModal('step', item)} 
+                        onTogglePublic={(section, value) => {
+                            setData(prev => ({
+                                ...prev,
+                                [section]: prev[section].map(step =>
+                                    ({ ...step, isPublic: value })
+                                )
+                            }));
+                        }}
+                    />
                 </TabsContent>
 
                 {/* CONDITIONS */}
                 <TabsContent value="conditions">
-                    <div className="bg-card rounded-lg border border-border overflow-hidden animate-fade-in">
-                        <div className="p-6">
-                            <div className="flex flex-row items-center justify-between mb-6">
-                                <h2 className="text-2xl font-bold tracking-tight">Conditions We Treat</h2>
-                                <Button size="sm" variant="outline" onClick={() => openEditModal('conditions', data.conditions)}>
-                                    <Edit className="w-4 h-4 mr-2" /> Edit
-                                </Button>
-                            </div>
-
-                            <div className="space-y-6">
-                                <div className="bg-card rounded-lg border border-border p-6 shadow-sm">
-                                    <h3 className="text-xl font-bold mb-2">{data.conditions.title}</h3>
-                                    <p className="text-muted-foreground mb-4">{data.conditions.description}</p>
-
-                                    <div className="overflow-x-auto">
-                                        <table className="data-table">
-                                            <tbody>
-                                                {data.conditions.conditions.split(',').map((condition, index) => (
-                                                    <tr key={index}>
-                                                        <td className="font-medium">{condition.trim()}</td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-
-                                {data.conditions.image && (
-                                    <div className="aspect-video bg-muted rounded-lg border flex items-center justify-center overflow-hidden">
-                                        <img
-                                            src={data.conditions.image}
-                                            alt="Conditions"
-                                            className="w-full h-full object-cover"
-                                        />
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
+                    <ConditionsSection 
+                        data={data.conditions} 
+                        onEdit={openEditModal} 
+                        onTogglePublic={(section, value) => updateData(section, 'isPublic', value)}
+                    />
                 </TabsContent>
 
                 {/* WHY CHOOSE US */}
                 <TabsContent value="whyus">
-                    <div className="bg-card rounded-lg border border-border overflow-hidden animate-fade-in">
-                        <div className="p-6">
-                            <div className="flex flex-row items-center justify-between mb-6">
-                                <h2 className="text-2xl font-bold tracking-tight">Why Choose Us</h2>
-                                <Button size="sm" variant="outline" onClick={() => openEditModal('whyUs', data.whyUs)}>
-                                    <Edit className="w-4 h-4 mr-2" /> Edit
-                                </Button>
-                            </div>
-
-                            <div className="space-y-6">
-                                <div>
-                                    <h3 className="text-xl font-bold">{data.whyUs.title}</h3>
-                                    <p className="text-muted-foreground mt-2">{data.whyUs.description}</p>
-                                </div>
-
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                                    <div className="stat-card">
-                                        <div className="flex items-center gap-3">
-                                            <div className="p-2 rounded-lg bg-primary/10">
-                                                <CheckCircle className="w-5 h-5 text-primary" />
-                                            </div>
-                                            <div>
-                                                <p className="text-2xl font-semibold">{data.whyUs.stats.patients}</p>
-                                                <p className="text-sm text-muted-foreground">Happy Patients</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="stat-card">
-                                        <div className="flex items-center gap-3">
-                                            <div className="p-2 rounded-lg bg-success/10">
-                                                <File className="w-5 h-5 text-success" />
-                                            </div>
-                                            <div>
-                                                <p className="text-2xl font-semibold">{data.whyUs.stats.therapists}</p>
-                                                <p className="text-sm text-muted-foreground">Expert Therapists</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="stat-card">
-                                        <div className="flex items-center gap-3">
-                                            <div className="p-2 rounded-lg bg-info/10">
-                                                <Clock className="w-5 h-5 text-info" />
-                                            </div>
-                                            <div>
-                                                <p className="text-2xl font-semibold">{data.whyUs.stats.sessions}</p>
-                                                <p className="text-sm text-muted-foreground">Completed Sessions</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="stat-card">
-                                        <div className="flex items-center gap-3">
-                                            <div className="p-2 rounded-lg bg-warning/10">
-                                                <CheckCircle className="w-5 h-5 text-warning" />
-                                            </div>
-                                            <div>
-                                                <p className="text-2xl font-semibold">{data.whyUs.stats.rating}</p>
-                                                <p className="text-sm text-muted-foreground">Average Rating</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    <WhyUsSection 
+                        data={data.whyUs} 
+                        onEdit={openEditModal} 
+                        onTogglePublic={(section, value) => updateData(section, 'isPublic', value)}
+                    />
                 </TabsContent>
 
                 {/* FAQ */}
-                <TabsContent value="faq" className="space-y-4">
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between">
-                            <CardTitle>Frequently Asked Questions</CardTitle>
-                            <Button size="sm" variant="outline" onClick={addFaq}>
-                                <PlusCircle className="w-4 h-4 mr-2" /> Add FAQ
-                            </Button>
-                        </CardHeader>
-                    </Card>
-
-                    <div className="bg-card rounded-lg border border-border overflow-hidden animate-fade-in">
-                        <div className="overflow-x-auto">
-                            <table className="data-table">
-                                <thead>
-                                    <tr>
-                                        <th>Question</th>
-                                        <th>Answer</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {data.faq.map((faq) => (
-                                        <tr key={faq.id}>
-                                            <td>
-                                                <div className="font-medium">Q: {faq.question}</div>
-                                            </td>
-                                            <td>
-                                                <div className="text-muted-foreground">{faq.answer}</div>
-                                            </td>
-                                            <td>
-                                                <div className="flex items-center gap-1">
-                                                    <Button variant="ghost" size="sm" onClick={() => openEditModal('faq', faq)}>
-                                                        <Edit className="w-4 h-4" />
-                                                    </Button>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        onClick={() => deleteFaq(faq.id)}
-                                                        disabled={data.faq.length <= 1}
-                                                    >
-                                                        <Trash2 className="w-4 h-4" />
-                                                    </Button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+                <TabsContent value="faq" className="space-y-3 sm:space-y-4">
+                    <FaqSection 
+                        data={data.faq} 
+                        onAdd={addFaq} 
+                        onDelete={deleteFaq} 
+                        onEdit={(item) => openEditModal('faq', item)} 
+                        onTogglePublic={(section, value) => {
+                            setData(prev => ({
+                                ...prev,
+                                [section]: prev[section].map(item =>
+                                    ({ ...item, isPublic: value })
+                                )
+                            }));
+                        }}
+                    />
                 </TabsContent>
 
                 {/* TERMS */}
                 <TabsContent value="terms">
-                    <div className="bg-card rounded-lg border border-border overflow-hidden animate-fade-in">
-                        <div className="p-6">
-                            <div className="flex flex-row items-center justify-between mb-6">
-                                <h2 className="text-2xl font-bold tracking-tight">Terms & Pages</h2>
-                                <Button size="sm" variant="outline" onClick={() => openEditModal('terms', data.terms)}>
-                                    <Edit className="w-4 h-4 mr-2" /> Edit
-                                </Button>
-                            </div>
-
-                            <div className="space-y-4">
-                                <div>
-                                    <span className="text-sm text-muted-foreground">Title:</span>
-                                    <h3 className="text-xl font-bold mt-1">{data.terms.title}</h3>
-                                </div>
-                                <div className="prose prose-sm max-w-none border rounded-lg p-6 bg-muted/10">
-                                    <div className="whitespace-pre-line">{data.terms.content}</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    <TermsSection 
+                        data={data.terms} 
+                        onEdit={openEditModal} 
+                        onTogglePublic={(section, value) => updateData(section, 'isPublic', value)}
+                    />
                 </TabsContent>
 
-                {/* SEO */}
-                <TabsContent value="seo">
-                    <div className="bg-card rounded-lg border border-border overflow-hidden animate-fade-in">
-                        <div className="p-6">
-                            <div className="flex flex-row items-center justify-between mb-6">
-                                <h2 className="text-2xl font-bold tracking-tight">SEO Settings</h2>
-                                <Button size="sm" variant="outline" onClick={() => openEditModal('seo', data.seo)}>
-                                    <Edit className="w-4 h-4 mr-2" /> Edit
-                                </Button>
-                            </div>
-
-                            <div className="space-y-4">
-                                <div>
-                                    <span className="text-sm text-muted-foreground">Meta Title:</span>
-                                    <h3 className="text-lg font-bold mt-1">{data.seo.metaTitle}</h3>
-                                </div>
-                                <div>
-                                    <span className="text-sm text-muted-foreground">Meta Description:</span>
-                                    <p className="mt-1 text-muted-foreground">{data.seo.metaDescription}</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                {/* CONTACT US */}
+                <TabsContent value="contact">
+                    <ContactSection 
+                        data={data.contact} 
+                        onEdit={openEditModal} 
+                        onTogglePublic={(section, value) => updateData(section, 'isPublic', value)}
+                    />
                 </TabsContent>
 
+                {/* TEAM MEMBERS */}
+                <TabsContent value="featuredTherapist">
+                    <TeamSection 
+                        data={data.featuredTherapist} 
+                        onEdit={openEditModal} 
+                        onTogglePublic={(section, value) => updateData(section, 'isPublic', value)}
+                    />
+                </TabsContent>
             </Tabs>
+
+            {/* Mobile Content - Show based on activeTab state */}
+            <div className="lg:hidden space-y-4">
+                {activeTab === "hero" && (
+                    <HeroSection 
+                        data={data.hero} 
+                        onEdit={openEditModal} 
+                        onTogglePublic={(section, value) => updateData(section, 'isPublic', value)}
+                    />
+                )}
+                
+                {activeTab === "steps" && (
+                    <StepsSection 
+                        data={data.steps} 
+                        onAdd={addStep} 
+                        onDelete={deleteStep} 
+                        onEdit={(item) => openEditModal('step', item)} 
+                        onTogglePublic={(section, value) => {
+                            setData(prev => ({
+                                ...prev,
+                                [section]: prev[section].map(step =>
+                                    ({ ...step, isPublic: value })
+                                )
+                            }));
+                        }}
+                    />
+                )}
+                
+                {activeTab === "conditions" && (
+                    <ConditionsSection 
+                        data={data.conditions} 
+                        onEdit={openEditModal} 
+                        onTogglePublic={(section, value) => updateData(section, 'isPublic', value)}
+                    />
+                )}
+                
+                {activeTab === "whyus" && (
+                    <WhyUsSection 
+                        data={data.whyUs} 
+                        onEdit={openEditModal} 
+                        onTogglePublic={(section, value) => updateData(section, 'isPublic', value)}
+                    />
+                )}
+                
+                {activeTab === "faq" && (
+                    <FaqSection 
+                        data={data.faq} 
+                        onAdd={addFaq} 
+                        onDelete={deleteFaq} 
+                        onEdit={(item) => openEditModal('faq', item)} 
+                        onTogglePublic={(section, value) => {
+                            setData(prev => ({
+                                ...prev,
+                                [section]: prev[section].map(item =>
+                                    ({ ...item, isPublic: value })
+                                )
+                            }));
+                        }}
+                    />
+                )}
+                
+                {activeTab === "terms" && (
+                    <TermsSection 
+                        data={data.terms} 
+                        onEdit={openEditModal} 
+                        onTogglePublic={(section, value) => updateData(section, 'isPublic', value)}
+                    />
+                )}
+                
+                {activeTab === "contact" && (
+                    <ContactSection 
+                        data={data.contact} 
+                        onEdit={openEditModal} 
+                        onTogglePublic={(section, value) => updateData(section, 'isPublic', value)}
+                    />
+                )}
+                
+                {activeTab === "featuredTherapist" && (
+                    <TeamSection 
+                        data={data.featuredTherapist} 
+                        onEdit={openEditModal} 
+                        onTogglePublic={(section, value) => updateData(section, 'isPublic', value)}
+                    />
+                )}
+            </div>
 
             {/* Edit Modal */}
             <Dialog open={isModalOpen} onOpenChange={closeEditModal}>
-                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogContent className="max-w-xs sm:max-w-lg md:max-w-2xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
-                        <DialogTitle>
+                        <DialogTitle className="text-lg sm:text-xl">
                             {modalSection === 'hero' && 'Edit Hero Section'}
                             {modalSection === 'step' && (modalItem ? 'Edit Step' : 'Manage Steps')}
                             {modalSection === 'conditions' && 'Edit Conditions'}
                             {modalSection === 'whyUs' && 'Edit Why Choose Us'}
                             {modalSection === 'faq' && (modalItem ? 'Edit FAQ' : 'Manage FAQs')}
-                            {modalSection === 'terms' && 'Edit Terms & Pages'}
-                            {modalSection === 'seo' && 'Edit SEO Settings'}
+                            {modalSection === 'featuredTherapist' && 'Edit Team Member'}
+                            {modalSection === 'terms' && 'Edit Terms and Conditions'}
+                            {modalSection === 'contact' && 'Edit Contact Info'}
+
                         </DialogTitle>
                     </DialogHeader>
 
-                    <div className="space-y-4 py-4">
+                    <div className="space-y-3 sm:space-y-4 py-3 sm:py-4">
                         {modalSection === 'hero' && (
                             <EditHeroForm data={modalItem || data.hero} onSave={saveModalChanges} onCancel={closeEditModal} />
                         )}
@@ -733,21 +769,28 @@ export default function CMS() {
                             <EditFaqForm data={modalItem} onSave={saveModalChanges} onCancel={closeEditModal} isNew={!modalItem} />
                         )}
 
+                        {modalSection === 'featuredTherapist' && (
+                            <EditFeaturedTherapistForm data={modalItem || data.featuredTherapist} onSave={saveModalChanges} onCancel={closeEditModal} />
+                        )}
+
                         {modalSection === 'terms' && (
                             <EditTermsForm data={modalItem || data.terms} onSave={saveModalChanges} onCancel={closeEditModal} />
                         )}
 
-                        {modalSection === 'seo' && (
-                            <EditSeoForm data={modalItem || data.seo} onSave={saveModalChanges} onCancel={closeEditModal} />
+                        {modalSection === 'contact' && (
+                            <EditContactForm data={modalItem || data.contact} onSave={saveModalChanges} onCancel={closeEditModal} />
                         )}
+
+
                     </div>
                 </DialogContent>
             </Dialog>
 
-
         </div>
     );
-}
+};
+
+
 
 // Form Components
 const EditHeroForm = ({ data, onSave, onCancel }) => {
@@ -775,6 +818,30 @@ const EditHeroForm = ({ data, onSave, onCancel }) => {
         }
     };
 
+    const handleFeatureChange = (index, value) => {
+        const newFeatures = [...formData.features];
+        newFeatures[index] = value;
+        setFormData(prev => ({
+            ...prev,
+            features: newFeatures
+        }));
+    };
+
+    const addFeature = () => {
+        setFormData(prev => ({
+            ...prev,
+            features: [...prev.features, '']
+        }));
+    };
+
+    const removeFeature = (index) => {
+        const newFeatures = formData.features.filter((_, i) => i !== index);
+        setFormData(prev => ({
+            ...prev,
+            features: newFeatures
+        }));
+    };
+
     const handleSubmit = () => {
         onSave(formData);
     };
@@ -782,17 +849,19 @@ const EditHeroForm = ({ data, onSave, onCancel }) => {
     return (
         <div className="space-y-4">
             <div>
-                <Label>Main Heading</Label>
+                <Label className="text-sm">Main Heading</Label>
                 <Input
                     value={formData.heading}
                     onChange={(e) => handleChange('heading', e.target.value)}
+                    className="text-sm"
                 />
             </div>
             <div>
-                <Label>Sub Heading</Label>
+                <Label className="text-sm">Sub Heading</Label>
                 <Input
                     value={formData.subHeading}
                     onChange={(e) => handleChange('subHeading', e.target.value)}
+                    className="text-sm"
                 />
             </div>
             <div>
@@ -803,15 +872,69 @@ const EditHeroForm = ({ data, onSave, onCancel }) => {
                 />
             </div>
             <div>
-                <Label>CTA Button Text</Label>
+                <Label className="text-sm">Primary CTA Button Text</Label>
                 <Input
                     value={formData.ctaText}
                     onChange={(e) => handleChange('ctaText', e.target.value)}
+                    className="text-sm"
+                />
+            </div>
+            {/* <div>
+                <Label>Secondary CTA Button Text</Label>
+                <Input
+                    value={formData.secondaryCtaText || ''}
+                    onChange={(e) => handleChange('secondaryCtaText', e.target.value)}
+                />
+            </div> */}
+            <div className="flex items-center space-x-2">
+                <input
+                    type="checkbox"
+                    id="therapist-available"
+                    checked={formData.isTherapistAvailable}
+                    onChange={(e) => handleChange('isTherapistAvailable', e.target.checked)}
+                    className="h-4 w-4"
+                />
+                <Label htmlFor="therapist-available" className="text-sm">Show Therapist Available Indicator</Label>
+            </div>
+            <div>
+                <Label className="text-sm">Trusted By Text</Label>
+                <Input
+                    value={formData.trustedBy}
+                    onChange={(e) => handleChange('trustedBy', e.target.value)}
+                    className="text-sm"
                 />
             </div>
             <div>
-                <Label>Hero Image</Label>
-                <div className="flex flex-col sm:flex-row gap-4 mt-2">
+                <div className="flex items-center justify-between mb-2">
+                    <Label>Features</Label>
+                    <Button type="button" variant="outline" size="sm" onClick={addFeature}>
+                        <Plus className="h-4 w-4 mr-2" /> Add Feature
+                    </Button>
+                </div>
+                <div className="space-y-2">
+                    {formData.features.map((feature, index) => (
+                        <div key={index} className="flex items-center gap-2">
+                            <Input
+                                value={feature}
+                                onChange={(e) => handleFeatureChange(index, e.target.value)}
+                                placeholder={`Feature ${index + 1}`}
+                            />
+                            <Button 
+                                type="button" 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={() => removeFeature(index)}
+                                disabled={formData.features.length <= 1}
+                            >
+                                <Trash2 className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    ))}
+                </div>
+            </div>
+            <div>
+                <Label className="text-sm">Hero Image</Label>
+                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-2">
                     <div className="flex-1">
                         <Input
                             type="file"
@@ -822,10 +945,10 @@ const EditHeroForm = ({ data, onSave, onCancel }) => {
                         />
                         <label
                             htmlFor="hero-image-upload"
-                            className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-muted hover:bg-accent transition-colors"
+                            className="flex flex-col items-center justify-center w-full h-24 sm:h-32 border-2 border-dashed rounded-lg cursor-pointer bg-muted hover:bg-accent transition-colors"
                         >
-                            <Upload className="w-8 h-8 text-muted-foreground mb-2" />
-                            <span className="text-sm text-muted-foreground">Click to upload image</span>
+                            <Upload className="w-6 h-6 sm:w-8 sm:h-8 text-muted-foreground mb-1 sm:mb-2" />
+                            <span className="text-xs sm:text-sm text-muted-foreground">Click to upload image</span>
                         </label>
                     </div>
                     {formData.image && (
@@ -879,31 +1002,34 @@ const EditStepForm = ({ data, onSave, onCancel, isNew }) => {
     };
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
             <div>
-                <Label>Step Title</Label>
+                <Label className="text-sm">Step Title</Label>
                 <Input
                     value={formData.title}
                     onChange={(e) => handleChange('title', e.target.value)}
+                    className="text-sm"
                 />
             </div>
             <div>
-                <Label>Step Description</Label>
+                <Label className="text-sm">Step Description</Label>
                 <Textarea
                     value={formData.description}
                     onChange={(e) => handleChange('description', e.target.value)}
+                    className="text-sm"
                 />
             </div>
             <div>
-                <Label>Icon name (lucide)</Label>
+                <Label className="text-sm">Icon name (lucide)</Label>
                 <Input
                     value={formData.icon}
                     onChange={(e) => handleChange('icon', e.target.value)}
+                    className="text-sm"
                 />
             </div>
             <div>
-                <Label>Step Image</Label>
-                <div className="flex flex-col sm:flex-row gap-4 mt-2">
+                <Label className="text-sm">Step Image</Label>
+                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-2">
                     <div className="flex-1">
                         <Input
                             type="file"
@@ -914,10 +1040,10 @@ const EditStepForm = ({ data, onSave, onCancel, isNew }) => {
                         />
                         <label
                             htmlFor={`step-${formData.id}-image-upload`}
-                            className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-muted hover:bg-accent transition-colors"
+                            className="flex flex-col items-center justify-center w-full h-24 sm:h-32 border-2 border-dashed rounded-lg cursor-pointer bg-muted hover:bg-accent transition-colors"
                         >
-                            <Upload className="w-8 h-8 text-muted-foreground mb-2" />
-                            <span className="text-sm text-muted-foreground">Click to upload image</span>
+                            <Upload className="w-6 h-6 sm:w-8 sm:h-8 text-muted-foreground mb-1 sm:mb-2" />
+                            <span className="text-xs sm:text-sm text-muted-foreground">Click to upload image</span>
                         </label>
                     </div>
                     {formData.image && (
@@ -934,8 +1060,8 @@ const EditStepForm = ({ data, onSave, onCancel, isNew }) => {
                 </div>
             </div>
             <DialogFooter className="flex justify-between">
-                <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
-                <Button type="button" onClick={() => handleSubmit(isNew)}>{isNew ? 'Add Step' : 'Save Changes'}</Button>
+                <Button type="button" variant="outline" onClick={onCancel} className="text-sm">Cancel</Button>
+                <Button type="button" onClick={() => handleSubmit(isNew)} className="text-sm">{isNew ? 'Add Step' : 'Save Changes'}</Button>
             </DialogFooter>
         </div>
     );
@@ -948,6 +1074,31 @@ const EditConditionsForm = ({ data, onSave, onCancel }) => {
         setFormData(prev => ({
             ...prev,
             [field]: value
+        }));
+    };
+
+    const handleConditionChange = (index, field, value) => {
+        const newConditions = [...formData.conditions];
+        newConditions[index][field] = value;
+        setFormData(prev => ({
+            ...prev,
+            conditions: newConditions
+        }));
+    };
+
+    const addCondition = () => {
+        const newCondition = { name: '', icon: '' };
+        setFormData(prev => ({
+            ...prev,
+            conditions: [...prev.conditions, newCondition]
+        }));
+    };
+
+    const removeCondition = (index) => {
+        const newConditions = formData.conditions.filter((_, i) => i !== index);
+        setFormData(prev => ({
+            ...prev,
+            conditions: newConditions
         }));
     };
 
@@ -971,7 +1122,7 @@ const EditConditionsForm = ({ data, onSave, onCancel }) => {
     };
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
             <div>
                 <Label>Section Title</Label>
                 <Input
@@ -980,23 +1131,59 @@ const EditConditionsForm = ({ data, onSave, onCancel }) => {
                 />
             </div>
             <div>
-                <Label>Short Description</Label>
+                <Label className="text-sm">Short Description</Label>
                 <Textarea
                     rows={3}
                     value={formData.description}
                     onChange={(e) => handleChange('description', e.target.value)}
+                    className="text-sm"
                 />
             </div>
             <div>
-                <Label>Conditions Treated</Label>
-                <Textarea
-                    rows={5}
-                    value={formData.conditions}
-                    onChange={(e) => handleChange('conditions', e.target.value)}
-                    placeholder="Muscle Pain, Back Pain, Neck Pain, Knee Pain..."
-                />
+                <div className="flex items-center justify-between mb-2">
+                    <Label className="text-sm">Conditions Treated</Label>
+                    <Button type="button" variant="outline" size="sm" onClick={addCondition} className="text-xs sm:text-sm">
+                        <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" /> Add Condition
+                    </Button>
+                </div>
+                <div className="space-y-3">
+                    {formData.conditions.map((condition, index) => (
+                        <div key={index} className="flex gap-2">
+                            <div className="flex-1">
+                                <Label className="text-sm">Condition Name</Label>
+                                <Input
+                                    value={condition.name}
+                                    onChange={(e) => handleConditionChange(index, 'name', e.target.value)}
+                                    placeholder="Condition name"
+                                    className="text-sm"
+                                />
+                            </div>
+                            <div className="flex-1">
+                                <Label className="text-sm">Icon Name</Label>
+                                <Input
+                                    value={condition.icon}
+                                    onChange={(e) => handleConditionChange(index, 'icon', e.target.value)}
+                                    placeholder="Icon name"
+                                    className="text-sm"
+                                />
+                            </div>
+                            <div className="flex items-end">
+                                <Button 
+                                    type="button" 
+                                    variant="outline" 
+                                    size="sm" 
+                                    onClick={() => removeCondition(index)}
+                                    disabled={formData.conditions.length <= 1}
+                                    className="h-8 w-8 p-0 sm:h-9 sm:w-9"
+                                >
+                                    <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                                </Button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
             </div>
-            <div>
+            {/* <div>
                 <Label>Conditions Image</Label>
                 <div className="flex flex-col sm:flex-row gap-4 mt-2">
                     <div className="flex-1">
@@ -1027,7 +1214,7 @@ const EditConditionsForm = ({ data, onSave, onCancel }) => {
                         </div>
                     )}
                 </div>
-            </div>
+            </div> */}
             <DialogFooter className="flex justify-between">
                 <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
                 <Button type="button" onClick={handleSubmit}>Save Changes</Button>
@@ -1040,17 +1227,59 @@ const EditWhyUsForm = ({ data, onSave, onCancel }) => {
     const [formData, setFormData] = useState(data);
 
     const handleChange = (field, value) => {
-        if (field === 'stats') {
-            setFormData(prev => ({
-                ...prev,
-                stats: { ...prev.stats, ...value }
-            }));
-        } else {
-            setFormData(prev => ({
-                ...prev,
-                [field]: value
-            }));
-        }
+        setFormData(prev => ({
+            ...prev,
+            [field]: value
+        }));
+    };
+
+    const handleStatChange = (index, field, value) => {
+        const newStats = [...formData.stats];
+        newStats[index][field] = value;
+        setFormData(prev => ({
+            ...prev,
+            stats: newStats
+        }));
+    };
+
+    const addStat = () => {
+        const newStat = { label: '', value: '', description: '' };
+        setFormData(prev => ({
+            ...prev,
+            stats: [...prev.stats, newStat]
+        }));
+    };
+
+    const removeStat = (index) => {
+        const newStats = formData.stats.filter((_, i) => i !== index);
+        setFormData(prev => ({
+            ...prev,
+            stats: newStats
+        }));
+    };
+
+    const handleFeatureChange = (index, value) => {
+        const newFeatures = [...formData.features];
+        newFeatures[index] = value;
+        setFormData(prev => ({
+            ...prev,
+            features: newFeatures
+        }));
+    };
+
+    const addFeature = () => {
+        setFormData(prev => ({
+            ...prev,
+            features: [...prev.features, '']
+        }));
+    };
+
+    const removeFeature = (index) => {
+        const newFeatures = formData.features.filter((_, i) => i !== index);
+        setFormData(prev => ({
+            ...prev,
+            features: newFeatures
+        }));
     };
 
     const handleSubmit = () => {
@@ -1073,38 +1302,81 @@ const EditWhyUsForm = ({ data, onSave, onCancel }) => {
                     onChange={(e) => handleChange('description', e.target.value)}
                 />
             </div>
-            <div className="grid grid-cols-2 gap-4 pt-4">
-                <div>
-                    <Label>Patients Stat</Label>
-                    <Input
-                        value={formData.stats.patients}
-                        onChange={(e) => handleChange('stats', { patients: e.target.value })}
-                        placeholder="10K+ Happy Patients"
-                    />
+            <div>
+                <div className="flex items-center justify-between mb-2">
+                    <Label>Statistics</Label>
+                    <Button type="button" variant="outline" size="sm" onClick={addStat}>
+                        <Plus className="h-4 w-4 mr-2" /> Add Stat
+                    </Button>
                 </div>
-                <div>
-                    <Label>Therapists Stat</Label>
-                    <Input
-                        value={formData.stats.therapists}
-                        onChange={(e) => handleChange('stats', { therapists: e.target.value })}
-                        placeholder="500+ Therapists"
-                    />
+                <div className="space-y-3">
+                    {formData.stats.map((stat, index) => (
+                        <div key={index} className="grid grid-cols-3 gap-2">
+                            <div>
+                                <Label>Label</Label>
+                                <Input
+                                    value={stat.label}
+                                    onChange={(e) => handleStatChange(index, 'label', e.target.value)}
+                                    placeholder="Stat label"
+                                />
+                            </div>
+                            <div>
+                                <Label>Value</Label>
+                                <Input
+                                    value={stat.value}
+                                    onChange={(e) => handleStatChange(index, 'value', e.target.value)}
+                                    placeholder="Stat value"
+                                />
+                            </div>
+                            <div>
+                                <Label>Description</Label>
+                                <Input
+                                    value={stat.description}
+                                    onChange={(e) => handleStatChange(index, 'description', e.target.value)}
+                                    placeholder="Description"
+                                />
+                            </div>
+                            <div className="col-span-3">
+                                <Button 
+                                    type="button" 
+                                    variant="outline" 
+                                    size="sm" 
+                                    onClick={() => removeStat(index)}
+                                    disabled={formData.stats.length <= 1}
+                                >
+                                    <Trash2 className="h-4 w-4 mr-2" /> Remove Stat
+                                </Button>
+                            </div>
+                        </div>
+                    ))}
                 </div>
-                <div>
-                    <Label>Sessions Stat</Label>
-                    <Input
-                        value={formData.stats.sessions}
-                        onChange={(e) => handleChange('stats', { sessions: e.target.value })}
-                        placeholder="50K+ Sessions"
-                    />
+            </div>
+            <div>
+                <div className="flex items-center justify-between mb-2">
+                    <Label>Features</Label>
+                    <Button type="button" variant="outline" size="sm" onClick={addFeature}>
+                        <Plus className="h-4 w-4 mr-2" /> Add Feature
+                    </Button>
                 </div>
-                <div>
-                    <Label>Rating Stat</Label>
-                    <Input
-                        value={formData.stats.rating}
-                        onChange={(e) => handleChange('stats', { rating: e.target.value })}
-                        placeholder="4.9 Rating"
-                    />
+                <div className="space-y-2">
+                    {formData.features.map((feature, index) => (
+                        <div key={index} className="flex items-center gap-2">
+                            <Input
+                                value={feature}
+                                onChange={(e) => handleFeatureChange(index, e.target.value)}
+                                placeholder={`Feature ${index + 1}`}
+                            />
+                            <Button 
+                                type="button" 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={() => removeFeature(index)}
+                                disabled={formData.features.length <= 1}
+                            >
+                                <Trash2 className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    ))}
                 </div>
             </div>
             <DialogFooter className="flex justify-between">
@@ -1179,6 +1451,22 @@ const EditTermsForm = ({ data, onSave, onCancel }) => {
                 />
             </div>
             <div>
+                <Label>Version</Label>
+                <Input
+                    value={formData.version || ''}
+                    onChange={(e) => handleChange('version', e.target.value)}
+                    placeholder="e.g., 1.0.0"
+                />
+            </div>
+            <div>
+                <Label>Last Updated Date</Label>
+                <Input
+                    value={formData.lastUpdated || ''}
+                    onChange={(e) => handleChange('lastUpdated', e.target.value)}
+                    placeholder="e.g., January 1, 2026"
+                />
+            </div>
+            <div>
                 <Label>Full page content...</Label>
                 <Textarea
                     rows={10}
@@ -1224,6 +1512,265 @@ const EditSeoForm = ({ data, onSave, onCancel }) => {
                     value={formData.metaDescription}
                     onChange={(e) => handleChange('metaDescription', e.target.value)}
                 />
+            </div>
+            <DialogFooter className="flex justify-between">
+                <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
+                <Button type="button" onClick={handleSubmit}>Save Changes</Button>
+            </DialogFooter>
+        </div>
+    );
+};
+
+const EditFeaturedTherapistForm = ({ data, onSave, onCancel }) => {
+    const [formData, setFormData] = useState(data);
+
+    const handleChange = (field, value) => {
+        setFormData(prev => ({
+            ...prev,
+            [field]: value
+        }));
+    };
+
+    // Handle image upload
+    const handleImageUpload = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setFormData(prev => ({
+                    ...prev,
+                    image: reader.result
+                }));
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const handleSubmit = () => {
+        onSave(formData);
+    };
+
+    return (
+        <div className="space-y-4">
+            <div>
+                <Label>Name</Label>
+                <Input
+                    value={formData.name}
+                    onChange={(e) => handleChange('name', e.target.value)}
+                />
+            </div>
+            <div>
+                <Label>Specialty</Label>
+                <Input
+                    value={formData.specialty}
+                    onChange={(e) => handleChange('specialty', e.target.value)}
+                />
+            </div>
+            <div>
+                <Label>Experience</Label>
+                <Input
+                    value={formData.experience}
+                    onChange={(e) => handleChange('experience', e.target.value)}
+                />
+            </div>
+            <div>
+                <Label>Rating</Label>
+                <Input
+                    value={formData.rating}
+                    onChange={(e) => handleChange('rating', e.target.value)}
+                />
+            </div>
+            <div>
+                <Label>Description</Label>
+                <Textarea
+                    rows={4}
+                    value={formData.description}
+                    onChange={(e) => handleChange('description', e.target.value)}
+                />
+            </div>
+            <div>
+                <Label>CTA Text</Label>
+                <Input
+                    value={formData.ctaText}
+                    onChange={(e) => handleChange('ctaText', e.target.value)}
+                />
+            </div>
+            <div>
+                <Label>View Profile Text</Label>
+                <Input
+                    value={formData.viewProfileText}
+                    onChange={(e) => handleChange('viewProfileText', e.target.value)}
+                />
+            </div>
+            <div className="flex items-center space-x-2">
+                <input
+                    type="checkbox"
+                    id="available-today"
+                    checked={formData.availableToday}
+                    onChange={(e) => handleChange('availableToday', e.target.checked)}
+                    className="h-4 w-4"
+                />
+                <Label htmlFor="available-today">Available Today</Label>
+            </div>
+            <div>
+                <Label>Therapist Image</Label>
+                <div className="flex flex-col sm:flex-row gap-4 mt-2">
+                    <div className="flex-1">
+                        <Input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleImageUpload}
+                            className="hidden"
+                            id="therapist-image-upload"
+                        />
+                        <label
+                            htmlFor="therapist-image-upload"
+                            className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-muted hover:bg-accent transition-colors"
+                        >
+                            <Upload className="w-8 h-8 text-muted-foreground mb-2" />
+                            <span className="text-sm text-muted-foreground">Click to upload image</span>
+                        </label>
+                    </div>
+                    {formData.image && (
+                        <div className="flex-1">
+                            <div className="aspect-video bg-muted rounded-lg border flex items-center justify-center overflow-hidden">
+                                <img
+                                    src={formData.image}
+                                    alt="Preview"
+                                    className="w-full h-full object-cover"
+                                />
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+            <DialogFooter className="flex justify-between">
+                <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
+                <Button type="button" onClick={handleSubmit}>Save Changes</Button>
+            </DialogFooter>
+        </div>
+    );
+};
+
+const EditContactForm = ({ data, onSave, onCancel }) => {
+    const [formData, setFormData] = useState(data);
+
+    const handleChange = (field, value) => {
+        setFormData(prev => ({
+            ...prev,
+            [field]: value
+        }));
+    };
+
+    const handleSocialLinkChange = (index, field, value) => {
+        const newSocialLinks = [...formData.socialLinks];
+        newSocialLinks[index][field] = value;
+        setFormData(prev => ({
+            ...prev,
+            socialLinks: newSocialLinks
+        }));
+    };
+
+    const addSocialLink = () => {
+        setFormData(prev => ({
+            ...prev,
+            socialLinks: [...prev.socialLinks, { platform: '', url: '' }]
+        }));
+    };
+
+    const removeSocialLink = (index) => {
+        const newSocialLinks = formData.socialLinks.filter((_, i) => i !== index);
+        setFormData(prev => ({
+            ...prev,
+            socialLinks: newSocialLinks
+        }));
+    };
+
+    const handleSubmit = () => {
+        onSave(formData);
+    };
+
+    return (
+        <div className="space-y-4">
+            <div>
+                <Label>Section Title</Label>
+                <Input
+                    value={formData.title}
+                    onChange={(e) => handleChange('title', e.target.value)}
+                />
+            </div>
+            <div>
+                <Label>Description</Label>
+                <Textarea
+                    value={formData.description}
+                    onChange={(e) => handleChange('description', e.target.value)}
+                />
+            </div>
+            <div>
+                <Label>Email Address</Label>
+                <Input
+                    value={formData.email}
+                    onChange={(e) => handleChange('email', e.target.value)}
+                />
+            </div>
+            <div>
+                <Label>Phone Number</Label>
+                <Input
+                    value={formData.phone}
+                    onChange={(e) => handleChange('phone', e.target.value)}
+                />
+            </div>
+            <div>
+                <Label>Address</Label>
+                <Textarea
+                    value={formData.address}
+                    onChange={(e) => handleChange('address', e.target.value)}
+                />
+            </div>
+            <div>
+                <Label>Business Hours</Label>
+                <Textarea
+                    value={formData.hours}
+                    onChange={(e) => handleChange('hours', e.target.value)}
+                    placeholder="Enter business hours (e.g., Monday-Friday: 8:00 AM - 8:00 PM)"
+                />
+            </div>
+            <div>
+                <div className="flex items-center justify-between mb-2">
+                    <Label>Social Media Links</Label>
+                    <Button type="button" variant="outline" size="sm" onClick={addSocialLink}>
+                        <Plus className="h-4 w-4 mr-2" /> Add Link
+                    </Button>
+                </div>
+                <div className="space-y-2">
+                    {formData.socialLinks.map((social, index) => (
+                        <div key={index} className="grid grid-cols-2 gap-2">
+                            <div>
+                                <Input
+                                    value={social.platform}
+                                    onChange={(e) => handleSocialLinkChange(index, 'platform', e.target.value)}
+                                    placeholder="Platform (e.g., Facebook)"
+                                />
+                            </div>
+                            <div className="flex gap-2">
+                                <Input
+                                    value={social.url}
+                                    onChange={(e) => handleSocialLinkChange(index, 'url', e.target.value)}
+                                    placeholder="URL"
+                                />
+                                <Button 
+                                    type="button" 
+                                    variant="outline" 
+                                    size="sm" 
+                                    onClick={() => removeSocialLink(index)}
+                                    disabled={formData.socialLinks.length <= 1}
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
             </div>
             <DialogFooter className="flex justify-between">
                 <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>

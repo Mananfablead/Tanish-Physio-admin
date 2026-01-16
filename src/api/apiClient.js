@@ -66,7 +66,7 @@ export const API = {
 
   UPDATE_PROFILE: "/auth/profile",
   UPDATE_PASSWORD: "/auth/update-password",
-  UPDATE_PROFILE_PICTURE: "/auth/profile-picture",
+  UPDATE_PROFILE_PICTURE: "/auth/profile",
   // Update profile
   // users
   USERS: "/users",
