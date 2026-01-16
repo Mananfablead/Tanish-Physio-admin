@@ -26,6 +26,18 @@ export const fetchQuestionnaireById = createAsyncThunk(
   }
 );
 
+export const fetchActiveQuestionnaire = createAsyncThunk(
+  "questionnaires/fetchActiveQuestionnaire",
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await questionnaireAPI.getActive();
+      return response.data.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
 export const createQuestionnaire = createAsyncThunk(
   "questionnaires/createQuestionnaire",
   async (questionnaireData, { rejectWithValue }) => {
@@ -50,17 +62,45 @@ export const updateQuestionnaire = createAsyncThunk(
   }
 );
 
-export const updateQuestions = createAsyncThunk(
-  "questionnaires/updateQuestions",
-  async ({ id, questions }, { rejectWithValue }) => {
+// Thunk to add a question to the active questionnaire
+export const addQuestionToQuestionnaire = createAsyncThunk(
+  "questionnaires/addQuestionToQuestionnaire",
+  async ({ question }, { rejectWithValue, getState }) => {
     try {
-      const response = await questionnaireAPI.updateQuestions(id, questions);
-      return response.data.data;
+      const state = getState();
+      let activeQuestionnaire = state.questionnaires.questionnaires.find(q => q.isActive) || 
+                               state.questionnaires.currentQuestionnaire;
+      
+      if (!activeQuestionnaire) {
+        // If no active questionnaire exists, create a new one
+        const questionnaireData = {
+          title: "Health Assessment Questionnaire",
+          description: "Please answer these health-related questions",
+          isActive: true,
+          questions: [question]
+        };
+        
+        const response = await questionnaireAPI.create(questionnaireData);
+        return response.data.data;
+      } else {
+        // Add question to the existing active questionnaire
+        const updatedQuestions = [...activeQuestionnaire.questions, question];
+        const updatedQuestionnaire = {
+          ...activeQuestionnaire,
+          questions: updatedQuestions
+        };
+        
+        const response = await questionnaireAPI.update(activeQuestionnaire._id, updatedQuestionnaire);
+        return response.data.data;
+      }
     } catch (error) {
       return rejectWithValue(error.response?.data || error.message);
     }
   }
 );
+
+
+
 
 export const deleteQuestionnaire = createAsyncThunk(
   "questionnaires/deleteQuestionnaire",
@@ -136,6 +176,32 @@ const questionnaireSlice = createSlice({
         state.error = action.payload;
       })
       
+      // Fetch active questionnaire
+      .addCase(fetchActiveQuestionnaire.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchActiveQuestionnaire.fulfilled, (state, action) => {
+        state.loading = false;
+        state.currentQuestionnaire = action.payload;
+        // Update questionnaires list - only keep active questionnaire in sync
+        const existingIndex = state.questionnaires.findIndex(q => q._id === action.payload._id);
+        if (existingIndex === -1) {
+          state.questionnaires.push(action.payload);
+        } else {
+          state.questionnaires[existingIndex] = action.payload;
+        }
+        // Also update any other questionnaires to inactive if they're not the active one
+        state.questionnaires = state.questionnaires.map(q => ({
+          ...q,
+          isActive: q._id === action.payload._id
+        }));
+      })
+      .addCase(fetchActiveQuestionnaire.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      
       // Create questionnaire
       .addCase(createQuestionnaire.fulfilled, (state, action) => {
         state.questionnaires.push(action.payload);
@@ -158,8 +224,8 @@ const questionnaireSlice = createSlice({
         state.error = action.payload;
       })
       
-      // Update questions
-      .addCase(updateQuestions.fulfilled, (state, action) => {
+      // Add question to questionnaire
+      .addCase(addQuestionToQuestionnaire.fulfilled, (state, action) => {
         const index = state.questionnaires.findIndex(q => q._id === action.payload._id);
         if (index !== -1) {
           state.questionnaires[index] = action.payload;
@@ -168,9 +234,11 @@ const questionnaireSlice = createSlice({
           state.currentQuestionnaire = action.payload;
         }
       })
-      .addCase(updateQuestions.rejected, (state, action) => {
+      .addCase(addQuestionToQuestionnaire.rejected, (state, action) => {
         state.error = action.payload;
       })
+      
+
       
       // Delete questionnaire
       .addCase(deleteQuestionnaire.fulfilled, (state, action) => {

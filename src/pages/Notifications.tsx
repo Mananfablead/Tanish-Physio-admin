@@ -2,16 +2,9 @@ import { Bell, Calendar, CreditCard, Megaphone, Trash2, X, CheckCircle, Users, C
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
-
-const mockNotifications = [
-  { id: 1, title: "Session Reminder", message: "Your session with Dr. Johnson is in 1 hour", recipient: "All Users", sent: "2024-03-18 09:00", type: "reminder", status: "sent" },
-  { id: 2, title: "Subscription Expiring", message: "Your subscription expires in 3 days. Renew now!", recipient: "Expiring Users", sent: "2024-03-17 10:00", type: "subscription", status: "sent" },
-  { id: 3, title: "Platform Update", message: "We've added new features to improve your experience.", recipient: "All Users", sent: "2024-03-15 14:00", type: "announcement", status: "sent" },
-  { id: 4, title: "New Therapist Available", message: "Dr. Emma Davis has joined our platform.", recipient: "All Therapists", sent: "2024-03-14 11:00", type: "announcement", status: "sent" },
-  { id: 5, title: "Session Completed", message: "Your session with Dr. Smith was completed successfully.", recipient: "All Users", sent: "2024-03-13 16:30", type: "reminder", status: "sent" },
-  { id: 6, title: "Payment Received", message: "Your subscription payment has been processed.", recipient: "All Users", sent: "2024-03-12 12:15", type: "subscription", status: "sent" },
-];
+import { useState, useEffect } from "react";
+import { useSelector, useDispatch } from "react-redux";
+import { fetchNotifications, removeNotification, clearAllNotifications, markNotificationAsRead } from "@/features/notifications/notificationSlice";
 
 const notificationTypes = [
   { value: "reminder", label: "Session Reminder", icon: Calendar },
@@ -46,17 +39,22 @@ const getTypeBadge = (type: string) => {
 };
 
 export default function Notifications() {
-  const [notifications, setNotifications] = useState(mockNotifications);
+  const dispatch: any = useDispatch();
+  const { list: notifications, loading, error } = useSelector((state: any) => state.notifications);
   const [showDeleteAllConfirmation, setShowDeleteAllConfirmation] = useState(false);
   const [notificationToDelete, setNotificationToDelete] = useState<number | null>(null);
 
+  useEffect(() => {
+    dispatch(fetchNotifications());
+  }, [dispatch]);
+
   const deleteNotification = (id: number) => {
-    setNotifications(notifications.filter(notification => notification.id !== id));
+    dispatch(removeNotification(id));
     setNotificationToDelete(null);
   };
 
   const deleteAllNotifications = () => {
-    setNotifications([]);
+    dispatch(clearAllNotifications());
     setShowDeleteAllConfirmation(false);
   };
 
@@ -69,7 +67,7 @@ export default function Notifications() {
   };
 
   const restoreNotifications = () => {
-    setNotifications(mockNotifications);
+    dispatch(fetchNotifications());
   };
 
   return (
@@ -192,8 +190,8 @@ export default function Notifications() {
                   </tr>
                 </thead>
                 <tbody>
-                  {notifications.slice(0, 2).length > 0 ? (
-                    notifications.slice(0, 2).map((notification) => (
+                  {notifications.filter(n => n.status !== 'read').length > 0 ? (
+                    notifications.filter(n => n.status !== 'read').map((notification) => (
                       <tr key={notification.id}>
                         <td className="font-medium">{notification.title}</td>
                         <td className="text-muted-foreground max-w-xs truncate">{notification.message}</td>

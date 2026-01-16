@@ -28,13 +28,82 @@ export const loginUser = createAsyncThunk(
     }
   }
 );
-export const logoutUser = createAsyncThunk(
-  "auth/logout",
-  async (_, { rejectWithValue }) => {
+
+/* =========================
+   CHANGE PASSWORD
+========================= */
+export const changePassword = createAsyncThunk(
+  "auth/changePassword",
+  async (passwordData, { rejectWithValue }) => {
     try {
-      const res = await apiClient.post(API.LOGOUT);
+      const res = await apiClient.put(API.UPDATE_PASSWORD, passwordData);
       return res.data;
     } catch (err) {
+      return rejectWithValue(err.response?.data?.message || "Password update failed");
+    }
+  }
+);
+
+/* =========================
+   UPDATE PROFILE PICTURE
+========================= */
+export const updateProfilePicture = createAsyncThunk(
+  "auth/updateProfilePicture",
+  async (imageFile, { rejectWithValue }) => {
+    try {
+      const formData = new FormData();
+      formData.append('profilePicture', imageFile);
+      
+      const res = await apiClient.put(API.UPDATE_PROFILE_PICTURE, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      return res.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || "Profile picture update failed");
+    }
+  }
+);
+
+/* =========================
+   FORGOT PASSWORD
+========================= */
+export const forgotPassword = createAsyncThunk(
+  "auth/forgotPassword",
+  async (email, { rejectWithValue }) => {
+    try {
+      const res = await apiClient.post(API.FORGOT_PASSWORD, { email });
+      return res.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || "Failed to send reset link");
+    }
+  }
+);
+
+export const resetPassword = createAsyncThunk(
+  "auth/resetPassword",
+  async ({ token, password }, { rejectWithValue }) => {
+    try {
+      const res = await apiClient.post(`${API.RESET_PASSWORD}/${token}`, { password });
+      return res.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || "Failed to reset password");
+    }
+  }
+);
+
+export const logoutUser = createAsyncThunk(
+  "auth/logout",
+  async (_, { dispatch, rejectWithValue }) => {
+    try {
+      const res = await apiClient.post(API.LOGOUT);
+      // Also dispatch the local logout action to clear the state
+      dispatch(logout());
+      return res.data;
+    } catch (err) {
+      // Even if backend logout fails, still clear local state
+      dispatch(logout());
       return rejectWithValue("Logout failed");
     }
   }
@@ -49,15 +118,6 @@ export const fetchProfile = createAsyncThunk(
       const res = await apiClient.get(API.PROFILE);
       return res.data.data;
     } catch (err) {
-      // If token is invalid or expired, remove it from localStorage
-      if (
-        err.response?.status === 401 &&
-        err.response?.data?.message === "Invalid or expired token"
-      ) {
-        localStorage.removeItem("token");
-        // Optionally redirect to login
-        window.location.href = "/login";
-      }
       return rejectWithValue(err.response?.data?.message || "Unauthorized");
     }
   }
@@ -86,6 +146,7 @@ const initialState = {
   isAuthenticated: !!localStorage.getItem("token"),
   loading: false,
   error: null,
+  forgotPasswordSuccess: null,
 };
 
 /* =========================
@@ -153,6 +214,63 @@ const authSlice = createSlice({
         };
       })
       .addCase(updateProfile.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      
+      // CHANGE PASSWORD
+      .addCase(changePassword.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(changePassword.fulfilled, (state) => {
+        state.loading = false;
+      })
+      .addCase(changePassword.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      
+      // UPDATE PROFILE PICTURE
+      .addCase(updateProfilePicture.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(updateProfilePicture.fulfilled, (state, action) => {
+        state.loading = false;
+        if (action.payload.data?.profilePicture) {
+          state.user.profilePicture = action.payload.data.profilePicture;
+        }
+      })
+      .addCase(updateProfilePicture.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      
+      // FORGOT PASSWORD
+      .addCase(forgotPassword.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(forgotPassword.fulfilled, (state, action) => {
+        state.loading = false;
+        state.forgotPasswordSuccess = action.payload.message || "Password reset link has been sent to your email.";
+      })
+      .addCase(forgotPassword.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      
+      // RESET PASSWORD
+      .addCase(resetPassword.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(resetPassword.fulfilled, (state, action) => {
+        state.loading = false;
+        state.forgotPasswordSuccess = action.payload.message || "Password reset successfully!";
+      })
+      .addCase(resetPassword.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       });

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, MoreHorizontal, Video, Calendar, Clock, User, UserCog, X, RefreshCw, ChevronLeft, ChevronRight, Play, Eye, Copy, Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
@@ -14,33 +14,44 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { mockSessions } from "@/lib/session-data";
-
-// Using mockSessions from session-data.ts
+import { useSelector, useDispatch } from "react-redux";
+import { fetchSessions, createSession, updateSession, deleteSession } from "@/features/sessions/sessionSlice";
+import { fetchBookings } from "@/features/bookings/bookingSlice";
 
 type SessionStatus = "scheduled" | "live" | "completed" | "cancelled" | "no-show";
 
 export default function Sessions() {
   const navigate = useNavigate();
+  const dispatch: any = useDispatch();
+  const { list: bookings, loading: bookingsLoading, error: bookingsError } = useSelector((state: any) => state.bookings);
+
+  const { list: sessions = [], loading, error } = useSelector((state: any) => state.sessions);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("upcoming");
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false);
-  const [isAcceptModalOpen, setIsAcceptModalOpen] = useState(false);
   const [isCreateSessionModalOpen, setIsCreateSessionModalOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [selectedSession, setSelectedSession] = useState<any>(null);
 
+  useEffect(() => {
+    dispatch(fetchSessions());
+    dispatch(fetchBookings());
+  }, [dispatch]);
+
   // State for creating a new session
   const [newSession, setNewSession] = useState({
-    user: "",
-    therapist: "",
+    bookingId: "",
     date: "",
     time: "",
     type: "1-on-1",
-    duration: "60 min",
-    notes: ""
+    status: "scheduled",
+    // notes: ""
   });
+
+  // State for rescheduling
+  const [rescheduleDate, setRescheduleDate] = useState("");
+  const [rescheduleTime, setRescheduleTime] = useState("");
 
   const getStatusBadge = (status: SessionStatus) => {
     switch (status) {
@@ -60,41 +71,81 @@ export default function Sessions() {
   };
 
   const getCurrentSessions = () => {
+    const currentSessions = (sessions || []).map((session: any) => ({
+      ...session,
+      // Normalize bookingId to be a string for consistent access
+      bookingId: typeof session.bookingId === 'object' 
+        ? (session.bookingId._id || session.bookingId.id || session.bookingId.serviceName)
+        : session.bookingId,
+      // Also normalize other nested objects
+      therapistId: typeof session.therapistId === 'object' 
+        ? (session.therapistId._id || session.therapistId.id || session.therapistId.name)
+        : session.therapistId,
+      userId: typeof session.userId === 'object' 
+        ? (session.userId._id || session.userId.id || session.userId)
+        : session.userId,
+    }));
+    
     switch (activeTab) {
       case "upcoming":
-        return mockSessions.upcoming;
+        return currentSessions.filter((session: any) => session.status === 'scheduled');
       case "live":
-        return mockSessions.live;
+        return currentSessions.filter((session: any) => session.status === 'live');
       case "completed":
-        return mockSessions.completed;
+        return currentSessions.filter((session: any) => session.status === 'completed');
       case "cancelled":
-        return mockSessions.cancelled;
+        return currentSessions.filter((session: any) => session.status === 'cancelled');
       default:
         return [];
     }
   };
+const filteredSessions = getCurrentSessions().filter((session) => {
+  const query = searchQuery?.toLowerCase() || "";
 
-  const filteredSessions = getCurrentSessions().filter(
-    (session) =>
-      session.user.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      session.therapist.toLowerCase().includes(searchQuery.toLowerCase())
+  // Handle both string IDs and nested objects for bookingId
+  const bookingIdValue = typeof session.bookingId === 'object' 
+    ? session.bookingId._id || session.bookingId.id || session.bookingId.serviceName || ''
+    : session.bookingId || '';
+
+  const bookingNameValue = typeof session.bookingId === 'object'
+    ? session.bookingId.serviceName || ''
+    : '';
+
+  return (
+    String(bookingIdValue).toLowerCase().includes(query) ||
+    String(bookingNameValue).toLowerCase().includes(query) ||
+    String(session.type ?? "").toLowerCase().includes(query)
   );
+});
+
 
   // Function to handle creating a new session
-  const handleCreateSession = () => {
-    // In a real app, this would make an API call to create a session
-    // For now, we'll just close the modal and reset the form
-    setIsCreateSessionModalOpen(false);
-    setNewSession({
-      user: "",
-      therapist: "",
-      date: "",
-      time: "",
-      type: "1-on-1",
-      duration: "60 min",
-      notes: ""
-    });
+  const handleCreateSession = async () => {
+    try {
+      // Prepare the session data for API submission
+      const sessionData = {
+        ...newSession,
+        // Ensure bookingId is a string if it exists
+        bookingId: newSession.bookingId || undefined,
+      };
+      
+      await dispatch(createSession(sessionData));
+      setIsCreateSessionModalOpen(false);
+      setNewSession({
+        bookingId: "",
+        date: "",
+        time: "",
+        type: "1-on-1",
+        status: "scheduled",
+        notes: ""
+      });
+      // Refresh sessions list
+      dispatch(fetchSessions());
+    } catch (error) {
+      console.error('Failed to create session:', error);
+    }
   };
+  console.log("bookings", bookings)
 
   return (
     <div className="space-y-6">
@@ -130,7 +181,7 @@ export default function Sessions() {
               <Calendar className="w-5 h-5 text-info" />
             </div>
             <div>
-              <p className="text-2xl font-semibold">{mockSessions.upcoming.length}</p>
+              <p className="text-2xl font-semibold">{(sessions || []).filter((session: any) => session.status === 'scheduled').length}</p>
               <p className="text-sm text-muted-foreground">Upcoming</p>
             </div>
           </div>
@@ -141,7 +192,7 @@ export default function Sessions() {
               <Play className="w-5 h-5 text-success" />
             </div>
             <div>
-              <p className="text-2xl font-semibold">{mockSessions.live.length}</p>
+              <p className="text-2xl font-semibold">{(sessions || []).filter((session: any) => session.status === 'live').length}</p>
               <p className="text-sm text-muted-foreground">Live Now</p>
             </div>
           </div>
@@ -152,7 +203,7 @@ export default function Sessions() {
               <Video className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <p className="text-2xl font-semibold">{mockSessions.completed.length}</p>
+              <p className="text-2xl font-semibold">{(sessions || []).filter((session: any) => session.status === 'completed').length}</p>
               <p className="text-sm text-muted-foreground">Completed</p>
             </div>
           </div>
@@ -163,7 +214,7 @@ export default function Sessions() {
               <X className="w-5 h-5 text-warning" />
             </div>
             <div>
-              <p className="text-2xl font-semibold">{mockSessions.cancelled.length}</p>
+              <p className="text-2xl font-semibold">{(sessions || []).filter((session: any) => session.status === 'cancelled').length}</p>
               <p className="text-sm text-muted-foreground">Cancelled</p>
             </div>
           </div>
@@ -176,14 +227,14 @@ export default function Sessions() {
           <TabsTrigger value="upcoming">
             Upcoming
             <span className="ml-1.5 px-1.5 py-0.5 text-xs bg-info/20 text-info rounded-full">
-              {mockSessions.upcoming.length}
+              {(sessions || []).filter((session: any) => session.status === 'scheduled').length}
             </span>
           </TabsTrigger>
           <TabsTrigger value="live" className="relative">
             Live
-            {mockSessions.live.length > 0 && (
+            {(sessions || []).filter((session: any) => session.status === 'live').length > 0 && (
               <span className="ml-1.5 px-1.5 py-0.5 text-xs bg-success/20 text-success rounded-full animate-pulse">
-                {mockSessions.live.length}
+                {(sessions || []).filter((session: any) => session.status === 'live').length}
               </span>
             )}
           </TabsTrigger>
@@ -196,7 +247,7 @@ export default function Sessions() {
           <div className="relative max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Search by user or therapist..."
+              placeholder="Search by booking ID or session type..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"
@@ -211,13 +262,13 @@ export default function Sessions() {
               <table className="data-table">
                 <thead>
                   <tr>
-                    <th>User</th>
-                    <th>Therapist</th>
+                    <th>Booking ID</th>
+                    <th>Session Type</th>
                     <th>Date & Time</th>
-                    <th>Type</th>
+                    <th>Format</th>
                     <th>Status</th>
-                    {(activeTab === "live" || activeTab === "completed") && <th>Duration</th>}
-                    {activeTab === "cancelled" && <th>Reason</th>}
+                    {(activeTab === "live" || activeTab === "completed") && <th>Notes</th>}
+                    {activeTab === "cancelled" && <th>Notes</th>}
                     <th className="w-12"></th>
                   </tr>
                 </thead>
@@ -229,7 +280,11 @@ export default function Sessions() {
                           <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
                             <User className="w-4 h-4 text-muted-foreground" />
                           </div>
-                          <span className="font-medium">{session.user}</span>
+                          <span className="font-medium">
+                            {typeof session.bookingId === 'object' 
+                              ? session.bookingId.serviceName || session.bookingId._id || session.bookingId.id || 'N/A'
+                              : session.bookingId || 'N/A'}
+                          </span>
                         </div>
                       </td>
                       <td>
@@ -237,7 +292,7 @@ export default function Sessions() {
                           <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
                             <UserCog className="w-4 h-4 text-primary" />
                           </div>
-                          <span>{session.therapist}</span>
+                          <span>{session.type}</span>
                         </div>
                       </td>
                       <td>
@@ -257,10 +312,10 @@ export default function Sessions() {
                         </span>
                       </td>
                       {(activeTab === "live" || activeTab === "completed") && (
-                        <td className="text-muted-foreground">{session.duration}</td>
+                        <td className="text-muted-foreground">{session.notes || 'N/A'}</td>
                       )}
                       {activeTab === "cancelled" && (
-                        <td className="text-muted-foreground">{session.reason}</td>
+                        <td className="text-muted-foreground">{session.notes || 'N/A'}</td>
                       )}
                       <td>
                         <DropdownMenu>
@@ -270,26 +325,8 @@ export default function Sessions() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            {activeTab === "completed" && (
-                              <DropdownMenuItem onClick={() => {
-                                // Navigate to the session recordings page for the specific user
-                                navigate(`/session-recordings/${selectedSession.user.replace(/\s+/g, '-').toLowerCase()}`);
-                              }}>
-                                <Eye className="w-4 h-4 mr-2" />
-                                View Recording
-                              </DropdownMenuItem>
-                            )}
                             {activeTab === "upcoming" && (
                               <>
-                                {session.status === "pending" && (
-                                  <DropdownMenuItem onClick={() => {
-                                    setSelectedSession(session);
-                                    setIsAcceptModalOpen(true);
-                                  }}>
-                                    <Play className="w-4 h-4 mr-2" />
-                                    Accept Session
-                                  </DropdownMenuItem>
-                                )}
                                 <DropdownMenuItem onClick={() => {
                                   setSelectedSession(session);
                                   setIsRescheduleModalOpen(true);
@@ -322,7 +359,7 @@ export default function Sessions() {
                               <>
                                 <DropdownMenuItem onClick={() => {
                                   if (session.joinLink) {
-                                    // Extract session ID from the mock join link
+                                    // Extract session ID from the join link
                                     const sessionId = session.joinLink.split('/').pop() || session.id.toString();
                                     // Open the video call page in a new tab
                                     window.open(`/video-call/${sessionId}`, '_blank', 'width=1200,height=800');
@@ -346,6 +383,17 @@ export default function Sessions() {
                                 }}>
                                   <Copy className="w-4 h-4 mr-2" />
                                   Copy Join Link
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                            {activeTab === "completed" && (
+                              <>
+                                <DropdownMenuItem onClick={() => {
+                                  // Navigate to the session recordings page
+                                  navigate(`/session-recordings/${session.bookingId || session.id}`);
+                                }}>
+                                  <Eye className="w-4 h-4 mr-2" />
+                                  View Recording
                                 </DropdownMenuItem>
                               </>
                             )}
@@ -385,17 +433,21 @@ export default function Sessions() {
               Are you sure you want to cancel this session? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
-          
+
           {selectedSession && (
             <div className="space-y-4 mt-4">
               <div className="p-3 rounded-lg bg-muted/50">
                 <p className="text-sm">
-                  <span className="text-muted-foreground">User:</span>{" "}
-                  <span className="font-medium">{selectedSession.user}</span>
+                  <span className="text-muted-foreground">Booking ID:</span>{" "}
+                  <span className="font-medium">
+                    {typeof selectedSession.bookingId === 'object' 
+                      ? selectedSession.bookingId.serviceName || selectedSession.bookingId._id || selectedSession.bookingId.id || 'N/A'
+                      : selectedSession.bookingId || 'N/A'}
+                  </span>
                 </p>
                 <p className="text-sm">
-                  <span className="text-muted-foreground">Therapist:</span>{" "}
-                  <span className="font-medium">{selectedSession.therapist}</span>
+                  <span className="text-muted-foreground">Type:</span>{" "}
+                  <span className="font-medium">{selectedSession.type}</span>
                 </p>
                 <p className="text-sm">
                   <span className="text-muted-foreground">Scheduled:</span>{" "}
@@ -414,62 +466,22 @@ export default function Sessions() {
               </div>
             </div>
           )}
-          
+
           <DialogFooter className="mt-4">
             <Button variant="outline" onClick={() => setIsCancelModalOpen(false)}>
               Keep Session
             </Button>
-            <Button variant="destructive" onClick={() => setIsCancelModalOpen(false)}>
-              Cancel Session
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Accept Session Modal */}
-      <Dialog open={isAcceptModalOpen} onOpenChange={setIsAcceptModalOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Accept Session Request</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to accept this session request? The client will be notified and the session will be scheduled.
-            </DialogDescription>
-          </DialogHeader>
-          
-          {selectedSession && (
-            <div className="space-y-4 mt-4">
-              <div className="p-3 rounded-lg bg-muted/50">
-                <p className="text-sm">
-                  <span className="text-muted-foreground">User:</span>{" "}
-                  <span className="font-medium">{selectedSession.user}</span>
-                </p>
-                <p className="text-sm">
-                  <span className="text-muted-foreground">Therapist:</span>{" "}
-                  <span className="font-medium">{selectedSession.therapist}</span>
-                </p>
-                <p className="text-sm">
-                  <span className="text-muted-foreground">Date:</span>{" "}
-                  <span className="font-medium">{selectedSession.date}</span>
-                </p>
-                <p className="text-sm">
-                  <span className="text-muted-foreground">Time:</span>{" "}
-                  <span className="font-medium">{selectedSession.time}</span>
-                </p>
-              </div>
-            </div>
-          )}
-          
-          <DialogFooter className="mt-4">
-            <Button variant="outline" onClick={() => setIsAcceptModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={() => {
-              // Here you would typically make an API call to accept the session
-              setIsAcceptModalOpen(false);
-              // After accepting, navigate to the live sessions page to join
-              navigate('/live-sessions');
+            <Button variant="destructive" onClick={async () => {
+              try {
+                await dispatch(updateSession({ id: selectedSession.id, sessionData: { status: 'cancelled', notes: cancelReason } }));
+                setIsCancelModalOpen(false);
+                setCancelReason('');
+                dispatch(fetchSessions());
+              } catch (error) {
+                console.error('Failed to cancel session:', error);
+              }
             }}>
-              Accept Session
+              Cancel Session
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -484,10 +496,18 @@ export default function Sessions() {
               Select a new date and time for this session.
             </DialogDescription>
           </DialogHeader>
-          
+
           {selectedSession && (
             <div className="space-y-4 mt-4">
               <div className="p-3 rounded-lg bg-muted/50">
+                <p className="text-sm">
+                  <span className="text-muted-foreground">Booking ID:</span>{" "}
+                  <span className="font-medium">
+                    {typeof selectedSession.bookingId === 'object' 
+                      ? selectedSession.bookingId.serviceName || selectedSession.bookingId._id || selectedSession.bookingId.id || 'N/A'
+                      : selectedSession.bookingId || 'N/A'}
+                  </span>
+                </p>
                 <p className="text-sm">
                   <span className="text-muted-foreground">Current:</span>{" "}
                   <span className="font-medium">{selectedSession.date} at {selectedSession.time}</span>
@@ -497,11 +517,16 @@ export default function Sessions() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium">New Date</label>
-                  <Input type="date" className="mt-1" />
+                  <Input
+                    type="date"
+                    className="mt-1"
+                    value={rescheduleDate}
+                    onChange={(e) => setRescheduleDate(e.target.value)}
+                  />
                 </div>
                 <div>
                   <label className="text-sm font-medium">New Time</label>
-                  <Select>
+                  <Select value={rescheduleTime} onValueChange={setRescheduleTime}>
                     <SelectTrigger className="mt-1">
                       <SelectValue placeholder="Select time" />
                     </SelectTrigger>
@@ -517,12 +542,29 @@ export default function Sessions() {
               </div>
             </div>
           )}
-          
+
           <DialogFooter className="mt-4">
             <Button variant="outline" onClick={() => setIsRescheduleModalOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={() => setIsRescheduleModalOpen(false)}>
+            <Button onClick={async () => {
+              try {
+                await dispatch(updateSession({
+                  id: selectedSession.id,
+                  sessionData: {
+                    status: 'scheduled',
+                    date: rescheduleDate,
+                    time: rescheduleTime
+                  }
+                }));
+                setIsRescheduleModalOpen(false);
+                setRescheduleDate('');
+                setRescheduleTime('');
+                dispatch(fetchSessions());
+              } catch (error) {
+                console.error('Failed to reschedule session:', error);
+              }
+            }}>
               Reschedule Session
             </Button>
           </DialogFooter>
@@ -538,44 +580,36 @@ export default function Sessions() {
               Schedule a new session for a user with a therapist.
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">User</label>
-                <Select value={newSession.user} onValueChange={(value) => setNewSession({...newSession, user: value})}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a user" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1">John Doe</SelectItem>
-                    <SelectItem value="2">Emily Parker</SelectItem>
-                    <SelectItem value="3">Mike Wilson</SelectItem>
-                    <SelectItem value="4">Anna Smith</SelectItem>
-                    <SelectItem value="5">Robert Brown</SelectItem>
-                  </SelectContent>
-                </Select>
+                <label className="text-sm font-medium">Booking</label>
+
+                <select
+                  className="w-full p-2 border rounded-md"
+                  value={newSession.bookingId || ""}
+                  onChange={(e) =>
+                    setNewSession({
+                      ...newSession,
+                      bookingId: e.target.value,
+                    })
+                  }
+                >
+                  <option value="">Select Booking</option>
+
+                  {bookings && Array.isArray(bookings) ? bookings.map((booking) => (
+                    <option key={booking._id || booking.id} value={booking._id || booking.id}>
+                     {booking.serviceName || booking.name || 'Unnamed Booking'}
+                    </option>
+                  )) : null}
+                </select>
               </div>
-              
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Therapist</label>
-                <Select value={newSession.therapist} onValueChange={(value) => setNewSession({...newSession, therapist: value})}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a therapist" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1">Dr. Sarah Johnson</SelectItem>
-                    <SelectItem value="2">Dr. Michael Chen</SelectItem>
-                    <SelectItem value="3">Dr. Lisa Williams</SelectItem>
-                    <SelectItem value="4">Dr. James Brown</SelectItem>
-                    <SelectItem value="5">Dr. Emma Davis</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
+
+
               <div className="space-y-2">
                 <label className="text-sm font-medium">Session Type</label>
-                <Select value={newSession.type} onValueChange={(value) => setNewSession({...newSession, type: value})}>
+                <Select value={newSession.type} onValueChange={(value) => setNewSession({ ...newSession, type: value })}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -585,52 +619,52 @@ export default function Sessions() {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div className="space-y-2">
-                <label className="text-sm font-medium">Duration</label>
-                <Select value={newSession.duration} onValueChange={(value) => setNewSession({...newSession, duration: value})}>
+                <label className="text-sm font-medium">Status</label>
+                <Select value={newSession.status} onValueChange={(value) => setNewSession({ ...newSession, status: value })}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="30 min">30 min</SelectItem>
-                    <SelectItem value="45 min">45 min</SelectItem>
-                    <SelectItem value="60 min">60 min</SelectItem>
-                    <SelectItem value="90 min">90 min</SelectItem>
+                    <SelectItem value="scheduled">Scheduled</SelectItem>
+                    <SelectItem value="live">Live</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div className="space-y-2">
                 <label className="text-sm font-medium">Date</label>
                 <Input
                   type="date"
                   value={newSession.date}
-                  onChange={(e) => setNewSession({...newSession, date: e.target.value})}
+                  onChange={(e) => setNewSession({ ...newSession, date: e.target.value })}
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <label className="text-sm font-medium">Time</label>
                 <Input
                   type="time"
                   value={newSession.time}
-                  onChange={(e) => setNewSession({...newSession, time: e.target.value})}
+                  onChange={(e) => setNewSession({ ...newSession, time: e.target.value })}
                 />
               </div>
             </div>
-            
-            <div className="space-y-2">
+
+            {/* <div className="space-y-2">
               <label className="text-sm font-medium">Notes</label>
               <Textarea
                 placeholder="Additional notes about the session..."
                 value={newSession.notes}
-                onChange={(e) => setNewSession({...newSession, notes: e.target.value})}
+                onChange={(e) => setNewSession({ ...newSession, notes: e.target.value })}
                 rows={3}
               />
-            </div>
+            </div> */}
           </div>
-          
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsCreateSessionModalOpen(false)}>
               Cancel

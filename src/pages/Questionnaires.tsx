@@ -7,6 +7,7 @@ import {
   ToggleRight,
   Trash2,
   HelpCircle,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,22 +32,27 @@ import { cn } from "@/lib/utils";
 import { useDispatch, useSelector } from "react-redux";
 import {
   fetchQuestionnaires,
-  updateQuestions,
+  fetchActiveQuestionnaire,
+  updateQuestionnaire,
   createQuestionnaire,
   deleteQuestionnaire,
   activateQuestionnaire,
+  addQuestionToQuestionnaire,
 } from "@/features/questionnaires/questionnaireSlice";
 
-// Define types based on backend schema
+type QuestionType = "text" | "mcq" | "slider";
+
 interface Question {
   _id?: string;
   id?: number | string;
   question: string;
-  type: "text" | "mcq" | "slider";
+  type: QuestionType;
   required: boolean;
   active: boolean;
   order: number;
   options?: string[];
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 interface Questionnaire {
@@ -59,38 +65,15 @@ interface Questionnaire {
   updatedAt?: string;
 }
 
-type QuestionType = "text" | "mcq" | "slider";
-
-interface Question {
-  _id?: string;
-  id: number;
-  question: string;
-  type: QuestionType;
-  required: boolean;
-  active: boolean;
-  order: number;
-  options?: string[];
-}
-
-interface Questionnaire {
-  _id: string;
-  title: string;
-  description: string;
-  questions: Question[];
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
 export default function Questionnaires() {
   const dispatch = useDispatch();
 
   // Get questionnaire state from Redux
-  const { questionnaires, loading, error } = useSelector(
+  const { questionnaires, currentQuestionnaire, loading, error } = useSelector(
     (state: any) => state.questionnaires
   );
 
-  // Use the first (active) questionnaire's questions or fallback to an empty array
+  // Use the active questionnaire's questions
   const [questions, setQuestions] = useState<Question[]>([]);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedQuestion, setSelectedQuestion] = useState<Question | null>(
@@ -103,35 +86,54 @@ export default function Questionnaires() {
     required: true,
     options: [""],
   });
+  const [saving, setSaving] = useState(false);
 
   // Load questionnaires on component mount
   useEffect(() => {
     dispatch(fetchQuestionnaires() as any);
+    dispatch(fetchActiveQuestionnaire() as any);
   }, [dispatch]);
+
+  // Ensure we're always using the active questionnaire
+  useEffect(() => {
+    if (!currentQuestionnaire) {
+      // If no active questionnaire loaded, try to get it
+      dispatch(fetchActiveQuestionnaire() as any);
+    }
+  }, [dispatch, currentQuestionnaire]);
 
   // Helper function to assign consistent IDs for UI operations
   const assignQuestionIds = (questionsList: Question[]): Question[] => {
     return questionsList.map((q, index) => ({
       ...q,
-      id: q.id ?? index + 1,
+      id: q.id ?? (index + 1).toString(),
     }));
   };
 
   // Update local questions state when Redux state changes
+  // Only use questions from the active questionnaire
   useEffect(() => {
-    if (questionnaires && questionnaires.length > 0) {
-      // Find the active questionnaire or use the first one
-      const activeQuestionnaire =
-        questionnaires.find((q: Questionnaire) => q.isActive) ||
-        questionnaires[0];
-      if (activeQuestionnaire) {
-        const questionsWithIds = assignQuestionIds(
-          activeQuestionnaire.questions
-        );
-        setQuestions(questionsWithIds);
-      }
+    if (currentQuestionnaire && currentQuestionnaire.questions) {
+      // Use questions from the active questionnaire only
+      const activeQuestions = [...currentQuestionnaire.questions].map((q, index) => ({
+        ...q,
+        id: q._id || `temp-${index}`
+      }));
+      
+      // Sort by order
+      const sortedQuestions = activeQuestions.sort((a, b) => {
+        if (a.order !== undefined && b.order !== undefined) {
+          return a.order - b.order;
+        }
+        return 0;
+      });
+      
+      setQuestions(sortedQuestions);
+    } else {
+      // If no active questionnaire, use empty array
+      setQuestions([]);
     }
-  }, [questionnaires]);
+  }, [currentQuestionnaire]);
 
   const openEditModal = (question?: Question) => {
     if (question) {
@@ -155,47 +157,43 @@ export default function Questionnaires() {
   };
 
   const deleteQuestion = async () => {
+    if (!currentQuestionnaire || !currentQuestionnaire._id) {
+      console.error("No active questionnaire to update");
+      setIsEditModalOpen(false);
+      setSelectedQuestion(null);
+      return;
+    }
+    
     if (selectedQuestion && selectedQuestion._id) {
-      // Remove from local state
-      const updatedQuestions = questions.filter(
-        (q) => q.id.toString() !== selectedQuestion!.id.toString()
-      );
-      setQuestions(updatedQuestions);
-
-      // Find the active questionnaire to update
-      const activeQuestionnaire =
-        questionnaires.find((q: Questionnaire) => q.isActive) ||
-        questionnaires[0];
-
-      if (activeQuestionnaire && activeQuestionnaire._id) {
-        try {
-          await dispatch(
-            updateQuestions({
-              id: activeQuestionnaire._id,
-              questions: updatedQuestions,
-            }) as any
-          );
-          setIsEditModalOpen(false);
-          setSelectedQuestion(null);
-        } catch (error) {
-          console.error("Error deleting question:", error);
-        }
-      } else {
-        // If no questionnaire exists, create a new one
-        try {
-          const newQuestionnaireData = {
-            title: "Patient Intake Questionnaire",
-            description: "Health intake questions for therapist matching",
-            questions: updatedQuestions,
-            isActive: true,
-          };
-          await dispatch(createQuestionnaire(newQuestionnaireData) as any);
-          setIsEditModalOpen(false);
-          setSelectedQuestion(null);
-        } catch (error) {
-          console.error("Error creating questionnaire:", error);
-        }
+      try {
+        // Remove the question from the active questionnaire
+        const updatedQuestions = currentQuestionnaire.questions.filter(
+          (q: Question) => q._id !== selectedQuestion._id
+        );
+        
+        const updatedQuestionnaire = {
+          ...currentQuestionnaire,
+          questions: updatedQuestions
+        };
+        
+        await dispatch(
+          updateQuestionnaire({
+            id: currentQuestionnaire._id,
+            data: updatedQuestionnaire
+          }) as any
+        );
+        
+        setIsEditModalOpen(false);
+        setSelectedQuestion(null);
+        
+        // The questions state will be updated via the useEffect hook
+      } catch (error) {
+        console.error("Error removing question:", error);
       }
+    } else {
+      // If no questionnaire exists, just close the modal
+      setIsEditModalOpen(false);
+      setSelectedQuestion(null);
     }
   };
 
@@ -204,12 +202,15 @@ export default function Questionnaires() {
       return; // Basic validation
     }
 
-    let updatedQuestions;
-
     if (selectedQuestion) {
-      // Edit existing question
-      updatedQuestions = questions.map((q) =>
-        q.id.toString() === selectedQuestion.id.toString()
+      // Edit existing question - update the entire questionnaire
+      if (!currentQuestionnaire || !currentQuestionnaire._id) {
+        console.error("No active questionnaire to update");
+        return;
+      }
+      
+      let updatedQuestions = currentQuestionnaire.questions.map((q: Question) =>
+        q._id === selectedQuestion._id
           ? {
               ...q,
               question: editForm.question,
@@ -218,106 +219,111 @@ export default function Questionnaires() {
               options:
                 editForm.type === "mcq"
                   ? editForm.options.filter((opt) => opt.trim())
-                  : undefined,
+                  : [],
             }
           : q
       );
-    } else {
-      // Add new question
-      const newQuestion = {
-        id:
-          Math.max(
-            ...questions.map((q) => (typeof q.id === "number" ? q.id : 0)),
-            0
-          ) + 1, // Use max ID + 1
-        question: editForm.question,
-        type: editForm.type,
-        required: editForm.required,
-        active: true,
-        order: Math.max(...questions.map((q) => q.order || 0), 0) + 1,
-        options:
-          editForm.type === "mcq"
-            ? editForm.options.filter((opt) => opt.trim())
-            : undefined,
-      };
-      updatedQuestions = [...questions, newQuestion];
-    }
 
-    // Find the active questionnaire to update
-    const activeQuestionnaire =
-      questionnaires.find((q: Questionnaire) => q.isActive) ||
-      questionnaires[0];
-
-    if (activeQuestionnaire) {
       // Update the questions in the backend
       try {
+        const updatedQuestionnaire = {
+          ...currentQuestionnaire,
+          questions: updatedQuestions
+        };
+        
         await dispatch(
-          updateQuestions({
-            id: activeQuestionnaire._id,
-            questions: updatedQuestions,
+          updateQuestionnaire({
+            id: currentQuestionnaire._id,
+            data: updatedQuestionnaire
           }) as any
         );
-        setQuestions(updatedQuestions);
+        
         setIsEditModalOpen(false);
         setSelectedQuestion(null);
       } catch (error) {
         console.error("Error saving question:", error);
       }
     } else {
-      // If no questionnaire exists, create a new one
+      // Add new question to the active questionnaire
+      const newQuestion = {
+        question: editForm.question,
+        type: editForm.type,
+        required: editForm.required,
+        active: true,
+        order: Math.max(...(currentQuestionnaire?.questions || []).map((q: Question) => q.order || 0), 0) + 1,
+        options:
+          editForm.type === "mcq"
+            ? editForm.options.filter((opt) => opt.trim())
+            : [],
+      };
+
+      // Add the new question to the active questionnaire
       try {
-        const newQuestionnaireData = {
-          title: "Patient Intake Questionnaire",
-          description: "Health intake questions for therapist matching",
-          questions: updatedQuestions,
-          isActive: true,
-        };
-        await dispatch(createQuestionnaire(newQuestionnaireData) as any);
-        setQuestions(updatedQuestions);
+        if (!currentQuestionnaire || !currentQuestionnaire._id) {
+          // If no active questionnaire exists, create a new one
+          const newQuestionnaireData = {
+            title: "Patient Intake Questionnaire",
+            description: "Health intake questions for therapist matching",
+            questions: [newQuestion],
+            isActive: true,
+          };
+          
+          await dispatch(createQuestionnaire(newQuestionnaireData) as any);
+        } else {
+          const updatedQuestions = [...currentQuestionnaire.questions, newQuestion];
+          const updatedQuestionnaire = {
+            ...currentQuestionnaire,
+            questions: updatedQuestions
+          };
+          
+          await dispatch(
+            updateQuestionnaire({
+              id: currentQuestionnaire._id,
+              data: updatedQuestionnaire
+            }) as any
+          );
+        }
+        
         setIsEditModalOpen(false);
         setSelectedQuestion(null);
       } catch (error) {
-        console.error("Error creating questionnaire:", error);
+        console.error("Error adding question:", error);
       }
     }
   };
 
   const toggleQuestion = async (id: number | string) => {
-    const updatedQuestions = questions.map((q) =>
-      q.id.toString() === id.toString() ? { ...q, active: !q.active } : q
+    // Find the question to toggle in the active questionnaire
+    if (!currentQuestionnaire || !currentQuestionnaire._id) {
+      console.error("No active questionnaire to update");
+      return;
+    }
+    
+    const questionToToggle = currentQuestionnaire.questions.find((q: Question) => q._id === id);
+    if (!questionToToggle) return;
+    
+    // Update only the specific question's active status
+    const updatedQuestions = currentQuestionnaire.questions.map((question: Question) => 
+      question._id === questionToToggle._id 
+        ? { ...question, active: !question.active }
+        : question
     );
 
-    setQuestions(updatedQuestions);
-
-    // Find the active questionnaire to update
-    const activeQuestionnaire =
-      questionnaires.find((q: Questionnaire) => q.isActive) ||
-      questionnaires[0];
-
-    if (activeQuestionnaire && activeQuestionnaire._id) {
-      try {
-        await dispatch(
-          updateQuestions({
-            id: activeQuestionnaire._id,
-            questions: updatedQuestions,
-          }) as any
-        );
-      } catch (error) {
-        console.error("Error toggling question:", error);
-      }
-    } else {
-      // If no questionnaire exists, create a new one
-      try {
-        const newQuestionnaireData = {
-          title: "Patient Intake Questionnaire",
-          description: "Health intake questions for therapist matching",
-          questions: updatedQuestions,
-          isActive: true,
-        };
-        await dispatch(createQuestionnaire(newQuestionnaireData) as any);
-      } catch (error) {
-        console.error("Error creating questionnaire:", error);
-      }
+    try {
+      // Update the active questionnaire
+      const updatedQuestionnaire = {
+        ...currentQuestionnaire,
+        questions: updatedQuestions
+      };
+      
+      await dispatch(
+        updateQuestionnaire({
+          id: currentQuestionnaire._id,
+          data: updatedQuestionnaire
+        }) as any
+      );
+    } catch (error) {
+      console.error("Error toggling question:", error);
     }
   };
 
@@ -334,60 +340,55 @@ export default function Questionnaires() {
 
     if (
       !draggedQuestion ||
-      draggedQuestion.id.toString() === targetQuestion.id.toString()
+      draggedQuestion._id === targetQuestion._id
     ) {
       return;
     }
 
-    const draggedIndex = questions.findIndex(
-      (q) => q.id.toString() === draggedQuestion.id.toString()
+    if (!currentQuestionnaire || !currentQuestionnaire._id) {
+      console.error("No active questionnaire to update");
+      return;
+    }
+
+    // Update the order of questions in the active questionnaire
+    const questionsCopy = [...currentQuestionnaire.questions];
+    
+    // Find indices in the current questionnaire's questions array
+    const draggedIndex = questionsCopy.findIndex(
+      (q) => q._id === draggedQuestion._id
     );
-    const targetIndex = questions.findIndex(
-      (q) => q.id.toString() === targetQuestion.id.toString()
+    const targetIndex = questionsCopy.findIndex(
+      (q) => q._id === targetQuestion._id
     );
 
-    const newQuestions = [...questions];
-    newQuestions.splice(draggedIndex, 1);
-    newQuestions.splice(targetIndex, 0, draggedQuestion);
+    if (draggedIndex === -1 || targetIndex === -1) return;
 
-    // Update order
-    const updatedQuestions = newQuestions.map((q, index) => ({
+    // Move the question to the new position
+    const [movedQuestion] = questionsCopy.splice(draggedIndex, 1);
+    questionsCopy.splice(targetIndex, 0, movedQuestion);
+
+    // Update order property
+    const updatedQuestions = questionsCopy.map((q, index) => ({
       ...q,
       order: index + 1,
     }));
 
-    setQuestions(updatedQuestions);
     setDraggedQuestion(null);
 
-    // Find the active questionnaire to update
-    const activeQuestionnaire =
-      questionnaires.find((q: Questionnaire) => q.isActive) ||
-      questionnaires[0];
-
-    if (activeQuestionnaire && activeQuestionnaire._id) {
-      try {
-        await dispatch(
-          updateQuestions({
-            id: activeQuestionnaire._id,
-            questions: updatedQuestions,
-          }) as any
-        );
-      } catch (error) {
-        console.error("Error reordering questions:", error);
-      }
-    } else {
-      // If no questionnaire exists, create a new one
-      try {
-        const newQuestionnaireData = {
-          title: "Patient Intake Questionnaire",
-          description: "Health intake questions for therapist matching",
-          questions: updatedQuestions,
-          isActive: true,
-        };
-        await dispatch(createQuestionnaire(newQuestionnaireData) as any);
-      } catch (error) {
-        console.error("Error creating questionnaire:", error);
-      }
+    try {
+      const updatedQuestionnaire = {
+        ...currentQuestionnaire,
+        questions: updatedQuestions
+      };
+      
+      await dispatch(
+        updateQuestionnaire({
+          id: currentQuestionnaire._id,
+          data: updatedQuestionnaire
+        }) as any
+      );
+    } catch (error) {
+      console.error("Error reordering questions:", error);
     }
   };
 
@@ -427,20 +428,12 @@ export default function Questionnaires() {
         </div>
       )}
 
-      {error && (
-        <div className="bg-destructive/15 border border-destructive/30 rounded-lg p-4">
-          <p className="text-sm text-destructive">
-            Error: {typeof error === "string" ? error : "An error occurred"}
-          </p>
-        </div>
-      )}
-
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="page-header">
           <h1 className="page-title">Questionnaire Management</h1>
           <p className="page-subtitle">
-            Manage health intake questions for therapist matching
+            Manage all health intake questions for therapist matching
           </p>
         </div>
         <Button
@@ -474,14 +467,13 @@ export default function Questionnaires() {
               </p>
             </div>
           </div>
-
+          
           {/* Questions List */}
           <div className="bg-card rounded-lg border border-border overflow-hidden">
             <div className="p-4 border-b border-border bg-muted/30">
               <div className="flex items-center justify-between">
                 <p className="text-sm text-muted-foreground">
-                  {questions.filter((q) => q.active).length} of{" "}
-                  {questions.length} questions active
+                  {questions.filter((q) => q.active).length} of {questions.length} questions active
                 </p>
                 <p className="text-xs text-muted-foreground">Drag to reorder</p>
               </div>
@@ -489,7 +481,7 @@ export default function Questionnaires() {
 
             <div className="divide-y divide-border">
               {questions
-                .sort((a, b) => a.order - b.order)
+                .sort((a, b) => (a.order || 0) - (b.order || 0))
                 .map((question) => (
                   <div
                     key={question.id}
@@ -615,6 +607,7 @@ export default function Questionnaires() {
                   <SelectItem value="text">Free Text</SelectItem>
                   <SelectItem value="mcq">Multiple Choice</SelectItem>
                   <SelectItem value="slider">Slider (1-10)</SelectItem>
+                  <SelectItem value="skalaeton">Skalaeton</SelectItem>
                 </SelectContent>
               </Select>
             </div>

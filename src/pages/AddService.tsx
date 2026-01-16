@@ -34,6 +34,7 @@ export default function AddService() {
     const [serviceForm, setServiceForm] = useState({
         name: "",
         description: "",
+        about: "", // New field
         price: "",
         duration: "",
         category: "Therapy",
@@ -45,8 +46,11 @@ export default function AddService() {
 
     const [durationError, setDurationError] = useState("");
     const [imageError, setImageError] = useState("");
+    const [videoError, setVideoError] = useState(""); // New state
     const [imagePreview, setImagePreview] = useState<string | null>(null);
+    const [videoPreview, setVideoPreview] = useState<string | null>(null); // New state
     const [isLoading, setIsLoading] = useState(false);
+    const videoInputRef = useRef<HTMLInputElement>(null); // New ref
 
     /* ================= IMAGE ================= */
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -73,6 +77,40 @@ export default function AddService() {
         if (fileInputRef.current) fileInputRef.current.value = "";
     };
 
+    // New video handler
+    const handleVideoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // Check file type
+        if (!file.type.startsWith('video/')) {
+            setVideoError("Please upload a valid video file");
+            setVideoPreview(null);
+            if (videoInputRef.current) videoInputRef.current.value = "";
+            return;
+        }
+
+        // Check file size (100MB max)
+        if (file.size > 100 * 1024 * 1024) {
+            setVideoError("Video size must be less than 100MB");
+            setVideoPreview(null);
+            if (videoInputRef.current) videoInputRef.current.value = "";
+            return;
+        }
+
+        setVideoError("");
+        const reader = new FileReader();
+        reader.onloadend = () =>
+            setVideoPreview(reader.result as string);
+        reader.readAsDataURL(file);
+    };
+
+    const removeVideo = () => {
+        setVideoPreview(null);
+        setVideoError("");
+        if (videoInputRef.current) videoInputRef.current.value = "";
+    };
+
     /* ================= SUBMIT ================= */
     const handleAddService = async () => {
         const durationRegex = /^\d+\s*(min|mins|minutes)$/i;
@@ -86,11 +124,13 @@ export default function AddService() {
         const payload = {
             name: serviceForm.name.trim(),
             description: serviceForm.description.trim(),
+            about: serviceForm.about.trim(), // New field
             price: Number(serviceForm.price),
             duration: serviceForm.duration,
             category: serviceForm.category,
             status: serviceForm.status,
             image: imagePreview || "",
+            video: videoPreview || "", // New field
             features: serviceForm.features.filter(Boolean),
             benefits: serviceForm.benefits.filter(Boolean),
             prerequisites: serviceForm.prerequisites.filter(Boolean),
@@ -156,11 +196,20 @@ export default function AddService() {
                     />
 
                     <Textarea
-                        placeholder="Description"
+                        placeholder="Short Description"
                         value={serviceForm.description}
                         onChange={(e) =>
                             setServiceForm({ ...serviceForm, description: e.target.value })
                         }
+                    />
+
+                    <Textarea
+                        placeholder="About This Service (Full Information)"
+                        value={serviceForm.about}
+                        onChange={(e) =>
+                            setServiceForm({ ...serviceForm, about: e.target.value })
+                        }
+                        rows={4}
                     />
 
                     <div className="grid grid-cols-2 gap-4">
@@ -263,7 +312,8 @@ export default function AddService() {
 </div>
 
 
-                    {/* Image */}
+
+                    {/* Image */}   
                     <div>
                         <div
                             className="flex items-center gap-4 border border-dashed p-4 rounded cursor-pointer"
@@ -297,11 +347,49 @@ export default function AddService() {
                         )}
                     </div>
 
+                    {/* Video */}
+                    <div>
+                        <div
+                            className="flex items-center gap-4 border border-dashed p-4 rounded cursor-pointer"
+                            onClick={() => videoInputRef.current?.click()}
+                        >
+                            <input
+                                ref={videoInputRef}
+                                type="file"
+                                className="hidden"
+                                accept="video/*"
+                                onChange={handleVideoChange}
+                            />
+
+                            {videoPreview ? (
+                                <>
+                                    <div className="flex items-center gap-2">
+                                        <div className="bg-gray-200 px-3 py-1 rounded text-sm">
+                                            Video uploaded
+                                        </div>
+                                        <Button variant="ghost" size="sm" onClick={removeVideo}>
+                                            Remove
+                                        </Button>
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    <Upload className="w-6 h-6" />
+                                    <span>Upload video (max 100MB)</span>
+                                </>
+                            )}
+                        </div>
+
+                        {videoError && (
+                            <p className="text-sm text-red-500 mt-1">{videoError}</p>
+                        )}
+                    </div>
+
                     {/* Actions */}
                     <div className="flex gap-3">
                         <Button
                             onClick={handleAddService}
-                            disabled={!serviceForm.name || !serviceForm.price || !!imageError || isLoading}
+                            disabled={!serviceForm.name || !serviceForm.price || !serviceForm.duration || !serviceForm.features || !!imageError || !!videoError || isLoading}
                         >
                             {isLoading ? (
                                 <>

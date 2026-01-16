@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Plus, Edit2, ToggleLeft, ToggleRight, Search, ChevronLeft, ChevronRight, CreditCard, Users, TrendingUp, Clock } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Plus, Edit2, ToggleLeft, ToggleRight, Search, ChevronLeft, ChevronRight, CreditCard, Users, TrendingUp, Clock, Eye, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -8,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { Link } from "react-router-dom";
 declare global {
   interface Window {
     Razorpay: any;
@@ -15,17 +17,21 @@ declare global {
 }
 
 import { useToast } from "@/hooks/use-toast";
-import { fetchSubscriptionPlans, createSubscriptionOrder } from "@/features/subscriptions/subscriptionSlice";
+import { fetchSubscriptionPlans, createSubscriptionOrder, fetchAllSubscriptionPlans, createSubscriptionPlan, updateSubscriptionPlan, deleteSubscriptionPlan, fetchSubscriptionPlanById } from "@/features/subscriptions/subscriptionSlice";
+import PageLoader from "@/components/PageLoader";
 
 interface SubscriptionPlan {
-  id: string;
+  _id?: string;
+  id?: string;
   name: string;
   price: number;
   description: string;
   features: string[];
+  status?: string;
   active?: boolean;
   sessions?: number;
   period?: string;
+  duration?: string;
   autoRenew?: boolean;
   subscribers?: number;
 }
@@ -43,36 +49,45 @@ interface UserSubscription {
 
 export default function Subscriptions() {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { plans, loading, error, order } = useSelector((state: any) => state.subscriptions);
   const { toast } = useToast();
-  
+
   const [activeTab, setActiveTab] = useState("plans");
   const [searchQuery, setSearchQuery] = useState("");
   const [isEditPlanOpen, setIsEditPlanOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null);
 
-  // Mock user subscriptions data for now since we don't have an endpoint for this yet
-  const mockUserSubscriptions: UserSubscription[] = [
-    { id: 1, user: "John Doe", email: "john@example.com", plan: "Monthly Plan", startDate: "2024-01-15", endDate: "2024-04-15", status: "active", sessionsUsed: 8 },
-    { id: 2, user: "Emily Parker", email: "emily@example.com", plan: "Weekly Plan", startDate: "2024-03-10", endDate: "2024-03-17", status: "active", sessionsUsed: 2 },
-    { id: 3, user: "Mike Wilson", email: "mike@example.com", plan: "Monthly Plan", startDate: "2024-02-01", endDate: "2024-03-01", status: "expired", sessionsUsed: 12 },
-    { id: 4, user: "Anna Smith", email: "anna@example.com", plan: "Premium Monthly", startDate: "2024-03-01", endDate: "2024-04-01", status: "active", sessionsUsed: 15 },
-    { id: 5, user: "Robert Brown", email: "robert@example.com", plan: "Daily Pass", startDate: "2024-03-18", endDate: "2024-03-18", status: "expired", sessionsUsed: 1 },
-  ];
+  // State for the plan form
+  const [planForm, setPlanForm] = useState({
+    name: "",
+    price: 0,
+    description: "",
+    status: "active", // Using status instead of active
+    features: [""], // Array of features
+    duration: "",
+    autoRenew: true,
+  });
 
-  const filteredSubscriptions = mockUserSubscriptions.filter(
+  // We'll use a separate state for user subscriptions once we have the endpoint
+  // For now, we'll focus on admin functionality for subscription plans
+  const [userSubscriptions, setUserSubscriptions] = useState<UserSubscription[]>([]);
+
+
+  const filteredSubscriptions = userSubscriptions.filter(
     (sub) =>
       sub.user.toLowerCase().includes(searchQuery.toLowerCase()) ||
       sub.email.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   // Calculate stats from actual plans
-  const totalSubscribers = plans.length || 0; // Using actual plan count
+  const totalSubscribers = plans.reduce((acc: number, plan: SubscriptionPlan) => acc + (plan.subscribers || 0), 0);
   const totalRevenue = plans.reduce((acc: number, plan: SubscriptionPlan) => acc + plan.price, 0); // Using actual plan prices
 
   useEffect(() => {
-    dispatch(fetchSubscriptionPlans());
-    
+    // Fetch all subscription plans for admin management
+    dispatch(fetchAllSubscriptionPlans());
+
     // Show error toast if there's an error
     if (error) {
       toast({
@@ -83,41 +98,27 @@ export default function Subscriptions() {
     }
   }, [dispatch, error, toast]);
 
-  const handleCreateOrder = async (planId: string, amount: number) => {
-    try {
-      const result = await dispatch(createSubscriptionOrder({ planId, amount }));
-      
-      if (createSubscriptionOrder.fulfilled.match(result)) {
-        const orderData = result.payload;
-        
-        // Show success toast
-        toast({
-          title: "Order Created",
-          description: `Subscription order created successfully for ₹{planId} plan!`,
-        });
-        
-        // In a real implementation, you would initialize Razorpay here
-        // This is a simplified version
-        if (orderData && orderData.orderId) {
-          console.log('Razorpay order created:', orderData);
-          
-          // Initialize Razorpay payment
-          initializeRazorpayPayment(orderData);
-        }
-      } else if (createSubscriptionOrder.rejected.match(result)) {
-        throw new Error(result.payload || 'Failed to create subscription order');
-      }
-    } catch (err: any) {
-      console.error('Error creating subscription order:', err);
-      toast({
-        title: "Error",
-        description: err.message || 'Failed to create subscription order',
-        variant: "destructive",
+  // Populate form when selectedPlan changes (for editing)
+  useEffect(() => {
+    if (selectedPlan) {
+      setPlanForm({
+        name: selectedPlan.name || "",
+        price: selectedPlan.price || 0,
+        description: selectedPlan.description || "",
+        status: selectedPlan.status || "active",
+        features: selectedPlan.features || [""],
+        duration: selectedPlan.duration || selectedPlan.period || "",
+        autoRenew: selectedPlan.autoRenew !== undefined ? selectedPlan.autoRenew : true,
       });
+    } else if (!isEditPlanOpen) {
+      // Reset form when modal is closed
+      resetForm();
     }
-  };
-  
-const initializeRazorpayPayment = (orderData: any) => {
+  }, [selectedPlan, isEditPlanOpen]);
+
+
+
+  const initializeRazorpayPayment = (orderData: any) => {
     // This function would initialize the Razorpay checkout
     // For now, we'll just show an alert
     if ((window as any).Razorpay) {
@@ -144,7 +145,7 @@ const initializeRazorpayPayment = (orderData: any) => {
           color: "#3b82f6",
         },
       };
-      
+
       const rzp = new (window as any).Razorpay(options);
       rzp.open();
     } else {
@@ -153,6 +154,135 @@ const initializeRazorpayPayment = (orderData: any) => {
     }
   };
 
+  // Handle form input changes
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value, type } = e.target;
+
+    if (type === "checkbox") {
+      const target = e.target as HTMLInputElement;
+      if (name === "status") {
+        setPlanForm(prev => ({
+          ...prev,
+          [name]: target.checked ? 'active' : 'inactive'
+        }));
+      } else {
+        setPlanForm(prev => ({
+          ...prev,
+          [name]: target.checked
+        }));
+      }
+    } else {
+      setPlanForm(prev => ({
+        ...prev,
+        [name]: name === "price" ? Number(value) : value
+      }));
+    }
+  };
+
+  // Handle feature changes
+  const handleFeatureChange = (index: number, value: string) => {
+    const newFeatures = [...planForm.features];
+    newFeatures[index] = value;
+    setPlanForm(prev => ({
+      ...prev,
+      features: newFeatures
+    }));
+  };
+
+  // Add a new feature input
+  const addFeature = () => {
+    setPlanForm(prev => ({
+      ...prev,
+      features: [...prev.features, ""]
+    }));
+  };
+
+  // Remove a feature
+  const removeFeature = (index: number) => {
+    if (planForm.features.length <= 1) return;
+    const newFeatures = planForm.features.filter((_, i) => i !== index);
+    setPlanForm(prev => ({
+      ...prev,
+      features: newFeatures
+    }));
+  };
+
+  // Reset form
+  const resetForm = () => {
+    setPlanForm({
+      name: "",
+      price: 0,
+      description: "",
+      status: "active",
+      features: [""],
+      duration: "",
+      autoRenew: true,
+    });
+    setSelectedPlan(null);
+  };
+
+  // Handle save plan (update only)
+  const handleSavePlan = async () => {
+    try {
+      if (selectedPlan) {
+        // Update existing plan - format data according to API expectation
+        const updateData = {
+          name: planForm.name,
+          price: planForm.price,
+          description: planForm.description,
+          status: planForm.status,
+          duration: planForm.duration,
+          features: planForm.features,
+          autoRenew: planForm.autoRenew,
+        };
+        const result = await dispatch(updateSubscriptionPlan({ id: selectedPlan._id || selectedPlan.id, planData: updateData }));
+
+        if (updateSubscriptionPlan.fulfilled.match(result)) {
+          toast({
+            title: "Success",
+            description: "Subscription plan updated successfully!",
+          });
+          setIsEditPlanOpen(false);
+          resetForm();
+          dispatch(fetchAllSubscriptionPlans());
+        }
+      }
+    } catch (err: any) {
+      console.error('Error saving subscription plan:', err);
+      toast({
+        title: "Error",
+        description: err.message || 'Failed to save subscription plan',
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Handle delete plan
+  const handleDeletePlan = async (planId: string) => {
+    try {
+        const result = await dispatch(deleteSubscriptionPlan(planId));
+
+        if (deleteSubscriptionPlan.fulfilled.match(result)) {
+          toast({
+            title: "Success",
+            description: "Subscription plan deleted successfully!",
+          });
+          dispatch(fetchAllSubscriptionPlans());
+        } else {
+          throw new Error(result.payload || 'Failed to delete subscription plan');
+        }
+      } catch (err: any) {
+        console.error('Error deleting subscription plan:', err);
+        toast({
+          title: "Error",
+          description: err.message || 'Failed to delete subscription plan',
+          variant: "destructive",
+        });
+      }
+  };
+  if (loading || !plans) {
+    return <PageLoader text="Loading plans..." />;
+  }
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -164,7 +294,7 @@ const initializeRazorpayPayment = (orderData: any) => {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
         <div className="stat-card">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-primary/10">
@@ -198,45 +328,36 @@ const initializeRazorpayPayment = (orderData: any) => {
             </div>
           </div>
         </div>
-        <div className="stat-card">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-warning/10">
-              <Clock className="w-5 h-5 text-warning" />
-            </div>
-            <div>
-              <p className="text-2xl font-semibold">68%</p>
-              <p className="text-sm text-muted-foreground">Renewal Rate</p>
-            </div>
-          </div>
-        </div>
+
       </div>
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="plans">Subscription Plans</TabsTrigger>
-          <TabsTrigger value="subscriptions">User Subscriptions</TabsTrigger>
-        </TabsList>
+        <div className="flex items-center justify-between mb-4">
+          <TabsList>
+            <TabsTrigger value="plans">Subscription Plans</TabsTrigger>
+            <TabsTrigger value="subscriptions">User Subscriptions</TabsTrigger>
+          </TabsList>
+
+          <Button className="gap-2" asChild>
+            <Link to="/add-subscription">
+              <Plus className="w-4 h-4" />
+              Create Plan
+            </Link>
+          </Button>
+        </div>
 
         {/* Plans Tab */}
         <TabsContent value="plans" className="mt-4">
-          <div className="flex justify-end mb-4">
-            <Button className="gap-2" onClick={() => {
-              setSelectedPlan(null);
-              setIsEditPlanOpen(true);
-            }}>
-              <Plus className="w-4 h-4" />
-              Create Plan
-            </Button>
-          </div>
+
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {plans.map((plan) => (
+
               <div
-                key={plan.id}
                 className={cn(
                   "bg-card rounded-lg border p-5 transition-all duration-200 animate-fade-in",
-                  true ? "border-border hover:border-primary/30 hover:shadow-md" : "border-border opacity-60"
+                  "border-border hover:border-primary/30 hover:shadow-md"
                 )}
               >
                 <div className="flex items-start justify-between mb-4">
@@ -244,15 +365,21 @@ const initializeRazorpayPayment = (orderData: any) => {
                     <h3 className="font-semibold">{plan.name}</h3>
                     <p className="text-sm text-muted-foreground">{plan.description}</p>
                   </div>
-                  <span className={cn("status-badge", plan.active ? "status-active" : "status-inactive")}>
-                    {"Active"}
+                  <span
+                    className={cn(
+                      "status-badge",
+                      plan.status === "active" ? "status-active" : "status-inactive"
+                    )}
+                  >
+                    {plan.status === "active" ? "Active" : "Inactive"}
                   </span>
+
                 </div>
 
                 <div className="mb-4">
                   <p className="text-3xl font-bold">₹{plan.price}</p>
                   <p className="text-sm text-muted-foreground">
-                    {plan.features && plan.features.length > 0 ? `₹{plan.features.length} features` : 'Basic plan'}
+                    {plan.features && plan.features.length > 0 ? `${plan.features.length} features` : 'Basic plan'}
                   </p>
                 </div>
 
@@ -260,39 +387,57 @@ const initializeRazorpayPayment = (orderData: any) => {
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Auto-renew</span>
                     <span className="text-success">
-                      Yes
+                      {plan.autoRenew ? 'Yes' : 'No'}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Subscribers</span>
-                    <span className="font-medium">100</span>
+                    <span className="font-medium">{plan.subscribers || 0}</span>
                   </div>
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex gap-2 justify-end">
+              
+
+                  {/* VIEW */}
                   <Button
                     variant="outline"
                     size="sm"
-                    className="flex-1"
-                    onClick={() => {
+                    asChild
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Link to={`/subscriptions/${plan._id || plan.id}`}>
+                      <Eye className="w-4 h-4" />
+                    </Link>
+                  </Button>
+    {/* EDIT */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
                       setSelectedPlan(plan);
                       setIsEditPlanOpen(true);
                     }}
                   >
-                    <Edit2 className="w-4 h-4 mr-1" />
-                    Edit
+                    <Edit2 className="w-4 h-4" />
                   </Button>
-                  <Button 
-                    variant="default" 
+                  {/* DELETE */}
+                  <Button
+                    variant="destructive"
                     size="sm"
-                    className="flex-1"
-                    onClick={() => handleCreateOrder(plan.id, plan.price)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeletePlan(plan._id || plan.id);
+                    }}
                     disabled={loading}
                   >
-                    Subscribe
+                    <Trash2 className="w-4 h-4" />
                   </Button>
                 </div>
+
               </div>
+
             ))}
           </div>
         </TabsContent>
@@ -379,78 +524,146 @@ const initializeRazorpayPayment = (orderData: any) => {
 
       {/* Edit/Create Plan Modal */}
       <Dialog open={isEditPlanOpen} onOpenChange={setIsEditPlanOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>{selectedPlan ? "Edit Plan" : "Create New Plan"}</DialogTitle>
             <DialogDescription>
               {selectedPlan ? "Update the subscription plan details." : "Set up a new subscription plan."}
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4 mt-4">
+
+
             <div>
-              <Label>Plan Name</Label>
+              <Label htmlFor="name">Plan Name</Label>
               <Input
+                id="name"
+                name="name"
                 placeholder="e.g., Monthly Plan"
-                defaultValue={selectedPlan?.name || ""}
+                value={planForm.name}
+                onChange={handleInputChange}
                 className="mt-1"
               />
             </div>
-
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Price (₹)</Label>
+                <Label htmlFor="price">Price (₹)</Label>
                 <Input
+                  id="price"
+                  name="price"
                   type="number"
                   placeholder="49.99"
-                  defaultValue={selectedPlan?.price || ""}
+                  value={planForm.price}
+                  onChange={handleInputChange}
                   className="mt-1"
                 />
               </div>
-              <div>
-                <Label>Period</Label>
-                <select className="w-full mt-1 px-3 py-2 rounded-md border border-input bg-background">
-                  <option value="day">Daily</option>
-                  <option value="week">Weekly</option>
-                  <option value="month" selected={selectedPlan?.id === "monthly"}>Monthly</option>
-                </select>
-              </div>
+              {!isEditPlanOpen &&
+                <div>
+                  <Label htmlFor="duration">Duration</Label>
+                  <select
+                    id="duration"
+                    name="duration"
+                    value={planForm.duration}
+                    onChange={handleInputChange}
+                    className="w-full mt-1 px-3 py-2 rounded-md border border-input bg-background"
+                  >
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="monthly">Monthly</option>
+                    <option value="yearly">Yearly</option>
+                  </select>
+                </div>}
             </div>
+
 
             <div>
-              <Label>Session Limit</Label>
-              <Input
-                type="number"
-                placeholder="12 (or -1 for unlimited)"
-                defaultValue={selectedPlan?.features?.length || ""}
-                className="mt-1"
+              <Label htmlFor="description">Description</Label>
+              <textarea
+                id="description"
+                name="description"
+                placeholder="Describe the subscription plan"
+                value={planForm.description}
+                onChange={handleInputChange}
+                className="w-full p-2 border rounded-md mt-1 min-h-[80px]"
               />
-              <p className="text-xs text-muted-foreground mt-1">Use -1 for unlimited sessions</p>
             </div>
 
-            <div className="flex items-center justify-between">
+            {!isEditPlanOpen &&
               <div>
-                <Label>Auto-Renew</Label>
-                <p className="text-xs text-muted-foreground">Automatically renew at end of period</p>
-              </div>
-              <Switch defaultChecked={true} />
-            </div>
+                <div className="flex items-center justify-between mb-2">
+                  <Label>Features</Label>
+                  <Button type="button" variant="outline" size="sm" onClick={addFeature}>
+                    Add Feature
+                  </Button>
+                </div>
+                <div className="space-y-2">
+                  {planForm.features.map((feature, index) => (
+                    <div key={index} className="flex gap-2">
+                      <Input
+                        placeholder={`Feature ${index + 1}`}
+                        value={feature}
+                        onChange={(e) => handleFeatureChange(index, e.target.value)}
+                        className="flex-1"
+                      />
+                      {planForm.features.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          onClick={() => removeFeature(index)}
+                          className="h-9 w-9"
+                        >
+                          <span className="text-red-500">-</span>
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>}
+
+            {!isEditPlanOpen &&
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label>Auto-Renew</Label>
+                  <p className="text-xs text-muted-foreground">Automatically renew at end of period</p>
+                </div>
+                <Switch
+                  id="autoRenew"
+                  name="autoRenew"
+                  checked={planForm.autoRenew}
+                  onCheckedChange={(checked) => setPlanForm(prev => ({ ...prev, autoRenew: checked }))}
+                />
+              </div>}
+
 
             <div className="flex items-center justify-between">
               <div>
                 <Label>Active</Label>
                 <p className="text-xs text-muted-foreground">Plan is available for purchase</p>
               </div>
-              <Switch defaultChecked={true} />
+              <Switch
+                id="status"
+                name="status"
+                checked={planForm.status === 'active'}
+                onCheckedChange={(checked) => setPlanForm(prev => ({ ...prev, status: checked ? 'active' : 'inactive' }))}
+              />
             </div>
           </div>
-          
+
           <DialogFooter className="mt-4">
-            <Button variant="outline" onClick={() => setIsEditPlanOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsEditPlanOpen(false);
+                resetForm();
+              }}
+            >
               Cancel
             </Button>
-            <Button onClick={() => setIsEditPlanOpen(false)}>
-              {selectedPlan ? "Save Changes" : "Create Plan"}
+            <Button onClick={handleSavePlan}>
+              Save Changes
             </Button>
           </DialogFooter>
         </DialogContent>

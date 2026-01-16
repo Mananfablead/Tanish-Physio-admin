@@ -234,19 +234,22 @@ import { Label } from "@/components/ui/label";
 import logo from "../assets/logo.webp";
 
 // 🔴 Redux
-import { loginUser } from "@/features/auth/authSlice";
+import { loginUser, forgotPassword } from "@/features/auth/authSlice";
 import { useDispatch, useSelector } from "react-redux";
+import { store } from "@/store";
+
+type RootState = ReturnType<typeof store.getState>;
 
 export default function Login() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  const { loading, error, isAuthenticated, token } = useSelector(
-    (state) => state.auth
+  const { loading, error, isAuthenticated, token, forgotPasswordSuccess } = useSelector(
+    (state: RootState) => state.auth
   );
 
-  const [email, setEmail] = useState("admin@example.com");
-  const [password, setPassword] = useState("admin2025");
+  const [email, setEmail] = useState("mananfablead@gmail.com");
+  const [password, setPassword] = useState("admin2026");
   const [showPassword, setShowPassword] = useState(false);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
@@ -259,6 +262,12 @@ useEffect(() => {
     navigate("/", { replace: true });
   }
 }, [isAuthenticated, navigate]);
+
+useEffect(() => {
+  if (forgotPasswordSuccess) {
+    setSuccessMessage(forgotPasswordSuccess);
+  }
+}, [forgotPasswordSuccess]);
 
 
 
@@ -277,7 +286,7 @@ useEffect(() => {
   };
 
   /* =========================
-     FORGOT PASSWORD (UI ONLY)
+     FORGOT PASSWORD
   ========================= */
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -285,10 +294,7 @@ useEffect(() => {
 
     if (!email) return;
 
-    // 👉 future me API lagegi
-    setTimeout(() => {
-      setSuccessMessage("Password reset link has been sent to your email.");
-    }, 800);
+    dispatch(forgotPassword(email));
   };
 
   return (
@@ -384,7 +390,7 @@ useEffect(() => {
                   </button>
                 </div>
               </div>
-
+{/* 
               <div className="flex justify-between text-sm">
                 <label className="flex items-center gap-2">
                   <input type="checkbox" />
@@ -397,7 +403,7 @@ useEffect(() => {
                 >
                   Forgot password?
                 </button>
-              </div>
+              </div> */}
 
               <Button className="w-full" size="lg" disabled={loading}>
                 {loading ? "Signing in..." : "Sign in"}
@@ -430,7 +436,10 @@ useEffect(() => {
                 type="button"
                 variant="ghost"
                 className="w-full"
-                onClick={() => setIsForgotPassword(false)}
+                onClick={() => {
+                  setIsForgotPassword(false);
+                  setSuccessMessage("");
+                }}
               >
                 Back to Login
               </Button>

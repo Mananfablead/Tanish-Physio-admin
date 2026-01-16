@@ -19,6 +19,8 @@ import {
   Clock,
   Video,
   BookOpen,
+  FileText,
+  Quote,
 } from "lucide-react";
 import logo from "../../assets/logo.webp";
 import { cn } from "@/lib/utils";
@@ -28,22 +30,25 @@ const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/" },
   { icon: Users, label: "Clients", path: "/users" },
   // { icon: UserCog, label: "Staff", path: "/therapists" },
+  { icon: ClipboardList, label: "Services", path: "/services" },
+  { icon: BookOpen, label: "Courses", path: "/courses" },
+  { icon: ClipboardList, label: "Questionnaires", path: "/questionnaires" },
+  { icon: Clock, label: "Schedule", path: "/availability" },
+  { icon: Calendar, label: "Bookings", path: "/bookings" },
   { icon: Calendar, label: "Sessions", path: "/sessions" },
   { icon: Video, label: "Live Sessions", path: "/live-sessions" },
   { icon: Video, label: "Session Recordings", path: "/session-recordings" },
-  { icon: ClipboardList, label: "Services", path: "/services" },
-  { icon: Calendar, label: "Bookings", path: "/bookings" },
-  { icon: BookOpen, label: "Courses", path: "/courses" },
-  { icon: Clock, label: "Schedule", path: "/availability" },
-  { icon: ClipboardList, label: "Questionnaires", path: "/questionnaires" },
-  { icon: CreditCard, label: "Subscriptions", path: "/subscriptions" },
+  { icon: CreditCard, label: "Plans & Subscriptions", path: "/subscriptions" },
   { icon: Wallet, label: "Payments", path: "/payments" },
+{ icon: FileText, label: "CMS", path: "/cms" },
+  { icon: Quote, label: "Testimonials", path: "/testimonials" },
+  
+  // { icon: BarChart3, label: "Reports", path: "/reports" },
+  { icon: Bell, label: "Notifications", path: "/notifications" },
   // { icon: MessageSquare, label: "Chat Monitor", path: "/chat" },
   // { icon: Star, label: "Feedback", path: "/feedback" },
-  { icon: BarChart3, label: "Reports", path: "/reports" },
-  { icon: Bell, label: "Notifications", path: "/notifications" },
-
 ];
+
 
 export function AdminSidebar({ isMobileOpen, onMobileClose, collapsed: propCollapsed, onCollapseToggle }: { isMobileOpen: boolean; onMobileClose: () => void; collapsed?: boolean; onCollapseToggle?: () => void }) {
   const [localCollapsed, setLocalCollapsed] = useState(false);

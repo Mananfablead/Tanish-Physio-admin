@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, Sun, Moon, Check, X, Plus, Save, X as XIcon, ChevronLeft, ChevronRight, AlertTriangle, Info, Loader2 } from 'lucide-react';
+import { Calendar, Clock, Sun, Moon, Check, X, Plus, Save, X as XIcon, ChevronLeft, ChevronRight, AlertTriangle, Info, Loader2, MoreHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
@@ -8,10 +8,23 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import apiClient from '@/api/apiClient';
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState } from '@/types/store';
+import { 
+  getAllAvailability, 
+  createAvailability, 
+  updateAvailability,
+  bulkUpdateAvailability,
+  setSelectedAvailability,
+  clearSelectedAvailability
+} from '@/features/availability/availabilitySlice';
 
 
 const Availability = () => {
+  const dispatch = useDispatch();
+  const { availability, loading: isLoading, error } = useSelector((state: RootState) => state.availability);
+  const { user: currentUser } = useSelector((state: RootState) => state.auth);
+  
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [startTime, setStartTime] = useState('09:00');
   const [endTime, setEndTime] = useState('17:00');
@@ -21,46 +34,37 @@ const Availability = () => {
   
   // State for bulk apply preview
   const [bulkApplyPreview, setBulkApplyPreview] = useState<boolean>(false);
+  const [bulkApplyDates, setBulkApplyDates] = useState<string[]>([]);
   
   // State for warnings
   const [warnings, setWarnings] = useState<string[]>([]);
   
-  // State for loading and availability data
-  const [availabilityData, setAvailabilityData] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // State for saving
   const [saving, setSaving] = useState(false);
+  const [bulkSaving, setBulkSaving] = useState(false);
   
   const { toast } = useToast();
   
   // Get today's date for highlighting
   const today = new Date();
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  
+  // Function to check if a date is in the past
+  const isPastDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return date < today;
+  };
 
   // Calendar data from API
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   
-  // Fetch availability data from API
+  // Fetch availability data from Redux store
   useEffect(() => {
-    const fetchAvailability = async () => {
-      try {
-        setLoading(true);
-        const response = await apiClient.get('/availability'); // Using direct route for now
-        setAvailabilityData(response.data.data?.availability || []);
-      } catch (error) {
-        console.error('Error fetching availability:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to load availability data',
-          variant: 'destructive',
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchAvailability();
-  }, [toast]);
+    dispatch(getAllAvailability());
+  }, [dispatch]);
   
   // Memoize the calendar weeks to avoid regenerating on every render
   const calendarWeeks = React.useMemo(() => {
@@ -74,7 +78,7 @@ const Availability = () => {
       const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       
       // Find availability for this date
-      const availabilityForDate = availabilityData.find(item => item.date === dateStr);
+      const availabilityForDate = availability.find(item => item.date === dateStr);
       
       // Determine status based on availability data
       let status = 0; // default to available
@@ -115,16 +119,38 @@ const Availability = () => {
     }
     
     return weeks;
-  }, [currentMonth, currentYear, availabilityData]);
+  }, [currentMonth, currentYear, availability]);
 
   const handleDateClick = (date: string | null) => {
     setSelectedDate(date);
     if (date) {
-      // Reset to default values when a date is selected
-      setStartTime('09:00');
-      setEndTime('17:00');
-      setIsAvailable(true);
-      setIsHoliday(false);
+      // Find existing availability for this date
+      const existingAvailability = availability.find(item => item.date === date);
+      
+      if (existingAvailability) {
+        // Load existing availability data
+        setStartTime(existingAvailability.availableTimes?.[0] || '09:00');
+        
+        // Calculate end time based on the last available time slot
+        const availableTimes = existingAvailability.availableTimes || [];
+        if (availableTimes.length > 0) {
+          const lastTime = availableTimes[availableTimes.length - 1];
+          const [hours, minutes] = lastTime.split(':').map(Number);
+          const endTime = new Date(0, 0, 0, hours + 1, minutes);
+          setEndTime(endTime.toTimeString().substring(0, 5));
+        } else {
+          setEndTime('17:00');
+        }
+        
+        setIsHoliday(existingAvailability.status === 'unavailable');
+        setIsAvailable(existingAvailability.status !== 'unavailable');
+      } else {
+        // Reset to default values when a date is selected
+        setStartTime('09:00');
+        setEndTime('17:00');
+        setIsAvailable(true);
+        setIsHoliday(false);
+      }
     }
   };
 
@@ -158,31 +184,30 @@ const Availability = () => {
         date: selectedDate,
         status,
         availableTimes,
-        therapistId: '60f1b8b3c9e4f2c8b0d1e2f3' // TODO: Replace with actual therapist ID from context
+        therapistId: currentUser?._id // Use actual therapist ID from current user
       };
       
       // Check if availability already exists for this date
-      const existingAvailability = availabilityData.find(item => item.date === selectedDate);
+      const existingAvailability = availability.find(item => item.date === selectedDate);
       
       if (existingAvailability) {
         // Update existing availability
-        await apiClient.put(`/availability/${existingAvailability._id}`, payload);
+        await dispatch(updateAvailability({ id: existingAvailability._id, availabilityData: payload }));
         toast({
           title: 'Success',
           description: 'Availability updated successfully',
         });
       } else {
         // Create new availability
-        await apiClient.post('/availability', payload);
+        await dispatch(createAvailability(payload));
         toast({
           title: 'Success',
           description: 'Availability created successfully',
         });
       }
       
-      // Refresh availability data
-      const response = await apiClient.get('/availability');
-      setAvailabilityData(response.data.data?.availability || []);
+      // Refresh the availability data to ensure UI updates immediately
+      await dispatch(getAllAvailability());
       
       setSelectedDate(null);
     } catch (error) {
@@ -199,15 +224,103 @@ const Availability = () => {
 
   // Function to handle bulk apply
   const handleBulkApply = () => {
+    // Get all dates in current month view that don't have availability set
+    const datesWithoutAvailability = calendarWeeks
+      .flat()
+      .filter(day => day && day.date && !isPastDate(day.date) && !day.availability)
+      .map(day => day.date);
+    
+    if (datesWithoutAvailability.length === 0) {
+      toast({
+        title: 'No Dates Available',
+        description: 'All dates in this view already have availability set',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    setBulkApplyDates(datesWithoutAvailability);
     setBulkApplyPreview(true);
-    // Add warning about bulk apply
-    setWarnings(['Bulk apply will update all selected dates with the same availability settings']);
+    setWarnings([`Bulk apply will update ${datesWithoutAvailability.length} dates with the same availability settings`]);
   };
-
+  
   // Function to clear bulk apply preview
   const clearBulkApplyPreview = () => {
     setBulkApplyPreview(false);
+    setBulkApplyDates([]);
     setWarnings([]);
+  };
+  
+  // Function to execute bulk update
+  const executeBulkUpdate = async () => {
+    if (bulkApplyDates.length === 0) return;
+    
+    try {
+      setBulkSaving(true);
+      
+      // Determine status based on isHoliday flag
+      const status = isHoliday ? 'unavailable' : 'available';
+      
+      // Generate available times based on start and end times
+      const availableTimes = [];
+      if (isAvailable && !isHoliday) {
+        // Simple logic: generate time slots between start and end time
+        const start = new Date(`1970-01-01T${startTime}`);
+        const end = new Date(`1970-01-01T${endTime}`);
+        
+        while (start < end) {
+          availableTimes.push(start.toTimeString().substring(0, 5));
+          start.setHours(start.getHours() + 1);
+        }
+      }
+      
+      // Process each date individually since backend bulk update affects entire month
+      const promises = bulkApplyDates.map(async (date) => {
+        const payload = {
+          date,
+          status,
+          availableTimes,
+          therapistId: currentUser?._id
+        };
+        
+        // Check if availability already exists for this date
+        const existingAvailability = availability.find(item => item.date === date);
+        
+        if (existingAvailability) {
+          // Update existing availability
+          return dispatch(updateAvailability({ 
+            id: existingAvailability._id, 
+            availabilityData: payload 
+          }));
+        } else {
+          // Create new availability
+          return dispatch(createAvailability(payload));
+        }
+      });
+      
+      // Execute all updates concurrently
+      await Promise.all(promises);
+      
+      toast({
+        title: 'Success',
+        description: `Successfully updated availability for ${bulkApplyDates.length} dates`,
+      });
+      
+      // Refresh the availability data
+      await dispatch(getAllAvailability());
+      
+      // Clear bulk apply state
+      clearBulkApplyPreview();
+    } catch (error) {
+      console.error('Error bulk updating availability:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to bulk update availability',
+        variant: 'destructive',
+      });
+    } finally {
+      setBulkSaving(false);
+    }
   };
 
   const getStatusColor = (status: number) => {
@@ -312,7 +425,7 @@ const Availability = () => {
                 </div>
                 
                 {/* Calendar Grid */}
-                {loading ? (
+                {isLoading ? (
                   <div className="flex justify-center items-center py-16">
                     <div className="flex flex-col items-center">
                       <Loader2 className="w-8 h-8 animate-spin text-primary mb-3" />
@@ -332,16 +445,19 @@ const Availability = () => {
                     {calendarWeeks.flat().map((day, index) => {
                       const isCurrentDay = day && isToday(day.date);
                       const isCurrentSelected = day && isSelected(day.date);
+                      const isInBulkApply = bulkApplyPreview && day && bulkApplyDates.includes(day.date);
                       
                       return (
                         <div 
                           key={index} 
-                          className={`h-16 p-2 border rounded-lg flex flex-col items-center justify-center transition-all cursor-pointer relative ${
+                          className={`h-16 p-2 border rounded-lg flex flex-col items-center justify-center transition-all ${
                             day 
-                              ? `${getStatusColor(day.status)} ${isCurrentDay ? 'ring-2 ring-primary ring-offset-2' : ''} ${isCurrentSelected ? 'ring-2 ring-primary-foreground ring-offset-2' : ''}`
+                              ? isPastDate(day.date)
+                                ? 'opacity-50 cursor-not-allowed bg-gray-100 border-gray-200'
+                                : `cursor-pointer ${getStatusColor(day.status)} ${isCurrentDay ? 'ring-2 ring-primary ring-offset-2' : ''} ${isCurrentSelected ? 'ring-2 ring-primary ring-offset-2 ring-blue-500' : ''} ${isInBulkApply ? 'ring-2 ring-blue-500 ring-offset-2 bg-blue-50' : ''}`
                               : 'border-transparent'
-                          } ${day ? 'hover:shadow-sm hover:scale-[1.02]' : ''}`}
-                          onClick={() => day && handleDateClick(day.date)}
+                          } ${day && !isPastDate(day.date) ? 'hover:shadow-sm hover:scale-[1.02]' : ''}`}
+                          onClick={() => day && !isPastDate(day.date) && handleDateClick(day.date)}
                         >
                           {day ? (
                             <>
@@ -349,11 +465,13 @@ const Availability = () => {
                                 {day.day}
                               </span>
                               <div className="flex justify-center mt-1">
-                                <div className={`w-2 h-2 rounded-full ${
-                                  day.status === 0 ? 'bg-green-500' :
-                                  day.status === 1 ? 'bg-blue-500' :
-                                  'bg-red-500'
-                                }`} />
+                                {day.availability && (
+                                  <div className={`w-2 h-2 rounded-full ${
+                                    day.status === 0 ? 'bg-green-500' :
+                                    day.status === 1 ? 'bg-blue-500' :
+                                    'bg-red-500'
+                                  }`} />
+                                )}
                               </div>
                             </>
                           ) : null}
@@ -361,19 +479,190 @@ const Availability = () => {
                       );
                     })}
                   </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center py-16 text-center">
-                    <Calendar className="w-12 h-12 text-muted-foreground mb-4" />
-                    <h3 className="text-lg font-medium mb-2">{viewMode === 'day' ? 'Day View' : 'Week View'}</h3>
-                    <p className="text-muted-foreground max-w-md">
-                      {viewMode === 'day' 
-                        ? 'Day view shows detailed availability for a single day with hourly breakdown.'
-                        : 'Week view shows availability across all days in the selected week.'}
-                    </p>
-                    <div className="mt-4 flex gap-2">
-                      <Button onClick={() => setViewMode('month')}>
+                ) : viewMode === 'day' ? (
+                  // Day View - Show detailed information for selected date or current date
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-medium">
+                        {selectedDate 
+                          ? `Day View: ${new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}`
+                          : `Day View: ${new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}`}
+                      </h3>
+                      <Button variant="outline" size="sm" onClick={() => setViewMode('month')}>
                         Switch to Month View
                       </Button>
+                    </div>
+                    
+                    <div className="space-y-4">
+                      {/* Day availability summary */}
+                      <Card className="border">
+                        <CardHeader>
+                          <CardTitle className="flex items-center gap-2">
+                            <Calendar className="w-5 h-5" />
+                            Availability Details
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="p-3 bg-primary/5 rounded-lg">
+                                <p className="text-sm text-muted-foreground">Status</p>
+                                <p className="font-medium">
+                                  {(() => {
+                                    const dateToCheck = selectedDate || todayStr;
+                                    const dayAvailability = availability.find(item => item.date === dateToCheck);
+                                    if (dayAvailability) {
+                                      return dayAvailability.status === 'unavailable' ? 'Holiday/Not Available' : 'Available';
+                                    }
+                                    return 'Available';
+                                  })()}
+                                </p>
+                              </div>
+                              <div className="p-3 bg-primary/5 rounded-lg">
+                                <p className="text-sm text-muted-foreground">Working Hours</p>
+                                <p className="font-medium">
+                                  {(() => {
+                                    const dateToCheck = selectedDate || todayStr;
+                                    const dayAvailability = availability.find(item => item.date === dateToCheck);
+                                    if (dayAvailability && dayAvailability.availableTimes && dayAvailability.availableTimes.length > 0) {
+                                      return `${dayAvailability.availableTimes[0]} - ${dayAvailability.availableTimes[dayAvailability.availableTimes.length - 1]}`;
+                                    }
+                                    return 'Not set';
+                                  })()}
+                                </p>
+                              </div>
+                            </div>
+                            
+                            <div>
+                              <p className="text-sm text-muted-foreground mb-2">Available Time Slots</p>
+                              <div className="flex flex-wrap gap-2">
+                                {(() => {
+                                  const dateToCheck = selectedDate || todayStr;
+                                  const dayAvailability = availability.find(item => item.date === dateToCheck);
+                                  if (dayAvailability && dayAvailability.availableTimes && dayAvailability.availableTimes.length > 0) {
+                                    return dayAvailability.availableTimes.map((time, index) => (
+                                      <Badge key={index} variant="secondary" className="px-3 py-1">
+                                        {time}
+                                      </Badge>
+                                    ));
+                                  }
+                                  return <p className="text-muted-foreground">No time slots set</p>;
+                                })()}
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                      
+                      {/* Bookings for the day */}
+                      <Card className="border">
+                        <CardHeader>
+                          <CardTitle className="flex items-center gap-2">
+                            <Clock className="w-5 h-5" />
+                            Bookings
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-muted-foreground">No bookings for this day</p>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </div>
+                ) : (
+                  // Week View - Show information for the week
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-medium">
+                        Week View: {(() => {
+                          const date = selectedDate ? new Date(selectedDate) : new Date();
+                          const startOfWeek = new Date(date);
+                          const day = startOfWeek.getDay();
+                          const diff = startOfWeek.getDate() - day;
+                          startOfWeek.setDate(diff);
+                          
+                          const endOfWeek = new Date(startOfWeek);
+                          endOfWeek.setDate(startOfWeek.getDate() + 6);
+                          
+                          return `${startOfWeek.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${endOfWeek.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+                        })()}
+                      </h3>
+                      <Button variant="outline" size="sm" onClick={() => setViewMode('month')}>
+                        Switch to Month View
+                      </Button>
+                    </div>
+                    
+                    <div className="grid grid-cols-7 gap-2">
+                      {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, index) => (
+                        <div key={day} className="text-center p-2 font-medium text-sm">
+                          {day}
+                        </div>
+                      ))}
+                      
+                      {(() => {
+                        const date = selectedDate ? new Date(selectedDate) : new Date();
+                        const startOfWeek = new Date(date);
+                        const day = startOfWeek.getDay();
+                        const diff = startOfWeek.getDate() - day;
+                        startOfWeek.setDate(diff);
+                        
+                        const weekDays = [];
+                        for (let i = 0; i < 7; i++) {
+                          const dayDate = new Date(startOfWeek);
+                          dayDate.setDate(startOfWeek.getDate() + i);
+                          
+                          const dateStr = `${dayDate.getFullYear()}-${String(dayDate.getMonth() + 1).padStart(2, '0')}-${String(dayDate.getDate()).padStart(2, '0')}`;
+                          
+                          const dayAvailability = availability.find(item => item.date === dateStr);
+                          const status = dayAvailability ? 
+                            (dayAvailability.status === 'booked' ? 1 : 
+                             dayAvailability.status === 'unavailable' ? 2 : 0) : 0;
+                          
+                          const isCurrentDay = dateStr === todayStr;
+                          const isCurrentSelected = dateStr === selectedDate;
+                          const isInBulkApply = bulkApplyPreview && bulkApplyDates.includes(dateStr);
+                          
+                          weekDays.push(
+                            <div 
+                              key={i}
+                              className={`p-2 border rounded-lg flex flex-col items-center justify-center transition-all ${
+                                isPastDate(dateStr)
+                                  ? 'opacity-50 cursor-not-allowed bg-gray-100 border-gray-200'
+                                  : `cursor-pointer ${getStatusColor(status)} ${isCurrentDay ? 'ring-2 ring-primary ring-offset-2' : ''} ${isCurrentSelected ? 'ring-2 ring-primary ring-offset-2 ring-blue-500' : ''} ${isInBulkApply ? 'ring-2 ring-blue-500 ring-offset-2 bg-blue-50' : ''}`
+                              } ${!isPastDate(dateStr) ? 'hover:shadow-sm hover:scale-[1.02]' : ''}`}
+                              onClick={() => !isPastDate(dateStr) && handleDateClick(dateStr)}
+                            >
+                              <span className={`text-sm font-medium ${isCurrentDay ? 'font-bold' : ''}`}>
+                                {dayDate.getDate()}
+                              </span>
+                              <div className="flex justify-center mt-1">
+                                {dayAvailability && (
+                                  <div className={`w-2 h-2 rounded-full ${
+                                    status === 0 ? 'bg-green-500' :
+                                    status === 1 ? 'bg-blue-500' :
+                                    'bg-red-500'
+                                  }`} />
+                                )}
+                              </div>
+                            </div>
+                          );
+                        }
+                        return weekDays;
+                      })()}
+                    </div>
+                    
+                    <div className="flex flex-wrap gap-4 pt-4 border-t border-border">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                        <span className="text-sm">Available</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                        <span className="text-sm">Booked</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-red-500"></div>
+                        <span className="text-sm">Holiday/Not Available</span>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -481,31 +770,59 @@ const Availability = () => {
                   </div>
                   
                   <div className="space-y-2">
-                    <Button 
-                      className="w-full mt-4" 
-                      onClick={handleSave}
-                      disabled={saving}
-                    >
-                      {saving ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Saving...
-                        </>
-                      ) : (
-                        <>
-                          <Save className="w-4 h-4 mr-2" />
-                          Save Changes
-                        </>
-                      )}
-                    </Button>
-                    {bulkApplyPreview && (
-                      <Button 
-                        className="w-full" 
-                        variant="outline"
-                        onClick={clearBulkApplyPreview}
-                      >
-                        Cancel Bulk Apply
-                      </Button>
+                    {!bulkApplyPreview ? (
+                      <>
+                        <Button 
+                          className="w-full mt-4" 
+                          onClick={handleSave}
+                          disabled={saving}
+                        >
+                          {saving ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              Saving...
+                            </>
+                          ) : (
+                            <>
+                              <Save className="w-4 h-4 mr-2" />
+                              Save Changes
+                            </>
+                          )}
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <Button 
+                          className="w-full mt-4" 
+                          onClick={executeBulkUpdate}
+                          disabled={bulkSaving || bulkApplyDates.length === 0}
+                        >
+                          {bulkSaving ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              Applying to {bulkApplyDates.length} dates...
+                            </>
+                          ) : (
+                            <>
+                              <Save className="w-4 h-4 mr-2" />
+                              Apply to {bulkApplyDates.length} Dates
+                            </>
+                          )}
+                        </Button>
+                        <Button 
+                          className="w-full" 
+                          variant="outline"
+                          onClick={clearBulkApplyPreview}
+                        >
+                          Cancel Bulk Apply
+                        </Button>
+                        <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                          <p className="text-sm text-blue-800 font-medium">Bulk Apply Preview</p>
+                          <p className="text-xs text-blue-600 mt-1">
+                            Will apply these settings to {bulkApplyDates.length} dates without existing availability
+                          </p>
+                        </div>
+                      </>
                     )}
                   </div>
                 </div>

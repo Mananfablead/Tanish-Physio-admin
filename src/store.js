@@ -6,6 +6,10 @@ import sessionReducer from "@/features/sessions/sessionSlice";
 import serviceReducer from "@/features/services/serviceSlice";
 import questionnaireReducer from "@/features/questionnaires/questionnaireSlice";
 import subscriptionReducer from "@/features/subscriptions/subscriptionSlice";
+import availabilityReducer from "@/features/availability/availabilitySlice";
+import therapistReducer from "@/features/therapistSlice";
+import bookingReducer from "@/features/bookings/bookingSlice";
+import notificationReducer from "@/features/notifications/notificationSlice";
 
 export const store = configureStore({
   reducer: {
@@ -16,5 +20,14 @@ export const store = configureStore({
     services: serviceReducer,
     questionnaires: questionnaireReducer,
     subscriptions: subscriptionReducer,
+    availability: availabilityReducer,
+    therapists: therapistReducer,
+    notifications: notificationReducer,
+    bookings: bookingReducer,
   },
+});
+
+// Listen for token expiration event and dispatch logout
+window.addEventListener('tokenExpired', () => {
+  store.dispatch({ type: 'auth/logout' });
 });
