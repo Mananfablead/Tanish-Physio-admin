@@ -106,7 +106,7 @@ export default function Payments() {
               <DollarSign className="w-5 h-5 text-success" />
             </div>
             <div>
-              <p className="text-2xl font-semibold">${stats.total.toLocaleString()}</p>
+              <p className="text-2xl font-semibold">₹{stats.total.toLocaleString()}</p>
               <p className="text-sm text-muted-foreground">Total Revenue</p>
             </div>
           </div>
@@ -139,7 +139,7 @@ export default function Payments() {
               <RotateCcw className="w-5 h-5 text-warning" />
             </div>
             <div>
-              <p className="text-2xl font-semibold">${stats.refunded.toLocaleString()}</p>
+              <p className="text-2xl font-semibold">₹{stats.refunded.toLocaleString()}</p>
               <p className="text-sm text-muted-foreground">Refunded</p>
             </div>
           </div>
@@ -211,7 +211,7 @@ export default function Payments() {
                     </div>
                   </td>
                   <td>{payment.plan}</td>
-                  <td className="font-semibold">${payment.amount}</td>
+                  <td className="font-semibold">₹{payment.amount}</td>
                   <td className="text-muted-foreground">{payment.method}</td>
                   <td className="text-muted-foreground">{payment.date}</td>
                   <td>
@@ -294,7 +294,7 @@ export default function Payments() {
                   </div>
                   <div>
                     <span className="text-muted-foreground">Amount:</span>
-                    <span className="ml-2 font-semibold">${selectedPayment.amount}</span>
+                    <span className="ml-2 font-semibold">₹{selectedPayment.amount}</span>
                   </div>
                   <div>
                     <span className="text-muted-foreground">User:</span>
@@ -350,7 +350,7 @@ export default function Payments() {
                   </div>
                   <div>
                     <span className="text-muted-foreground">Amount:</span>
-                    <span className="ml-2 font-semibold">${selectedPayment.amount}</span>
+                    <span className="ml-2 font-semibold">₹{selectedPayment.amount}</span>
                   </div>
                 </div>
               </div>
