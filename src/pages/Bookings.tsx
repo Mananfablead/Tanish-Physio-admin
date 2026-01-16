@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Search,
   MoreHorizontal,
@@ -10,6 +10,7 @@ import {
   CheckCircle,
   XCircle,
   Clock as ClockIcon,
+  Loader2,
 } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
@@ -36,14 +37,32 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { mockBookings } from "@/lib/mock-data";
+import { bookingAPI } from "@/api/apiClient";
+import { toast } from "sonner";
 
 export default function Bookings() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isEditBookingOpen, setIsEditBookingOpen] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
+  const [bookings, setBookings] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const [bookings, setBookings] = useState(mockBookings);
+  useEffect(() => {
+    fetchBookings();
+  }, []);
+
+  const fetchBookings = async () => {
+    try {
+      setLoading(true);
+      const response = await bookingAPI.getAll();
+      setBookings(response.data.data.bookings || []);
+    } catch (error) {
+      console.error("Error fetching bookings:", error);
+      toast.error("Failed to load bookings");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const [bookingForm, setBookingForm] = useState<{
     status: "confirmed" | "pending" | "cancelled";
@@ -54,27 +73,37 @@ export default function Bookings() {
   /* ===========================
      FILTER
   =========================== */
-  const filteredBookings = bookings.filter((booking) =>
-    booking.serviceName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    booking.clientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    booking.therapistName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    booking.status.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredBookings = bookings.filter(
+    (booking) =>
+      booking.serviceName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      booking.clientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      booking.therapistName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      booking.status.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   /* ===========================
      UPDATE STATUS ONLY
   =========================== */
-  const handleUpdateBooking = () => {
+  const handleUpdateBooking = async () => {
     if (!selectedBooking) return;
 
-    const updated = bookings.map((b) =>
-      b.id === selectedBooking.id
-        ? { ...b, status: bookingForm.status }
-        : b
-    );
+    try {
+      const response = await bookingAPI.update(selectedBooking._id, {
+        status: bookingForm.status,
+      });
 
-    setBookings(updated);
-    setIsEditBookingOpen(false);
+      // Update the booking in the local state
+      const updatedBookings = bookings.map((b) =>
+        b._id === selectedBooking._id ? response.data.data.booking : b
+      );
+
+      setBookings(updatedBookings);
+      setIsEditBookingOpen(false);
+      toast.success("Booking status updated successfully");
+    } catch (error) {
+      console.error("Error updating booking:", error);
+      toast.error("Failed to update booking status");
+    }
   };
 
   /* ===========================
@@ -98,13 +127,78 @@ export default function Bookings() {
       {/* Header */}
       <div className="page-header">
         <h1 className="page-title">Bookings Management</h1>
-        <p className="page-subtitle">
-          Admin can only update booking status
-        </p>
+        <p className="page-subtitle">Admin can only update booking status</p>
       </div>
-
-     {/* Stats */} <div className="grid grid-cols-2 sm:grid-cols-4 gap-4"> <div className="stat-card"> <div className="flex items-center gap-3"> <div className="p-2 rounded-lg bg-success/10"> <CheckCircle className="w-5 h-5 text-success" /> </div> <div> <p className="text-2xl font-semibold">{bookings.filter(b => b.status === "confirmed").length}</p> <p className="text-sm text-muted-foreground">Confirmed</p> </div> </div> </div> <div className="stat-card"> <div className="flex items-center gap-3"> <div className="p-2 rounded-lg bg-warning/10"> <ClockIcon className="w-5 h-5 text-warning" /> </div> <div> <p className="text-2xl font-semibold">{bookings.filter(b => b.status === "pending").length}</p> <p className="text-sm text-muted-foreground">Pending</p> </div> </div> </div> <div className="stat-card"> <div className="flex items-center gap-3"> <div className="p-2 rounded-lg bg-destructive/10"> <XCircle className="w-5 h-5 text-destructive" /> </div> <div> <p className="text-2xl font-semibold">{bookings.filter(b => b.status === "cancelled").length}</p> <p className="text-sm text-muted-foreground">Cancelled</p> </div> </div> </div> <div className="stat-card"> <div className="flex items-center gap-3"> <div className="p-2 rounded-lg bg-primary/10"> <Calendar className="w-5 h-5 text-primary" /> </div> <div> <p className="text-2xl font-semibold">{bookings.length}</p> <p className="text-sm text-muted-foreground">Total</p> </div> </div> </div> </div>
-
+      {/* Stats */}{" "}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        {" "}
+        <div className="stat-card">
+          {" "}
+          <div className="flex items-center gap-3">
+            {" "}
+            <div className="p-2 rounded-lg bg-success/10">
+              {" "}
+              <CheckCircle className="w-5 h-5 text-success" />{" "}
+            </div>{" "}
+            <div>
+              {" "}
+              <p className="text-2xl font-semibold">
+                {bookings.filter((b) => b.status === "confirmed").length}
+              </p>{" "}
+              <p className="text-sm text-muted-foreground">Confirmed</p>{" "}
+            </div>{" "}
+          </div>{" "}
+        </div>{" "}
+        <div className="stat-card">
+          {" "}
+          <div className="flex items-center gap-3">
+            {" "}
+            <div className="p-2 rounded-lg bg-warning/10">
+              {" "}
+              <ClockIcon className="w-5 h-5 text-warning" />{" "}
+            </div>{" "}
+            <div>
+              {" "}
+              <p className="text-2xl font-semibold">
+                {bookings.filter((b) => b.status === "pending").length}
+              </p>{" "}
+              <p className="text-sm text-muted-foreground">Pending</p>{" "}
+            </div>{" "}
+          </div>{" "}
+        </div>{" "}
+        <div className="stat-card">
+          {" "}
+          <div className="flex items-center gap-3">
+            {" "}
+            <div className="p-2 rounded-lg bg-destructive/10">
+              {" "}
+              <XCircle className="w-5 h-5 text-destructive" />{" "}
+            </div>{" "}
+            <div>
+              {" "}
+              <p className="text-2xl font-semibold">
+                {bookings.filter((b) => b.status === "cancelled").length}
+              </p>{" "}
+              <p className="text-sm text-muted-foreground">Cancelled</p>{" "}
+            </div>{" "}
+          </div>{" "}
+        </div>{" "}
+        <div className="stat-card">
+          {" "}
+          <div className="flex items-center gap-3">
+            {" "}
+            <div className="p-2 rounded-lg bg-primary/10">
+              {" "}
+              <Calendar className="w-5 h-5 text-primary" />{" "}
+            </div>{" "}
+            <div>
+              {" "}
+              <p className="text-2xl font-semibold">{bookings.length}</p>{" "}
+              <p className="text-sm text-muted-foreground">Total</p>{" "}
+            </div>{" "}
+          </div>{" "}
+        </div>{" "}
+      </div>
       {/* Search */}
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -115,7 +209,6 @@ export default function Bookings() {
           className="pl-10"
         />
       </div>
-
       {/* Table */}
       <div className="bg-card rounded-lg border overflow-hidden">
         <table className="data-table">
@@ -130,52 +223,62 @@ export default function Bookings() {
             </tr>
           </thead>
           <tbody>
-            {filteredBookings.map((booking) => (
-              <tr key={booking.id}>
-                <td>{booking.serviceName}</td>
-                <td>{booking.clientName}</td>
-                <td>{booking.therapistName}</td>
-                <td>
-                  {booking.date} <Clock className="inline w-4 h-4 ml-2" />{" "}
-                  {booking.time}
-                </td>
-                <td>
-                  <span
-                    className={cn(
-                      "status-badge",
-                      getStatusBadge(booking.status)
-                    )}
-                  >
-                    {booking.status}
-                  </span>
-                </td>
-                <td>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button size="icon" variant="ghost">
-                        <MoreHorizontal className="w-4 h-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem
-                        onClick={() => {
-                          setSelectedBooking(booking);
-                          setBookingForm({ status: booking.status });
-                          setIsEditBookingOpen(true);
-                        }}
-                      >
-                        <Edit className="w-4 h-4 mr-2" />
-                        Change Status
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+            {loading ? (
+              <tr>
+                <td colSpan={6} className="text-center py-8">
+                  <div className="flex items-center justify-center">
+                    <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                    Loading bookings...
+                  </div>
                 </td>
               </tr>
-            ))}
+            ) : (
+              filteredBookings.map((booking) => (
+                <tr key={booking._id}>
+                  <td>{booking.serviceName}</td>
+                  <td>{booking.clientName}</td>
+                  <td>{booking.therapistName}</td>
+                  <td>
+                    {booking.date} <Clock className="inline w-4 h-4 ml-2" />{" "}
+                    {booking.time}
+                  </td>
+                  <td>
+                    <span
+                      className={cn(
+                        "status-badge",
+                        getStatusBadge(booking.status)
+                      )}
+                    >
+                      {booking.status}
+                    </span>
+                  </td>
+                  <td>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button size="icon" variant="ghost">
+                          <MoreHorizontal className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setSelectedBooking(booking);
+                            setBookingForm({ status: booking.status });
+                            setIsEditBookingOpen(true);
+                          }}
+                        >
+                          <Edit className="w-4 h-4 mr-2" />
+                          Change Status
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
-
       {/* STATUS ONLY MODAL */}
       <Dialog open={isEditBookingOpen} onOpenChange={setIsEditBookingOpen}>
         <DialogContent className="max-w-md">

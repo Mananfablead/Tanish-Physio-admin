@@ -39,6 +39,10 @@ export const API = {
   // services
   SERVICES: "/services",
   SERVICE_BY_ID: "/services/:id",
+
+  // bookings
+  BOOKINGS: "/bookings",
+  BOOKING_BY_ID: "/bookings/:id",
 };
 export const availabilityAPI = {
   // Get all availability
@@ -164,4 +168,19 @@ export const serviceAPI = {
 
   // Delete service
   delete: (id) => apiClient.delete(`${API.SERVICE_BY_ID.replace(':id', id)}`),
+};
+
+// Booking API endpoints
+export const bookingAPI = {
+  // Get all bookings
+  getAll: () => apiClient.get(API.BOOKINGS),
+
+  // Get booking by ID
+  getById: (id) => apiClient.get(`${API.BOOKING_BY_ID.replace(':id', id)}`),
+
+  // Update booking (typically for status updates)
+  update: (id, data) => apiClient.put(`${API.BOOKING_BY_ID.replace(':id', id)}`, data),
+
+  // Delete/cancel booking
+  delete: (id) => apiClient.delete(`${API.BOOKING_BY_ID.replace(':id', id)}`),
 };
