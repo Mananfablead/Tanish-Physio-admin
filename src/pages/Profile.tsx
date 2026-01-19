@@ -22,8 +22,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   fetchProfile,
   updateProfile,
-  changePassword,
-  updateProfilePicture
+  changePassword
 } from "@/features/auth/authSlice";
 
 export default function Profile() {
@@ -43,6 +42,21 @@ export default function Profile() {
     avatar: "",
   });
 
+  const [doctorProfile, setDoctorProfile] = useState({
+    name: "",
+    experience: "",
+    specialization: "",
+    certifications: [],
+    bio: "",
+    education: "",
+    languages: [],
+    fee: "",
+    availability: "",
+  });
+
+  const [certificationFiles, setCertificationFiles] = useState<File[]>([]);
+  const [certificationPreviews, setCertificationPreviews] = useState<string[]>([]);
+
   const [passwordData, setPasswordData] = useState({
     currentPassword: "",
     newPassword: "",
@@ -55,6 +69,9 @@ export default function Profile() {
 
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  
+  const [doctorImageFile, setDoctorImageFile] = useState<File | null>(null);
+  const [doctorImagePreview, setDoctorImagePreview] = useState<string | null>(null);
 
   /* =========================
      LOAD PROFILE
@@ -73,8 +90,24 @@ export default function Profile() {
         location: user.location || prev.location,
         role: user.role || prev.role,
         joinDate: user.joinDate || prev.joinDate,
-        avatar: user.profilePicture || user.avatar || prev.avatar,
+        avatar: user.profilePicture,
       }));
+      
+      // Load doctor profile data if available
+      if (user.doctorProfile) {
+        setDoctorProfile(prev => ({
+          ...prev,
+          name: user.doctorProfile.name || prev.name,
+          experience: user.doctorProfile.experience || prev.experience,
+          specialization: user.doctorProfile.specialization || prev.specialization,
+          bio: user.doctorProfile.bio || prev.bio,
+          education: user.doctorProfile.education || prev.education,
+          languages: user.doctorProfile.languages || prev.languages,
+          fee: user.doctorProfile.fee || prev.fee,
+          availability: user.doctorProfile.availability || prev.availability,
+          certifications: user.doctorProfile.certifications || prev.certifications,
+        }));
+      }
     }
   }, [user]);
 
@@ -93,57 +126,162 @@ export default function Profile() {
     }
   };
 
+  const handleDoctorImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setDoctorImageFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setDoctorImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   /* =========================
      SAVE PROFILE
   ========================= */
   const handleSaveProfile = async () => {
     // Create form data to handle both profile updates and image upload
-    const profileData: any = {
-      name: profile.name,
-      email: profile.email,
-      phone: profile.phone,
-      location: profile.location,
-    };
+    const formData = new FormData();
     
-    // Update profile info first
-    const result = await dispatch(updateProfile(profileData));
+    // Add profile data
+    formData.append('name', profile.name);
+    formData.append('email', profile.email);
+    formData.append('phone', profile.phone);
+    formData.append('location', profile.location);
     
-    if (updateProfile.fulfilled.match(result)) {
-      toast({
-        title: "Success",
-        description: "Profile updated successfully!",
-      });
-    } else {
+    // Add doctor profile data
+    formData.append('doctorProfile[name]', doctorProfile.name);
+    formData.append('doctorProfile[experience]', doctorProfile.experience);
+    formData.append('doctorProfile[specialization]', doctorProfile.specialization);
+    formData.append('doctorProfile[bio]', doctorProfile.bio);
+    formData.append('doctorProfile[education]', doctorProfile.education);
+    formData.append('doctorProfile[languages]', JSON.stringify(doctorProfile.languages));
+    formData.append('doctorProfile[fee]', doctorProfile.fee);
+    formData.append('doctorProfile[availability]', doctorProfile.availability);
+    
+    // Add image if present
+    if (imageFile) {
+      formData.append('profilePicture', imageFile);
+    }
+    
+    // Add doctor image if present
+    if (doctorImageFile) {
+      formData.append('doctorProfilePicture', doctorImageFile);
+    }
+    
+    // Add certification files if any
+    certificationFiles.forEach((file, index) => {
+      formData.append(`certifications`, file);
+    });
+    
+    try {
+      // Single API call to update both profile and picture
+      const result = await dispatch(updateProfile(formData));
+      
+      if (updateProfile.fulfilled.match(result)) {
+        toast({
+          title: "Success",
+          description: "Profile updated successfully!",
+        });
+        
+        // Reset image state after successful upload
+        setImageFile(null);
+        setImagePreview(null);
+        // Reset doctor image state after successful upload
+        setDoctorImageFile(null);
+        setDoctorImagePreview(null);
+        // Reset certification files after successful upload
+        setCertificationFiles([]);
+        setCertificationPreviews([]);
+      } else {
+        toast({
+          title: "Error",
+          description: result.payload?.message || "Failed to update profile",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
       toast({
         title: "Error",
-        description: result.payload?.message || "Failed to update profile",
+        description: "Failed to update profile",
         variant: "destructive",
       });
     }
-    
-    // If there's an image to upload, handle it separately
-    if (imageFile) {
-      const imageResult = await dispatch(updateProfilePicture(imageFile));
+
+    setIsEditing(false);
+  };
+
+  /* =========================
+     HANDLE CERTIFICATION UPLOAD
+  ========================= */
+  const handleCertificationUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      const newFiles = Array.from(files);
       
-      if (updateProfilePicture.fulfilled.match(imageResult)) {
+      // Process each file
+      newFiles.forEach(file => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setCertificationPreviews(prev => [...prev, reader.result as string]);
+        };
+        reader.readAsDataURL(file);
+      });
+      
+      setCertificationFiles(prev => [...prev, ...newFiles]);
+    }
+  };
+
+  const removeCertification = (index: number) => {
+    setCertificationFiles(prev => prev.filter((_, i) => i !== index));
+    setCertificationPreviews(prev => prev.filter((_, i) => i !== index));
+  };
+
+  /* =========================
+     UPDATE DOCTOR PROFILE
+  ========================= */
+  const handleUpdateDoctorProfile = async () => {
+    const formData = new FormData();
+    
+    // Add doctor profile data
+    formData.append('name', doctorProfile.name);
+    formData.append('experience', doctorProfile.experience);
+    formData.append('specialization', doctorProfile.specialization);
+    formData.append('bio', doctorProfile.bio);
+    formData.append('education', doctorProfile.education);
+    formData.append('languages', JSON.stringify(doctorProfile.languages));
+    formData.append('fee', doctorProfile.fee);
+    formData.append('availability', doctorProfile.availability);
+    
+    // Add certification files if any
+    certificationFiles.forEach((file, index) => {
+      formData.append(`certifications`, file);
+    });
+    
+    try {
+      const result = await dispatch(updateProfile(formData));
+      
+      if (updateProfile.fulfilled.match(result)) {
         toast({
           title: "Success",
-          description: "Profile picture updated successfully!",
+          description: "Doctor profile updated successfully!",
         });
       } else {
         toast({
           title: "Error",
-          description: imageResult.payload?.message || "Failed to update profile picture",
+          description: result.payload?.message || "Failed to update doctor profile",
           variant: "destructive",
         });
       }
-      
-      // Reset image state after upload
-      setImageFile(null);
-      setImagePreview(null);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update doctor profile",
+        variant: "destructive",
+      });
     }
-
-    setIsEditing(false);
   };
 
   /* =========================
@@ -218,7 +356,7 @@ export default function Profile() {
           <div className="flex items-center gap-4">
             <div className="relative">
               <Avatar className="w-20 h-20 cursor-pointer" onClick={() => document.getElementById('avatar-upload')?.click()}>
-                <AvatarImage src={imagePreview || profile.avatar || ""} />
+                <AvatarImage src={imagePreview || user?.profilePicture || ""} />
                 <AvatarFallback>
                   {profile.name
                     ? profile.name
@@ -323,6 +461,224 @@ export default function Profile() {
               <Calendar className="w-4 h-4" />
               <span>Joined {profile.joinDate || "—"}</span>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* DOCTOR PROFILE */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Doctor Profile</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* DOCTOR IMAGE & BASIC INFO */}
+          <div className="flex flex-col md:flex-row gap-6">
+            <div className="flex-shrink-0">
+              <div className="relative">
+                <Avatar className="w-24 h-24 cursor-pointer" onClick={() => document.getElementById('doctor-avatar-upload')?.click()}>
+                  <AvatarImage src={doctorImagePreview || user?.profilePicture || ""} />
+                  <AvatarFallback>
+                    {doctorProfile.name
+                      ? doctorProfile.name
+                          .split(" ")
+                          .map((n) => n[0])
+                          .join("")
+                      : "D"}
+                  </AvatarFallback>
+                </Avatar>
+                <input
+                  id="doctor-avatar-upload"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => handleDoctorImageChange(e)}
+                  disabled={!isEditing}
+                />
+                {isEditing && (
+                  <div className="absolute bottom-0 right-0 bg-primary rounded-full p-1 cursor-pointer">
+                    <Edit className="w-3 h-3 text-white" />
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            <div className="flex-grow space-y-4">
+              {/* DOCTOR NAME */}
+              <div className="space-y-2">
+                <Label>Doctor Name</Label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    value={doctorProfile.name}
+                    onChange={(e) =>
+                      setDoctorProfile({ ...doctorProfile, name: e.target.value })
+                    }
+                    className="pl-10"
+                    disabled={!isEditing}
+                  />
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* EXPERIENCE */}
+                <div className="space-y-2">
+                  <Label>Years of Experience</Label>
+                  <div className="relative">
+                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      value={doctorProfile.experience}
+                      onChange={(e) =>
+                        setDoctorProfile({ ...doctorProfile, experience: e.target.value })
+                      }
+                      className="pl-10"
+                      placeholder="e.g., 5 years"
+                      disabled={!isEditing}
+                    />
+                  </div>
+                </div>
+                
+                {/* SPECIALIZATION */}
+                <div className="space-y-2">
+                  <Label>Specialization</Label>
+                  <div className="relative">
+                    <Input
+                      value={doctorProfile.specialization}
+                      onChange={(e) =>
+                        setDoctorProfile({ ...doctorProfile, specialization: e.target.value })
+                      }
+                      className="pl-10"
+                      placeholder="e.g., Physiotherapy"
+                      disabled={!isEditing}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* EDUCATION */}
+            <div className="space-y-2">
+              <Label>Education</Label>
+              <Input
+                value={doctorProfile.education}
+                onChange={(e) =>
+                  setDoctorProfile({ ...doctorProfile, education: e.target.value })
+                }
+                placeholder="e.g., MD, PhD"
+                disabled={!isEditing}
+              />
+            </div>
+            
+            {/* CONSULTATION FEE */}
+            <div className="space-y-2">
+              <Label>Consultation Fee</Label>
+              <Input
+                value={doctorProfile.fee}
+                onChange={(e) =>
+                  setDoctorProfile({ ...doctorProfile, fee: e.target.value })
+                }
+                placeholder="e.g., $100/hour"
+                disabled={!isEditing}
+              />
+            </div>
+          </div>
+          
+          {/* BIOGRAPHY */}
+          <div className="space-y-2">
+            <Label>Biography</Label>
+            <textarea
+              value={doctorProfile.bio}
+              onChange={(e) =>
+                setDoctorProfile({ ...doctorProfile, bio: e.target.value })
+              }
+              rows={3}
+              className="w-full p-2 border border-input rounded-md focus:ring-2 focus:ring-ring focus:border-transparent disabled:cursor-not-allowed disabled:opacity-50 min-h-[100px]"
+              placeholder="Tell us about your medical journey and expertise..."
+              disabled={!isEditing}
+            />
+          </div>
+          
+          {/* LANGUAGES */}
+          <div className="space-y-2">
+            <Label>Languages Spoken</Label>
+            <Input
+              value={doctorProfile.languages.join(", ")}
+              onChange={(e) => {
+                const languagesArray = e.target.value.split(",").map(lang => lang.trim()).filter(lang => lang);
+                setDoctorProfile({ ...doctorProfile, languages: languagesArray });
+              }}
+              placeholder="e.g., English, Spanish, French"
+              disabled={!isEditing}
+            />
+          </div>
+          
+          {/* CERTIFICATIONS */}
+          <div className="space-y-2">
+            <Label>Certifications</Label>
+            <div className="space-y-4">
+              <input
+                id="certifications-upload"
+                type="file"
+                accept="image/*,application/pdf"
+                className="hidden"
+                multiple
+                onChange={handleCertificationUpload}
+                disabled={!isEditing}
+              />
+              
+              {isEditing && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => document.getElementById('certifications-upload')?.click()}
+                  className="w-full md:w-auto"
+                >
+                  Upload Certifications
+                </Button>
+              )}
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                {certificationPreviews.map((preview, index) => (
+                  <div key={index} className="relative group border rounded-lg p-2 bg-gray-50">
+                    <img 
+                      src={preview} 
+                      alt={`Certification ${index + 1}`} 
+                      className="w-full h-32 object-contain rounded"
+                    />
+                    {isEditing && (
+                      <button
+                        type="button"
+                        onClick={() => removeCertification(index)}
+                        className="absolute top-2 right-2 bg-destructive text-destructive-foreground rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        ×
+                      </button>
+                    )}
+                    <p className="text-xs text-center mt-1 truncate">Certification {index + 1}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+          
+          {/* AVAILABILITY */}
+          <div className="space-y-2">
+            <Label>Availability</Label>
+            <select
+              value={doctorProfile.availability}
+              onChange={(e) =>
+                setDoctorProfile({ ...doctorProfile, availability: e.target.value })
+              }
+              className="w-full p-2 border border-input rounded-md focus:ring-2 focus:ring-ring focus:border-transparent disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={!isEditing}
+            >
+              <option value="">Select availability</option>
+              <option value="full-time">Full Time</option>
+              <option value="part-time">Part Time</option>
+              <option value="weekends">Weekends Only</option>
+              <option value="by-appointment">By Appointment</option>
+            </select>
           </div>
         </CardContent>
       </Card>

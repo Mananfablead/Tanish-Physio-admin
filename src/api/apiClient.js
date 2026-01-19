@@ -2,9 +2,6 @@ import axios from "axios";
 
 const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
-  headers: {
-    "Content-Type": "application/json",
-  },
 });
 
 apiClient.interceptors.request.use((config) => {
@@ -12,6 +9,12 @@ apiClient.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  
+  // Only set Content-Type to application/json if not FormData
+  if (!(config.data instanceof FormData)) {
+    config.headers["Content-Type"] = "application/json";
+  }
+  
   return config;
 });
 

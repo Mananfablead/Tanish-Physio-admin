@@ -45,28 +45,6 @@ export const changePassword = createAsyncThunk(
 );
 
 /* =========================
-   UPDATE PROFILE PICTURE
-========================= */
-export const updateProfilePicture = createAsyncThunk(
-  "auth/updateProfilePicture",
-  async (imageFile, { rejectWithValue }) => {
-    try {
-      const formData = new FormData();
-      formData.append('profilePicture', imageFile);
-      
-      const res = await apiClient.put(API.UPDATE_PROFILE_PICTURE, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-      return res.data;
-    } catch (err) {
-      return rejectWithValue(err.response?.data?.message || "Profile picture update failed");
-    }
-  }
-);
-
-/* =========================
    FORGOT PASSWORD
 ========================= */
 export const forgotPassword = createAsyncThunk(
@@ -126,7 +104,16 @@ export const updateProfile = createAsyncThunk(
   "auth/updateProfile",
   async (profileData, { rejectWithValue }) => {
     try {
-      const res = await apiClient.put(API.UPDATE_PROFILE, profileData);
+      // Check if profileData is FormData (for file uploads)
+      const isFormData = profileData instanceof FormData;
+      
+      const config = isFormData ? {} : {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      };
+      
+      const res = await apiClient.put(API.UPDATE_PROFILE, profileData, config);
       return res.data;
     } catch (err) {
       return rejectWithValue(
@@ -227,22 +214,6 @@ const authSlice = createSlice({
         state.loading = false;
       })
       .addCase(changePassword.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
-      })
-      
-      // UPDATE PROFILE PICTURE
-      .addCase(updateProfilePicture.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(updateProfilePicture.fulfilled, (state, action) => {
-        state.loading = false;
-        if (action.payload.data?.profilePicture) {
-          state.user.profilePicture = action.payload.data.profilePicture;
-        }
-      })
-      .addCase(updateProfilePicture.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })
