@@ -1,38 +1,69 @@
-import { useState } from "react";
-import { Search, Download, ChevronLeft, ChevronRight, DollarSign, CheckCircle, XCircle, RefreshCw, Eye, RotateCcw, FileText } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Search, Download, ChevronLeft, ChevronRight, DollarSign, CheckCircle, XCircle, RefreshCw, Eye, RotateCcw, FileText, RefreshCw as RefreshIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { useDispatch, useSelector } from 'react-redux';
+import { fetchAllPayments } from '@/features/payments/paymentSlice';
 
-const mockPayments = [
-  { id: "PAY-001", user: "John Doe", email: "john@example.com", amount: 49.99, plan: "Monthly Plan", date: "2024-03-18", status: "successful", method: "Credit Card" },
-  { id: "PAY-002", user: "Emily Parker", email: "emily@example.com", amount: 29.99, plan: "Weekly Plan", date: "2024-03-18", status: "successful", method: "PayPal" },
-  { id: "PAY-003", user: "Mike Wilson", email: "mike@example.com", amount: 49.99, plan: "Monthly Plan", date: "2024-03-17", status: "failed", method: "Credit Card" },
-  { id: "PAY-004", user: "Anna Smith", email: "anna@example.com", amount: 79.99, plan: "Premium Monthly", date: "2024-03-17", status: "successful", method: "Credit Card" },
-  { id: "PAY-005", user: "Robert Brown", email: "robert@example.com", amount: 9.99, plan: "Daily Pass", date: "2024-03-16", status: "refunded", method: "Credit Card" },
-  { id: "PAY-006", user: "Lisa Anderson", email: "lisa@example.com", amount: 49.99, plan: "Monthly Plan", date: "2024-03-16", status: "successful", method: "Apple Pay" },
-  { id: "PAY-007", user: "David Lee", email: "david@example.com", amount: 29.99, plan: "Weekly Plan", date: "2024-03-15", status: "disputed", method: "Credit Card" },
-  { id: "PAY-008", user: "Sarah Taylor", email: "sarah@example.com", amount: 49.99, plan: "Monthly Plan", date: "2024-03-15", status: "successful", method: "Credit Card" },
-];
+// API Base URL - Update this to your backend URL
+const API_BASE_URL = "http://localhost:3000";
 
-type PaymentStatus = "successful" | "failed" | "refunded" | "disputed";
+interface Payment {
+  _id: string;
+  bookingId: {
+    _id: string;
+    patientName: string;
+    patientEmail: string;
+    serviceName: string;
+  };
+  userId: {
+    _id: string;
+    name: string;
+    email: string;
+  };
+  amount: number;
+  currency: string;
+  status: "created" | "captured" | "failed" | "refunded" | "disputed" | "pending" | "successful";
+  method?: string;
+  razorpayOrderId?: string;
+  razorpayPaymentId?: string;
+  razorpaySignature?: string;
+  createdAt: string;
+  updatedAt: string;
+  __v?: number;
+}
 
-const filters = ["All", "Successful", "Failed", "Refunded", "Disputed"];
+
+
+type PaymentStatus = "created" | "captured" | "failed" | "refunded" | "disputed" | "pending" | "successful";
+
+const filters = ["All", "Successful", "Failed", "Refunded", "Disputed", "Pending"];
 
 export default function Payments() {
+  const dispatch = useDispatch();
+  const { payments, loading: isLoading, error } = useSelector((state: any) => state.payments);
+  console.log(payments);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState("All");
   const [dateFilter, setDateFilter] = useState("all");
   const [isRefundModalOpen, setIsRefundModalOpen] = useState(false);
   const [isDisputeModalOpen, setIsDisputeModalOpen] = useState(false);
-  const [selectedPayment, setSelectedPayment] = useState<typeof mockPayments[0] | null>(null);
+  const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
   const [refundReason, setRefundReason] = useState("");
+
+  // Load payments on component mount
+  useEffect(() => {
+    dispatch(fetchAllPayments());
+  }, [dispatch]);
 
   const getStatusBadge = (status: PaymentStatus) => {
     switch (status) {
+      case "captured":
+        return "status-active";
       case "successful":
         return "status-active";
       case "failed":
@@ -41,6 +72,10 @@ export default function Payments() {
         return "status-inactive";
       case "disputed":
         return "status-pending";
+      case "pending":
+        return "status-pending";
+      case "created":
+        return "status-pending";
       default:
         return "status-inactive";
     }
@@ -48,6 +83,8 @@ export default function Payments() {
 
   const getStatusIcon = (status: PaymentStatus) => {
     switch (status) {
+      case "captured":
+        return <CheckCircle className="w-4 h-4" />;
       case "successful":
         return <CheckCircle className="w-4 h-4" />;
       case "failed":
@@ -56,26 +93,40 @@ export default function Payments() {
         return <RotateCcw className="w-4 h-4" />;
       case "disputed":
         return <RefreshCw className="w-4 h-4" />;
+      case "pending":
+        return <RefreshIcon className="w-4 h-4" />;
+      case "created":
+        return <RefreshIcon className="w-4 h-4" />;
       default:
         return null;
     }
   };
 
-  const filteredPayments = mockPayments.filter((payment) => {
+  const filteredPayments = payments?.filter((payment: Payment) => {
     const matchesSearch =
-      payment.user.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      payment.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      payment.id.toLowerCase().includes(searchQuery.toLowerCase());
+      payment.userId?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      payment.userId?.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      payment._id?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      payment.bookingId?.patientName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      payment.bookingId?.patientEmail?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      payment.razorpayPaymentId?.toLowerCase().includes(searchQuery.toLowerCase());
 
     if (activeFilter === "All") return matchesSearch;
+    
+    // Handle Successful filter which maps to both captured and successful statuses
+    if (activeFilter === "captured" || activeFilter === "successful") {
+      return matchesSearch && (payment.status === "captured" || payment.status === "successful");
+    }
+    
     return matchesSearch && payment.status.toLowerCase() === activeFilter.toLowerCase();
-  });
+  }) || [];
 
   const stats = {
-    total: mockPayments.filter(p => p.status === "successful").reduce((acc, p) => acc + p.amount, 0),
-    successful: mockPayments.filter(p => p.status === "successful").length,
-    failed: mockPayments.filter(p => p.status === "failed").length,
-    refunded: mockPayments.filter(p => p.status === "refunded").reduce((acc, p) => acc + p.amount, 0),
+    total: payments?.reduce((acc: number, p: Payment) => acc + p.amount, 0) || 0,
+    successful: payments?.filter((p: Payment) => p.status === "captured" || p.status === "successful").length || 0,
+    failed: payments?.filter((p: Payment) => p.status === "failed").length || 0,
+    refunded: payments?.filter((p: Payment) => p.status === "refunded").reduce((acc: number, p: Payment) => acc + p.amount, 0) || 0,
+    pending: payments?.filter((p: Payment) => p.status === "pending" || p.status === "created").length || 0,
   };
 
   return (
@@ -87,6 +138,15 @@ export default function Payments() {
           <p className="page-subtitle">Track and manage all platform transactions</p>
         </div>
         <div className="flex items-center gap-3">
+          <Button 
+            variant="outline" 
+            className="gap-2"
+            onClick={() => dispatch(fetchAllPayments())}
+            disabled={isLoading}
+          >
+            <RefreshIcon className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
           <Button variant="outline" className="gap-2">
             <Download className="w-4 h-4" />
             Export CSV
@@ -99,7 +159,7 @@ export default function Payments() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
         <div className="stat-card">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-success/10">
@@ -144,6 +204,17 @@ export default function Payments() {
             </div>
           </div>
         </div>
+        <div className="stat-card">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-info/10">
+              <RefreshIcon className="w-5 h-5 text-info" />
+            </div>
+            <div>
+              <p className="text-2xl font-semibold">{stats.pending}</p>
+              <p className="text-sm text-muted-foreground">Pending</p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Filters */}
@@ -161,10 +232,16 @@ export default function Payments() {
           {filters.map((filter) => (
             <button
               key={filter}
-              onClick={() => setActiveFilter(filter)}
+              onClick={() => {
+                if (filter === "Successful") {
+                  setActiveFilter("successful");
+                } else {
+                  setActiveFilter(filter === "All" ? "All" : filter.toLowerCase());
+                }
+              }}
               className={cn(
                 "filter-button",
-                activeFilter === filter && "filter-button-active"
+                activeFilter === (filter === "Successful" ? "successful" : filter.toLowerCase()) && "filter-button-active"
               )}
             >
               {filter}
@@ -201,19 +278,19 @@ export default function Payments() {
               </tr>
             </thead>
             <tbody>
-              {filteredPayments.map((payment) => (
-                <tr key={payment.id}>
-                  <td className="font-mono text-sm">{payment.id}</td>
+              {filteredPayments.map((payment: Payment) => (
+                <tr key={payment._id}>
+                  <td className="font-mono text-sm">{payment._id}</td>
                   <td>
                     <div>
-                      <p className="font-medium">{payment.user}</p>
-                      <p className="text-sm text-muted-foreground">{payment.email}</p>
+                      <p className="font-medium">{payment.userId?.name}</p>
+                      <p className="text-sm text-muted-foreground">{payment.userId?.email}</p>
                     </div>
                   </td>
-                  <td>{payment.plan}</td>
+                  <td>{payment.bookingId?.serviceName}</td>
                   <td className="font-semibold">₹{payment.amount}</td>
-                  <td className="text-muted-foreground">{payment.method}</td>
-                  <td className="text-muted-foreground">{payment.date}</td>
+                  <td className="text-muted-foreground">{payment.method || payment.currency}</td>
+                  <td className="text-muted-foreground">{new Date(payment.createdAt).toLocaleDateString()}</td>
                   <td>
                     <span className={cn("status-badge inline-flex items-center gap-1", getStatusBadge(payment.status as PaymentStatus))}>
                       {getStatusIcon(payment.status as PaymentStatus)}
@@ -225,7 +302,7 @@ export default function Payments() {
                       <Button variant="ghost" size="sm">
                         <Eye className="w-4 h-4" />
                       </Button>
-                      {payment.status === "successful" && (
+                      {payment.status === "captured" && (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -253,6 +330,7 @@ export default function Payments() {
                   </td>
                 </tr>
               ))}
+
             </tbody>
           </table>
         </div>
@@ -260,7 +338,7 @@ export default function Payments() {
         <div className="flex items-center justify-between px-4 py-3 border-t border-border">
           <p className="text-sm text-muted-foreground">
             Showing <span className="font-medium">{filteredPayments.length}</span> of{" "}
-            <span className="font-medium">{mockPayments.length}</span> transactions
+            <span className="font-medium">{payments?.length || 0}</span> transactions
           </p>
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" disabled>
@@ -290,7 +368,7 @@ export default function Payments() {
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <div>
                     <span className="text-muted-foreground">Transaction:</span>
-                    <span className="ml-2 font-mono">{selectedPayment.id}</span>
+                    <span className="ml-2 font-mono">{selectedPayment._id}</span>
                   </div>
                   <div>
                     <span className="text-muted-foreground">Amount:</span>
@@ -298,11 +376,11 @@ export default function Payments() {
                   </div>
                   <div>
                     <span className="text-muted-foreground">User:</span>
-                    <span className="ml-2">{selectedPayment.user}</span>
+                    <span className="ml-2">{selectedPayment.userId?.name}</span>
                   </div>
                   <div>
-                    <span className="text-muted-foreground">Plan:</span>
-                    <span className="ml-2">{selectedPayment.plan}</span>
+                    <span className="text-muted-foreground">Service:</span>
+                    <span className="ml-2">{selectedPayment.bookingId?.serviceName}</span>
                   </div>
                 </div>
               </div>
@@ -346,7 +424,7 @@ export default function Payments() {
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <div>
                     <span className="text-muted-foreground">Transaction:</span>
-                    <span className="ml-2 font-mono">{selectedPayment.id}</span>
+                    <span className="ml-2 font-mono">{selectedPayment._id}</span>
                   </div>
                   <div>
                     <span className="text-muted-foreground">Amount:</span>

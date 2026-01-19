@@ -96,6 +96,15 @@ export const API = {
   // questionnaires
   QUESTIONNAIRES: "/questionnaires",
   QUESTIONNAIRE_BY_ID: "/questionnaires/:id",
+
+  // payments
+  PAYMENTS: "/payments",
+  PAYMENTS_ADMIN_ALL: "/payments/admin/all",
+  PAYMENTS_CREATE_ORDER: "/payments/create-order",
+  PAYMENTS_VERIFY: "/payments/verify",
+  PAYMENTS_WEBHOOK: "/payments/webhook",
+  PAYMENTS_SUBSCRIPTION_ORDER: "/payments/create-subscription-order",
+  PAYMENTS_VERIFY_SUBSCRIPTION: "/payments/verify-subscription",
 };
 export const availabilityAPI = {
   // Get all availability
@@ -297,4 +306,25 @@ export const bookingAPI = {
 
   // Delete booking
   delete: (id) => apiClient.delete(`${API.BOOKING_BY_ID.replace(':id', id)}`),
+};
+
+// Payment API endpoints
+export const paymentAPI = {
+  // Get all payments (admin)
+  getAll: () => apiClient.get(API.PAYMENTS_ADMIN_ALL),
+
+  // Create payment order
+  createOrder: (data) => apiClient.post(API.PAYMENTS_CREATE_ORDER, data),
+
+  // Verify payment
+  verify: (data) => apiClient.post(API.PAYMENTS_VERIFY, data),
+
+  // Create subscription order
+  createSubscriptionOrder: (data) => apiClient.post(API.PAYMENTS_SUBSCRIPTION_ORDER, data),
+
+  // Verify subscription payment
+  verifySubscription: (data) => apiClient.post(API.PAYMENTS_VERIFY_SUBSCRIPTION, data),
+
+  // Handle payment webhook
+  handleWebhook: (data) => apiClient.post(API.PAYMENTS_WEBHOOK, data),
 };
