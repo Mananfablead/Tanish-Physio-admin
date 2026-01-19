@@ -31,6 +31,7 @@ interface Testimonial {
   rating: number;
   content: string;
   serviceUsed: string;
+  problem: string;
   status: "pending" | "approved" | "rejected";
   featured: boolean;
   createdAt: string;
@@ -50,6 +51,7 @@ export default function Testimonials() {
     rating: 5,
     content: "",
     serviceUsed: "",
+    problem: "",
     status: "pending" as "pending" | "approved" | "rejected",
     featured: false,
   });
@@ -64,6 +66,7 @@ export default function Testimonials() {
         rating: 5,
         content: "Exceptional care and professional treatment. The physiotherapist really understood my needs and helped me recover faster than expected.",
         serviceUsed: "Sports Injury Rehabilitation",
+        problem: "Knee injury from running",
         status: "approved",
         featured: true,
         createdAt: "2024-01-15T10:00:00Z",
@@ -77,6 +80,7 @@ export default function Testimonials() {
         rating: 4,
         content: "Great facility and knowledgeable staff. My back pain has significantly improved after just a few sessions.",
         serviceUsed: "Back Pain Treatment",
+        problem: "Chronic lower back pain",
         status: "approved",
         featured: false,
         createdAt: "2024-01-18T09:30:00Z",
@@ -89,6 +93,7 @@ export default function Testimonials() {
         rating: 5,
         content: "Outstanding service! The team is caring and the results speak for themselves. Highly recommend to anyone needing physiotherapy.",
         serviceUsed: "Post-Surgery Recovery",
+        problem: "Recovery after knee surgery",
         status: "pending",
         featured: false,
         createdAt: "2024-01-22T14:20:00Z",
@@ -102,6 +107,7 @@ export default function Testimonials() {
         rating: 3,
         content: "Decent service but felt rushed during sessions. Could use more personalized attention.",
         serviceUsed: "General Physiotherapy",
+        problem: "General muscle tension",
         status: "rejected",
         featured: false,
         createdAt: "2024-01-10T16:45:00Z",
@@ -134,6 +140,7 @@ export default function Testimonials() {
       rating: 5,
       content: "",
       serviceUsed: "",
+      problem: "",
       status: "pending",
       featured: false,
     });
@@ -148,6 +155,7 @@ export default function Testimonials() {
       rating: testimonial.rating,
       content: testimonial.content,
       serviceUsed: testimonial.serviceUsed,
+      problem: testimonial.problem,
       status: testimonial.status,
       featured: testimonial.featured,
     });
@@ -167,6 +175,7 @@ export default function Testimonials() {
       const newTestimonial: Testimonial = {
         id: Math.random().toString(36).substr(2, 9),
         ...formData,
+        problem: formData.problem,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -200,13 +209,19 @@ export default function Testimonials() {
     }
   };
 
-  const renderStars = (rating: number) => {
+  const renderStars = (rating: number, interactive: boolean = false) => {
     return (
       <div className="flex">
         {[...Array(5)].map((_, i) => (
           <Star
             key={i}
             className={`w-4 h-4 ${i < rating ? 'text-yellow-400 fill-current' : 'text-gray-300'}`}
+            onClick={() => {
+              if (interactive) {
+                setFormData({...formData, rating: i + 1});
+              }
+            }}
+            style={{ cursor: interactive ? 'pointer' : 'default' }}
           />
         ))}
       </div>
@@ -337,6 +352,7 @@ export default function Testimonials() {
               <TableRow>
                 <TableHead>Client</TableHead>
                 <TableHead>Rating</TableHead>
+                <TableHead>Problem</TableHead>
                 <TableHead>Service</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Featured</TableHead>
@@ -370,9 +386,12 @@ export default function Testimonials() {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
-                      {renderStars(testimonial.rating)}
+                      {renderStars(testimonial.rating, false)}
                       <span className="text-sm font-medium ml-1">{testimonial.rating}/5</span>
                     </div>
+                  </TableCell>
+                  <TableCell>
+                    <span className="text-sm">{testimonial.problem}</span>
                   </TableCell>
                   <TableCell>
                     <Badge variant="secondary">{testimonial.serviceUsed}</Badge>
@@ -447,16 +466,16 @@ export default function Testimonials() {
 
       {/* Testimonial Modal */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editingTestimonial ? "Edit Testimonial" : "Add New Testimonial"}
             </DialogTitle>
-            <DialogDescription>
+            {/* <DialogDescription>
               {editingTestimonial 
                 ? "Modify the testimonial details below" 
                 : "Add a new client testimonial"}
-            </DialogDescription>
+            </DialogDescription> */}
           </DialogHeader>
           
           <div className="space-y-4 py-4">
@@ -486,17 +505,9 @@ export default function Testimonials() {
               <div className="space-y-2">
                 <Label htmlFor="rating">Rating *</Label>
                 <div className="flex items-center gap-2">
-                  {renderStars(formData.rating)}
+                  {renderStars(formData.rating, true)}
                   <span className="ml-2 font-medium">{formData.rating}/5</span>
                 </div>
-                <input
-                  type="range"
-                  min="1"
-                  max="5"
-                  value={formData.rating}
-                  onChange={(e) => setFormData({...formData, rating: parseInt(e.target.value)})}
-                  className="w-full"
-                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="serviceUsed">Service Used *</Label>
@@ -507,6 +518,16 @@ export default function Testimonials() {
                   placeholder="e.g., Sports Injury Rehabilitation"
                 />
               </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="problem">Problem *</Label>
+              <Input
+                id="problem"
+                value={formData.problem}
+                onChange={(e) => setFormData({...formData, problem: e.target.value})}
+                placeholder="Enter the problem that was treated"
+              />
             </div>
             
             <div className="space-y-2">

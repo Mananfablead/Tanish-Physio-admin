@@ -7,7 +7,6 @@ interface FaqData {
     id: number;
     question: string;
     answer: string;
-    isPublic: boolean;
 }
 
 interface FaqSectionProps {
@@ -15,28 +14,16 @@ interface FaqSectionProps {
     onAdd: () => void;
     onDelete: (id: number) => void;
     onEdit: (item: FaqData) => void;
-    onTogglePublic: (section: string, value: boolean) => void;
 }
 
-export default function FaqSection({ data, onAdd, onDelete, onEdit, onTogglePublic }: FaqSectionProps) {
+export default function FaqSection({ data, onAdd, onDelete, onEdit }: FaqSectionProps) {
     return (
         <>
             <Card>
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 sm:p-6">
                     <h2 className="text-xl sm:text-2xl font-bold tracking-tight">Frequently Asked Questions</h2>
                     <div className="flex flex-wrap items-center gap-2">
-                        <Badge variant={data.every(faq => faq.isPublic) ? "default" : "secondary"} className="capitalize">
-                            {data.every(faq => faq.isPublic) ? 'Public' : 'Not Public'}
-                        </Badge>
-                        <Button 
-                            size="sm" 
-                            variant="outline" 
-                            onClick={() => onTogglePublic('faq', !data.every(faq => faq.isPublic))}
-                            className="mr-2"
-                        >
-                            {data.every(faq => faq.isPublic) ? <Eye className="w-4 h-4 mr-2" /> : <Eye className="w-4 h-4 mr-2" />}
-                            {data.every(faq => faq.isPublic) ? 'Hide' : 'Show'}
-                        </Button>
+
                         <Button size="sm" variant="outline" onClick={onAdd}>
                             <PlusCircle className="w-4 h-4 mr-2" /> Add FAQ
                         </Button>

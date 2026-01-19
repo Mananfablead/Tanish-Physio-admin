@@ -16,34 +16,21 @@ interface ContactData {
     address: string;
     hours: string;
     socialLinks: SocialLink[];
-    isPublic: boolean;
 }
 
 interface ContactSectionProps {
     data: ContactData;
     onEdit: (section: string, item: ContactData) => void;
-    onTogglePublic: (section: string, value: boolean) => void;
 }
 
-export default function ContactSection({ data, onEdit, onTogglePublic }: ContactSectionProps) {
+export default function ContactSection({ data, onEdit }: ContactSectionProps) {
     return (
         <div className="bg-card rounded-2xl border border-border overflow-hidden animate-fade-in shadow-lg">
             <div className="p-8">
                 <div className="flex flex-row items-center justify-between mb-8">
                     <h2 className="text-2xl font-bold tracking-tight">Contact Information</h2>
                     <div className="flex items-center gap-2">
-                        <Badge variant={data.isPublic ? "default" : "secondary"} className="capitalize">
-                            {data.isPublic ? 'Public' : 'Not Public'}
-                        </Badge>
-                        <Button 
-                            size="sm" 
-                            variant="outline" 
-                            onClick={() => onTogglePublic('contact', !data.isPublic)}
-                            className="mr-2"
-                        >
-                            {data.isPublic ? <Eye className="w-4 h-4 mr-2" /> : <Eye className="w-4 h-4 mr-2" />}
-                            {data.isPublic ? 'Hide' : 'Show'}
-                        </Button>
+
                         <Button size="sm" variant="outline" onClick={() => onEdit('contact', data)}>
                             <Edit className="w-4 h-4 mr-2" /> Edit
                         </Button>

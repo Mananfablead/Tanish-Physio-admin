@@ -15,34 +15,21 @@ interface HeroData {
     certifiedTherapists: boolean;
     rating: string;
     features: string[];
-    isPublic: boolean;
 }
 
 interface HeroSectionProps {
     data: HeroData;
     onEdit: (section: string, item: HeroData) => void;
-    onTogglePublic: (section: string, value: boolean) => void;
 }
 
-export default function HeroSection({ data, onEdit, onTogglePublic }: HeroSectionProps) {
+export default function HeroSection({ data, onEdit }: HeroSectionProps) {
     return (
         <div className="bg-card rounded-2xl border border-border overflow-hidden animate-fade-in shadow-lg">
             <div className="p-4 sm:p-6 md:p-8">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
                     <h2 className="text-xl sm:text-2xl font-bold tracking-tight">Hero Section</h2>
                     <div className="flex flex-wrap items-center gap-2">
-                        <Badge variant={data.isPublic ? "default" : "secondary"} className="capitalize">
-                            {data.isPublic ? 'Public' : 'Not Public'}
-                        </Badge>
-                        <Button 
-                            size="sm" 
-                            variant="outline" 
-                            onClick={() => onTogglePublic('hero', !data.isPublic)}
-                            className="mr-2"
-                        >
-                            {data.isPublic ? <EyeOff className="w-4 h-4 mr-2" /> : <Eye className="w-4 h-4 mr-2" />}
-                            {data.isPublic ? 'Hide' : 'Show'}
-                        </Button>
+
                         <Button size="sm" variant="outline" onClick={() => onEdit('hero', data)}>
                             <Edit3 className="w-4 h-4 mr-2" /> Edit
                         </Button>

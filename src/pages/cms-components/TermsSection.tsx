@@ -8,16 +8,14 @@ interface TermsData {
     content: string;
     lastUpdated?: string;
     version?: string;
-    isPublic: boolean;
 }
 
 interface TermsSectionProps {
     data: TermsData;
     onEdit: (section: string, item: TermsData) => void;
-    onTogglePublic: (section: string, value: boolean) => void;
 }
 
-export default function TermsSection({ data, onEdit, onTogglePublic }: TermsSectionProps) {
+export default function TermsSection({ data, onEdit }: TermsSectionProps) {
     return (
         <div className="bg-card rounded-2xl border border-border overflow-hidden animate-fade-in shadow-lg">
             <div className="p-4 sm:p-6 md:p-8">
@@ -34,18 +32,7 @@ export default function TermsSection({ data, onEdit, onTogglePublic }: TermsSect
                         </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
-                        <Badge variant={data.isPublic ? "default" : "secondary"} className="capitalize">
-                            {data.isPublic ? 'Public' : 'Not Public'}
-                        </Badge>
-                        <Button 
-                            size="sm" 
-                            variant="outline" 
-                            onClick={() => onTogglePublic('terms', !data.isPublic)}
-                            className="mr-2"
-                        >
-                            {data.isPublic ? <Eye className="w-4 h-4 mr-2" /> : <Eye className="w-4 h-4 mr-2" />}
-                            {data.isPublic ? 'Hide' : 'Show'}
-                        </Button>
+
                         <Button size="sm" variant="outline" onClick={() => onEdit('terms', data)}>
                             <Edit className="w-4 h-4 mr-2" /> Edit
                         </Button>

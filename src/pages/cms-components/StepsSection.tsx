@@ -8,7 +8,6 @@ interface StepData {
     description: string;
     icon: string;
     image: string;
-    isPublic: boolean;
 }
 
 interface StepsSectionProps {
@@ -16,28 +15,16 @@ interface StepsSectionProps {
     onAdd: () => void;
     onDelete: (id: number) => void;
     onEdit: (item: StepData) => void;
-    onTogglePublic: (section: string, value: boolean) => void;
 }
 
-export default function StepsSection({ data, onAdd, onDelete, onEdit, onTogglePublic }: StepsSectionProps) {
+export default function StepsSection({ data, onAdd, onDelete, onEdit }: StepsSectionProps) {
     return (
         <div className="bg-card rounded-2xl border border-border overflow-hidden animate-fade-in shadow-lg">
             <div className="p-4 sm:p-6 md:p-8">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
                     <h2 className="text-xl sm:text-2xl font-bold tracking-tight">How It Works Steps</h2>
                     <div className="flex flex-wrap items-center gap-2">
-                        <Badge variant={data.every(step => step.isPublic) ? "default" : "secondary"} className="capitalize">
-                            {data.every(step => step.isPublic) ? 'Public' : 'Not Public'}
-                        </Badge>
-                        <Button 
-                            size="sm" 
-                            variant="outline" 
-                            onClick={() => onTogglePublic('steps', !data.every(step => step.isPublic))}
-                            className="mr-2"
-                        >
-                            {data.every(step => step.isPublic) ? <Eye className="w-4 h-4 mr-2" /> : <Eye className="w-4 h-4 mr-2" />}
-                            {data.every(step => step.isPublic) ? 'Hide' : 'Show'}
-                        </Button>
+
                         <Button size="sm" variant="outline" onClick={onAdd}>
                             <PlusCircle className="w-4 h-4 mr-2" /> Add Step
                         </Button>

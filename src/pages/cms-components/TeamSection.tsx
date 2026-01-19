@@ -13,34 +13,21 @@ interface TeamData {
     availableToday: boolean;
     ctaText: string;
     viewProfileText: string;
-    isPublic: boolean;
 }
 
 interface TeamSectionProps {
     data: TeamData;
     onEdit: (section: string, item: TeamData) => void;
-    onTogglePublic: (section: string, value: boolean) => void;
 }
 
-export default function TeamSection({ data, onEdit, onTogglePublic }: TeamSectionProps) {
+export default function TeamSection({ data, onEdit }: TeamSectionProps) {
     return (
         <div className="bg-card rounded-2xl border border-border overflow-hidden animate-fade-in shadow-lg">
             <div className="p-4 sm:p-6 md:p-8">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
                     <h2 className="text-xl sm:text-2xl font-bold tracking-tight">Therapist</h2>
                     <div className="flex flex-wrap items-center gap-2">
-                        <Badge variant={data.isPublic ? "default" : "secondary"} className="capitalize">
-                            {data.isPublic ? 'Public' : 'Not Public'}
-                        </Badge>
-                        <Button 
-                            size="sm" 
-                            variant="outline" 
-                            onClick={() => onTogglePublic('featuredTherapist', !data.isPublic)}
-                            className="mr-2"
-                        >
-                            {data.isPublic ? <Eye className="w-4 h-4 mr-2" /> : <Eye className="w-4 h-4 mr-2" />}
-                            {data.isPublic ? 'Hide' : 'Show'}
-                        </Button>
+
                         <Button size="sm" variant="outline" onClick={() => onEdit('featuredTherapist', data)}>
                             <Edit className="w-4 h-4 mr-2" /> Edit
                         </Button>

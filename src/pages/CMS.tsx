@@ -92,7 +92,6 @@ interface HeroData {
     certifiedTherapists: boolean;
     rating: string;
     features: string[];
-    isPublic: boolean;
 }
 
 interface StepData {
@@ -101,7 +100,6 @@ interface StepData {
     description: string;
     icon: string;
     image: string;
-    isPublic: boolean;
 }
 
 interface ConditionData {
@@ -115,7 +113,6 @@ interface ConditionsSectionData {
     description: string;
     conditions: ConditionData[];
     image: string;
-    isPublic: boolean;
 }
 
 interface StatData {
@@ -130,14 +127,12 @@ interface WhyUsData {
     description: string;
     stats: StatData[];
     features: string[];
-    isPublic: boolean;
 }
 
 interface FaqData {
     id: number;
     question: string;
     answer: string;
-    isPublic: boolean;
 }
 
 interface TermsData {
@@ -146,7 +141,6 @@ interface TermsData {
     content: string;
     lastUpdated?: string;
     version?: string;
-    isPublic: boolean;
 }
 
 interface TeamMemberData {
@@ -160,7 +154,6 @@ interface TeamMemberData {
     availableToday: boolean;
     ctaText: string;
     viewProfileText: string;
-    isPublic: boolean;
 }
 
 interface SocialLink {
@@ -430,93 +423,60 @@ export default function CMS() {
             {/* Stats Cards */}
             <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                 {/* Calculate public/non-public counts */}
-                {(() => {
-                    // Count public and non-public for each section type
-                    let totalPublic = 0;
-                    let totalNonPublic = 0;
-                    
-                    // Count sections individually
-                    // Hero section
-                    if (data.hero.isPublic) totalPublic++; else totalNonPublic++;
-                    
-                    // Steps section (treat as single section - check first step as representative)
-                    if (data.steps.length > 0 && data.steps[0].isPublic) totalPublic++; else totalNonPublic++;
-                    
-                    // Conditions section
-                    if (data.conditions.isPublic) totalPublic++; else totalNonPublic++;
-                    
-                    // Why Us section
-                    if (data.whyUs.isPublic) totalPublic++; else totalNonPublic++;
-                    
-                    // FAQ section (treat as single section - check first FAQ as representative)
-                    if (data.faq.length > 0 && data.faq[0].isPublic) totalPublic++; else totalNonPublic++;
-                    
-                    // Terms section
-                    if (data.terms.isPublic) totalPublic++; else totalNonPublic++;
-                    
-                    // Featured Therapist section
-                    if (data.featuredTherapist.isPublic) totalPublic++; else totalNonPublic++;
-                    
-                    // Contact section
-                    if (data.contact.isPublic) totalPublic++; else totalNonPublic++;
-                    
-                    return (
-                        <>
-                            <Card>
-                                <CardContent className="p-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2 sm:p-3 rounded-lg bg-blue-100">
-                                            <Layers className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
-                                        </div>
-                                        <div>
-                                            <p className="text-xl sm:text-2xl font-semibold">{totalPublic + totalNonPublic}</p>
-                                            <p className="text-xs sm:text-sm text-muted-foreground">Total Sections</p>
-                                        </div>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                            <Card>
-                                <CardContent className="p-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2 sm:p-3 rounded-lg bg-green-100">
-                                            <Eye className="w-5 h-5 sm:w-6 sm:h-6 text-green-600" />
-                                        </div>
-                                        <div>
-                                            <p className="text-xl sm:text-2xl font-semibold">{totalPublic}</p>
-                                            <p className="text-xs sm:text-sm text-muted-foreground">Public</p>
-                                        </div>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                            <Card>
-                                <CardContent className="p-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2 sm:p-3 rounded-lg bg-orange-100">
-                                            <Shield className="w-5 h-5 sm:w-6 sm:h-6 text-orange-600" />
-                                        </div>
-                                        <div>
-                                            <p className="text-xl sm:text-2xl font-semibold">{totalNonPublic}</p>
-                                            <p className="text-xs sm:text-sm text-muted-foreground">Not Public</p>
-                                        </div>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                            <Card>
-                                <CardContent className="p-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2 sm:p-3 rounded-lg bg-purple-100">
-                                            <Edit3 className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600" />
-                                        </div>
-                                        <div>
-                                            <p className="text-xl sm:text-2xl font-semibold">{Object.keys(editingSections).filter(key => editingSections[key]).length}</p>
-                                            <p className="text-xs sm:text-sm text-muted-foreground">Active Editing</p>
-                                        </div>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        </>
-                    );
-                })()}
+                <>
+                    <Card>
+                        <CardContent className="p-4">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 sm:p-3 rounded-lg bg-blue-100">
+                                    <Layers className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
+                                </div>
+                                <div>
+                                    <p className="text-xl sm:text-2xl font-semibold">8</p>
+                                    <p className="text-xs sm:text-sm text-muted-foreground">Total Sections</p>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardContent className="p-4">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 sm:p-3 rounded-lg bg-green-100">
+                                    <Eye className="w-5 h-5 sm:w-6 sm:h-6 text-green-600" />
+                                </div>
+                                <div>
+                                    <p className="text-xl sm:text-2xl font-semibold">-</p>
+                                    <p className="text-xs sm:text-sm text-muted-foreground">Public</p>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardContent className="p-4">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 sm:p-3 rounded-lg bg-orange-100">
+                                    <Shield className="w-5 h-5 sm:w-6 sm:h-6 text-orange-600" />
+                                </div>
+                                <div>
+                                    <p className="text-xl sm:text-2xl font-semibold">-</p>
+                                    <p className="text-xs sm:text-sm text-muted-foreground">Not Public</p>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardContent className="p-4">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 sm:p-3 rounded-lg bg-purple-100">
+                                    <Edit3 className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600" />
+                                </div>
+                                <div>
+                                    <p className="text-xl sm:text-2xl font-semibold">{Object.keys(editingSections).filter(key => editingSections[key]).length}</p>
+                                    <p className="text-xs sm:text-sm text-muted-foreground">Active Editing</p>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </>
             </div>
 
             {/* Mobile/Tablet Dropdown */}
@@ -532,7 +492,6 @@ export default function CMS() {
                         <SelectItem value="whyus">Why Us</SelectItem>
                         <SelectItem value="faq">FAQ ({data.faq.length})</SelectItem>
                         <SelectItem value="contact">Contact</SelectItem>
-                        <SelectItem value="featuredTherapist">Therapists</SelectItem>
                         <SelectItem value="terms">Terms and Condition</SelectItem>
                     </SelectContent>
                 </Select>
@@ -551,7 +510,6 @@ export default function CMS() {
                         FAQ ({data.faq.length})
                     </TabsTrigger>
                     <TabsTrigger value="contact" className="text-xs sm:text-sm">Contact</TabsTrigger>
-                    <TabsTrigger value="featuredTherapist" className="text-xs sm:text-sm">Therapists</TabsTrigger>
                     <TabsTrigger value="terms" className="text-xs sm:text-sm">Terms & Condition</TabsTrigger>
                 </TabsList>
 
@@ -560,7 +518,6 @@ export default function CMS() {
                     <HeroSection 
                         data={data.hero} 
                         onEdit={openEditModal} 
-                        onTogglePublic={(section, value) => updateData(section, 'isPublic', value)}
                     />
                 </TabsContent>
 
@@ -571,14 +528,6 @@ export default function CMS() {
                         onAdd={addStep} 
                         onDelete={deleteStep} 
                         onEdit={(item) => openEditModal('step', item)} 
-                        onTogglePublic={(section, value) => {
-                            setData(prev => ({
-                                ...prev,
-                                [section]: prev[section].map(step =>
-                                    ({ ...step, isPublic: value })
-                                )
-                            }));
-                        }}
                     />
                 </TabsContent>
 
@@ -586,8 +535,7 @@ export default function CMS() {
                 <TabsContent value="conditions">
                     <ConditionsSection 
                         data={data.conditions} 
-                        onEdit={openEditModal} 
-                        onTogglePublic={(section, value) => updateData(section, 'isPublic', value)}
+                        onEdit={openEditModal}
                     />
                 </TabsContent>
 
@@ -596,7 +544,6 @@ export default function CMS() {
                     <WhyUsSection 
                         data={data.whyUs} 
                         onEdit={openEditModal} 
-                        onTogglePublic={(section, value) => updateData(section, 'isPublic', value)}
                     />
                 </TabsContent>
 
@@ -606,15 +553,7 @@ export default function CMS() {
                         data={data.faq} 
                         onAdd={addFaq} 
                         onDelete={deleteFaq} 
-                        onEdit={(item) => openEditModal('faq', item)} 
-                        onTogglePublic={(section, value) => {
-                            setData(prev => ({
-                                ...prev,
-                                [section]: prev[section].map(item =>
-                                    ({ ...item, isPublic: value })
-                                )
-                            }));
-                        }}
+                        onEdit={(item) => openEditModal('faq', item)}
                     />
                 </TabsContent>
 
@@ -623,7 +562,6 @@ export default function CMS() {
                     <TermsSection 
                         data={data.terms} 
                         onEdit={openEditModal} 
-                        onTogglePublic={(section, value) => updateData(section, 'isPublic', value)}
                     />
                 </TabsContent>
 
@@ -632,18 +570,16 @@ export default function CMS() {
                     <ContactSection 
                         data={data.contact} 
                         onEdit={openEditModal} 
-                        onTogglePublic={(section, value) => updateData(section, 'isPublic', value)}
                     />
                 </TabsContent>
 
                 {/* TEAM MEMBERS */}
-                <TabsContent value="featuredTherapist">
+                {/* <TabsContent value="featuredTherapist">
                     <TeamSection 
                         data={data.featuredTherapist} 
-                        onEdit={openEditModal} 
-                        onTogglePublic={(section, value) => updateData(section, 'isPublic', value)}
+                        onEdit={openEditModal}
                     />
-                </TabsContent>
+                </TabsContent> */}
             </Tabs>
 
             {/* Mobile Content - Show based on activeTab state */}
@@ -652,7 +588,6 @@ export default function CMS() {
                     <HeroSection 
                         data={data.hero} 
                         onEdit={openEditModal} 
-                        onTogglePublic={(section, value) => updateData(section, 'isPublic', value)}
                     />
                 )}
                 
@@ -661,15 +596,7 @@ export default function CMS() {
                         data={data.steps} 
                         onAdd={addStep} 
                         onDelete={deleteStep} 
-                        onEdit={(item) => openEditModal('step', item)} 
-                        onTogglePublic={(section, value) => {
-                            setData(prev => ({
-                                ...prev,
-                                [section]: prev[section].map(step =>
-                                    ({ ...step, isPublic: value })
-                                )
-                            }));
-                        }}
+                        onEdit={(item) => openEditModal('step', item)}
                     />
                 )}
                 
@@ -677,7 +604,6 @@ export default function CMS() {
                     <ConditionsSection 
                         data={data.conditions} 
                         onEdit={openEditModal} 
-                        onTogglePublic={(section, value) => updateData(section, 'isPublic', value)}
                     />
                 )}
                 
@@ -685,7 +611,6 @@ export default function CMS() {
                     <WhyUsSection 
                         data={data.whyUs} 
                         onEdit={openEditModal} 
-                        onTogglePublic={(section, value) => updateData(section, 'isPublic', value)}
                     />
                 )}
                 
@@ -694,15 +619,7 @@ export default function CMS() {
                         data={data.faq} 
                         onAdd={addFaq} 
                         onDelete={deleteFaq} 
-                        onEdit={(item) => openEditModal('faq', item)} 
-                        onTogglePublic={(section, value) => {
-                            setData(prev => ({
-                                ...prev,
-                                [section]: prev[section].map(item =>
-                                    ({ ...item, isPublic: value })
-                                )
-                            }));
-                        }}
+                        onEdit={(item) => openEditModal('faq', item)}
                     />
                 )}
                 
@@ -710,7 +627,6 @@ export default function CMS() {
                     <TermsSection 
                         data={data.terms} 
                         onEdit={openEditModal} 
-                        onTogglePublic={(section, value) => updateData(section, 'isPublic', value)}
                     />
                 )}
                 
@@ -718,7 +634,6 @@ export default function CMS() {
                     <ContactSection 
                         data={data.contact} 
                         onEdit={openEditModal} 
-                        onTogglePublic={(section, value) => updateData(section, 'isPublic', value)}
                     />
                 )}
                 
@@ -726,7 +641,6 @@ export default function CMS() {
                     <TeamSection 
                         data={data.featuredTherapist} 
                         onEdit={openEditModal} 
-                        onTogglePublic={(section, value) => updateData(section, 'isPublic', value)}
                     />
                 )}
             </div>
