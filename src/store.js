@@ -10,6 +10,7 @@ import availabilityReducer from "@/features/availability/availabilitySlice";
 import therapistReducer from "@/features/therapistSlice";
 import bookingReducer from "@/features/bookings/bookingSlice";
 import notificationReducer from "@/features/notifications/notificationSlice";
+import paymentReducer from "@/features/payments/paymentSlice";
 
 export const store = configureStore({
   reducer: {
@@ -24,6 +25,7 @@ export const store = configureStore({
     therapists: therapistReducer,
     notifications: notificationReducer,
     bookings: bookingReducer,
+    payments: paymentReducer,
   },
 });
 
