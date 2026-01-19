@@ -111,7 +111,13 @@ export default function Services() {
                       <td>
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-md bg-muted flex items-center justify-center overflow-hidden">
-                            {service.image ? (
+                            {(service.images && service.images.length > 0) ? (
+                              <img
+                                src={service.images[0]}
+                                alt={service.name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : service.image ? (
                               <img
                                 src={service.image}
                                 alt={service.name}

@@ -47,103 +47,136 @@ export default function AddService() {
     const [durationError, setDurationError] = useState("");
     const [imageError, setImageError] = useState("");
     const [videoError, setVideoError] = useState(""); // New state
-    const [imagePreview, setImagePreview] = useState<string | null>(null);
-    const [videoPreview, setVideoPreview] = useState<string | null>(null); // New state
+    const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+    const [videoPreviews, setVideoPreviews] = useState<string[]>([]); // New state
     const [isLoading, setIsLoading] = useState(false);
     const videoInputRef = useRef<HTMLInputElement>(null); // New ref
+const [selectedImages, setSelectedImages] = useState<File[]>([]);
+const [selectedVideos, setSelectedVideos] = useState<File[]>([]);
 
     /* ================= IMAGE ================= */
-    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    
+    const newFiles: File[] = [];
+    const newPreviews: string[] = [];
+    
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      
+      if (file.size > MAX_IMAGE_SIZE) {
+        setImageError(`Image size must be less than or equal to 5 MB`);
+        e.target.value = "";
+        return;
+      }
+      
+      newFiles.push(file);
+      newPreviews.push(URL.createObjectURL(file));
+    }
+    
+    setImageError("");
+    setSelectedImages(prev => [...prev, ...newFiles]);
+    setImagePreviews(prev => [...prev, ...newPreviews]);
+};
 
-        if (file.size > MAX_IMAGE_SIZE) {
-            setImageError("Image size must be less than or equal to 5 MB");
-            setImagePreview(null);
-            if (fileInputRef.current) fileInputRef.current.value = "";
-            return;
-        }
+    const removeImage = (index: number) => {
+    setImagePreviews(prev => prev.filter((_, i) => i !== index));
+    setSelectedImages(prev => prev.filter((_, i) => i !== index));
+    setImageError("");
+    if (fileInputRef.current && selectedImages.length <= 1) fileInputRef.current.value = "";
+};
 
-        setImageError("");
-        const reader = new FileReader();
-        reader.onloadend = () =>
-            setImagePreview(reader.result as string);
-        reader.readAsDataURL(file);
-    };
-
-    const removeImage = () => {
-        setImagePreview(null);
-        setImageError("");
-        if (fileInputRef.current) fileInputRef.current.value = "";
-    };
 
     // New video handler
-    const handleVideoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
+const handleVideoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    
+    const newFiles: File[] = [];
+    const newPreviews: string[] = [];
+    
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      
+      if (!file.type.startsWith("video/")) {
+        setVideoError("Please upload a valid video file");
+        e.target.value = "";
+        return;
+      }
+      
+      if (file.size > 100 * 1024 * 1024) {
+        setVideoError("Video size must be less than 100MB");
+        e.target.value = "";
+        return;
+      }
+      
+      newFiles.push(file);
+      newPreviews.push(file.name);
+    }
+    
+    setVideoError("");
+    setSelectedVideos(prev => [...prev, ...newFiles]);
+    setVideoPreviews(prev => [...prev, ...newPreviews]);
+};
 
-        // Check file type
-        if (!file.type.startsWith('video/')) {
-            setVideoError("Please upload a valid video file");
-            setVideoPreview(null);
-            if (videoInputRef.current) videoInputRef.current.value = "";
-            return;
-        }
 
-        // Check file size (100MB max)
-        if (file.size > 100 * 1024 * 1024) {
-            setVideoError("Video size must be less than 100MB");
-            setVideoPreview(null);
-            if (videoInputRef.current) videoInputRef.current.value = "";
-            return;
-        }
+  const removeVideo = (index: number) => {
+    setVideoPreviews(prev => prev.filter((_, i) => i !== index));
+    setSelectedVideos(prev => prev.filter((_, i) => i !== index));
+    setVideoError("");
+    if (videoInputRef.current && selectedVideos.length <= 1) videoInputRef.current.value = "";
+};
 
-        setVideoError("");
-        const reader = new FileReader();
-        reader.onloadend = () =>
-            setVideoPreview(reader.result as string);
-        reader.readAsDataURL(file);
-    };
-
-    const removeVideo = () => {
-        setVideoPreview(null);
-        setVideoError("");
-        if (videoInputRef.current) videoInputRef.current.value = "";
-    };
 
     /* ================= SUBMIT ================= */
-    const handleAddService = async () => {
-        const durationRegex = /^\d+\s*(min|mins|minutes)$/i;
-        if (!durationRegex.test(serviceForm.duration)) {
-            setDurationError('Duration must be like "60 min"');
-            return;
-        }
+const handleAddService = async () => {
+    const durationRegex = /^\d+\s*(min|mins|minutes)$/i;
+    if (!durationRegex.test(serviceForm.duration)) {
+        setDurationError('Duration must be like "60 min"');
+        return;
+    }
 
-        setIsLoading(true);
-        
-        const payload = {
-            name: serviceForm.name.trim(),
-            description: serviceForm.description.trim(),
-            about: serviceForm.about.trim(), // New field
-            price: Number(serviceForm.price),
-            duration: serviceForm.duration,
-            category: serviceForm.category,
-            status: serviceForm.status,
-            image: imagePreview || "",
-            video: videoPreview || "", // New field
-            features: serviceForm.features.filter(Boolean),
-            benefits: serviceForm.benefits.filter(Boolean),
-            prerequisites: serviceForm.prerequisites.filter(Boolean),
-        };
+    setIsLoading(true);
 
-        const res = await dispatch(createService(payload) as any);
-        setIsLoading(false);
+    const formData = new FormData();
 
-        if (createService.fulfilled.match(res)) {
-            dispatch(fetchServices());
-            navigate("/services");
-        }
-    };
+    formData.append("name", serviceForm.name.trim());
+    formData.append("description", serviceForm.description.trim());
+    formData.append("about", serviceForm.about.trim());
+    formData.append("price", serviceForm.price);
+    formData.append("duration", serviceForm.duration);
+    formData.append("category", serviceForm.category);
+    formData.append("status", serviceForm.status);
+
+    serviceForm.features.filter(Boolean).forEach(f =>
+        formData.append("features[]", f)
+    );
+    serviceForm.benefits.filter(Boolean).forEach(b =>
+        formData.append("benefits[]", b)
+    );
+    serviceForm.prerequisites.filter(Boolean).forEach(p =>
+        formData.append("prerequisites[]", p)
+    );
+
+    selectedImages.forEach(image => {
+        formData.append("images", image); // 👈 binary image
+    });
+
+    selectedVideos.forEach(video => {
+        formData.append("videos", video); // 👈 binary video
+    });
+
+    const res = await dispatch(createService(formData) as any);
+
+    setIsLoading(false);
+
+    if (createService.fulfilled.match(res)) {
+        dispatch(fetchServices());
+        navigate("/services");
+    }
+};
+
 
     /* ================= ARRAY HELPERS ================= */
     const updateArray = (
@@ -325,21 +358,33 @@ export default function AddService() {
                                 className="hidden"
                                 accept="image/*"
                                 onChange={handleImageChange}
+                                multiple
                             />
 
-                            {imagePreview ? (
-                                <>
-                                    <img src={imagePreview} className="w-16 h-16 rounded object-cover" />
-                                    <Button variant="ghost" onClick={removeImage}>
-                                        Remove
-                                    </Button>
-                                </>
-                            ) : (
-                                <>
-                                    <Upload className="w-6 h-6" />
-                                    <span>Upload image (max 5MB)</span>
-                                </>
-                            )}
+                            <div className="flex flex-wrap gap-2">
+                              {imagePreviews.map((preview, index) => (
+                                <div key={index} className="relative">
+                                  <img src={preview} className="w-16 h-16 rounded object-cover" />
+                                  <Button 
+                                    variant="outline" 
+                                    size="icon"
+                                    className="absolute -top-2 -right-2 h-6 w-6 p-0"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      removeImage(index);
+                                    }}
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </Button>
+                                </div>
+                              ))}
+                              {imagePreviews.length === 0 && (
+                                <div className="flex items-center gap-2">
+                                  <Upload className="w-6 h-6" />
+                                  <span>Upload image (max 5MB)</span>
+                                </div>
+                              )}
+                            </div>
                         </div>
 
                         {imageError && (
@@ -359,25 +404,33 @@ export default function AddService() {
                                 className="hidden"
                                 accept="video/*"
                                 onChange={handleVideoChange}
+                                multiple
                             />
 
-                            {videoPreview ? (
-                                <>
-                                    <div className="flex items-center gap-2">
-                                        <div className="bg-gray-200 px-3 py-1 rounded text-sm">
-                                            Video uploaded
-                                        </div>
-                                        <Button variant="ghost" size="sm" onClick={removeVideo}>
-                                            Remove
-                                        </Button>
-                                    </div>
-                                </>
-                            ) : (
-                                <>
-                                    <Upload className="w-6 h-6" />
-                                    <span>Upload video (max 100MB)</span>
-                                </>
-                            )}
+                            <div className="flex flex-wrap gap-2">
+                              {videoPreviews.map((preview, index) => (
+                                <div key={index} className="relative flex items-center gap-2 bg-gray-200 px-3 py-1 rounded text-sm">
+                                  <span>{preview}</span>
+                                  <Button 
+                                    variant="outline" 
+                                    size="icon"
+                                    className="h-6 w-6 p-0"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      removeVideo(index);
+                                    }}
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </Button>
+                                </div>
+                              ))}
+                              {videoPreviews.length === 0 && (
+                                <div className="flex items-center gap-2">
+                                  <Upload className="w-6 h-6" />
+                                  <span>Upload video (max 100MB)</span>
+                                </div>
+                              )}
+                            </div>
                         </div>
 
                         {videoError && (

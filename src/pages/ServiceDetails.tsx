@@ -94,11 +94,23 @@ export default function ServiceDetails() {
           <Card>
             <CardContent className="p-6">
               <div className="flex flex-col md:flex-row gap-6">
-                <img
-                  src={service.image || "https://via.placeholder.com/300"}
-                  alt={service.name}
-                  className="w-48 h-48 rounded-lg object-cover"
-                />
+                <div className="flex flex-wrap gap-2">
+                  {(service.images && service.images.length > 0 ? service.images : [service.image]).map((img, idx) => (
+                    <img
+                      key={idx}
+                      src={img || "https://via.placeholder.com/300"}
+                      alt={`${service.name} - ${idx + 1}`}
+                      className="w-48 h-48 rounded-lg object-cover"
+                    />
+                  ))}
+                  {(!service.images || service.images.length === 0) && !service.image && (
+                    <img
+                      src="https://via.placeholder.com/300"
+                      alt={service.name}
+                      className="w-48 h-48 rounded-lg object-cover"
+                    />
+                  )}
+                </div>
 
                 <div className="flex-1 space-y-3">
                   <div className="flex gap-2 flex-wrap">
@@ -139,6 +151,14 @@ export default function ServiceDetails() {
               <CardTitle>Service Details</CardTitle>
             </CardHeader>
             <CardContent className="space-y-5">
+              {/* Features */}
+              {/* Videos */}
+              <Section
+                title="Videos"
+                data={service.videos || []}
+                isVideo={true}
+              />
+
               {/* Features */}
               <Section
                 title="Features"
@@ -260,19 +280,39 @@ export default function ServiceDetails() {
 function Section({
   title,
   data,
+  isVideo = false,
 }: {
   title: string;
   data: string[];
+  isVideo?: boolean;
 }) {
   return (
     <div>
       <h4 className="font-medium mb-1">{title}</h4>
       {data && data.length > 0 ? (
-        <ul className="space-y-1 text-muted-foreground">
-          {data.map((item, i) => (
-            <li key={i}>• {item}</li>
-          ))}
-        </ul>
+        isVideo ? (
+          <div className="space-y-2">
+            {data.map((videoUrl, i) => (
+              <div key={i} className="mb-2">
+                <video
+                  controls
+                  className="w-full max-w-xs rounded-lg"
+                  poster="/api/placeholder/300/200"
+                >
+                  <source src={videoUrl} type="video/mp4" />
+                  Your browser does not support the video tag.
+                </video>
+                <p className="text-xs text-muted-foreground mt-1">Video {i + 1}</p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <ul className="space-y-1 text-muted-foreground">
+            {data.map((item, i) => (
+              <li key={i}>• {item}</li>
+            ))}
+          </ul>
+        )
       ) : (
         <p className="text-sm text-muted-foreground">
           No {title.toLowerCase()} available
