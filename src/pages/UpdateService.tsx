@@ -31,11 +31,13 @@ export default function UpdateService() {
     const navigate = useNavigate();
     const dispatch = useDispatch();
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const videoInputRef = useRef<HTMLInputElement>(null);
 
     /* ================= STATE ================= */
     const [serviceForm, setServiceForm] = useState({
         name: "",
         description: "",
+        about: "", // New field
         price: "",
         duration: "",
         category: "Therapy",
@@ -47,9 +49,15 @@ export default function UpdateService() {
 
     const [durationError, setDurationError] = useState("");
     const [imageError, setImageError] = useState("");
-    const [imagePreview, setImagePreview] = useState<string | null>(null);
+    const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+    const [videoPreviews, setVideoPreviews] = useState<string[]>([]);
     const [isLoading, setIsLoading] = useState(false);
-    const [initialImage, setInitialImage] = useState<string | null>(null);
+    const [initialImages, setInitialImages] = useState<string[]>([]);
+    const [initialVideos, setInitialVideos] = useState<string[]>([]);
+    
+    // New state for file handling
+    const [selectedImages, setSelectedImages] = useState<File[]>([]);
+    const [selectedVideos, setSelectedVideos] = useState<File[]>([]);
 
     const { currentService: service, loading: serviceLoading } = useSelector((state: any) => state.services);
 
@@ -64,6 +72,7 @@ export default function UpdateService() {
             setServiceForm({
                 name: service.name || "",
                 description: service.description || "",
+                about: service.about || "", // New field
                 price: (service.price || service.price === 0) ? service.price.toString() : "",
                 duration: service.duration || "",
                 category: service.category || "Therapy",
@@ -74,35 +83,88 @@ export default function UpdateService() {
                 prerequisites: service.prerequisites || [],
                 benefits: service.benefits || [],
             });
-            setImagePreview(service.image || null);
-            setInitialImage(service.image || null);
+            
+            // Set initial images and videos from the service
+            setInitialImages(service.images || []);
+            setInitialVideos(service.videos || []);
+            setImagePreviews(service.images || []);
+            setVideoPreviews(service.videos || []);
         }
     }, [service, id]);
 
     /* ================= IMAGE ================= */
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-
-        if (file.size > MAX_IMAGE_SIZE) {
-            setImageError("Image size must be less than or equal to 5 MB");
-            setImagePreview(null);
-            if (fileInputRef.current) fileInputRef.current.value = "";
+        const files = e.target.files;
+        if (!files) return;
+        
+        const newFiles: File[] = [];
+        const newPreviews: string[] = [];
+        
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          
+          if (file.size > MAX_IMAGE_SIZE) {
+            setImageError(`Image size must be less than or equal to 5 MB`);
+            e.target.value = "";
             return;
+          }
+          
+          newFiles.push(file);
+          newPreviews.push(URL.createObjectURL(file));
         }
-
+        
         setImageError("");
-        const reader = new FileReader();
-        reader.onloadend = () =>
-            setImagePreview(reader.result as string);
-        reader.readAsDataURL(file);
+        setSelectedImages(prev => [...prev, ...newFiles]);
+        setImagePreviews(prev => [...prev, ...newPreviews]);
+    };
+    
+    const removeImage = (index: number) => {
+        setImagePreviews(prev => prev.filter((_, i) => i !== index));
+        setSelectedImages(prev => prev.filter((_, i) => i !== index));
+        setImageError("");
+        if (fileInputRef.current && selectedImages.length <= 1) fileInputRef.current.value = "";
+    };
+    
+    // New video handler
+    const handleVideoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = e.target.files;
+        if (!files) return;
+        
+        const newFiles: File[] = [];
+        const newPreviews: string[] = [];
+        
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          
+          if (!file.type.startsWith("video/")) {
+            setImageError("Please upload a valid video file");
+            e.target.value = "";
+            return;
+          }
+          
+          if (file.size > 100 * 1024 * 1024) { // 100MB limit
+            setImageError("Video size must be less than 100MB");
+            e.target.value = "";
+            return;
+          }
+          
+          newFiles.push(file);
+          newPreviews.push(file.name);
+        }
+        
+        setImageError("");
+        setSelectedVideos(prev => [...prev, ...newFiles]);
+        setVideoPreviews(prev => [...prev, ...newPreviews]);
+    };
+    
+    const removeVideo = (index: number) => {
+        setVideoPreviews(prev => prev.filter((_, i) => i !== index));
+        setSelectedVideos(prev => prev.filter((_, i) => i !== index));
+        setImageError("");
+        if (videoInputRef.current && selectedVideos.length <= 1) videoInputRef.current.value = "";
     };
 
-    const removeImage = () => {
-        setImagePreview(null);
-        setImageError("");
-        if (fileInputRef.current) fileInputRef.current.value = "";
-    };
+
 
     /* ================= SUBMIT ================= */
     const handleUpdateService = async () => {
@@ -113,21 +175,37 @@ export default function UpdateService() {
         }
 
         setIsLoading(true);
-        
-        const payload = {
-            name: serviceForm.name.trim(),
-            description: serviceForm.description.trim(),
-            price: Number(serviceForm.price),
-            duration: serviceForm.duration,
-            category: serviceForm.category,
-            status: serviceForm.status,
-            image: imagePreview || initialImage || "",
-            features: serviceForm.features.filter(Boolean),
-            benefits: serviceForm.benefits.filter(Boolean),
-            prerequisites: serviceForm.prerequisites.filter(Boolean),
-        };
 
-        const res = await dispatch(updateService({ id: id, serviceData: payload }) as any);
+        const formData = new FormData();
+
+        formData.append("name", serviceForm.name.trim());
+        formData.append("description", serviceForm.description.trim());
+        formData.append("about", serviceForm.about.trim());
+        formData.append("price", serviceForm.price);
+        formData.append("duration", serviceForm.duration);
+        formData.append("category", serviceForm.category);
+        formData.append("status", serviceForm.status);
+
+        serviceForm.features.filter(Boolean).forEach(f =>
+            formData.append("features[]", f)
+        );
+        serviceForm.benefits.filter(Boolean).forEach(b =>
+            formData.append("benefits[]", b)
+        );
+        serviceForm.prerequisites.filter(Boolean).forEach(p =>
+            formData.append("prerequisites[]", p)
+        );
+
+        // Add new images and videos to the form data
+        selectedImages.forEach(image => {
+            formData.append("images", image);
+        });
+
+        selectedVideos.forEach(video => {
+            formData.append("videos", video);
+        });
+
+        const res = await dispatch(updateService({ id: id, serviceData: formData }) as any);
         setIsLoading(false);
 
         if (updateService.fulfilled.match(res)) {
@@ -205,6 +283,15 @@ export default function UpdateService() {
                         onChange={(e) =>
                             setServiceForm({ ...serviceForm, description: e.target.value })
                         }
+                    />
+
+                    <Textarea
+                        placeholder="About This Service (Full Information)"
+                        value={serviceForm.about}
+                        onChange={(e) =>
+                            setServiceForm({ ...serviceForm, about: e.target.value })
+                        }
+                        rows={4}
                     />
 
                     <div className="grid grid-cols-2 gap-4">
@@ -318,21 +405,79 @@ export default function UpdateService() {
                                 className="hidden"
                                 accept="image/*"
                                 onChange={handleImageChange}
+                                multiple
                             />
 
-                            {imagePreview ? (
-                                <>
-                                    <img src={imagePreview} className="w-16 h-16 rounded object-cover" />
-                                    <Button variant="ghost" onClick={removeImage}>
-                                        Remove
-                                    </Button>
-                                </>
-                            ) : (
-                                <>
-                                    <Upload className="w-6 h-6" />
-                                    <span>Upload image (max 5MB)</span>
-                                </>
-                            )}
+                            <div className="flex flex-wrap gap-2">
+                              {imagePreviews.map((preview, index) => (
+                                <div key={index} className="relative">
+                                  <img src={preview} className="w-16 h-16 rounded object-cover" />
+                                  <Button 
+                                    variant="outline" 
+                                    size="icon"
+                                    className="absolute -top-2 -right-2 h-6 w-6 p-0"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      removeImage(index);
+                                    }}
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </Button>
+                                </div>
+                              ))}
+                              {imagePreviews.length === 0 && (
+                                <div className="flex items-center gap-2">
+                                  <Upload className="w-6 h-6" />
+                                  <span>Upload image (max 5MB)</span>
+                                </div>
+                              )}
+                            </div>
+                        </div>
+
+                        {imageError && (
+                            <p className="text-sm text-red-500 mt-1">{imageError}</p>
+                        )}
+                    </div>
+
+                    {/* Video */}
+                    <div>
+                        <div
+                            className="flex items-center gap-4 border border-dashed p-4 rounded cursor-pointer"
+                            onClick={() => videoInputRef.current?.click()}
+                        >
+                            <input
+                                ref={videoInputRef}
+                                type="file"
+                                className="hidden"
+                                accept="video/*"
+                                onChange={handleVideoChange}
+                                multiple
+                            />
+
+                            <div className="flex flex-wrap gap-2">
+                              {videoPreviews.map((preview, index) => (
+                                <div key={index} className="relative flex items-center gap-2 bg-gray-200 px-3 py-1 rounded text-sm">
+                                  <span>{preview}</span>
+                                  <Button 
+                                    variant="outline" 
+                                    size="icon"
+                                    className="h-6 w-6 p-0"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      removeVideo(index);
+                                    }}
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </Button>
+                                </div>
+                              ))}
+                              {videoPreviews.length === 0 && (
+                                <div className="flex items-center gap-2">
+                                  <Upload className="w-6 h-6" />
+                                  <span>Upload video (max 100MB)</span>
+                                </div>
+                              )}
+                            </div>
                         </div>
 
                         {imageError && (
@@ -344,7 +489,7 @@ export default function UpdateService() {
                     <div className="flex gap-3">
                         <Button
                             onClick={handleUpdateService}
-                            disabled={!serviceForm.name || !serviceForm.price || !!imageError || isLoading}
+                            disabled={!serviceForm.name || !serviceForm.price || !serviceForm.duration || !!imageError || isLoading}
                         >
                             {isLoading ? (
                                 <>
