@@ -26,15 +26,25 @@ import logo from "../../assets/logo.webp";
 import { cn } from "@/lib/utils";
 import { useDispatch } from "react-redux";
 import { logout } from "@/features/auth/authSlice";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/" },
   { icon: Users, label: "Clients", path: "/users" },
   // { icon: UserCog, label: "Staff", path: "/therapists" },
   { icon: ClipboardList, label: "Services", path: "/services" },
-  { icon: BookOpen, label: "Courses", path: "/courses" },
+  // { icon: BookOpen, label: "Courses", path: "/courses" },
   { icon: ClipboardList, label: "Questionnaires", path: "/questionnaires" },
   { icon: Clock, label: "Schedule", path: "/availability" },
-  { icon: Calendar, label: "Bookings", path: "/bookings" },
+  { icon: Calendar, label: "Service Bookings", path: "/bookings" },
   { icon: Calendar, label: "Sessions", path: "/sessions" },
   { icon: Video, label: "Live Sessions", path: "/live-sessions" },
   { icon: Video, label: "Session Recordings", path: "/session-recordings" },
@@ -57,6 +67,7 @@ export function AdminSidebar({ isMobileOpen, onMobileClose, collapsed: propColla
   const location = useLocation();
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
   return (
     <aside
       className={cn(
@@ -126,11 +137,7 @@ export function AdminSidebar({ isMobileOpen, onMobileClose, collapsed: propColla
       {/* Footer */}
       <div className="border-t border-sidebar-border p-2">
         <button
-          onClick={() => {
-            dispatch(logout());
-            navigate("/login");
-            onMobileClose();
-          }}
+          onClick={() => setIsLogoutDialogOpen(true)}
           className={cn(
             "flex items-center gap-3 px-3 py-2.5 rounded-lg w-full text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors",
             effectiveCollapsed && "justify-center"
@@ -140,6 +147,32 @@ export function AdminSidebar({ isMobileOpen, onMobileClose, collapsed: propColla
           {!effectiveCollapsed && <span className="text-sm font-medium">Logout</span>}
         </button>
       </div>
+
+      {/* Logout Confirmation Modal */}
+      <AlertDialog open={isLogoutDialogOpen} onOpenChange={setIsLogoutDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure you want to logout?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You will be signed out of your admin account. Any unsaved changes will be lost.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setIsLogoutDialogOpen(false)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => {
+                dispatch(logout());
+                navigate("/login");
+                onMobileClose();
+                setIsLogoutDialogOpen(false);
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Logout
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </aside>
   );
 }

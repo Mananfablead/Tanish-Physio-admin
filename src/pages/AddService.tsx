@@ -349,7 +349,7 @@ const handleAddService = async () => {
                     {/* Image */}   
                     <div>
                         <div
-                            className="flex items-center gap-4 border border-dashed p-4 rounded cursor-pointer"
+                            className="flex flex-col gap-4 border border-dashed p-4 rounded cursor-pointer"
                             onClick={() => fileInputRef.current?.click()}
                         >
                             <input
@@ -360,31 +360,36 @@ const handleAddService = async () => {
                                 onChange={handleImageChange}
                                 multiple
                             />
-
-                            <div className="flex flex-wrap gap-2">
-                              {imagePreviews.map((preview, index) => (
-                                <div key={index} className="relative">
-                                  <img src={preview} className="w-16 h-16 rounded object-cover" />
-                                  <Button 
-                                    variant="outline" 
-                                    size="icon"
-                                    className="absolute -top-2 -right-2 h-6 w-6 p-0"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      removeImage(index);
-                                    }}
-                                  >
-                                    <X className="w-3 h-3" />
-                                  </Button>
+                            
+                            {imagePreviews.length > 0 ? (
+                                <div className="flex flex-wrap gap-2">
+                                    {imagePreviews.map((preview, index) => (
+                                        <div key={index} className="relative">
+                                            <img src={preview} className="w-16 h-16 rounded object-cover" />
+                                            <Button 
+                                                variant="outline" 
+                                                size="icon"
+                                                className="absolute -top-2 -right-2 h-6 w-6 p-0"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    removeImage(index);
+                                                }}
+                                            >
+                                                <X className="w-3 h-3" />
+                                            </Button>
+                                        </div>
+                                    ))}
+                                    <div className="flex items-center gap-2">
+                                        <Upload className="w-6 h-6" />
+                                        <span>Add More Images</span>
+                                    </div>
                                 </div>
-                              ))}
-                              {imagePreviews.length === 0 && (
+                            ) : (
                                 <div className="flex items-center gap-2">
-                                  <Upload className="w-6 h-6" />
-                                  <span>Upload image (max 5MB)</span>
+                                    <Upload className="w-6 h-6" />
+                                    <span>Upload image (max 5MB)</span>
                                 </div>
-                              )}
-                            </div>
+                            )}
                         </div>
 
                         {imageError && (
@@ -395,7 +400,7 @@ const handleAddService = async () => {
                     {/* Video */}
                     <div>
                         <div
-                            className="flex items-center gap-4 border border-dashed p-4 rounded cursor-pointer"
+                            className="flex flex-col gap-4 border border-dashed p-4 rounded cursor-pointer"
                             onClick={() => videoInputRef.current?.click()}
                         >
                             <input
@@ -406,31 +411,36 @@ const handleAddService = async () => {
                                 onChange={handleVideoChange}
                                 multiple
                             />
-
-                            <div className="flex flex-wrap gap-2">
-                              {videoPreviews.map((preview, index) => (
-                                <div key={index} className="relative flex items-center gap-2 bg-gray-200 px-3 py-1 rounded text-sm">
-                                  <span>{preview}</span>
-                                  <Button 
-                                    variant="outline" 
-                                    size="icon"
-                                    className="h-6 w-6 p-0"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      removeVideo(index);
-                                    }}
-                                  >
-                                    <X className="w-3 h-3" />
-                                  </Button>
+                            
+                            {videoPreviews.length > 0 ? (
+                                <div className="flex flex-wrap gap-2">
+                                    {videoPreviews.map((preview, index) => (
+                                        <div key={index} className="relative flex items-center gap-2 bg-gray-200 px-3 py-1 rounded text-sm">
+                                            <span>{preview}</span>
+                                            <Button 
+                                                variant="outline" 
+                                                size="icon"
+                                                className="h-6 w-6 p-0"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    removeVideo(index);
+                                                }}
+                                            >
+                                                <X className="w-3 h-3" />
+                                            </Button>
+                                        </div>
+                                    ))}
+                                    <div className="flex items-center gap-2">
+                                        <Upload className="w-6 h-6" />
+                                        <span>Add More Videos</span>
+                                    </div>
                                 </div>
-                              ))}
-                              {videoPreviews.length === 0 && (
+                            ) : (
                                 <div className="flex items-center gap-2">
-                                  <Upload className="w-6 h-6" />
-                                  <span>Upload video (max 100MB)</span>
+                                    <Upload className="w-6 h-6" />
+                                    <span>Upload video (max 100MB)</span>
                                 </div>
-                              )}
-                            </div>
+                            )}
                         </div>
 
                         {videoError && (

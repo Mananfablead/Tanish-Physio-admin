@@ -5,6 +5,16 @@ import { Bell, LogOut, Search, User, Menu, ChevronDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useDispatch, useSelector } from "react-redux";
 import {
   fetchProfile,
@@ -21,6 +31,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   console.log("object", user)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
   useEffect(() => {
     dispatch(fetchProfile());
   }, [dispatch]);
@@ -167,11 +178,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                 <DropdownMenuItem onClick={() => navigate("/profile")}>
                   <User className="w-5 h-5 mr-3 text-primary" /> Profile
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => {
-                  dispatch(logout());
-                  navigate("/login");
-
-                }}>
+                <DropdownMenuItem onClick={() => setIsLogoutDialogOpen(true)}>
                   <LogOut className="w-5 h-5 mr-3 text-primary flex-shrink-0" />  Logout
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -184,6 +191,31 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           {children}
         </main>
       </div>
+
+      {/* Logout Confirmation Modal */}
+      <AlertDialog open={isLogoutDialogOpen} onOpenChange={setIsLogoutDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure you want to logout?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You will be signed out of your admin account. Any unsaved changes will be lost.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setIsLogoutDialogOpen(false)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => {
+                dispatch(logout());
+                navigate("/login");
+                setIsLogoutDialogOpen(false);
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Logout
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

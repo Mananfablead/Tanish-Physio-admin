@@ -18,6 +18,16 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -87,6 +97,7 @@ export default function Questionnaires() {
     options: [""],
   });
   const [saving, setSaving] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   // Load questionnaires on component mount
   useEffect(() => {
@@ -156,11 +167,16 @@ export default function Questionnaires() {
     setIsEditModalOpen(true);
   };
 
-  const deleteQuestion = async () => {
+  const deleteQuestion = () => {
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteQuestion = async () => {
     if (!currentQuestionnaire || !currentQuestionnaire._id) {
       console.error("No active questionnaire to update");
       setIsEditModalOpen(false);
       setSelectedQuestion(null);
+      setIsDeleteDialogOpen(false);
       return;
     }
     
@@ -185,16 +201,23 @@ export default function Questionnaires() {
         
         setIsEditModalOpen(false);
         setSelectedQuestion(null);
+        setIsDeleteDialogOpen(false);
         
         // The questions state will be updated via the useEffect hook
       } catch (error) {
         console.error("Error removing question:", error);
+        setIsDeleteDialogOpen(false);
       }
     } else {
       // If no questionnaire exists, just close the modal
       setIsEditModalOpen(false);
       setSelectedQuestion(null);
+      setIsDeleteDialogOpen(false);
     }
+  };
+
+  const cancelDeleteQuestion = () => {
+    setIsDeleteDialogOpen(false);
   };
 
   const saveQuestion = async () => {
@@ -714,6 +737,27 @@ export default function Questionnaires() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Modal */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the question from the questionnaire.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={cancelDeleteQuestion}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDeleteQuestion}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete Question
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

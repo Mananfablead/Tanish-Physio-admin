@@ -5,6 +5,16 @@ import { Plus, Edit2, ToggleLeft, ToggleRight, Search, ChevronLeft, ChevronRight
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -57,6 +67,8 @@ export default function Subscriptions() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isEditPlanOpen, setIsEditPlanOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null);
+  const [deletePlanId, setDeletePlanId] = useState<string | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   // State for the plan form
   const [planForm, setPlanForm] = useState({
@@ -257,28 +269,45 @@ export default function Subscriptions() {
     }
   };
 
-  // Handle delete plan
-  const handleDeletePlan = async (planId: string) => {
-    try {
-        const result = await dispatch(deleteSubscriptionPlan(planId));
+  // Handle delete plan - opens confirmation dialog
+  const handleDeletePlan = (planId: string) => {
+    setDeletePlanId(planId);
+    setIsDeleteDialogOpen(true);
+  };
 
-        if (deleteSubscriptionPlan.fulfilled.match(result)) {
-          toast({
-            title: "Success",
-            description: "Subscription plan deleted successfully!",
-          });
-          dispatch(fetchAllSubscriptionPlans());
-        } else {
-          throw new Error(result.payload || 'Failed to delete subscription plan');
-        }
-      } catch (err: any) {
-        console.error('Error deleting subscription plan:', err);
+  // Confirm delete plan
+  const confirmDeletePlan = async () => {
+    if (!deletePlanId) return;
+    
+    try {
+      const result = await dispatch(deleteSubscriptionPlan(deletePlanId));
+
+      if (deleteSubscriptionPlan.fulfilled.match(result)) {
         toast({
-          title: "Error",
-          description: err.message || 'Failed to delete subscription plan',
-          variant: "destructive",
+          title: "Success",
+          description: "Subscription plan deleted successfully!",
         });
+        dispatch(fetchAllSubscriptionPlans());
+      } else {
+        throw new Error(result.payload || 'Failed to delete subscription plan');
       }
+    } catch (err: any) {
+      console.error('Error deleting subscription plan:', err);
+      toast({
+        title: "Error",
+        description: err.message || 'Failed to delete subscription plan',
+        variant: "destructive",
+      });
+    } finally {
+      setDeletePlanId(null);
+      setIsDeleteDialogOpen(false);
+    }
+  };
+
+  // Cancel delete plan
+  const cancelDeletePlan = () => {
+    setDeletePlanId(null);
+    setIsDeleteDialogOpen(false);
   };
   if (loading || !plans) {
     return <PageLoader text="Loading plans..." />;
@@ -668,6 +697,27 @@ export default function Subscriptions() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Modal */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the subscription plan and remove it from all users.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={cancelDeletePlan}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDeletePlan}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete Plan
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

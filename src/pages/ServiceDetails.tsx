@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,8 @@ export default function ServiceDetails() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   const {
     currentService: service,
@@ -35,6 +37,18 @@ export default function ServiceDetails() {
     if (id) dispatch(fetchServiceById(id));
     dispatch(fetchServices());
   }, [id, dispatch]);
+  
+  // Combine all available images
+  const combinedImages = [];
+  if (service?.images && service.images.length > 0) {
+    combinedImages.push(...service.images);
+  }
+  if (service?.image) {
+    combinedImages.push(service.image);
+  }
+  if (combinedImages.length === 0) {
+    combinedImages.push("https://via.placeholder.com/300");
+  }
 
   /* =======================
       LOADING
@@ -94,21 +108,79 @@ export default function ServiceDetails() {
           <Card>
             <CardContent className="p-6">
               <div className="flex flex-col md:flex-row gap-6">
-                <div className="flex flex-wrap gap-2">
-                  {(service.images && service.images.length > 0 ? service.images : [service.image]).map((img, idx) => (
-                    <img
-                      key={idx}
-                      src={img || "https://via.placeholder.com/300"}
-                      alt={`${service.name} - ${idx + 1}`}
-                      className="w-48 h-48 rounded-lg object-cover"
-                    />
-                  ))}
-                  {(!service.images || service.images.length === 0) && !service.image && (
-                    <img
-                      src="https://via.placeholder.com/300"
-                      alt={service.name}
-                      className="w-48 h-48 rounded-lg object-cover"
-                    />
+                <div className="flex flex-col items-center">
+                  {/* Image Carousel */}
+                  <div className="relative w-48 h-48 overflow-hidden rounded-lg">
+                    {combinedImages.length > 0 ? (
+                      <img
+                        src={combinedImages[currentImageIndex]}
+                        alt={`${service.name} - ${currentImageIndex + 1}`}
+                        className="w-full h-full object-cover transition-opacity duration-300"
+                      />
+                    ) : (
+                      <img
+                        src="https://via.placeholder.com/300"
+                        alt={service.name}
+                        className="w-full h-full object-cover"
+                      />
+                    )}
+                    
+                    {/* Navigation Arrows */}
+                    {combinedImages.length > 1 && (
+                      <>
+                        <button 
+                          className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 text-white p-1 rounded-full hover:bg-black/70 transition-colors"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCurrentImageIndex(prev => 
+                              prev === 0 ? combinedImages.length - 1 : prev - 1
+                            );
+                          }}
+                          aria-label="Previous image"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-chevron-left">
+                            <path d="m15 18-6-6 6-6"/>
+                          </svg>
+                        </button>
+                        <button 
+                          className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 text-white p-1 rounded-full hover:bg-black/70 transition-colors"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCurrentImageIndex(prev => 
+                              prev === combinedImages.length - 1 ? 0 : prev + 1
+                            );
+                          }}
+                          aria-label="Next image"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-chevron-right">
+                            <path d="m9 18 6-6-6-6"/>
+                          </svg>
+                        </button>
+                      </>
+                    )}
+                    
+                    {/* Image Indicators */}
+                    {combinedImages.length > 1 && (
+                      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
+                        {combinedImages.map((_, idx) => (
+                          <div 
+                            key={idx}
+                            className={`w-2 h-2 rounded-full ${currentImageIndex === idx ? 'bg-white' : 'bg-white/50'}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setCurrentImageIndex(idx);
+                            }}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Image Count */}
+                  {combinedImages.length > 1 && (
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      {currentImageIndex + 1} of {combinedImages.length}
+                    </p>
                   )}
                 </div>
 
@@ -150,38 +222,53 @@ export default function ServiceDetails() {
             <CardHeader>
               <CardTitle>Service Details</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-5">
-              {/* Features */}
-              {/* Videos */}
-              <Section
-                title="Videos"
-                data={service.videos || []}
-                isVideo={true}
-              />
-
-              {/* Features */}
-              <Section
-                title="Features"
-                data={service.features}
-              />
-
-              {/* Benefits */}
-              <Section
-                title="Benefits"
-                data={service.benefits}
-              />
-
-              {/* Prerequisites */}
-              <Section
-                title="Prerequisites"
-                data={service.prerequisites}
-              />
-
-              {/* Contraindications */}
-              <Section
-                title="Contraindications"
-                data={service.contraindications}
-              />
+            <CardContent className="p-6 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="space-y-6">
+                  {/* About Section */}
+                  {service.about && (
+                    <div className="pb-4 border-b border-border last:border-0 last:pb-0">
+                      <h4 className="font-medium text-lg mb-3">About This Service</h4>
+                      <p className="text-muted-foreground whitespace-pre-line leading-relaxed">
+                        {service.about}
+                      </p>
+                    </div>
+                  )}
+                  
+                  {/* Features */}
+                  <Section
+                    title="Features"
+                    data={service.features}
+                  />
+                  
+                  {/* Benefits */}
+                  <Section
+                    title="Benefits"
+                    data={service.benefits}
+                  />
+                </div>
+                
+                <div className="space-y-6">
+                  {/* Videos */}
+                  <Section
+                    title="Videos"
+                    data={service.videos || []}
+                    isVideo={true}
+                  />
+                  
+                  {/* Prerequisites */}
+                  <Section
+                    title="Prerequisites"
+                    data={service.prerequisites}
+                  />
+                  
+                  {/* Contraindications */}
+                  <Section
+                    title="Contraindications"
+                    data={service.contraindications}
+                  />
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -210,7 +297,7 @@ export default function ServiceDetails() {
           </Card>
 
           {/* Related */}
-          <Card>
+          {/* <Card>
             <CardHeader>
               <CardTitle>Related Services</CardTitle>
             </CardHeader>
@@ -245,11 +332,11 @@ export default function ServiceDetails() {
                   </div>
                 ))}
             </CardContent>
-          </Card>
+          </Card> */}
 
           {/* Actions */}
           <Card>
-            <CardContent className="space-y-2 p-4">
+            <CardContent className="space-y-2 p-4 flex flex-col">
               <Button
                 onClick={() =>
                   navigate(`/services/${service._id}/edit`)

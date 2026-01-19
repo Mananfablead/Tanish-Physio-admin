@@ -46,7 +46,7 @@ export default function Sessions() {
     time: "",
     type: "1-on-1",
     status: "scheduled",
-    // notes: ""
+    notes: ""
   });
 
   // State for rescheduling
@@ -137,7 +137,7 @@ const filteredSessions = getCurrentSessions().filter((session) => {
         time: "",
         type: "1-on-1",
         status: "scheduled",
-        notes: ""
+        notes: "" as string
       });
       // Refresh sessions list
       dispatch(fetchSessions());
@@ -156,10 +156,10 @@ const filteredSessions = getCurrentSessions().filter((session) => {
           <p className="page-subtitle">Monitor and manage all platform sessions</p>
         </div>
         <div className="flex items-center gap-3">
-          <Button onClick={() => setIsCreateSessionModalOpen(true)}>
+          {/* <Button onClick={() => setIsCreateSessionModalOpen(true)}>
             <Plus className="w-4 h-4 mr-2" />
             Create Session
-          </Button>
+          </Button> */}
           <Select defaultValue="today">
             <SelectTrigger className="w-[140px]">
               <SelectValue placeholder="Filter by date" />

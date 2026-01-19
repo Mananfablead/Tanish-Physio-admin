@@ -10,6 +10,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchUsers, deleteUser, updateUser } from "@/features/users/userSlice";
@@ -27,6 +37,8 @@ export default function Users() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState("All");
   const [currentPage, setCurrentPage] = useState(1);
+  const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const itemsPerPage = 8;
 
   useEffect(() => {
@@ -113,11 +125,22 @@ export default function Users() {
     XLSX.writeFile(wb, filename);
   };
 
-  const handleDeleteUser = (userId) => {
+  const handleDeleteUser = (userId: string) => {
+    setDeleteUserId(userId);
+    setIsDeleteDialogOpen(true);
+  };
 
-    console.log(userId)
-    if (!window.confirm("Are you sure you want to delete this user?")) return;
-    dispatch(deleteUser(userId));
+  const confirmDeleteUser = () => {
+    if (deleteUserId) {
+      dispatch(deleteUser(deleteUserId));
+      setDeleteUserId(null);
+      setIsDeleteDialogOpen(false);
+    }
+  };
+
+  const cancelDeleteUser = () => {
+    setDeleteUserId(null);
+    setIsDeleteDialogOpen(false);
   };
 
 
@@ -295,6 +318,26 @@ export default function Users() {
           </div>
         </div>
       </div>
+
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the user and remove all associated data.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={cancelDeleteUser}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDeleteUser}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete User
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

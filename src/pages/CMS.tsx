@@ -66,6 +66,16 @@ import {
     DialogFooter,
     DialogClose,
 } from "@/components/ui/dialog";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 // Define TypeScript interfaces
 interface CMSData {
@@ -206,6 +216,11 @@ export default function CMS() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalSection, setModalSection] = useState(null);
     const [modalItem, setModalItem] = useState(null);
+    
+    // Delete confirmation state
+    const [deleteItemId, setDeleteItemId] = useState<number | null>(null);
+    const [deleteItemType, setDeleteItemType] = useState<"step" | "faq" | null>(null);
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
     // Open edit modal
     const openEditModal = (section, item = null) => {
@@ -307,14 +322,11 @@ export default function CMS() {
         openEditModal('step', null);
     };
 
-    // Delete step
+    // Delete step - opens confirmation dialog
     const deleteStep = (id) => {
-        if (window.confirm('Are you sure you want to delete this step?')) {
-            setData(prev => ({
-                ...prev,
-                steps: prev.steps.filter(step => step.id !== id)
-            }));
-        }
+        setDeleteItemId(id);
+        setDeleteItemType("step");
+        setIsDeleteDialogOpen(true);
     };
 
     // Add new FAQ
@@ -322,14 +334,40 @@ export default function CMS() {
         openEditModal('faq', null);
     };
 
-    // Delete FAQ
+    // Delete FAQ - opens confirmation dialog
     const deleteFaq = (id) => {
-        if (window.confirm('Are you sure you want to delete this FAQ?')) {
+        setDeleteItemId(id);
+        setDeleteItemType("faq");
+        setIsDeleteDialogOpen(true);
+    };
+
+    // Confirm delete item
+    const confirmDeleteItem = () => {
+        if (deleteItemId === null || deleteItemType === null) return;
+        
+        if (deleteItemType === "step") {
             setData(prev => ({
                 ...prev,
-                faq: prev.faq.filter(faq => faq.id !== id)
+                steps: prev.steps.filter(step => step.id !== deleteItemId)
+            }));
+        } else if (deleteItemType === "faq") {
+            setData(prev => ({
+                ...prev,
+                faq: prev.faq.filter(faq => faq.id !== deleteItemId)
             }));
         }
+        
+        // Reset delete state
+        setDeleteItemId(null);
+        setDeleteItemType(null);
+        setIsDeleteDialogOpen(false);
+    };
+
+    // Cancel delete
+    const cancelDeleteItem = () => {
+        setDeleteItemId(null);
+        setDeleteItemType(null);
+        setIsDeleteDialogOpen(false);
     };
 
     // Update data in state
@@ -699,6 +737,29 @@ export default function CMS() {
                     </div>
                 </DialogContent>
             </Dialog>
+
+            {/* Delete Confirmation Modal */}
+            <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            {deleteItemType === "step" 
+                                ? "This action cannot be undone. This will permanently delete the step from the How It Works section." 
+                                : "This action cannot be undone. This will permanently delete the FAQ from the Frequently Asked Questions section."}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel onClick={cancelDeleteItem}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction 
+                            onClick={confirmDeleteItem}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                            Delete {deleteItemType === "step" ? "Step" : "FAQ"}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
 
         </div>
     );
