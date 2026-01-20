@@ -10,13 +10,14 @@ import { Link, useNavigate } from "react-router-dom";
 
 /* ---------------- CONSTANTS ---------------- */
 
-const planOptions = [
-    { label: "Daily", value: "daily" },
-    { label: "Weekly", value: "weekly" },
-    { label: "Monthly", value: "monthly" },
-    { label: "Quarterly", value: "quarterly" },
-    { label: "Yearly", value: "yearly" },
+export const planOptions = [
+  { label: "Daily", value: "daily" },
+  { label: "Weekly", value: "weekly" },
+  { label: "Monthly", value: "monthly" },
+  { label: "Quarterly", value: "quarterly" },
+  { label: "Yearly", value: "yearly" },
 ];
+
 
 const durationOptions = [
     { label: "Monthly", value: "monthly" },

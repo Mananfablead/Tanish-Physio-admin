@@ -86,10 +86,24 @@ export const deleteSubscriptionPlan = createAsyncThunk(
   }
 );
 
+// Admin operation to get all user subscriptions
+export const fetchAllUserSubscriptions = createAsyncThunk(
+  "subscriptions/fetchAllUserSubscriptions",
+  async (_, { rejectWithValue }) => {
+    try {
+      const res = await subscriptionAPI.getAllUserSubscriptions();
+      return res.data.data.subscriptions || res.data || [];
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || "User subscriptions fetch failed");
+    }
+  }
+);
+
 const subscriptionSlice = createSlice({
   name: "subscriptions",
   initialState: {
     plans: [],
+    userSubscriptions: [],
     loading: false,
     error: null,
     order: null,
@@ -172,6 +186,19 @@ const subscriptionSlice = createSlice({
         state.plans = state.plans.filter(p => p.id !== action.payload);
       })
       .addCase(deleteSubscriptionPlan.rejected, (state, action) => {
+        state.error = action.payload;
+      })
+      
+      // Admin operation to fetch all user subscriptions
+      .addCase(fetchAllUserSubscriptions.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(fetchAllUserSubscriptions.fulfilled, (state, action) => {
+        state.loading = false;
+        state.userSubscriptions = action.payload;
+      })
+      .addCase(fetchAllUserSubscriptions.rejected, (state, action) => {
+        state.loading = false;
         state.error = action.payload;
       });
   },
