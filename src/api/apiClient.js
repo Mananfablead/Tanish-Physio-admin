@@ -95,7 +95,7 @@ export const API = {
   NOTIFICATION_MARK_READ: "/notifications/:id/read",
 
   // bookings
-  BOOKINGS: "/bookings",
+  BOOKINGS: "/bookings/admin/all",
   BOOKING_BY_ID: "/bookings/:id",
 
   // questionnaires
