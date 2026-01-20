@@ -577,7 +577,7 @@ console.log("filteredSubscriptions", filteredSubscriptions)
 
       {/* Edit/Create Plan Modal */}
       <Dialog open={isEditPlanOpen} onOpenChange={setIsEditPlanOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{selectedPlan ? "Edit Plan" : "Create New Plan"}</DialogTitle>
             <DialogDescription>
@@ -612,22 +612,22 @@ console.log("filteredSubscriptions", filteredSubscriptions)
                   className="mt-1"
                 />
               </div>
-              {!isEditPlanOpen &&
-                <div>
-                  <Label htmlFor="duration">Duration</Label>
-                  <select
-                    id="duration"
-                    name="duration"
-                    value={planForm.duration}
-                    onChange={handleInputChange}
-                    className="w-full mt-1 px-3 py-2 rounded-md border border-input bg-background"
-                  >
-                    <option value="daily">Daily</option>
-                    <option value="weekly">Weekly</option>
-                    <option value="monthly">Monthly</option>
-                    <option value="yearly">Yearly</option>
-                  </select>
-                </div>}
+              <div>
+                <Label htmlFor="duration">Duration</Label>
+                <select
+                  id="duration"
+                  name="duration"
+                  value={planForm.duration}
+                  onChange={handleInputChange}
+                  className="w-full mt-1 px-3 py-2 rounded-md border border-input bg-background"
+                >
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="monthly">Monthly</option>
+                  <option value="quarterly">Quarterly</option>
+                  <option value="yearly">Yearly</option>
+                </select>
+              </div>
             </div>
 
 
@@ -643,52 +643,50 @@ console.log("filteredSubscriptions", filteredSubscriptions)
               />
             </div>
 
-            {!isEditPlanOpen &&
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <Label>Features</Label>
-                  <Button type="button" variant="outline" size="sm" onClick={addFeature}>
-                    Add Feature
-                  </Button>
-                </div>
-                <div className="space-y-2">
-                  {planForm.features.map((feature, index) => (
-                    <div key={index} className="flex gap-2">
-                      <Input
-                        placeholder={`Feature ${index + 1}`}
-                        value={feature}
-                        onChange={(e) => handleFeatureChange(index, e.target.value)}
-                        className="flex-1"
-                      />
-                      {planForm.features.length > 1 && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          onClick={() => removeFeature(index)}
-                          className="h-9 w-9"
-                        >
-                          <span className="text-red-500">-</span>
-                        </Button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <Label>Features</Label>
+                <Button type="button" variant="outline" size="sm" onClick={addFeature}>
+                  Add Feature
+                </Button>
+              </div>
+              <div className="space-y-2">
+                {planForm.features.map((feature, index) => (
+                  <div key={index} className="flex gap-2">
+                    <Input
+                      placeholder={`Feature ${index + 1}`}
+                      value={feature}
+                      onChange={(e) => handleFeatureChange(index, e.target.value)}
+                      className="flex-1"
+                    />
+                    {planForm.features.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={() => removeFeature(index)}
+                        className="h-9 w-9"
+                      >
+                        <span className="text-red-500">-</span>
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
 
-            {!isEditPlanOpen &&
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label>Auto-Renew</Label>
-                  <p className="text-xs text-muted-foreground">Automatically renew at end of period</p>
-                </div>
-                <Switch
-                  id="autoRenew"
-                  name="autoRenew"
-                  checked={planForm.autoRenew}
-                  onCheckedChange={(checked) => setPlanForm(prev => ({ ...prev, autoRenew: checked }))}
-                />
-              </div>}
+            <div className="flex items-center justify-between">
+              <div>
+                <Label>Auto-Renew</Label>
+                <p className="text-xs text-muted-foreground">Automatically renew at end of period</p>
+              </div>
+              <Switch
+                id="autoRenew"
+                name="autoRenew"
+                checked={planForm.autoRenew}
+                onCheckedChange={(checked) => setPlanForm(prev => ({ ...prev, autoRenew: checked }))}
+              />
+            </div>
 
 
             <div className="flex items-center justify-between">

@@ -20,7 +20,10 @@ export const planOptions = [
 
 
 const durationOptions = [
+    { label: "Daily", value: "daily" },
+    { label: "Weekly", value: "weekly" },
     { label: "Monthly", value: "monthly" },
+    { label: "Quarterly", value: "quarterly" },
     { label: "Yearly", value: "yearly" },
 ];
 
@@ -157,9 +160,7 @@ export default function AddSubscription() {
                         >
                             <option value="">Select Plan</option>
                             {planOptions.map((p) => (
-                                <option key={p.value} value={p.value}
-                                disabled={planOptions.some((pl: any) => pl.planId === p.value)}
-                                >
+                                <option key={p.value} value={p.value}>
                                     {p.label}
                                 </option>
                             ))}
@@ -275,7 +276,7 @@ export default function AddSubscription() {
                     <Link to="/subscriptions">Cancel</Link>
                 </Button>
                 <Button
-                    disabled={!planForm.name || !planForm.price || !planForm.duration || !planForm.features.length}
+                    disabled={!planForm.planId || !planForm.name || !planForm.price || !planForm.duration || !planForm.features.length}
                 onClick={handleSavePlan}>Create Plan</Button>
             </div>
         </div>

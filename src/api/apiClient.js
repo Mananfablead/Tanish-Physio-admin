@@ -110,6 +110,15 @@ export const API = {
   PAYMENTS_WEBHOOK: "/payments/webhook",
   PAYMENTS_SUBSCRIPTION_ORDER: "/payments/create-subscription-order",
   PAYMENTS_VERIFY_SUBSCRIPTION: "/payments/verify-subscription",
+
+  // testimonials
+  TESTIMONIALS: "/testimonials",
+  TESTIMONIALS_PUBLIC: "/testimonials/public",
+  TESTIMONIALS_FEATURED: "/testimonials/public/featured",
+  TESTIMONIALS_STATS: "/testimonials/stats",
+  TESTIMONIAL_BY_ID: "/testimonials/:id",
+  TESTIMONIAL_STATUS: "/testimonials/:id/status",
+  TESTIMONIAL_FEATURED: "/testimonials/:id/featured",
 };
 export const availabilityAPI = {
   // Get all availability
@@ -357,4 +366,37 @@ export const paymentAPI = {
 
   // Handle payment webhook
   handleWebhook: (data) => apiClient.post(API.PAYMENTS_WEBHOOK, data),
+};
+
+// Testimonial API endpoints
+export const testimonialAPI = {
+  // Get all testimonials (admin)
+  getAll: (params) => apiClient.get(API.TESTIMONIALS, { params }),
+
+  // Get testimonial stats (admin)
+  getStats: () => apiClient.get(API.TESTIMONIALS_STATS),
+
+  // Get testimonial by ID (admin)
+  getById: (id) => apiClient.get(API.TESTIMONIAL_BY_ID.replace(':id', id)),
+
+  // Create testimonial (admin)
+  create: (data) => apiClient.post(API.TESTIMONIALS, data),
+
+  // Update testimonial (admin)
+  update: (id, data) => apiClient.put(API.TESTIMONIAL_BY_ID.replace(':id', id), data),
+
+  // Update testimonial status (admin)
+  updateStatus: (id, status) => apiClient.put(API.TESTIMONIAL_STATUS.replace(':id', id), { status }),
+
+  // Toggle featured status (admin)
+  toggleFeatured: (id) => apiClient.patch(API.TESTIMONIAL_FEATURED.replace(':id', id)),
+
+  // Delete testimonial (admin)
+  delete: (id) => apiClient.delete(API.TESTIMONIAL_BY_ID.replace(':id', id)),
+
+  // Get public testimonials
+  getPublic: () => apiClient.get(API.TESTIMONIALS_PUBLIC),
+
+  // Get featured testimonials
+  getFeatured: () => apiClient.get(API.TESTIMONIALS_FEATURED),
 };

@@ -11,6 +11,7 @@ import therapistReducer from "@/features/therapistSlice";
 import bookingReducer from "@/features/bookings/bookingSlice";
 import notificationReducer from "@/features/notifications/notificationSlice";
 import paymentReducer from "@/features/payments/paymentSlice";
+import testimonialReducer from "@/features/testimonials/testimonialSlice";
 
 export const store = configureStore({
   reducer: {
@@ -26,6 +27,7 @@ export const store = configureStore({
     notifications: notificationReducer,
     bookings: bookingReducer,
     payments: paymentReducer,
+    testimonials: testimonialReducer,
   },
 });
 

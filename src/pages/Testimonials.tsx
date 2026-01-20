@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { useDispatch, useSelector } from 'react-redux';
+import { unwrapResult } from '@reduxjs/toolkit';
 import { Search, Plus, Edit, Trash2, Star, User, Calendar, Award, Filter, CheckCircle, MessageSquare, Clock } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -33,6 +35,16 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  fetchTestimonials,
+  fetchTestimonialStats,
+  createTestimonial,
+  updateTestimonial,
+  updateTestimonialStatus,
+  toggleTestimonialFeatured,
+  deleteTestimonial,
+  clearSelectedTestimonial
+} from '@/features/testimonials/testimonialSlice';
 
 interface Testimonial {
   id: string;
@@ -50,7 +62,8 @@ interface Testimonial {
 }
 
 export default function Testimonials() {
-  const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
+  const dispatch = useDispatch();
+  const { testimonials, stats, loading, error } = useSelector((state: any) => state.testimonials);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -68,67 +81,11 @@ export default function Testimonials() {
     featured: false,
   });
 
-  // Mock data
+  // Load testimonials and stats on component mount
   useEffect(() => {
-    const mockTestimonials: Testimonial[] = [
-      {
-        id: "1",
-        clientName: "Sarah Johnson",
-        clientEmail: "sarah@example.com",
-        rating: 5,
-        content: "Exceptional care and professional treatment. The physiotherapist really understood my needs and helped me recover faster than expected.",
-        serviceUsed: "Sports Injury Rehabilitation",
-        problem: "Knee injury from running",
-        status: "approved",
-        featured: true,
-        createdAt: "2024-01-15T10:00:00Z",
-        updatedAt: "2024-01-20T14:30:00Z",
-        avatar: "https://ui-avatars.com/api/?name=Sarah+Johnson&background=random"
-      },
-      {
-        id: "2",
-        clientName: "Michael Chen",
-        clientEmail: "michael@example.com",
-        rating: 4,
-        content: "Great facility and knowledgeable staff. My back pain has significantly improved after just a few sessions.",
-        serviceUsed: "Back Pain Treatment",
-        problem: "Chronic lower back pain",
-        status: "approved",
-        featured: false,
-        createdAt: "2024-01-18T09:30:00Z",
-        updatedAt: "2024-01-19T11:15:00Z",
-        avatar: "https://ui-avatars.com/api/?name=Michael+Chen&background=random"
-      },
-      {
-        id: "3",
-        clientName: "Emma Rodriguez",
-        rating: 5,
-        content: "Outstanding service! The team is caring and the results speak for themselves. Highly recommend to anyone needing physiotherapy.",
-        serviceUsed: "Post-Surgery Recovery",
-        problem: "Recovery after knee surgery",
-        status: "pending",
-        featured: false,
-        createdAt: "2024-01-22T14:20:00Z",
-        updatedAt: "2024-01-22T14:20:00Z",
-        avatar: "https://ui-avatars.com/api/?name=Emma+Rodriguez&background=random"
-      },
-      {
-        id: "4",
-        clientName: "David Wilson",
-        clientEmail: "david@example.com",
-        rating: 3,
-        content: "Decent service but felt rushed during sessions. Could use more personalized attention.",
-        serviceUsed: "General Physiotherapy",
-        problem: "General muscle tension",
-        status: "rejected",
-        featured: false,
-        createdAt: "2024-01-10T16:45:00Z",
-        updatedAt: "2024-01-12T09:30:00Z",
-        avatar: "https://ui-avatars.com/api/?name=David+Wilson&background=random"
-      }
-    ];
-    setTestimonials(mockTestimonials);
-  }, []);
+    dispatch(fetchTestimonials({ search: searchQuery, status: statusFilter }));
+    dispatch(fetchTestimonialStats());
+  }, [dispatch, searchQuery, statusFilter]);
 
   const filteredTestimonials = testimonials.filter(testimonial => {
     const matchesSearch = testimonial.clientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -140,9 +97,9 @@ export default function Testimonials() {
     return matchesSearch && matchesStatus;
   });
 
-  const pendingCount = testimonials.filter(t => t.status === "pending").length;
-  const approvedCount = testimonials.filter(t => t.status === "approved").length;
-  const featuredCount = testimonials.filter(t => t.featured && t.status === "approved").length;
+  const pendingCount = stats.pending || 0;
+  const approvedCount = stats.approved || 0;
+  const featuredCount = stats.featured || 0;
 
   const handleCreate = () => {
     setEditingTestimonial(null);
@@ -174,42 +131,56 @@ export default function Testimonials() {
     setIsModalOpen(true);
   };
 
-  const handleSubmit = () => {
-    if (editingTestimonial) {
-      // Update existing testimonial
-      setTestimonials(testimonials.map(t => 
-        t.id === editingTestimonial.id 
-          ? { ...t, ...formData, updatedAt: new Date().toISOString() }
-          : t
-      ));
-    } else {
-      // Create new testimonial
-      const newTestimonial: Testimonial = {
-        id: Math.random().toString(36).substr(2, 9),
-        ...formData,
-        problem: formData.problem,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      setTestimonials([...testimonials, newTestimonial]);
+  const handleSubmit = async () => {
+    try {
+      if (editingTestimonial) {
+        // Update existing testimonial
+        await dispatch(updateTestimonial({ id: editingTestimonial.id, data: formData })).unwrap();
+      } else {
+        // Create new testimonial
+        await dispatch(createTestimonial(formData)).unwrap();
+      }
+      
+      // Close modal
+      setIsModalOpen(false);
+      
+      // Refresh testimonials to ensure the new/updated testimonial appears in the filtered list
+      dispatch(fetchTestimonials({ search: searchQuery, status: statusFilter }));
+      dispatch(fetchTestimonialStats());
+    } catch (error) {
+      console.error('Error saving testimonial:', error);
+      // Still refresh in case of error to ensure UI consistency
+      dispatch(fetchTestimonials({ search: searchQuery, status: statusFilter }));
+      dispatch(fetchTestimonialStats());
     }
-    setIsModalOpen(false);
   };
 
-  const handleStatusChange = (id: string, newStatus: "approved" | "rejected") => {
-    setTestimonials(testimonials.map(t => 
-      t.id === id 
-        ? { ...t, status: newStatus, updatedAt: new Date().toISOString() }
-        : t
-    ));
+  const handleStatusChange = async (id: string, newStatus: "approved" | "rejected") => {
+    try {
+      await dispatch(updateTestimonialStatus({ id, status: newStatus })).unwrap();
+      // Refresh testimonials to ensure the updated status appears in the filtered list
+      dispatch(fetchTestimonials({ search: searchQuery, status: statusFilter }));
+      dispatch(fetchTestimonialStats());
+    } catch (error) {
+      console.error('Error updating testimonial status:', error);
+      // Still refresh in case of error to ensure UI consistency
+      dispatch(fetchTestimonials({ search: searchQuery, status: statusFilter }));
+      dispatch(fetchTestimonialStats());
+    }
   };
 
-  const handleFeatureToggle = (id: string) => {
-    setTestimonials(testimonials.map(t => 
-      t.id === id 
-        ? { ...t, featured: !t.featured, updatedAt: new Date().toISOString() }
-        : t
-    ));
+  const handleFeatureToggle = async (id: string) => {
+    try {
+      await dispatch(toggleTestimonialFeatured(id)).unwrap();
+      // Refresh testimonials to ensure the updated featured status appears in the filtered list
+      dispatch(fetchTestimonials({ search: searchQuery, status: statusFilter }));
+      dispatch(fetchTestimonialStats());
+    } catch (error) {
+      console.error('Error toggling testimonial featured status:', error);
+      // Still refresh in case of error to ensure UI consistency
+      dispatch(fetchTestimonials({ search: searchQuery, status: statusFilter }));
+      dispatch(fetchTestimonialStats());
+    }
   };
 
   // Handle delete - opens confirmation dialog
@@ -219,11 +190,23 @@ export default function Testimonials() {
   };
 
   // Confirm delete
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (deleteTestId) {
-      setTestimonials(testimonials.filter(t => t.id !== deleteTestId));
-      setDeleteTestId(null);
-      setIsDeleteDialogOpen(false);
+      try {
+        await dispatch(deleteTestimonial(deleteTestId)).unwrap();
+        setDeleteTestId(null);
+        setIsDeleteDialogOpen(false);
+        // Refresh testimonials to ensure the deleted testimonial is removed from the filtered list
+        dispatch(fetchTestimonials({ search: searchQuery, status: statusFilter }));
+        dispatch(fetchTestimonialStats());
+      } catch (error) {
+        console.error('Error deleting testimonial:', error);
+        setDeleteTestId(null);
+        setIsDeleteDialogOpen(false);
+        // Still refresh in case of error to ensure UI consistency
+        dispatch(fetchTestimonials({ search: searchQuery, status: statusFilter }));
+        dispatch(fetchTestimonialStats());
+      }
     }
   };
 
@@ -263,6 +246,21 @@ export default function Testimonials() {
 
   return (
     <div className="space-y-6">
+      {/* Loading indicator */}
+      {loading && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+      )}
+      
+      {/* Error message */}
+      {error && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+          <strong className="font-bold">Error: </strong>
+          <span className="block sm:inline">{error}</span>
+        </div>
+      )}
+      
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
