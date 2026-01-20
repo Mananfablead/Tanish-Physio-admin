@@ -87,6 +87,7 @@ interface CMSData {
     terms: TermsData;
     featuredTherapist: TeamMemberData;
     contact: ContactData;
+    about: AboutData;
 }
 
 interface HeroData {
@@ -102,6 +103,7 @@ interface HeroData {
     certifiedTherapists: boolean;
     rating: string;
     features: string[];
+    isPublic: boolean;
 }
 
 interface StepData {
@@ -110,6 +112,7 @@ interface StepData {
     description: string;
     icon: string;
     image: string;
+    isPublic: boolean;
 }
 
 interface ConditionData {
@@ -123,6 +126,7 @@ interface ConditionsSectionData {
     description: string;
     conditions: ConditionData[];
     image: string;
+    isPublic: boolean;
 }
 
 interface StatData {
@@ -137,12 +141,14 @@ interface WhyUsData {
     description: string;
     stats: StatData[];
     features: string[];
+    isPublic: boolean;
 }
 
 interface FaqData {
     id: number;
     question: string;
     answer: string;
+    isPublic: boolean;
 }
 
 interface TermsData {
@@ -151,6 +157,7 @@ interface TermsData {
     content: string;
     lastUpdated?: string;
     version?: string;
+    isPublic: boolean;
 }
 
 interface TeamMemberData {
@@ -164,6 +171,7 @@ interface TeamMemberData {
     availableToday: boolean;
     ctaText: string;
     viewProfileText: string;
+    isPublic: boolean;
 }
 
 interface SocialLink {
@@ -183,6 +191,19 @@ interface ContactData {
     isPublic: boolean;
 }
 
+interface AboutData {
+    id: number;
+    title: string;
+    description: string;
+    mission: string;
+    vision: string;
+    values: string[];
+    foundingStory: string;
+    teamInfo: string;
+    image: string;
+    isPublic: boolean;
+}
+
 // Import sub-components
 import ConditionsSection from "./cms-components/ConditionsSection";
 import ContactSection from "./cms-components/ContactSection";
@@ -193,9 +214,58 @@ import WhyUsSection from "./cms-components/WhyUsSection";
 import FaqSection from "./cms-components/FaqSection";
 import TermsSection from "./cms-components/TermsSection";
 
+
 export default function CMS() {
     // Initialize with data from JSON file
-    const [data, setData] = useState<CMSData>(cmsData);
+    const [data, setData] = useState<CMSData>((): CMSData => {
+        const cmsDataAny: any = cmsData;
+        return {
+            hero: {
+                ...cmsDataAny.hero,
+                isPublic: cmsDataAny.hero?.isPublic ?? true
+            },
+            steps: (cmsDataAny.steps || []).map(step => ({
+                ...step,
+                isPublic: step.isPublic ?? true
+            })),
+            conditions: {
+                ...cmsDataAny.conditions,
+                isPublic: cmsDataAny.conditions?.isPublic ?? true
+            },
+            whyUs: {
+                ...cmsDataAny.whyUs,
+                isPublic: cmsDataAny.whyUs?.isPublic ?? true
+            },
+            faq: (cmsDataAny.faq || []).map(faq => ({
+                ...faq,
+                isPublic: faq.isPublic ?? true
+            })),
+            terms: {
+                ...cmsDataAny.terms,
+                isPublic: cmsDataAny.terms?.isPublic ?? true
+            },
+            featuredTherapist: {
+                ...cmsDataAny.featuredTherapist,
+                isPublic: cmsDataAny.featuredTherapist?.isPublic ?? true
+            },
+            contact: {
+                ...cmsDataAny.contact,
+                isPublic: cmsDataAny.contact?.isPublic ?? true
+            },
+            about: cmsDataAny.about || {
+                id: 8,
+                title: "About Us",
+                description: "Learn more about our physiotherapy services and commitment to patient care.",
+                mission: "Our mission is to provide exceptional physiotherapy services that help patients regain their strength and mobility.",
+                vision: "To be the leading provider of personalized physiotherapy services in the community.",
+                values: ["Patient-centered care", "Professional excellence", "Compassion", "Innovation"],
+                foundingStory: "Founded in 2020, our clinic was established with the vision of providing holistic physiotherapy services.",
+                teamInfo: "Our team consists of experienced physiotherapsits committed to your recovery.",
+                image: "",
+                isPublic: true
+            }
+        };
+    });
     
     // State for mobile dropdown selection
     const [activeTab, setActiveTab] = useState("hero");
@@ -210,6 +280,7 @@ export default function CMS() {
         terms: false,
         contact: false,
         featuredTherapist: false,
+        about: false,
     });
 
     // Modal state
@@ -294,6 +365,11 @@ export default function CMS() {
             setData(prev => ({
                 ...prev,
                 seo: updatedData
+            }));
+        } else if (modalSection === 'about') {
+            setData(prev => ({
+                ...prev,
+                about: updatedData
             }));
         }
         closeEditModal();
@@ -459,8 +535,7 @@ export default function CMS() {
             </div>
 
             {/* Stats Cards */}
-            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                {/* Calculate public/non-public counts */}
+            {/* <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                 <>
                     <Card>
                         <CardContent className="p-4">
@@ -469,7 +544,7 @@ export default function CMS() {
                                     <Layers className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
                                 </div>
                                 <div>
-                                    <p className="text-xl sm:text-2xl font-semibold">8</p>
+                                    <p className="text-xl sm:text-2xl font-semibold">9</p>
                                     <p className="text-xs sm:text-sm text-muted-foreground">Total Sections</p>
                                 </div>
                             </div>
@@ -482,7 +557,18 @@ export default function CMS() {
                                     <Eye className="w-5 h-5 sm:w-6 sm:h-6 text-green-600" />
                                 </div>
                                 <div>
-                                    <p className="text-xl sm:text-2xl font-semibold">-</p>
+                                    <p className="text-xl sm:text-2xl font-semibold">
+                                        {[
+                                            data.hero?.isPublic,
+                                            data.steps?.every(step => step.isPublic),
+                                            data.conditions?.isPublic,
+                                            data.whyUs?.isPublic,
+                                            data.faq?.every(faq => faq.isPublic),
+                                            data.terms?.isPublic,
+                                            data.contact?.isPublic,
+                                            data.about?.isPublic
+                                        ].filter(Boolean).length}
+                                    </p>
                                     <p className="text-xs sm:text-sm text-muted-foreground">Public</p>
                                 </div>
                             </div>
@@ -495,7 +581,18 @@ export default function CMS() {
                                     <Shield className="w-5 h-5 sm:w-6 sm:h-6 text-orange-600" />
                                 </div>
                                 <div>
-                                    <p className="text-xl sm:text-2xl font-semibold">-</p>
+                                    <p className="text-xl sm:text-2xl font-semibold">
+                                        {[
+                                            !data.hero?.isPublic,
+                                            data.steps?.some(step => !step.isPublic),
+                                            !data.conditions?.isPublic,
+                                            !data.whyUs?.isPublic,
+                                            data.faq?.some(faq => !faq.isPublic),
+                                            !data.terms?.isPublic,
+                                            !data.contact?.isPublic,
+                                            !data.about?.isPublic
+                                        ].filter(Boolean).length}
+                                    </p>
                                     <p className="text-xs sm:text-sm text-muted-foreground">Not Public</p>
                                 </div>
                             </div>
@@ -515,7 +612,7 @@ export default function CMS() {
                         </CardContent>
                     </Card>
                 </>
-            </div>
+            </div> */}
 
             {/* Mobile/Tablet Dropdown */}
             <div className="lg:hidden w-full mb-4">
@@ -531,6 +628,7 @@ export default function CMS() {
                         <SelectItem value="faq">FAQ ({data.faq.length})</SelectItem>
                         <SelectItem value="contact">Contact</SelectItem>
                         <SelectItem value="terms">Terms and Condition</SelectItem>
+                        <SelectItem value="about">About Us</SelectItem>
                     </SelectContent>
                 </Select>
             </div>
@@ -549,6 +647,7 @@ export default function CMS() {
                     </TabsTrigger>
                     <TabsTrigger value="contact" className="text-xs sm:text-sm">Contact</TabsTrigger>
                     <TabsTrigger value="terms" className="text-xs sm:text-sm">Terms & Condition</TabsTrigger>
+                    <TabsTrigger value="about" className="text-xs sm:text-sm">About Us</TabsTrigger>
                 </TabsList>
 
                 {/* HERO */}
@@ -609,6 +708,40 @@ export default function CMS() {
                         data={data.contact} 
                         onEdit={openEditModal} 
                     />
+                </TabsContent>
+
+                {/* ABOUT US */}
+                <TabsContent value="about">
+                    <div className="bg-white rounded-lg shadow p-6">
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-xl font-semibold">About Us Section</h2>
+                            <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={() => openEditModal('about', data.about)}
+                            >
+                                <Edit3 className="w-4 h-4 mr-2" />
+                                Edit About Us
+                            </Button>
+                        </div>
+                        <div className="space-y-4">
+                            <div>
+                                <h3 className="font-medium text-gray-900">Title: {data.about?.title}</h3>
+                            </div>
+                            <div>
+                                <h4 className="text-sm font-medium text-gray-700">Description:</h4>
+                                <p className="text-gray-600">{data.about?.description}</p>
+                            </div>
+                            <div>
+                                <h4 className="text-sm font-medium text-gray-700">Mission:</h4>
+                                <p className="text-gray-600">{data.about?.mission}</p>
+                            </div>
+                            <div>
+                                <h4 className="text-sm font-medium text-gray-700">Vision:</h4>
+                                <p className="text-gray-600">{data.about?.vision}</p>
+                            </div>
+                        </div>
+                    </div>
                 </TabsContent>
 
                 {/* TEAM MEMBERS */}
@@ -675,6 +808,39 @@ export default function CMS() {
                     />
                 )}
                 
+                {activeTab === "about" && (
+                    <div className="bg-white rounded-lg shadow p-6">
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-xl font-semibold">About Us Section</h2>
+                            <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={() => openEditModal('about', data.about)}
+                            >
+                                <Edit3 className="w-4 h-4 mr-2" />
+                                Edit About Us
+                            </Button>
+                        </div>
+                        <div className="space-y-4">
+                            <div>
+                                <h3 className="font-medium text-gray-900">Title: {data.about?.title}</h3>
+                            </div>
+                            <div>
+                                <h4 className="text-sm font-medium text-gray-700">Description:</h4>
+                                <p className="text-gray-600">{data.about?.description}</p>
+                            </div>
+                            <div>
+                                <h4 className="text-sm font-medium text-gray-700">Mission:</h4>
+                                <p className="text-gray-600">{data.about?.mission}</p>
+                            </div>
+                            <div>
+                                <h4 className="text-sm font-medium text-gray-700">Vision:</h4>
+                                <p className="text-gray-600">{data.about?.vision}</p>
+                            </div>
+                        </div>
+                    </div>
+                )}
+                
                 {activeTab === "featuredTherapist" && (
                     <TeamSection 
                         data={data.featuredTherapist} 
@@ -696,7 +862,8 @@ export default function CMS() {
                             {modalSection === 'featuredTherapist' && 'Edit Team Member'}
                             {modalSection === 'terms' && 'Edit Terms and Conditions'}
                             {modalSection === 'contact' && 'Edit Contact Info'}
-
+                            {modalSection === 'about' && 'Edit About Us'}
+                        
                         </DialogTitle>
                     </DialogHeader>
 
@@ -731,6 +898,10 @@ export default function CMS() {
 
                         {modalSection === 'contact' && (
                             <EditContactForm data={modalItem || data.contact} onSave={saveModalChanges} onCancel={closeEditModal} />
+                        )}
+
+                        {modalSection === 'about' && (
+                            <EditAboutForm data={modalItem || data.about} onSave={saveModalChanges} onCancel={closeEditModal} />
                         )}
 
 
@@ -1746,6 +1917,188 @@ const EditContactForm = ({ data, onSave, onCancel }) => {
                         </div>
                     ))}
                 </div>
+            </div>
+            <DialogFooter className="flex justify-between">
+                <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
+                <Button type="button" onClick={handleSubmit}>Save Changes</Button>
+            </DialogFooter>
+        </div>
+    );
+};
+
+
+const EditAboutForm = ({ data, onSave, onCancel }) => {
+    const [formData, setFormData] = useState(data);
+
+    const handleChange = (field, value) => {
+        setFormData(prev => ({
+            ...prev,
+            [field]: value
+        }));
+    };
+
+    const handleValuesChange = (index, value) => {
+        const newValues = [...formData.values];
+        newValues[index] = value;
+        setFormData(prev => ({
+            ...prev,
+            values: newValues
+        }));
+    };
+
+    const addValue = () => {
+        setFormData(prev => ({
+            ...prev,
+            values: [...prev.values, '']
+        }));
+    };
+
+    const removeValue = (index) => {
+        const newValues = formData.values.filter((_, i) => i !== index);
+        setFormData(prev => ({
+            ...prev,
+            values: newValues
+        }));
+    };
+
+    // Handle image upload
+    const handleImageUpload = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setFormData(prev => ({
+                    ...prev,
+                    image: reader.result
+                }));
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const handleSubmit = () => {
+        onSave(formData);
+    };
+
+    return (
+        <div className="space-y-4">
+            <div>
+                <Label className="text-sm">Section Title</Label>
+                <Input
+                    value={formData.title}
+                    onChange={(e) => handleChange('title', e.target.value)}
+                    className="text-sm"
+                />
+            </div>
+            <div>
+                <Label>Description</Label>
+                <Textarea
+                    value={formData.description}
+                    onChange={(e) => handleChange('description', e.target.value)}
+                    rows={3}
+                />
+            </div>
+            <div>
+                <Label>Mission Statement</Label>
+                <Textarea
+                    value={formData.mission}
+                    onChange={(e) => handleChange('mission', e.target.value)}
+                    rows={3}
+                />
+            </div>
+            <div>
+                <Label>Vision Statement</Label>
+                <Textarea
+                    value={formData.vision}
+                    onChange={(e) => handleChange('vision', e.target.value)}
+                    rows={3}
+                />
+            </div>
+            <div>
+                <Label>Founding Story</Label>
+                <Textarea
+                    value={formData.foundingStory}
+                    onChange={(e) => handleChange('foundingStory', e.target.value)}
+                    rows={4}
+                />
+            </div>
+            <div>
+                <Label>Team Information</Label>
+                <Textarea
+                    value={formData.teamInfo}
+                    onChange={(e) => handleChange('teamInfo', e.target.value)}
+                    rows={3}
+                />
+            </div>
+            <div>
+                <div className="flex items-center justify-between mb-2">
+                    <Label>Core Values</Label>
+                    <Button type="button" variant="outline" size="sm" onClick={addValue}>
+                        <Plus className="h-4 w-4 mr-2" /> Add Value
+                    </Button>
+                </div>
+                <div className="space-y-2">
+                    {formData.values.map((value, index) => (
+                        <div key={index} className="flex items-center gap-2">
+                            <Input
+                                value={value}
+                                onChange={(e) => handleValuesChange(index, e.target.value)}
+                                placeholder={`Value ${index + 1}`}
+                            />
+                            <Button 
+                                type="button" 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={() => removeValue(index)}
+                                disabled={formData.values.length <= 1}
+                            >
+                                <Trash2 className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    ))}
+                </div>
+            </div>
+            <div>
+                <Label>About Us Image</Label>
+                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-2">
+                    <div className="flex-1">
+                        <Input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleImageUpload}
+                            className="hidden"
+                            id="about-image-upload"
+                        />
+                        <label
+                            htmlFor="about-image-upload"
+                            className="flex flex-col items-center justify-center w-full h-24 sm:h-32 border-2 border-dashed rounded-lg cursor-pointer bg-muted hover:bg-accent transition-colors"
+                        >
+                            <Upload className="w-6 h-6 sm:w-8 sm:h-8 text-muted-foreground mb-1 sm:mb-2" />
+                            <span className="text-xs sm:text-sm text-muted-foreground">Click to upload image</span>
+                        </label>
+                    </div>
+                    {formData.image && (
+                        <div className="flex-1">
+                            <div className="aspect-video bg-muted rounded-lg border flex items-center justify-center overflow-hidden">
+                                <img
+                                    src={formData.image}
+                                    alt="Preview"
+                                    className="w-full h-full object-cover"
+                                />
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+            <div className="flex items-center space-x-2">
+                <input
+                    type="checkbox"
+                    id="about-public"
+                    checked={formData.isPublic}
+                    onChange={(e) => handleChange('isPublic', e.target.checked)}
+                    className="h-4 w-4"
+                />
+                <Label htmlFor="about-public" className="text-sm">Make Public</Label>
             </div>
             <DialogFooter className="flex justify-between">
                 <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
