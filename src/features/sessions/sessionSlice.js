@@ -79,6 +79,32 @@ export const deleteSession = createAsyncThunk(
   }
 );
 
+// Delete session by admin
+export const deleteSessionById = createAsyncThunk(
+  "sessions/deleteById",
+  async (id, { rejectWithValue }) => {
+    try {
+      await sessionAPI.deleteById(id);
+      return id;
+    } catch (err) {
+      return rejectWithValue("Session deletion failed");
+    }
+  }
+);
+
+// Reschedule session
+export const rescheduleSession = createAsyncThunk(
+  "sessions/reschedule",
+  async ({ id, sessionData }, { rejectWithValue }) => {
+    try {
+      const res = await sessionAPI.reschedule(id, sessionData);
+      return res.data.data;
+    } catch (err) {
+      return rejectWithValue("Session reschedule failed");
+    }
+  }
+);
+
 const sessionSlice = createSlice({
   name: "sessions",
   initialState: {
@@ -153,12 +179,12 @@ const sessionSlice = createSlice({
       // Update session
       .addCase(updateSession.fulfilled, (state, action) => {
         state.loading = false;
-        const index = state.list.findIndex(session => session.id === action.payload.id);
+        const index = state.list.findIndex(session => session._id === action.payload._id);
         if (index !== -1) {
           state.list[index] = action.payload;
         }
         // Update single session if it matches
-        if (state.singleSession && state.singleSession.id === action.payload.id) {
+        if (state.singleSession && state.singleSession._id === action.payload._id) {
           state.singleSession = action.payload;
         }
       })
@@ -173,12 +199,45 @@ const sessionSlice = createSlice({
       // Delete session
       .addCase(deleteSession.fulfilled, (state, action) => {
         state.loading = false;
-        state.list = state.list.filter(session => session.id !== action.payload);
+        state.list = state.list.filter(session => session._id !== action.payload);
       })
       .addCase(deleteSession.pending, (state) => {
         state.loading = true;
       })
       .addCase(deleteSession.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      
+      // Reschedule session
+      .addCase(rescheduleSession.fulfilled, (state, action) => {
+        state.loading = false;
+        const index = state.list.findIndex(session => session._id === action.payload._id);
+        if (index !== -1) {
+          state.list[index] = action.payload;
+        }
+        // Update single session if it matches
+        if (state.singleSession && state.singleSession._id === action.payload._id) {
+          state.singleSession = action.payload;
+        }
+      })
+      .addCase(rescheduleSession.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(rescheduleSession.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      
+      // Delete session by ID
+      .addCase(deleteSessionById.fulfilled, (state, action) => {
+        state.loading = false;
+        state.list = state.list.filter(session => session._id !== action.payload);
+      })
+      .addCase(deleteSessionById.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(deleteSessionById.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       });

@@ -80,10 +80,13 @@ export const API = {
   // services
   SERVICES: "/services",
   SERVICE_BY_ID: "/services/:id",
+  SERVICE_REMOVE_MEDIA: "/services/:id/remove-media",
 
   // sessions
-  SESSIONS: "/sessions",
+  SESSIONS: "/sessions/all",
   SESSION_BY_ID: "/sessions/:id",
+  RESCHEDULE_SESSION: "sessions/admin/:id/reschedule",
+  DELETE_SESSION: "sessions/admin/:id",
 
   // therapists
   THERAPISTS: "/therapists",
@@ -95,7 +98,7 @@ export const API = {
   NOTIFICATION_MARK_READ: "/notifications/:id/read",
 
   // bookings
-  BOOKINGS: "/bookings",
+  BOOKINGS: "/bookings/admin/all",
   BOOKING_BY_ID: "/bookings/:id",
 
   // questionnaires
@@ -291,6 +294,10 @@ export const serviceAPI = {
 
   // Delete service
   delete: (id) => apiClient.delete(`${API.SERVICE_BY_ID.replace(":id", id)}`),
+
+  // Remove media from service
+  removeMedia: (id, mediaData) =>
+    apiClient.put(`${API.SERVICE_REMOVE_MEDIA.replace(":id", id)}`, mediaData),
 };
 
 // Session API endpoints
@@ -310,6 +317,13 @@ export const sessionAPI = {
   // Update session
   update: (id, data) =>
     apiClient.put(`${API.SESSION_BY_ID.replace(":id", id)}`, data),
+
+  // Reschedule session
+  reschedule: (id, data) =>
+    apiClient.put(`${API.RESCHEDULE_SESSION.replace(":id", id)}`, data),
+
+  // Delete session by admin
+  deleteById: (id) => apiClient.delete(`${API.DELETE_SESSION.replace(":id", id)}`),
 
   // Delete session
   delete: (id) => apiClient.delete(`${API.SESSION_BY_ID.replace(":id", id)}`),

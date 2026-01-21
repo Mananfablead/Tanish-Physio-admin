@@ -79,8 +79,8 @@ export const deleteUser = createAsyncThunk(
 const userSlice = createSlice({
   name: "users",
   initialState: {
-    list: [],    
-     selectedUser: null,   // ✅ ALWAYS ARRAY
+    list: [],
+    selectedUser: null, // User object when selected, null when none
     loading: false,
     error: null,
   },
@@ -103,47 +103,58 @@ const userSlice = createSlice({
       })
 
       /* ---------- FETCH USER BY ID ---------- */
-     .addCase(fetchUserById.fulfilled, (state, action) => {
+      .addCase(fetchUserById.fulfilled, (state, action) => {
+        state.loading = false;
+
+        const user = action.payload;
+        if (!user) return;
+
+        // ✅ THIS IS THE KEY LINE
+        state.selectedUser = user;
+
+        // (optional but recommended)
+        const index = state.list.findIndex((u) => u._id === user._id);
+
+        if (index !== -1) {
+          state.list[index] = user;
+        } else {
+          state.list.push(user);
+        }
+      })
+
+      /* ---------- UPDATE USER ---------- */
+    .addCase(updateUser.pending, (state) => {
+  state.loading = true;
+  state.error = null;
+})
+
+.addCase(updateUser.fulfilled, (state, action) => {
   state.loading = false;
 
-  const user = action.payload;
-  if (!user) return;
+  const updatedUser = action.payload;
+  if (!updatedUser) return;
 
-  // ✅ THIS IS THE KEY LINE
-  state.selectedUser = user;
+  // ✅ UPDATE selectedUser (THIS FIXES UI)
+  state.selectedUser = updatedUser;
 
-  // (optional but recommended)
-  const index = state.list.findIndex(
-    (u) => u._id === user._id
-  );
-
+  // ✅ UPDATE list ALSO
+  const index = state.list.findIndex((u) => u._id === updatedUser._id);
   if (index !== -1) {
-    state.list[index] = user;
+    state.list[index] = updatedUser;
   } else {
-    state.list.push(user);
+    state.list.push(updatedUser);
   }
 })
 
-      /* ---------- UPDATE USER ---------- */
-      .addCase(updateUser.fulfilled, (state, action) => {
-        const updatedUser = action.payload;
-        if (!updatedUser) return;
-
-        const index = state.list.findIndex(
-          (u) => u._id === updatedUser._id
-        );
-
-        if (index !== -1) {
-          state.list[index] = updatedUser;
-        }
-      })
+.addCase(updateUser.rejected, (state, action) => {
+  state.loading = false;
+  state.error = action.payload;
+})
 
       /* ---------- DELETE USER ---------- */
       .addCase(deleteUser.fulfilled, (state, action) => {
         const userId = action.payload;
-        state.list = state.list.filter(
-          (user) => user._id !== userId
-        );
+        state.list = state.list.filter((user) => user._id !== userId);
       });
   },
 });

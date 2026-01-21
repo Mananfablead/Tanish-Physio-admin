@@ -155,6 +155,7 @@ export default function Users() {
         userData: { status: newStatus },
       })
     );
+    dispatch(fetchUsers());
   };
 
   const getSubscriptionLabel = (subscription) => {
@@ -226,7 +227,7 @@ export default function Users() {
             </thead>
             <tbody>
               {paginatedUsers.map((user) => (
-                <tr key={user._id} className="cursor-pointer" onClick={() => openUserProfile(user._id)}>
+                <tr key={user._id} className="cursor-pointer">
                   <td className="font-medium">{user.name}</td>
                   <td className="text-muted-foreground">{user.email}</td>
                   <td className="text-muted-foreground">{user.phone}</td>

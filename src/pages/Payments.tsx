@@ -27,7 +27,7 @@ interface Payment {
   };
   amount: number;
   currency: string;
-  status: "created" | "captured" | "failed" | "refunded" | "disputed" | "pending" | "successful";
+  status: "created" | "captured" | "failed" | "refunded" | "disputed" | "pending" | "successful" | "paid";
   method?: string;
   razorpayOrderId?: string;
   razorpayPaymentId?: string;
@@ -39,7 +39,7 @@ interface Payment {
 
 
 
-type PaymentStatus = "created" | "captured" | "failed" | "refunded" | "disputed" | "pending" | "successful";
+type PaymentStatus = "created" | "captured" | "failed" | "refunded" | "disputed" | "pending" | "successful" | "paid";
 
 const filters = ["All", "Successful", "Failed", "Refunded", "Disputed", "Pending"];
 
@@ -63,21 +63,22 @@ export default function Payments() {
   const getStatusBadge = (status: PaymentStatus) => {
     switch (status) {
       case "captured":
-        return "status-active";
+        return "bg-green-100 text-green-800 border border-green-200";
       case "successful":
-        return "status-active";
+      case "paid":
+        return "bg-green-100 text-green-800 border border-green-200";
       case "failed":
-        return "status-rejected";
+        return "bg-red-100 text-red-800 border border-red-200";
       case "refunded":
-        return "status-inactive";
+        return "bg-orange-100 text-orange-800 border border-orange-200";
       case "disputed":
-        return "status-pending";
+        return "bg-yellow-100 text-yellow-800 border border-yellow-200";
       case "pending":
-        return "status-pending";
+        return "bg-blue-100 text-blue-800 border border-blue-200";
       case "created":
-        return "status-pending";
+        return "bg-blue-100 text-blue-800 border border-blue-200";
       default:
-        return "status-inactive";
+        return "bg-gray-100 text-gray-800 border border-gray-200";
     }
   };
 
@@ -86,6 +87,7 @@ export default function Payments() {
       case "captured":
         return <CheckCircle className="w-4 h-4" />;
       case "successful":
+      case "paid":
         return <CheckCircle className="w-4 h-4" />;
       case "failed":
         return <XCircle className="w-4 h-4" />;
@@ -113,9 +115,9 @@ export default function Payments() {
 
     if (activeFilter === "All") return matchesSearch;
     
-    // Handle Successful filter which maps to both captured and successful statuses
+    // Handle Successful filter which maps to captured, successful, and paid statuses
     if (activeFilter === "captured" || activeFilter === "successful") {
-      return matchesSearch && (payment.status === "captured" || payment.status === "successful");
+      return matchesSearch && (payment.status === "captured" || payment.status === "successful" || payment.status === "paid");
     }
     
     return matchesSearch && payment.status.toLowerCase() === activeFilter.toLowerCase();
