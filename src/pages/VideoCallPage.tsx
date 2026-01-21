@@ -26,7 +26,7 @@ export default function VideoCallPage() {
     }
   }, [sessionId]);
 
-  const handleLeaveCall = () => {
+  const handleEndCall = () => {
     // Close the current tab/window
     if (window.opener) {
       // If opened from parent window, close itself
@@ -50,10 +50,10 @@ console.log("sessionData------>>",sessionData)
 
   return (
     <VideoCall 
-      sessionId={sessionId || ''} 
-      user={sessionData.user} 
-      therapist={sessionData.therapist} 
-      onLeaveCall={handleLeaveCall}
+      roomId={sessionId || ''} 
+      roomType="session"
+      isTherapist={true}
+      onEndCall={handleEndCall}
     />
   );
 }
