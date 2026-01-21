@@ -2,22 +2,19 @@ import { useEffect } from "react";
 import VideoCallComponent from "../../components/VideoCall/VideoCall"; // Adjust path as needed
 
 interface VideoCallProps {
-  sessionId: string;
-  user: string;
-  therapist: string;
-  onLeaveCall: () => void;
+  roomId: string;
+  roomType?: string;
+  isTherapist?: boolean;
+  onEndCall?: () => void;
 }
 
-export function VideoCall({ sessionId, onLeaveCall }: VideoCallProps) {
-  // In the admin context, we assume the admin is the therapist
-  const isTherapist = true;
-
+export function VideoCall({ roomId, roomType = "session", isTherapist = true, onEndCall }: VideoCallProps) {
   return (
     <VideoCallComponent
-      roomId={sessionId}
-      roomType="session"
+      roomId={roomId}
+      roomType={roomType}
       isTherapist={isTherapist}
-      onEndCall={onLeaveCall}
+      onEndCall={onEndCall}
     />
   );
 }
