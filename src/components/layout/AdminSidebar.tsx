@@ -44,15 +44,15 @@ const navItems = [
   // { icon: BookOpen, label: "Courses", path: "/courses" },
   { icon: ClipboardList, label: "Questionnaires", path: "/questionnaires" },
   { icon: Clock, label: "Schedule", path: "/availability" },
-  { icon: Calendar, label: "Service Bookings", path: "/bookings" },
+  { icon: Calendar, label: "Bookings", path: "/bookings" },
   { icon: Calendar, label: "Sessions", path: "/sessions" },
-  { icon: Video, label: "Live Sessions", path: "/live-sessions" },
+  { icon: Video, label: "Live & Upcoming", path: "/live-sessions" },
   { icon: Video, label: "Session Recordings", path: "/session-recordings" },
   { icon: CreditCard, label: "Plans & Subscriptions", path: "/subscriptions" },
   { icon: Wallet, label: "Payments", path: "/payments" },
-{ icon: FileText, label: "CMS", path: "/cms" },
+  { icon: FileText, label: "CMS", path: "/cms" },
   { icon: Quote, label: "Testimonials", path: "/testimonials" },
-  
+
   // { icon: BarChart3, label: "Reports", path: "/reports" },
   { icon: Bell, label: "Notifications", path: "/notifications" },
   // { icon: MessageSquare, label: "Chat Monitor", path: "/chat" },
@@ -159,7 +159,7 @@ export function AdminSidebar({ isMobileOpen, onMobileClose, collapsed: propColla
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setIsLogoutDialogOpen(false)}>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
+            <AlertDialogAction
               onClick={() => {
                 dispatch(logout());
                 navigate("/login");

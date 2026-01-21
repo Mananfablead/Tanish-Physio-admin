@@ -308,6 +308,9 @@ export const sessionAPI = {
   // Get upcoming sessions
   getUpcoming: () => apiClient.get(`${API.SESSIONS}/upcoming`),
 
+  // Get all upcoming sessions
+  getAllUpcoming: () => apiClient.get(`${API.SESSIONS}/upcoming`),
+
   // Get session by ID
   getById: (id) => apiClient.get(`${API.SESSION_BY_ID.replace(":id", id)}`),
 
@@ -321,6 +324,10 @@ export const sessionAPI = {
   // Reschedule session
   reschedule: (id, data) =>
     apiClient.put(`${API.RESCHEDULE_SESSION.replace(":id", id)}`, data),
+
+  // Update session status
+  updateStatus: (id, data) =>
+    apiClient.put(`${API.DELETE_SESSION.replace(":id", id)}`, data),
 
   // Delete session by admin
   deleteById: (id) => apiClient.delete(`${API.DELETE_SESSION.replace(":id", id)}`),

@@ -66,13 +66,19 @@ const VideoCall = ({
   const [incomingCall, setIncomingCall] = useState(false);
   const [callStartTime, setCallStartTime] = useState(null);
   const [callDuration, setCallDuration] = useState(0);
+  const [connectionAttempts, setConnectionAttempts] = useState(0);
 
   // Initialize media when socket connects
   useEffect(() => {
     if (connected && !localStream) {
-      initLocalMedia().catch((err) =>
-        console.error("Error initializing media:", err)
-      );
+      initLocalMedia()
+        .then(() => {
+          console.log("Local media initialized successfully");
+        })
+        .catch((err) => {
+          console.error("Error initializing media:", err);
+          setError("Failed to access camera and microphone. Please check permissions.");
+        });
     }
   }, [connected, localStream, initLocalMedia]);
 
@@ -92,9 +98,46 @@ const VideoCall = ({
     };
   }, [callActive, callStartTime]);
 
-  // Set up socket listeners
+  // Handle socket connection errors
   useEffect(() => {
     if (!socket) return;
+    
+    const handleError = (data) => {
+      console.error('Socket error:', data);
+      setError(data.message || 'Connection error occurred');
+      setCallStatus('ended');
+    };
+    
+    const handleJoinedCall = (data) => {
+      console.log('Successfully joined call:', data);
+      setCallStatus('connected');
+    };
+    
+    const cleanupError = on('error', handleError);
+    const cleanupJoined = on('joined-call', handleJoinedCall);
+    
+    return () => {
+      if (cleanupError) cleanupError();
+      if (cleanupJoined) cleanupJoined();
+    };
+  }, [socket, on]);
+  
+  // Retry connection if it fails
+  useEffect(() => {
+    if (error && connectionAttempts < 3) {
+      const timer = setTimeout(() => {
+        setConnectionAttempts(prev => prev + 1);
+        setError(null);
+        // The socket will automatically reconnect
+      }, 3000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [error, connectionAttempts]);
+  
+  // Set up socket listeners
+  useEffect(() => {
+    if (!socket || !connected) return;
 
     // Handle incoming offer
     const offerListener = (data) => {
@@ -119,7 +162,13 @@ const VideoCall = ({
 
     // Handle participant joined
     const participantJoinedListener = (data) => {
-      setParticipants((prev) => [...prev, data]);
+      console.log('Participant joined:', data);
+      setParticipants((prev) => {
+        // Avoid duplicates
+        const exists = prev.some(p => p.userId === data.userId);
+        if (exists) return prev;
+        return [...prev, data];
+      });
       if (data.isTherapist && !isTherapist) {
         setIncomingCall(true);
       }
@@ -127,7 +176,14 @@ const VideoCall = ({
 
     // Handle participant left
     const participantLeftListener = (data) => {
+      console.log('Participant left:', data);
       setParticipants((prev) => prev.filter((p) => p.userId !== data.userId));
+      
+      // If this was the last participant, end the call
+      if (participants.length <= 1) {
+        setCallStatus('ended');
+        if (onEndCall) onEndCall();
+      }
     };
 
     // Handle call started
@@ -158,10 +214,12 @@ const VideoCall = ({
 
     // Handle call ended
     const callEndedListener = (data) => {
+      console.log('Call ended by:', data.endedBy);
       setCallStatus("ended");
       setCallActive(false);
       setCallStartTime(null);
       setIncomingCall(false);
+      setCallDuration(0);
       if (onEndCall) onEndCall();
     };
 
@@ -188,39 +246,34 @@ const VideoCall = ({
       }
     };
 
-    // Add listeners
-    on("offer", offerListener);
-    on("answer", answerListener);
-    on("ice-candidate", iceCandidateListener);
-    on("participant-joined", participantJoinedListener);
-    on("participant-left", participantLeftListener);
-    on("call-started", callStartedListener);
-    on("call-accepted", callAcceptedListener);
-    on("call-rejected", callRejectedListener);
-    on("call-ended", callEndedListener);
-    on("audio-toggle", audioToggleListener);
-    on("video-toggle", videoToggleListener);
-    on("screen-share-toggle", screenShareToggleListener);
-    on("user-muted", userMutedListener);
+    // Add listeners with proper cleanup
+    const cleanupFunctions = [];
+    
+    cleanupFunctions.push(on("offer", offerListener));
+    cleanupFunctions.push(on("answer", answerListener));
+    cleanupFunctions.push(on("ice-candidate", iceCandidateListener));
+    cleanupFunctions.push(on("participant-joined", participantJoinedListener));
+    cleanupFunctions.push(on("participant-left", participantLeftListener));
+    cleanupFunctions.push(on("call-started", callStartedListener));
+    cleanupFunctions.push(on("call-accepted", callAcceptedListener));
+    cleanupFunctions.push(on("call-rejected", callRejectedListener));
+    cleanupFunctions.push(on("call-ended", callEndedListener));
+    cleanupFunctions.push(on("audio-toggle", audioToggleListener));
+    cleanupFunctions.push(on("video-toggle", videoToggleListener));
+    cleanupFunctions.push(on("screen-share-toggle", screenShareToggleListener));
+    cleanupFunctions.push(on("user-muted", userMutedListener));
 
     // Cleanup listeners
     return () => {
-      socket.off("offer", offerListener);
-      socket.off("answer", answerListener);
-      socket.off("ice-candidate", iceCandidateListener);
-      socket.off("participant-joined", participantJoinedListener);
-      socket.off("participant-left", participantLeftListener);
-      socket.off("call-started", callStartedListener);
-      socket.off("call-accepted", callAcceptedListener);
-      socket.off("call-rejected", callRejectedListener);
-      socket.off("call-ended", callEndedListener);
-      socket.off("audio-toggle", audioToggleListener);
-      socket.off("video-toggle", videoToggleListener);
-      socket.off("screen-share-toggle", screenShareToggleListener);
-      socket.off("user-muted", userMutedListener);
+      cleanupFunctions.forEach(cleanup => {
+        if (typeof cleanup === 'function') {
+          cleanup();
+        }
+      });
     };
   }, [
     socket,
+    connected,
     on,
     handleOffer,
     handleAnswer,
@@ -231,20 +284,35 @@ const VideoCall = ({
 
   // Toggle audio
   const toggleAudioHandler = () => {
-    const enabled = toggleAudio();
-    setAudioEnabled(enabled);
+    try {
+      const enabled = toggleAudio();
+      setAudioEnabled(enabled);
+    } catch (error) {
+      console.error('Error toggling audio:', error);
+      setError('Failed to toggle audio');
+    }
   };
 
   // Toggle video
   const toggleVideoHandler = () => {
-    const enabled = toggleVideo();
-    setVideoEnabled(enabled);
+    try {
+      const enabled = toggleVideo();
+      setVideoEnabled(enabled);
+    } catch (error) {
+      console.error('Error toggling video:', error);
+      setError('Failed to toggle video');
+    }
   };
 
   // Toggle screen sharing
-  const toggleScreenShareHandler = () => {
-    toggleScreenShare();
-    setScreenSharing(!screenSharing);
+  const toggleScreenShareHandler = async () => {
+    try {
+      await toggleScreenShare();
+      setScreenSharing(!screenSharing);
+    } catch (error) {
+      console.error('Error toggling screen share:', error);
+      setError('Failed to toggle screen sharing');
+    }
   };
 
   // Render remote videos based on room type
@@ -654,8 +722,25 @@ const VideoCall = ({
       )}
 
       {error && (
-        <div className="fixed top-4 right-4 bg-red-500 text-white p-4 rounded-lg z-50">
-          {error}
+        <div className="fixed top-4 right-4 bg-red-500 text-white p-4 rounded-lg z-50 max-w-md">
+          <div className="flex items-start gap-2">
+            <X className="h-5 w-5 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-medium">Error</p>
+              <p className="text-sm opacity-90">{error}</p>
+              {connectionAttempts < 3 && (
+                <p className="text-xs opacity-75 mt-1">
+                  Retrying... ({connectionAttempts + 1}/3)
+                </p>
+              )}
+            </div>
+            <button 
+              onClick={() => setError(null)}
+              className="text-white hover:text-gray-200"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       )}
     </div>

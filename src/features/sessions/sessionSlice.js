@@ -27,6 +27,19 @@ export const fetchUpcomingSessions = createAsyncThunk(
   }
 );
 
+// Fetch all upcoming sessions
+export const fetchAllUpcomingSessions = createAsyncThunk(
+  "sessions/fetchAllUpcoming",
+  async (_, { rejectWithValue }) => {
+    try {
+      const res = await sessionAPI.getAllUpcoming();
+      return res.data.data.sessions || [];
+    } catch (err) {
+      return rejectWithValue("All upcoming sessions fetch failed");
+    }
+  }
+);
+
 // Fetch session by ID
 export const fetchSessionById = createAsyncThunk(
   "sessions/fetchById",
@@ -101,6 +114,19 @@ export const rescheduleSession = createAsyncThunk(
       return res.data.data;
     } catch (err) {
       return rejectWithValue("Session reschedule failed");
+    }
+  }
+);
+
+// Update session status
+export const updateSessionStatus = createAsyncThunk(
+  "sessions/updateStatus",
+  async ({ id, status, notes }, { rejectWithValue }) => {
+    try {
+      const res = await sessionAPI.updateStatus(id, { status, notes });
+      return res.data.data;
+    } catch (err) {
+      return rejectWithValue("Session status update failed");
     }
   }
 );
@@ -238,6 +264,39 @@ const sessionSlice = createSlice({
         state.loading = true;
       })
       .addCase(deleteSessionById.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      
+      // Update session status
+      .addCase(updateSessionStatus.fulfilled, (state, action) => {
+        state.loading = false;
+        const index = state.list.findIndex(session => session._id === action.payload._id);
+        if (index !== -1) {
+          state.list[index] = action.payload;
+        }
+        // Update single session if it matches
+        if (state.singleSession && state.singleSession._id === action.payload._id) {
+          state.singleSession = action.payload;
+        }
+      })
+      .addCase(updateSessionStatus.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(updateSessionStatus.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      
+      // Fetch all upcoming sessions
+      .addCase(fetchAllUpcomingSessions.fulfilled, (state, action) => {
+        state.loading = false;
+        state.upcomingSessions = action.payload;
+      })
+      .addCase(fetchAllUpcomingSessions.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(fetchAllUpcomingSessions.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       });
