@@ -5,6 +5,7 @@ import { mockSessions } from '@/lib/session-data';
 
 export default function VideoCallPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
+  console.log("sessionId", sessionId)
   const navigate = useNavigate();
   const [sessionData, setSessionData] = useState<{ user: string; therapist: string } | null>(null);
 
@@ -35,7 +36,7 @@ export default function VideoCallPage() {
       navigate('/sessions');
     }
   };
-
+console.log("sessionData------>>",sessionData)
   if (!sessionData) {
     return (
       <div className="flex items-center justify-center h-screen bg-gray-900 text-white">

@@ -31,29 +31,87 @@ const LiveSessions = () => {
   const dispatch: any = useDispatch();
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState('all');
-  const [activeTab, setActiveTab] = useState('live');
+  const [activeTab, setActiveTab] = useState('upcoming'); // Default to upcoming
     const { list: allSessions = [], loading, error } = useSelector((state: any) => state.sessions);
-  
-  // Filter to show live sessions based on selected filter
-  const liveSessions = allSessions.filter((session: any) => {
-    // Always filter to only live sessions since this is the Live Sessions page
-    const isLive = session.status === 'live';
+  const { upcomingSessions = [] } = useSelector((state: any) => state.sessions);
+
+  // Function to calculate time until session
+  const calculateTimeUntilSession = (date: string, time: string) => {
+    // Create a date object combining the session date and time
+    const sessionDateTime = new Date(`${date} ${time}`);
     
+    // Get current time
+    const now = new Date();
+    
+    // Calculate difference in milliseconds
+    const diffMs = sessionDateTime.getTime() - now.getTime();
+    
+    // Convert to hours and minutes
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    
+    // Format the result
+    if (diffHours > 0) {
+      if (diffMinutes > 0) {
+        return `${diffHours}h ${diffMinutes}m`;
+      } else {
+        return `${diffHours}h`;
+      }
+    } else if (diffMinutes > 0) {
+      return `${diffMinutes}m`;
+    } else {
+      return 'less than 1 minute';
+    }
+  };
+  
+  // Filter sessions based on active tab and additional filters
+  const filteredSessions = (activeTab === 'upcoming' ? upcomingSessions : allSessions).filter((session: any) => {
+    // First filter by tab status
+    let includeInTab = false;
+    switch (activeTab) {
+    
+      case "upcoming":
+        includeInTab = true; // Show all upcoming sessions regardless of status
+        break;
+      case "live":
+        includeInTab = session.status === "live";
+        break;
+      default:
+        includeInTab = true;
+    }
+
+    if (!includeInTab) return false;
+
     // Apply additional filter based on user selection
     if (filterType === 'all') {
-      return isLive;
+      return true;
     } else if (filterType === '1-on-1') {
-      return isLive && session.type === '1-on-1';
+      return includeInTab && session.type === '1-on-1';
     } else if (filterType === 'group') {
-      return isLive && session.type === 'group';
+      return includeInTab && session.type === 'group';
     }
     
-    return isLive; // Default to showing all live sessions
+    return includeInTab; // Default to showing sessions based on tab status
   });
+
+  // Count sessions by status for tabs
+  const upcomingTabCount = (upcomingSessions || []).length;
+  const liveTabCount = (allSessions || []).filter((session: any) => session.status === "live").length;
   
   useEffect(() => {
+    // Fetch both upcoming and all sessions initially
+    dispatch(fetchAllUpcomingSessions());
     dispatch(fetchSessions());
   }, [dispatch]);
+
+  // Refetch based on tab selection
+  useEffect(() => {
+    if (activeTab === 'upcoming') {
+      dispatch(fetchAllUpcomingSessions());
+    } else {
+      dispatch(fetchSessions());
+    }
+  }, [dispatch, activeTab]);
 
 
 
@@ -64,11 +122,41 @@ const LiveSessions = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Live Sessions</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{activeTab === 'upcoming' ? 'Upcoming Sessions' : 'Live Sessions'}</h1>
           <p className="text-muted-foreground mt-1">
-            View and join live sessions or sessions starting within 24 hours
+            {activeTab === 'upcoming' 
+              ? 'View and manage upcoming sessions'
+              : 'View and join live sessions or sessions starting within 24 hours'}
           </p>
         </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="border-b border-border">
+        <nav className="-mb-px flex space-x-8">
+          <button
+            onClick={() => setActiveTab('upcoming')}
+            className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'upcoming' 
+              ? 'border-primary text-primary' 
+              : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'}`}
+          >
+            Upcoming
+            <span className="ml-1.5 px-1.5 py-0.5 text-xs bg-info/20 text-info rounded-full">
+              {upcomingTabCount}
+            </span>
+          </button>
+          <button
+            onClick={() => setActiveTab('live')}
+            className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'live' 
+              ? 'border-primary text-primary' 
+              : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'}`}
+          >
+            Live
+            <span className="ml-1.5 px-1.5 py-0.5 text-xs bg-success/20 text-success rounded-full">
+              {liveTabCount}
+            </span>
+          </button>
+        </nav>
       </div>
 
       {/* Stats */}
@@ -79,8 +167,8 @@ const LiveSessions = () => {
               <Video className="w-5 h-5 text-success" />
             </div>
             <div>
-              <p className="text-2xl font-semibold">{liveSessions.length}</p>
-              <p className="text-sm text-muted-foreground">Currently Live</p>
+              <p className="text-2xl font-semibold">{activeTab === 'upcoming' ? upcomingTabCount : liveTabCount}</p>
+              <p className="text-sm text-muted-foreground">{activeTab === 'upcoming' ? 'Upcoming' : 'Currently Live'}</p>
             </div>
           </CardContent>
         </Card>
@@ -111,7 +199,7 @@ const LiveSessions = () => {
               <Play className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <p className="text-2xl font-semibold">{liveSessions.length}</p>
+              <p className="text-2xl font-semibold">{activeTab === 'upcoming' ? upcomingTabCount : liveTabCount}</p>
               <p className="text-sm text-muted-foreground">Available to Join</p>
             </div>
           </CardContent>
@@ -148,20 +236,20 @@ const LiveSessions = () => {
         </div>
       </div>
 
-      {/* Live Sessions List */}
-      {liveSessions.length === 0 ? (
+      {/* Sessions List */}
+      {filteredSessions.length === 0 ? (
         <Card className="shadow-sm rounded-xl border border-border">
           <CardContent className="p-12 text-center">
             <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
               <Video className="w-8 h-8 text-muted-foreground" />
             </div>
-            <h3 className="text-lg font-semibold mb-1">No live sessions available</h3>
-            <p className="text-muted-foreground">No live sessions found. Only showing currently live sessions.</p>
+            <h3 className="text-lg font-semibold mb-1">No {activeTab === 'upcoming' ? 'upcoming' : 'live'} sessions available</h3>
+            <p className="text-muted-foreground">No {activeTab === 'upcoming' ? 'scheduled' : 'live'} sessions found. {activeTab === 'upcoming' ? 'All upcoming sessions will appear here.' : 'Only showing currently live sessions.'}</p>
           </CardContent>
         </Card>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {liveSessions.filter((session: any) => {
+          {filteredSessions.filter((session: any) => {
             if (!searchQuery) return true;
             const query = searchQuery.toLowerCase();
             
@@ -185,9 +273,11 @@ const LiveSessions = () => {
                       {session.userId?.name || 'N/A'}
                       <Badge 
                         variant="secondary" 
-                        className="bg-green-100 text-green-800 border-green-200"
+                        className={session.status !== 'live' 
+                          ? 'bg-blue-100 text-blue-800 border-blue-200' 
+                          : 'bg-green-100 text-green-800 border-green-200'}
                       >
-                        LIVE NOW
+                        {session.status !== 'live' ? 'SCHEDULED' : 'LIVE NOW'}
                       </Badge>
                     </CardTitle>
                     <p className="text-sm text-muted-foreground mt-1">{session.therapistId?.name || 'N/A'}</p>
@@ -210,21 +300,35 @@ const LiveSessions = () => {
                   </div>
 
                   <div className="flex gap-2 pt-2">
-                    <Button 
-                      className="flex-1"
-                      onClick={() => window.open(`/video-call/${session.sessionId}`, '_blank', 'width=1200,height=800')}
-                    >
-                      <Video className="w-4 h-4 mr-2" />
-                      Join Live Session
-                    </Button>
-                    <Button 
-                      variant="outline"
-                      size="icon"
-                      onClick={() => navigator.clipboard.writeText(`${window.location.origin}/video-call/${session.sessionId}`)}
-                    >
-                      <Copy className="w-4 h-4" />
-                    </Button>
+                    {session.status === 'live' ? (
+                      <>
+                        <Button 
+                          className="flex-1"
+                          onClick={() => window.open(`/video-call/${session.sessionId}`, '_blank', 'width=1200,height=800')}
+                        >
+                          <Video className="w-4 h-4 mr-2" />
+                          Join Session
+                        </Button>
+                        <Button 
+                          variant="outline"
+                          size="icon"
+                          onClick={() => navigator.clipboard.writeText(`${window.location.origin}/video-call/${session.sessionId}`)}
+                        >
+                          <Copy className="w-4 h-4" />
+                        </Button>
+                      </>
+                    ) : (
+                      <Button 
+                        className="flex-1"
+                        variant="secondary"
+                        disabled
+                      >
+                        <Clock className="w-4 h-4 mr-2" />
+                        Starts in {calculateTimeUntilSession(session.date, session.time)}
+                      </Button>
+                    )}
                   </div>
+
                 </div>
               </CardContent>
             </Card>

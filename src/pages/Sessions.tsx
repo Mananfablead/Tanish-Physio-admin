@@ -29,9 +29,7 @@ export default function Sessions() {
   const { upcomingSessions = [] } = useSelector((state: any) => state.sessions);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("all");
-  console.log("upcomingSessions", upcomingSessions)
   // Count sessions by status for tabs
-  const upcomingCount = (upcomingSessions || []).length;
   const scheduledCount = (allSessions || []).filter((session: any) => session.status === "scheduled").length;
   const allCount = (allSessions || []).length;
   const liveCount = (allSessions || []).filter((session: any) => session.status === "live").length;
@@ -39,16 +37,13 @@ export default function Sessions() {
   const cancelledCount = (allSessions || []).filter((session: any) => session.status === "cancelled").length;
 
   // Filter sessions based on active tab and search query
-  const filteredSessions = (activeTab === 'upcoming' ? upcomingSessions : allSessions).filter((session: any) => {
+  const filteredSessions = allSessions.filter((session: any) => {
     // First filter by tab status
     let includeInTab = false;
     switch (activeTab) {
     
       case "all":
         includeInTab = true; // Show all sessions regardless of status
-        break;
-      case "upcoming":
-        includeInTab = true; // Show all upcoming sessions regardless of status
         break;
       case "scheduled":
         includeInTab = session.status === "scheduled";
@@ -95,9 +90,6 @@ export default function Sessions() {
 
     return false;
   });
-
-  // Count sessions by status for the upcoming tab
-  const upcomingTabCount = (upcomingSessions || []).length;
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false);
   const [isCreateSessionModalOpen, setIsCreateSessionModalOpen] = useState(false);
@@ -105,20 +97,9 @@ export default function Sessions() {
   const [selectedSession, setSelectedSession] = useState<any>(null);
 
   useEffect(() => {
-    // Fetch both upcoming and all sessions initially
-    dispatch(fetchAllUpcomingSessions());
     dispatch(fetchSessions());
     dispatch(fetchBookings());
   }, [dispatch]);
-
-  // Refetch based on tab selection
-  useEffect(() => {
-    if (activeTab === 'upcoming') {
-      dispatch(fetchAllUpcomingSessions());
-    } else {
-      dispatch(fetchSessions());
-    }
-  }, [dispatch, activeTab]);
 
   // State for creating a new session
   const [newSession, setNewSession] = useState({
@@ -165,12 +146,10 @@ export default function Sessions() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="page-header">
-          <h1 className="page-title">{activeTab === 'live' ? 'Live Sessions' : activeTab === 'upcoming' ? 'Upcoming Sessions' : activeTab === 'all' ? 'All Sessions' : 'Session Management'}</h1>
+          <h1 className="page-title">{activeTab === 'live' ? 'Live Sessions' : activeTab === 'all' ? 'All Sessions' : 'Session Management'}</h1>
           <p className="page-subtitle">
             {activeTab === 'live' 
               ? 'View and join live sessions' 
-              : activeTab === 'upcoming'
-              ? 'View and manage upcoming sessions'
               : activeTab === 'all'
               ? 'Monitor and manage all platform sessions'
               : 'Monitor and manage all platform sessions'}
@@ -205,9 +184,9 @@ export default function Sessions() {
             </div>
             <div>
               <p className="text-2xl font-semibold">
-                {activeTab === 'upcoming' ? upcomingCount : scheduledCount}
+                {scheduledCount}
               </p>
-              <p className="text-sm text-muted-foreground">{activeTab === 'upcoming' ? 'Upcoming' : 'Scheduled'}</p>
+              <p className="text-sm text-muted-foreground">Scheduled</p>
             </div>
           </div>
         </div>
@@ -262,12 +241,6 @@ export default function Sessions() {
               {allCount}
             </span>
           </TabsTrigger>
-          <TabsTrigger value="upcoming">
-            Upcoming
-            <span className="ml-1.5 px-1.5 py-0.5 text-xs bg-info/20 text-info rounded-full">
-              {upcomingTabCount}
-            </span>
-          </TabsTrigger>
           <TabsTrigger value="scheduled">
             Scheduled
             <span className="ml-1.5 px-1.5 py-0.5 text-xs bg-info/20 text-info rounded-full">
@@ -293,8 +266,6 @@ export default function Sessions() {
             <Input
               placeholder={activeTab === 'live' 
                 ? 'Search by user, therapist, date, time, or type...' 
-                : activeTab === 'upcoming'
-                ? 'Search by booking, user, therapist, date, or status...'
                 : 'Search by booking, user, therapist, date, or status...'}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -368,99 +339,6 @@ export default function Sessions() {
                             >
                               <Video className="w-4 h-4 mr-2" />
                               Join Live Session
-                            </Button>
-                            <Button 
-                              variant="outline"
-                              size="icon"
-                              onClick={() => {
-                                navigator.clipboard.writeText(`${window.location.origin}/video-call/${session.sessionId}`);
-                              }}
-                            >
-                              <Copy className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          ) : activeTab === 'upcoming' ? (
-            /* Upcoming Sessions Grid View */
-            <div className="space-y-6">
-              {filteredSessions.length === 0 ? (
-                <div className="bg-card rounded-lg border border-border p-12 text-center">
-                  <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Calendar className="w-8 h-8 text-muted-foreground" />
-                  </div>
-                  <h3 className="text-lg font-semibold mb-1">No upcoming sessions</h3>
-                  <p className="text-muted-foreground">No scheduled sessions found. All upcoming sessions will appear here.</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {filteredSessions.map((session: any) => {
-                    const user = session.userId;
-                    const therapist = session.therapistId;
-                    return (
-                      <div 
-                        key={session._id} 
-                        className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200 transform hover:-translate-y-1"
-                      >
-                        <div className="p-6">
-                          <div className="flex justify-between items-start mb-4">
-                            <div className="flex items-start gap-3">
-                              <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                                <User className="h-6 w-6 text-blue-600" />
-                              </div>
-                              <div>
-                                <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                                  {user?.name || 'N/A'}
-                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                    SCHEDULED
-                                  </span>
-                                </h3>
-                                <p className="text-sm text-gray-600 mt-1">with {therapist?.name || 'N/A'}</p>
-                              </div>
-                            </div>
-                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-50  border border-green-200">
-                              {session.type}
-                            </span>
-                          </div>
-
-                          <div className="space-y-3 mb-6 pt-2">
-                            <div className="flex items-center gap-3 text-sm text-gray-600">
-                              <div className="flex items-center gap-1.5">
-                                <Calendar className="w-4 h-4" />
-                                <span>{session.date}</span>
-                              </div>
-                              <div className="flex items-center gap-1.5">
-                                <Clock className="w-4 h-4" />
-                                <span>{session.time}</span>
-                              </div>
-                            </div>
-                            
-                            {session.notes && (
-                              <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg border border-gray-100">
-                                <span className="font-medium text-gray-700">Notes: </span>
-                                {session.notes}
-                              </div>
-                            )}
-                          </div>
-
-                          <div className="flex gap-3">
-                            <Button 
-                              className="flex-1"
-                              onClick={() =>
-                                window.open(
-                                  `/video-call/${session.sessionId}`,
-                                  "_blank",
-                                  "width=1200,height=800"
-                                )
-                              }
-                            >
-                              <Video className="w-4 h-4 mr-2" />
-                              Join Session
                             </Button>
                             <Button 
                               variant="outline"
@@ -591,7 +469,7 @@ export default function Sessions() {
 
                               <DropdownMenuContent align="end" className="w-48">
                                 {/* UPCOMING */}
-                                {(activeTab === "scheduled" || activeTab === "upcoming" || activeTab === "all") && (
+                                {(activeTab === "scheduled" || activeTab === "all") && (
                                   <>
                                     <DropdownMenuItem
                                       onClick={() => {
