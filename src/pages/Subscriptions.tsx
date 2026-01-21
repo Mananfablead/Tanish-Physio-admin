@@ -1,10 +1,31 @@
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { Plus, Edit2, ToggleLeft, ToggleRight, Search, ChevronLeft, ChevronRight, CreditCard, Users, TrendingUp, Clock, Eye, Trash2 } from "lucide-react";
+import {
+  Plus,
+  Edit2,
+  ToggleLeft,
+  ToggleRight,
+  Search,
+  ChevronLeft,
+  ChevronRight,
+  CreditCard,
+  Users,
+  TrendingUp,
+  Clock,
+  Eye,
+  Trash2,
+} from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,7 +48,16 @@ declare global {
 }
 
 import { useToast } from "@/hooks/use-toast";
-import { fetchSubscriptionPlans, createSubscriptionOrder, fetchAllSubscriptionPlans, createSubscriptionPlan, updateSubscriptionPlan, deleteSubscriptionPlan, fetchSubscriptionPlanById, fetchAllUserSubscriptions } from "@/features/subscriptions/subscriptionSlice";
+import {
+  fetchSubscriptionPlans,
+  createSubscriptionOrder,
+  fetchAllSubscriptionPlans,
+  createSubscriptionPlan,
+  updateSubscriptionPlan,
+  deleteSubscriptionPlan,
+  fetchSubscriptionPlanById,
+  fetchAllUserSubscriptions,
+} from "@/features/subscriptions/subscriptionSlice";
 import PageLoader from "@/components/PageLoader";
 
 interface SubscriptionPlan {
@@ -46,17 +76,20 @@ interface SubscriptionPlan {
   subscribers?: number;
 }
 
-
 export default function Subscriptions() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { plans, userSubscriptions, loading, error, order } = useSelector((state: any) => state.subscriptions);
+  const { plans, userSubscriptions, loading, error, order } = useSelector(
+    (state: any) => state.subscriptions
+  );
   const { toast } = useToast();
   console.log("userSubscriptions", userSubscriptions);
   const [activeTab, setActiveTab] = useState("plans");
   const [searchQuery, setSearchQuery] = useState("");
   const [isEditPlanOpen, setIsEditPlanOpen] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(
+    null
+  );
   const [deletePlanId, setDeletePlanId] = useState<string | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
@@ -71,26 +104,29 @@ export default function Subscriptions() {
     autoRenew: true,
   });
 
+  useEffect(() => {
+    dispatch(fetchAllSubscriptionPlans());
+    dispatch(fetchAllUserSubscriptions());
+  }, [dispatch]);
 
-useEffect(() => {
-  dispatch(fetchAllSubscriptionPlans());
-  dispatch(fetchAllUserSubscriptions());
-}, [dispatch]);
+  const filteredSubscriptions = Array.isArray(userSubscriptions)
+    ? userSubscriptions.filter(
+        (sub) =>
+          sub.userId?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          sub.userId?.email?.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : [];
 
- const filteredSubscriptions = Array.isArray(userSubscriptions)
-  ? userSubscriptions.filter(
-      (sub) =>
-        sub.userId?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        sub.userId?.email?.toLowerCase().includes(searchQuery.toLowerCase())
-    )
-  : [];
-
-console.log("filteredSubscriptions", filteredSubscriptions)
+  console.log("filteredSubscriptions", filteredSubscriptions);
   // Calculate stats from actual plans
-  const totalSubscribers = plans.reduce((acc: number, plan: SubscriptionPlan) => acc + (plan.subscribers || 0), 0);
-  const totalRevenue = plans.reduce((acc: number, plan: SubscriptionPlan) => acc + plan.price, 0); // Using actual plan prices
-
-  
+  const totalSubscribers = plans.reduce(
+    (acc: number, plan: SubscriptionPlan) => acc + (plan.subscribers || 0),
+    0
+  );
+  const totalRevenue = plans.reduce(
+    (acc: number, plan: SubscriptionPlan) => acc + plan.price,
+    0
+  ); // Using actual plan prices
 
   // Populate form when selectedPlan changes (for editing)
   useEffect(() => {
@@ -102,15 +138,14 @@ console.log("filteredSubscriptions", filteredSubscriptions)
         status: selectedPlan.status || "active",
         features: selectedPlan.features || [""],
         duration: selectedPlan.duration || selectedPlan.period || "",
-        autoRenew: selectedPlan.autoRenew !== undefined ? selectedPlan.autoRenew : true,
+        autoRenew:
+          selectedPlan.autoRenew !== undefined ? selectedPlan.autoRenew : true,
       });
     } else if (!isEditPlanOpen) {
       // Reset form when modal is closed
       resetForm();
     }
   }, [selectedPlan, isEditPlanOpen]);
-
-
 
   const initializeRazorpayPayment = (orderData: any) => {
     // This function would initialize the Razorpay checkout
@@ -124,7 +159,7 @@ console.log("filteredSubscriptions", filteredSubscriptions)
         description: "Subscription Payment",
         order_id: orderData.orderId,
         handler: function (response: any) {
-          console.log('Payment successful:', response);
+          console.log("Payment successful:", response);
           toast({
             title: "Payment Successful",
             description: "Your subscription has been successfully processed!",
@@ -149,26 +184,30 @@ console.log("filteredSubscriptions", filteredSubscriptions)
   };
 
   // Handle form input changes
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleInputChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
+  ) => {
     const { name, value, type } = e.target;
 
     if (type === "checkbox") {
       const target = e.target as HTMLInputElement;
       if (name === "status") {
-        setPlanForm(prev => ({
+        setPlanForm((prev) => ({
           ...prev,
-          [name]: target.checked ? 'active' : 'inactive'
+          [name]: target.checked ? "active" : "inactive",
         }));
       } else {
-        setPlanForm(prev => ({
+        setPlanForm((prev) => ({
           ...prev,
-          [name]: target.checked
+          [name]: target.checked,
         }));
       }
     } else {
-      setPlanForm(prev => ({
+      setPlanForm((prev) => ({
         ...prev,
-        [name]: name === "price" ? Number(value) : value
+        [name]: name === "price" ? Number(value) : value,
       }));
     }
   };
@@ -177,17 +216,17 @@ console.log("filteredSubscriptions", filteredSubscriptions)
   const handleFeatureChange = (index: number, value: string) => {
     const newFeatures = [...planForm.features];
     newFeatures[index] = value;
-    setPlanForm(prev => ({
+    setPlanForm((prev) => ({
       ...prev,
-      features: newFeatures
+      features: newFeatures,
     }));
   };
 
   // Add a new feature input
   const addFeature = () => {
-    setPlanForm(prev => ({
+    setPlanForm((prev) => ({
       ...prev,
-      features: [...prev.features, ""]
+      features: [...prev.features, ""],
     }));
   };
 
@@ -195,9 +234,9 @@ console.log("filteredSubscriptions", filteredSubscriptions)
   const removeFeature = (index: number) => {
     if (planForm.features.length <= 1) return;
     const newFeatures = planForm.features.filter((_, i) => i !== index);
-    setPlanForm(prev => ({
+    setPlanForm((prev) => ({
       ...prev,
-      features: newFeatures
+      features: newFeatures,
     }));
   };
 
@@ -229,7 +268,12 @@ console.log("filteredSubscriptions", filteredSubscriptions)
           features: planForm.features,
           autoRenew: planForm.autoRenew,
         };
-        const result = await dispatch(updateSubscriptionPlan({ id: selectedPlan._id || selectedPlan.id, planData: updateData }));
+        const result = await dispatch(
+          updateSubscriptionPlan({
+            id: selectedPlan._id || selectedPlan.id,
+            planData: updateData,
+          })
+        );
 
         if (updateSubscriptionPlan.fulfilled.match(result)) {
           toast({
@@ -242,10 +286,10 @@ console.log("filteredSubscriptions", filteredSubscriptions)
         }
       }
     } catch (err: any) {
-      console.error('Error saving subscription plan:', err);
+      console.error("Error saving subscription plan:", err);
       toast({
         title: "Error",
-        description: err.message || 'Failed to save subscription plan',
+        description: err.message || "Failed to save subscription plan",
         variant: "destructive",
       });
     }
@@ -260,7 +304,7 @@ console.log("filteredSubscriptions", filteredSubscriptions)
   // Confirm delete plan
   const confirmDeletePlan = async () => {
     if (!deletePlanId) return;
-    
+
     try {
       const result = await dispatch(deleteSubscriptionPlan(deletePlanId));
 
@@ -271,13 +315,13 @@ console.log("filteredSubscriptions", filteredSubscriptions)
         });
         dispatch(fetchAllSubscriptionPlans());
       } else {
-        throw new Error(result.payload || 'Failed to delete subscription plan');
+        throw new Error(result.payload || "Failed to delete subscription plan");
       }
     } catch (err: any) {
-      console.error('Error deleting subscription plan:', err);
+      console.error("Error deleting subscription plan:", err);
       toast({
         title: "Error",
-        description: err.message || 'Failed to delete subscription plan',
+        description: err.message || "Failed to delete subscription plan",
         variant: "destructive",
       });
     } finally {
@@ -312,7 +356,9 @@ console.log("filteredSubscriptions", filteredSubscriptions)
               <CreditCard className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <p className="text-2xl font-semibold">{loading ? '...' : plans.length}</p>
+              <p className="text-2xl font-semibold">
+                {loading ? "..." : plans.length}
+              </p>
               <p className="text-sm text-muted-foreground">Active Plans</p>
             </div>
           </div>
@@ -323,7 +369,9 @@ console.log("filteredSubscriptions", filteredSubscriptions)
               <Users className="w-5 h-5 text-success" />
             </div>
             <div>
-              <p className="text-2xl font-semibold">{totalSubscribers.toLocaleString()}</p>
+              <p className="text-2xl font-semibold">
+                {totalSubscribers.toLocaleString()}
+              </p>
               <p className="text-sm text-muted-foreground">Total Subscribers</p>
             </div>
           </div>
@@ -334,12 +382,13 @@ console.log("filteredSubscriptions", filteredSubscriptions)
               <TrendingUp className="w-5 h-5 text-info" />
             </div>
             <div>
-              <p className="text-2xl font-semibold">₹{totalRevenue.toLocaleString()}</p>
+              <p className="text-2xl font-semibold">
+                ₹{totalRevenue.toLocaleString()}
+              </p>
               <p className="text-sm text-muted-foreground">Monthly Revenue</p>
             </div>
           </div>
         </div>
-
       </div>
 
       {/* Tabs */}
@@ -360,11 +409,8 @@ console.log("filteredSubscriptions", filteredSubscriptions)
 
         {/* Plans Tab */}
         <TabsContent value="plans" className="mt-4">
-
-
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {plans.map((plan) => (
-
               <div
                 className={cn(
                   "bg-card rounded-lg border p-5 transition-all duration-200 animate-fade-in",
@@ -374,23 +420,28 @@ console.log("filteredSubscriptions", filteredSubscriptions)
                 <div className="flex items-start justify-between mb-4">
                   <div>
                     <h3 className="font-semibold">{plan.name}</h3>
-                    <p className="text-sm text-muted-foreground">{plan.description}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {plan.description}
+                    </p>
                   </div>
                   <span
                     className={cn(
                       "status-badge",
-                      plan.status === "active" ? "status-active" : "status-inactive"
+                      plan.status === "active"
+                        ? "status-active"
+                        : "status-inactive"
                     )}
                   >
                     {plan.status === "active" ? "Active" : "Inactive"}
                   </span>
-
                 </div>
 
                 <div className="mb-4">
                   <p className="text-3xl font-bold">₹{plan.price}</p>
                   <p className="text-sm text-muted-foreground">
-                    {plan.features && plan.features.length > 0 ? `${plan.features.length} features` : 'Basic plan'}
+                    {plan.features && plan.features.length > 0
+                      ? `${plan.features.length} features`
+                      : "Basic plan"}
                   </p>
                 </div>
 
@@ -398,7 +449,7 @@ console.log("filteredSubscriptions", filteredSubscriptions)
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Auto-renew</span>
                     <span className="text-success">
-                      {plan.autoRenew ? 'Yes' : 'No'}
+                      {plan.autoRenew ? "Yes" : "No"}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
@@ -408,8 +459,6 @@ console.log("filteredSubscriptions", filteredSubscriptions)
                 </div>
 
                 <div className="flex gap-2 justify-end">
-              
-
                   {/* VIEW */}
                   <Button
                     variant="outline"
@@ -421,7 +470,7 @@ console.log("filteredSubscriptions", filteredSubscriptions)
                       <Eye className="w-4 h-4" />
                     </Link>
                   </Button>
-    {/* EDIT */}
+                  {/* EDIT */}
                   <Button
                     variant="outline"
                     size="sm"
@@ -446,9 +495,7 @@ console.log("filteredSubscriptions", filteredSubscriptions)
                     <Trash2 className="w-4 h-4" />
                   </Button>
                 </div>
-
               </div>
-
             ))}
           </div>
         </TabsContent>
@@ -479,93 +526,105 @@ console.log("filteredSubscriptions", filteredSubscriptions)
                     <th>Actions</th>
                   </tr>
                 </thead>
-         <tbody>
-  {filteredSubscriptions.map((sub, index) => {
-    console.log("Subscription Row:", index, sub);
+                <tbody>
+                  {filteredSubscriptions.map((sub, index) => {
+                    console.log("Subscription Row:", index, sub);
 
-    return (
-      <tr key={sub._id}>
-        {/* USER */}
-        <td>
-          <div>
-            <p className="font-medium">{sub.userId?.name || "N/A"}</p>
-            <p className="text-sm text-muted-foreground">
-              {sub.userId?.email || "N/A"}
-            </p>
-          </div>
-        </td>
+                    return (
+                      <tr key={sub._id}>
+                        {/* USER */}
+                        <td>
+                          <div>
+                            <p className="font-medium">
+                              {sub.userId?.name || "N/A"}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              {sub.userId?.email || "N/A"}
+                            </p>
+                          </div>
+                        </td>
 
-        {/* PLAN NAME */}
-        <td className="font-medium">
-          {sub.planName}
-        </td>
+                        {/* PLAN NAME */}
+                        <td className="font-medium">{sub.planName}</td>
 
-        {/* START DATE */}
-        <td className="text-muted-foreground">
-          {new Date(sub.startDate).toLocaleDateString()}
-        </td>
+                        {/* START DATE */}
+                        <td className="text-muted-foreground">
+                          {new Date(sub.startDate).toLocaleDateString()}
+                        </td>
 
-        {/* END DATE */}
-        <td className="text-muted-foreground">
-          {sub.planId === "monthly"
-            ? new Date(
-                new Date(sub.startDate).setDate(
-                  new Date(sub.startDate).getDate() + 30
-                )
-              ).toLocaleDateString()
-            : "—"}
-        </td>
+                        {/* END DATE */}
+                        <td className="text-muted-foreground">
+                          {sub.planId === "monthly"
+                            ? new Date(
+                                new Date(sub.startDate).setDate(
+                                  new Date(sub.startDate).getDate() + 30
+                                )
+                              ).toLocaleDateString()
+                            : "—"}
+                        </td>
 
-        {/* SESSIONS */}
-        <td>—</td>
+                        {/* SESSIONS */}
+                        <td>—</td>
 
-        {/* STATUS */}
-        <td>
-          <span
-            className={cn(
-              "status-badge",
-              sub.status === "active"
-                ? "status-active"
-                : "status-inactive"
-            )}
-          >
-            {sub.status}
-          </span>
-        </td>
+                        {/* STATUS */}
+                        <td>
+                          <span
+                            className={cn(
+                              "status-badge",
+                              sub.status === "active"
+                                ? "status-active"
+                                : "status-inactive"
+                            )}
+                          >
+                            {sub.status}
+                          </span>
+                        </td>
 
-        {/* ACTIONS */}
-        <td>
-          <div className="flex items-center gap-2">
-            {sub.status === "active" ? (
-              <>
-                <Button variant="ghost" size="sm">Pause</Button>
-                <Button variant="ghost" size="sm" className="text-destructive">
-                  Cancel
-                </Button>
-              </>
-            ) : (
-              <Button variant="ghost" size="sm">Reactivate</Button>
-            )}
-          </div>
-        </td>
-      </tr>
-    );
-  })}
-</tbody>
-
-
+                        {/* ACTIONS */}
+                        <td>
+                          <div className="flex items-center gap-2">
+                            {sub.status === "active" ? (
+                              <>
+                                <Button variant="ghost" size="sm">
+                                  Pause
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-destructive"
+                                >
+                                  Cancel
+                                </Button>
+                              </>
+                            ) : (
+                              <Button variant="ghost" size="sm">
+                                Reactivate
+                              </Button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
               </table>
             </div>
 
             <div className="flex items-center justify-between px-4 py-3 border-t border-border">
               <p className="text-sm text-muted-foreground">
-                Showing <span className="font-medium">{filteredSubscriptions.length}</span> subscriptions
+                Showing{" "}
+                <span className="font-medium">
+                  {filteredSubscriptions.length}
+                </span>{" "}
+                subscriptions
               </p>
               <div className="flex items-center gap-2">
                 <Button variant="outline" size="sm" disabled>
                   <ChevronLeft className="w-4 h-4" />
                 </Button>
-                <Button variant="outline" size="sm" className="min-w-[32px]">1</Button>
+                <Button variant="outline" size="sm" className="min-w-[32px]">
+                  1
+                </Button>
                 <Button variant="outline" size="sm">
                   <ChevronRight className="w-4 h-4" />
                 </Button>
@@ -579,15 +638,17 @@ console.log("filteredSubscriptions", filteredSubscriptions)
       <Dialog open={isEditPlanOpen} onOpenChange={setIsEditPlanOpen}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{selectedPlan ? "Edit Plan" : "Create New Plan"}</DialogTitle>
+            <DialogTitle>
+              {selectedPlan ? "Edit Plan" : "Create New Plan"}
+            </DialogTitle>
             <DialogDescription>
-              {selectedPlan ? "Update the subscription plan details." : "Set up a new subscription plan."}
+              {selectedPlan
+                ? "Update the subscription plan details."
+                : "Set up a new subscription plan."}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 mt-4">
-
-
             <div>
               <Label htmlFor="name">Plan Name</Label>
               <Input
@@ -630,7 +691,6 @@ console.log("filteredSubscriptions", filteredSubscriptions)
               </div>
             </div>
 
-
             <div>
               <Label htmlFor="description">Description</Label>
               <textarea
@@ -646,7 +706,12 @@ console.log("filteredSubscriptions", filteredSubscriptions)
             <div>
               <div className="flex items-center justify-between mb-2">
                 <Label>Features</Label>
-                <Button type="button" variant="outline" size="sm" onClick={addFeature}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addFeature}
+                >
                   Add Feature
                 </Button>
               </div>
@@ -656,7 +721,9 @@ console.log("filteredSubscriptions", filteredSubscriptions)
                     <Input
                       placeholder={`Feature ${index + 1}`}
                       value={feature}
-                      onChange={(e) => handleFeatureChange(index, e.target.value)}
+                      onChange={(e) =>
+                        handleFeatureChange(index, e.target.value)
+                      }
                       className="flex-1"
                     />
                     {planForm.features.length > 1 && (
@@ -678,27 +745,37 @@ console.log("filteredSubscriptions", filteredSubscriptions)
             <div className="flex items-center justify-between">
               <div>
                 <Label>Auto-Renew</Label>
-                <p className="text-xs text-muted-foreground">Automatically renew at end of period</p>
+                <p className="text-xs text-muted-foreground">
+                  Automatically renew at end of period
+                </p>
               </div>
               <Switch
                 id="autoRenew"
                 name="autoRenew"
                 checked={planForm.autoRenew}
-                onCheckedChange={(checked) => setPlanForm(prev => ({ ...prev, autoRenew: checked }))}
+                onCheckedChange={(checked) =>
+                  setPlanForm((prev) => ({ ...prev, autoRenew: checked }))
+                }
               />
             </div>
-
 
             <div className="flex items-center justify-between">
               <div>
                 <Label>Active</Label>
-                <p className="text-xs text-muted-foreground">Plan is available for purchase</p>
+                <p className="text-xs text-muted-foreground">
+                  Plan is available for purchase
+                </p>
               </div>
               <Switch
                 id="status"
                 name="status"
-                checked={planForm.status === 'active'}
-                onCheckedChange={(checked) => setPlanForm(prev => ({ ...prev, status: checked ? 'active' : 'inactive' }))}
+                checked={planForm.status === "active"}
+                onCheckedChange={(checked) =>
+                  setPlanForm((prev) => ({
+                    ...prev,
+                    status: checked ? "active" : "inactive",
+                  }))
+                }
               />
             </div>
           </div>
@@ -713,25 +790,29 @@ console.log("filteredSubscriptions", filteredSubscriptions)
             >
               Cancel
             </Button>
-            <Button onClick={handleSavePlan}>
-              Save Changes
-            </Button>
+            <Button onClick={handleSavePlan}>Save Changes</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Delete Confirmation Modal */}
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+      <AlertDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the subscription plan and remove it from all users.
+              This action cannot be undone. This will permanently delete the
+              subscription plan and remove it from all users.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={cancelDeletePlan}>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
+            <AlertDialogCancel onClick={cancelDeletePlan}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
               onClick={confirmDeletePlan}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
