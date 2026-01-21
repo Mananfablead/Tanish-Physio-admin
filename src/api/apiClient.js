@@ -80,9 +80,10 @@ export const API = {
   // services
   SERVICES: "/services",
   SERVICE_BY_ID: "/services/:id",
+  SERVICE_REMOVE_MEDIA: "/services/:id/remove-media",
 
   // sessions
-  SESSIONS: "/sessions",
+  SESSIONS: "/sessions/all",
   SESSION_BY_ID: "/sessions/:id",
 
   // therapists
@@ -270,6 +271,10 @@ export const serviceAPI = {
 
   // Delete service
   delete: (id) => apiClient.delete(`${API.SERVICE_BY_ID.replace(":id", id)}`),
+
+  // Remove media from service
+  removeMedia: (id, mediaData) =>
+    apiClient.put(`${API.SERVICE_REMOVE_MEDIA.replace(":id", id)}`, mediaData),
 };
 
 // Session API endpoints

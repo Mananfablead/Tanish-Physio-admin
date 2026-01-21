@@ -119,26 +119,49 @@ export default function Sessions() {
   const filteredSessions = getCurrentSessions().filter((session) => {
     const query = searchQuery?.toLowerCase() || "";
 
-    // Handle both string IDs and nested objects for bookingId
-    const bookingIdValue =
-      typeof session.bookingId === "object" && session.bookingId !== null
-        ? session.bookingId?._id ||
-          session.bookingId?.id ||
-          session.bookingId?.serviceName ||
-          ""
-        : session.bookingId || "";
-
-    const bookingNameValue =
+    // Extract searchable values from nested objects
+    const bookingServiceName =
       typeof session.bookingId === "object" && session.bookingId !== null
         ? session.bookingId?.serviceName || ""
         : "";
+        
+    const bookingIdValue =
+      typeof session.bookingId === "object" && session.bookingId !== null
+        ? session.bookingId?._id || ""
+        : session.bookingId || "";
+
+    const userName =
+      typeof session.userId === "object" && session.userId !== null
+        ? session.userId?.name || ""
+        : "";
+        
+    const userEmail =
+      typeof session.userId === "object" && session.userId !== null
+        ? session.userId?.email || ""
+        : "";
+        
+    const therapistName =
+      typeof session.therapistId === "object" && session.therapistId !== null
+        ? session.therapistId?.name || ""
+        : "";
+        
+    const bookingTherapistName =
+      typeof session.bookingId === "object" && session.bookingId !== null
+        ? session.bookingId?.therapistName || ""
+        : "";
 
     return (
-      String(bookingIdValue).toLowerCase().includes(query) ||
-      String(bookingNameValue).toLowerCase().includes(query) ||
-      String(session.type ?? "")
-        .toLowerCase()
-        .includes(query)
+      bookingServiceName.toLowerCase().includes(query) ||
+      bookingIdValue.toLowerCase().includes(query) ||
+      userName.toLowerCase().includes(query) ||
+      userEmail.toLowerCase().includes(query) ||
+      therapistName.toLowerCase().includes(query) ||
+      bookingTherapistName.toLowerCase().includes(query) ||
+      String(session.type ?? "").toLowerCase().includes(query) ||
+      String(session.status ?? "").toLowerCase().includes(query) ||
+      String(session.date ?? "").toLowerCase().includes(query) ||
+      String(session.time ?? "").toLowerCase().includes(query) ||
+      (session.sessionId && session.sessionId.toLowerCase().includes(query))
     );
   });
 
@@ -306,7 +329,7 @@ export default function Sessions() {
           <div className="relative max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Search by booking ID or session type..."
+              placeholder="Search by booking, user, therapist, date, or status..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"
@@ -321,10 +344,11 @@ export default function Sessions() {
               <table className="data-table">
                 <thead>
                   <tr>
-                    <th>Booking ID</th>
-                    <th>Session Type</th>
+                    <th>Booking Info</th>
+                    <th>User</th>
+                    <th>Therapist</th>
                     <th>Date & Time</th>
-                    <th>Format</th>
+                    <th>Type</th>
                     <th>Status</th>
                     {(activeTab === "live" || activeTab === "completed") && (
                       <th>Notes</th>
@@ -333,184 +357,172 @@ export default function Sessions() {
                     <th className="w-12"></th>
                   </tr>
                 </thead>
-                <tbody>
-                  {filteredSessions.map((session: any) => (
-                    <tr key={session.id}>
-                      <td>
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
-                            <User className="w-4 h-4 text-muted-foreground" />
-                          </div>
-                          <span className="font-medium">
-                            {typeof session.bookingId === "object" &&
-                            session.bookingId !== null
-                              ? session.bookingId?.serviceName ||
-                                session.bookingId?._id ||
-                                session.bookingId?.id ||
-                                "N/A"
-                              : session.bookingId || "N/A"}
-                          </span>
-                        </div>
-                      </td>
-                      <td>
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                            <UserCog className="w-4 h-4 text-primary" />
-                          </div>
-                          <span>{session.type}</span>
-                        </div>
-                      </td>
-                      <td>
-                        <div className="flex items-center gap-2">
-                          <Calendar className="w-4 h-4 text-muted-foreground" />
-                          <span>{session.date}</span>
-                          <Clock className="w-4 h-4 text-muted-foreground ml-2" />
-                          <span>{session.time}</span>
-                        </div>
-                      </td>
-                      <td>
-                        <span className="status-badge bg-muted text-muted-foreground">
-                          {session.type}
-                        </span>
-                      </td>
-                      <td>
-                        <span
-                          className={cn(
-                            "status-badge",
-                            getStatusBadge(session.status)
-                          )}
-                        >
-                          {session.status === "no-show"
-                            ? "No-show"
-                            : session.status}
-                        </span>
-                      </td>
-                      {(activeTab === "live" || activeTab === "completed") && (
-                        <td className="text-muted-foreground">
-                          {session.notes || "N/A"}
-                        </td>
-                      )}
-                      {activeTab === "cancelled" && (
-                        <td className="text-muted-foreground">
-                          {session.notes || "N/A"}
-                        </td>
-                      )}
-                      <td>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
-                            >
-                              <MoreHorizontal className="w-4 h-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            {activeTab === "upcoming" && (
-                              <>
-                                <DropdownMenuItem
-                                  onClick={() => {
-                                    setSelectedSession(session);
-                                    setIsRescheduleModalOpen(true);
-                                  }}
-                                >
-                                  <RefreshCw className="w-4 h-4 mr-2" />
-                                  Reschedule
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  className="text-destructive"
-                                  onClick={() => {
-                                    setSelectedSession(session);
-                                    setIsCancelModalOpen(true);
-                                  }}
-                                >
-                                  <X className="w-4 h-4 mr-2" />
-                                  Cancel Session
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => {
-                                    if (session.joinLink) {
-                                      navigator.clipboard.writeText(
-                                        session.joinLink
-                                      );
-                                      // Here you would typically show a toast notification
-                                    }
-                                  }}
-                                >
-                                  <Copy className="w-4 h-4 mr-2" />
-                                  Copy Join Link
-                                </DropdownMenuItem>
-                              </>
-                            )}
-                            {activeTab === "live" && (
-                              <>
-                                <DropdownMenuItem
-                                  onClick={() => {
-                                    if (session.joinLink) {
-                                      // Extract session ID from the join link
-                                      const sessionId =
-                                        session.joinLink.split("/").pop() ||
-                                        session.id.toString();
-                                      // Open the video call page in a new tab
-                                      window.open(
-                                        `/video-call/${sessionId}`,
-                                        "_blank",
-                                        "width=1200,height=800"
-                                      );
-                                    }
-                                  }}
-                                >
-                                  <Video className="w-4 h-4 mr-2" />
-                                  Join Session
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => {
-                                    // Navigate to the live sessions page
-                                    navigate("/live-sessions");
-                                  }}
-                                >
-                                  <Video className="w-4 h-4 mr-2" />
-                                  View All Live Sessions
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => {
-                                    if (session.joinLink) {
-                                      navigator.clipboard.writeText(
-                                        session.joinLink
-                                      );
-                                      // Here you would typically show a toast notification
-                                    }
-                                  }}
-                                >
-                                  <Copy className="w-4 h-4 mr-2" />
-                                  Copy Join Link
-                                </DropdownMenuItem>
-                              </>
-                            )}
-                            {activeTab === "completed" && (
-                              <>
-                                <DropdownMenuItem
-                                  onClick={() => {
-                                    // Navigate to the session recordings page
-                                    navigate(
-                                      `/session-recordings/${
-                                        session.bookingId || session.id
-                                      }`
-                                    );
-                                  }}
-                                >
-                                  <Eye className="w-4 h-4 mr-2" />
-                                  View Recording
-                                </DropdownMenuItem>
-                              </>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
+               <tbody>
+  {filteredSessions.map((session: any) => {
+    const booking = session.bookingId;
+    const user = session.userId;
+    const therapist = session.therapistId;
+
+    return (
+      <tr key={session._id} className="hover:bg-muted/40 transition">
+        {/* SERVICE / BOOKING */}
+        <td className="px-4 py-3">
+          <div className="space-y-0.5">
+            <p className="font-semibold">
+              {booking?.serviceName || "N/A"}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Booking ID: {booking?._id?.slice(0, 8) || "N/A"}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Session: {session.sessionId?.slice(0, 12)}…
+            </p>
+          </div>
+        </td>
+
+        {/* USER */}
+        <td className="px-4 py-3">
+          <div className="flex items-center gap-2">
+            <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
+              <User className="h-4 w-4 text-blue-600" />
+            </div>
+            <div>
+              <p className="font-medium">{user?.name || "N/A"}</p>
+              <p className="text-xs text-muted-foreground">
+                {user?.email || ""}
+              </p>
+            </div>
+          </div>
+        </td>
+
+        {/* THERAPIST */}
+        <td className="px-4 py-3">
+          <div className="flex items-center gap-2">
+            <div className="h-8 w-8 rounded-full bg-purple-100 flex items-center justify-center">
+              <UserCog className="h-4 w-4 text-purple-600" />
+            </div>
+            <div>
+              <p className="font-medium">{therapist?.name || "N/A"}</p>
+              <p className="text-xs text-muted-foreground">
+                {therapist?.email || ""}
+              </p>
+            </div>
+          </div>
+        </td>
+
+        {/* DATE & TIME */}
+        <td className="px-4 py-3">
+          <div className="space-y-0.5">
+            <div className="flex items-center gap-1">
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+              <span>{session.date}</span>
+            </div>
+            <div className="flex items-center gap-1 text-muted-foreground">
+              <Clock className="h-4 w-4" />
+              <span>{session.time}</span>
+            </div>
+            {session.startTime && (
+              <p className="text-xs text-muted-foreground">
+                Start:{" "}
+                {new Date(session.startTime).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </p>
+            )}
+          </div>
+        </td>
+
+        {/* TYPE */}
+        <td className="px-4 py-3">
+          <span className="px-3 py-1 rounded-full text-xs font-semibold bg-muted">
+            {session.type}
+          </span>
+        </td>
+
+        {/* STATUS */}
+        <td className="px-4 py-3">
+          <span
+            className={cn(
+              "px-3 py-1 rounded-full text-xs font-bold capitalize",
+              getStatusBadge(session.status)
+            )}
+          >
+            {session.status}
+          </span>
+        </td>
+
+        {/* ACTIONS */}
+        <td className="px-4 py-3 text-right">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+
+            <DropdownMenuContent align="end" className="w-48">
+              {/* UPCOMING */}
+              {activeTab === "upcoming" && (
+                <>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      setSelectedSession(session);
+                      setIsRescheduleModalOpen(true);
+                    }}
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Reschedule
+                  </DropdownMenuItem>
+
+                  <DropdownMenuItem
+                    className="text-destructive"
+                    onClick={() => {
+                      setSelectedSession(session);
+                      setIsCancelModalOpen(true);
+                    }}
+                  >
+                    <X className="h-4 w-4 mr-2" />
+                    Cancel Session
+                  </DropdownMenuItem>
+                </>
+              )}
+
+              {/* LIVE */}
+              {activeTab === "live" && (
+                <DropdownMenuItem
+                  onClick={() =>
+                    window.open(
+                      `/video-call/${session.sessionId}`,
+                      "_blank",
+                      "width=1200,height=800"
+                    )
+                  }
+                >
+                  <Video className="h-4 w-4 mr-2" />
+                  Join Session
+                </DropdownMenuItem>
+              )}
+
+              {/* COMPLETED */}
+              {activeTab === "completed" && (
+                <DropdownMenuItem
+                  onClick={() =>
+                    navigate(`/session-recordings/${session._id}`)
+                  }
+                >
+                  <Eye className="h-4 w-4 mr-2" />
+                  View Recording
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </td>
+      </tr>
+    );
+  })}
+</tbody>
+
               </table>
             </div>
 

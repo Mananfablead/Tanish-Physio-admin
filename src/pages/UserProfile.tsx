@@ -15,6 +15,7 @@ import {
   Clock,
   UserCog,
   PlusCircle,
+  Loader2,
 } from "lucide-react";
 import { Calendar as CalendarIcon } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -54,19 +55,20 @@ import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchUserById, updateUser } from "@/features/users/userSlice";
+import PageLoader from "@/components/PageLoader";
+import { toast } from "sonner";
 
 export default function UserProfile() {
   const { id } = useParams();
   const navigate = useNavigate();
   const dispatch = useDispatch();
+const [updating, setUpdating] = useState(false);
 
   const [isFullIntakeOpen, setIsFullIntakeOpen] = useState(false);
   const [isAssignSessionOpen, setIsAssignSessionOpen] = useState(false);
 
-  const { selectedUser: user, loading } = useSelector(
-    (state) => state.users
-  );
-  console.log("selectedUser", user)
+  const usersState = useSelector((state: any) => state.users);
+  const { selectedUser: user, loading } = usersState;
   /* ============================
      FETCH USER
   ============================ */
@@ -79,16 +81,35 @@ export default function UserProfile() {
   /* ============================
      STATUS UPDATE
   ============================ */
-  const deactivateUser = () => {
-    if (!user?._id) return;
+const toggleUserStatus = async () => {
+  if (!user?._id) return;
 
-    dispatch(
+  const newStatus = user.status === "active" ? "inactive" : "active";
+
+  try {
+    setUpdating(true);
+
+    const result: any = await dispatch(
       updateUser({
         userId: user._id,
-        userData: { status: "inactive" },
+        userData: { status: newStatus },
       })
     );
-  };
+
+    if (updateUser.fulfilled.match(result)) {
+      toast.success(`User ${newStatus} successfully`);
+    } else {
+      toast.error(result.payload?.message || "Update failed");
+    }
+  } catch (err: any) {
+    toast.error(err.message || "Something went wrong");
+  } finally {
+    setUpdating(false);
+  }
+};
+
+
+
 
   /* ============================
      ASSIGN SESSION FORM
@@ -135,21 +156,33 @@ export default function UserProfile() {
   };
 
   /* ============================
-     LOADING / NOT FOUND
+     LOADING STATES
   ============================ */
-  if (loading) {
+  // Show loading spinner while fetching user data
+  if (loading || (id && !user)) {
     return (
-      <div className="flex items-center justify-center h-[60vh] font-semibold">
-        Loading user...
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="text-muted-foreground">Loading user profile...</p>
+        </div>
       </div>
     );
   }
 
-  if (!user) {
+  // Show user not found only when we have an ID but no user data after loading
+  if (id && !user) {
     return (
-      <div className="flex flex-col items-center justify-center h-[60vh]">
-        <h2 className="text-2xl font-bold">User not found</h2>
-        <Button variant="link" onClick={() => navigate("/users")}>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
+        <div className="p-4 rounded-full bg-destructive/10">
+          <UserX className="h-12 w-12 text-destructive" />
+        </div>
+        <div className="text-center space-y-2">
+          <h2 className="text-2xl font-bold text-foreground">User not found</h2>
+          <p className="text-muted-foreground">The requested user profile could not be found.</p>
+        </div>
+        <Button variant="outline" onClick={() => navigate("/users")}>
+          <ChevronLeft className="w-4 h-4 mr-2" />
           Back to Users
         </Button>
       </div>
@@ -162,31 +195,41 @@ export default function UserProfile() {
   return (
     <div className="max-w-7xl mx-auto space-y-8 pb-12">
       {/* HEADER */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6 bg-card rounded-xl border p-6 shadow-sm">
         <div className="flex items-center gap-4">
           <Button
             variant="outline"
             size="icon"
             onClick={() => navigate("/users")}
-            className="rounded-full"
+            className="rounded-full h-10 w-10"
           >
             <ChevronLeft className="w-5 h-5" />
           </Button>
           <div>
-            <h1 className="text-3xl font-extrabold">{user.name}</h1>
-            <div className="flex items-center gap-2 mt-1">
+            <div className="flex items-center gap-3 mb-2">
+              <h1 className="text-3xl font-extrabold">{user.name}</h1>
               <span
                 className={cn(
-                  "px-2 py-0.5 rounded text-xs font-bold uppercase",
+                  "px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide",
                   user.status === "active"
-                    ? "bg-emerald-100 text-emerald-700"
-                    : "bg-zinc-100 text-zinc-600"
+                    ? "bg-emerald-100 text-emerald-700 border border-emerald-200"
+                    : "bg-destructive/10 text-destructive border border-destructive/20"
                 )}
               >
                 {user.status}
               </span>
-              <span className="text-muted-foreground text-sm flex items-center gap-1">
-                <CalendarIcon className="w-3.5 h-3.5" />
+            </div>
+            <div className="flex flex-wrap items-center gap-4 text-muted-foreground">
+              <span className="flex items-center gap-1.5 text-sm">
+                <Mail className="w-4 h-4" />
+                {user.email}
+              </span>
+              <span className="flex items-center gap-1.5 text-sm">
+                <Phone className="w-4 h-4" />
+                {user.phone}
+              </span>
+              <span className="flex items-center gap-1.5 text-sm">
+                <CalendarIcon className="w-4 h-4" />
                 Joined {user.joinDate}
               </span>
             </div>
@@ -194,71 +237,132 @@ export default function UserProfile() {
         </div>
 
         <div className="flex gap-3">
-          <Button variant="outline" size="sm">
-            <RefreshCw className="w-4 h-4 mr-1" />
-            Reset Access
-          </Button>
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={deactivateUser}
-          >
-            <UserX className="w-4 h-4 mr-1" />
-            Deactivate
-          </Button>
+       <Button
+  onClick={toggleUserStatus}
+  disabled={updating}
+  variant={user.status === "active" ? "destructive" : "default"}
+  className="min-w-[160px]"
+>
+  {updating ? (
+    <>
+      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+      Updating...
+    </>
+  ) : user.status === "active" ? (
+    "Deactivate User"
+  ) : (
+    "Activate User"
+  )}
+</Button>
+
         </div>
       </div>
 
       {/* CONTENT */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* LEFT */}
+        {/* LEFT COLUMN */}
         <div className="lg:col-span-4 space-y-6">
-          <div className="rounded-2xl border p-6 space-y-6">
-            <h3 className="text-lg font-bold flex items-center gap-2">
-              <Shield className="w-5 h-5" />
-              Account Overview
-            </h3>
+          {/* ACCOUNT OVERVIEW CARD */}
+          <div className="bg-card rounded-xl border p-6 shadow-sm">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <Shield className="w-5 h-5 text-primary" />
+              </div>
+              <h3 className="text-lg font-bold">Account Overview</h3>
+            </div>
 
             <div className="space-y-4">
-              <p><Mail className="inline w-4 h-4 mr-2" />{user.email}</p>
-              <p><Phone className="inline w-4 h-4 mr-2" />{user.phone}</p>
-              <span
-                className={cn(
-                  "inline-block px-3 py-1 rounded-full text-xs font-bold",
-                  getSubscriptionBadge(user.subscription)
-                )}
-              >
-                {user.subscription}
-              </span>
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                <Mail className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                <div>
+                  <p className="text-sm text-muted-foreground">Email</p>
+                  <p className="font-medium">{user.email}</p>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                <Phone className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                <div>
+                  <p className="text-sm text-muted-foreground">Phone</p>
+                  <p className="font-medium">{user.phone}</p>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                <CreditCard className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                <div>
+                  <p className="text-sm text-muted-foreground">Subscription</p>
+                  <span
+                    className={cn(
+                      "inline-block px-3 py-1 rounded-full text-xs font-bold",
+                      getSubscriptionBadge(user.subscription)
+                    )}
+                  >
+                    {user.subscription}
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
 
-          <Button
-            variant="outline"
-            onClick={() => setIsAssignSessionOpen(true)}
-          >
-            + Assign Session
-          </Button>
+          {/* ACTION BUTTONS */}
+          {/* <div className="space-y-3">
+            <Button
+              className="w-full"
+              onClick={() => setIsAssignSessionOpen(true)}
+            >
+              <PlusCircle className="w-4 h-4 mr-2" />
+              Assign Session
+            </Button>
+            
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => setIsFullIntakeOpen(true)}
+            >
+              <ClipboardList className="w-4 h-4 mr-2" />
+              View Full Intake
+            </Button>
+          </div> */}
         </div>
 
-        {/* RIGHT */}
+        {/* RIGHT COLUMN */}
         <div className="lg:col-span-8 space-y-8">
-          <section>
-            <h3 className="text-xl font-bold mb-3">
-              Health Profile
-            </h3>
-            <div className="grid grid-cols-3 gap-4">
-              <div className="p-4 border rounded-xl">
-                {user.healthProfile?.primaryConcern || "N/A"}
+          {/* HEALTH PROFILE SECTION */}
+          <div className="bg-card rounded-xl border p-6 shadow-sm">
+            <div className="flex items-center gap-2 mb-6">
+              <div className="p-2 rounded-lg bg-blue-500/10">
+                <Activity className="w-5 h-5 text-blue-500" />
               </div>
-              <div className="p-4 border rounded-xl text-center text-2xl font-bold">
-                {user.healthProfile?.painIntensity || 0}/10
+              <h3 className="text-xl font-bold">Health Profile</h3>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="p-5 border rounded-xl bg-muted/30 hover:bg-muted/50 transition-colors">
+                <h4 className="text-sm font-semibold text-muted-foreground mb-2">Primary Concern</h4>
+                <p className="font-medium">{user.healthProfile?.primaryConcern || "Not specified"}</p>
               </div>
-              <div className="p-4 border rounded-xl">
-                {user.healthProfile?.priorTreatments || "N/A"}
+              
+              <div className="p-5 border rounded-xl bg-muted/30 hover:bg-muted/50 transition-colors text-center">
+                <h4 className="text-sm font-semibold text-muted-foreground mb-2">Pain Level</h4>
+                <div className="text-3xl font-bold text-blue-600">
+                  {user.healthProfile?.painIntensity || 0}<span className="text-lg text-muted-foreground">/10</span>
+                </div>
+              </div>
+              
+              <div className="p-5 border rounded-xl bg-muted/30 hover:bg-muted/50 transition-colors">
+                <h4 className="text-sm font-semibold text-muted-foreground mb-2">Prior Treatments</h4>
+                <p className="font-medium">{user.healthProfile?.priorTreatments || "None recorded"}</p>
               </div>
             </div>
-          </section>
+          </div>
+
+          {/* ADDITIONAL SECTIONS CAN BE ADDED HERE */}
+          <div className="bg-card rounded-xl border p-6 shadow-sm text-center py-12">
+            <MessageSquare className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Additional Information</h3>
+            <p className="text-muted-foreground">More user details and history will appear here</p>
+          </div>
         </div>
       </div>
 

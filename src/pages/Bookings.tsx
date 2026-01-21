@@ -11,6 +11,7 @@ import {
   XCircle,
   Clock as ClockIcon,
   Plus,
+  Activity,
 } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
@@ -343,13 +344,7 @@ export default function Bookings() {
                   {booking.time}
                 </td>
                 <td>
-                  <button
-                    onClick={() => {
-                      setSelectedBooking(booking);
-                      setIsStatusDialogOpen(true);
-                    }}
-                    className="w-full text-left"
-                  >
+                
                     <span
                       className={cn(
                         "status-badge",
@@ -358,7 +353,7 @@ export default function Bookings() {
                     >
                       {booking.status}
                     </span>
-                  </button>
+                  
                 </td>
                 <td>
                   <DropdownMenu>
@@ -367,23 +362,29 @@ export default function Bookings() {
                         <MoreHorizontal className="w-4 h-4" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem
-                        onClick={() => {
-                          prepareEditBooking(booking);
-                        }}
-                      >
-                        <Edit className="w-4 h-4 mr-2" />
-                        Edit Booking
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        className="text-destructive"
-                        onClick={() => handleDeleteBooking(booking._id)}
-                      >
-                        <XCircle className="w-4 h-4 mr-2" />
-                        Delete Booking
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
+                <DropdownMenuContent align="end" className="w-44">
+  {/* EDIT BOOKING */}
+  <DropdownMenuItem
+    onClick={() => prepareEditBooking(booking)}
+    className="cursor-pointer"
+  >
+    <Edit className="w-4 h-4 mr-2 text-slate-600" />
+    Edit Booking
+  </DropdownMenuItem>
+
+  {/* STATUS UPDATE */}
+  <DropdownMenuItem
+    onClick={() => {
+      setSelectedBooking(booking);
+      setIsStatusDialogOpen(true);
+    }}
+     className="cursor-pointer"
+  >
+    <Activity className="w-4 h-4 mr-2" />
+    Update Status
+  </DropdownMenuItem>
+</DropdownMenuContent>
+
                   </DropdownMenu>
                 </td>
               </tr>

@@ -23,6 +23,7 @@ import {
     updateService,
     fetchServices,
 } from "@/features/services/serviceSlice";
+import { serviceAPI } from "@/api/apiClient";
 
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
 
@@ -54,10 +55,13 @@ export default function UpdateService() {
     const [isLoading, setIsLoading] = useState(false);
     const [initialImages, setInitialImages] = useState<string[]>([]);
     const [initialVideos, setInitialVideos] = useState<string[]>([]);
-    
+
     // New state for file handling
     const [selectedImages, setSelectedImages] = useState<File[]>([]);
     const [selectedVideos, setSelectedVideos] = useState<File[]>([]);
+
+    // State for media removal
+    const [removingMedia, setRemovingMedia] = useState<{ [key: string]: boolean }>({});
 
     const { currentService: service, loading: serviceLoading } = useSelector((state: any) => state.services);
 
@@ -76,14 +80,14 @@ export default function UpdateService() {
                 price: (service.price || service.price === 0) ? service.price.toString() : "",
                 duration: service.duration || "",
                 category: service.category || "Therapy",
-                status: (service.status === 'active' || service.status === 'inactive') 
-                    ? service.status as "active" | "inactive" 
+                status: (service.status === 'active' || service.status === 'inactive')
+                    ? service.status as "active" | "inactive"
                     : "active",
                 features: service.features || [],
                 prerequisites: service.prerequisites || [],
                 benefits: service.benefits || [],
             });
-            
+
             // Set initial images and videos from the service
             setInitialImages(service.images || []);
             setInitialVideos(service.videos || []);
@@ -96,72 +100,113 @@ export default function UpdateService() {
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = e.target.files;
         if (!files) return;
-        
+
         const newFiles: File[] = [];
         const newPreviews: string[] = [];
-        
+
         for (let i = 0; i < files.length; i++) {
-          const file = files[i];
-          
-          if (file.size > MAX_IMAGE_SIZE) {
-            setImageError(`Image size must be less than or equal to 5 MB`);
-            e.target.value = "";
-            return;
-          }
-          
-          newFiles.push(file);
-          newPreviews.push(URL.createObjectURL(file));
+            const file = files[i];
+
+            if (file.size > MAX_IMAGE_SIZE) {
+                setImageError(`Image size must be less than or equal to 5 MB`);
+                e.target.value = "";
+                return;
+            }
+
+            newFiles.push(file);
+            newPreviews.push(URL.createObjectURL(file));
         }
-        
+
         setImageError("");
         setSelectedImages(prev => [...prev, ...newFiles]);
         setImagePreviews(prev => [...prev, ...newPreviews]);
     };
-    
+
     const removeImage = (index: number) => {
         setImagePreviews(prev => prev.filter((_, i) => i !== index));
         setSelectedImages(prev => prev.filter((_, i) => i !== index));
         setImageError("");
         if (fileInputRef.current && selectedImages.length <= 1) fileInputRef.current.value = "";
     };
-    
+
     // New video handler
     const handleVideoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = e.target.files;
         if (!files) return;
-        
+
         const newFiles: File[] = [];
         const newPreviews: string[] = [];
-        
+
         for (let i = 0; i < files.length; i++) {
-          const file = files[i];
-          
-          if (!file.type.startsWith("video/")) {
-            setImageError("Please upload a valid video file");
-            e.target.value = "";
-            return;
-          }
-          
-          if (file.size > 100 * 1024 * 1024) { // 100MB limit
-            setImageError("Video size must be less than 100MB");
-            e.target.value = "";
-            return;
-          }
-          
-          newFiles.push(file);
-          newPreviews.push(file.name);
+            const file = files[i];
+
+            if (!file.type.startsWith("video/")) {
+                setImageError("Please upload a valid video file");
+                e.target.value = "";
+                return;
+            }
+
+            if (file.size > 100 * 1024 * 1024) { // 100MB limit
+                setImageError("Video size must be less than 100MB");
+                e.target.value = "";
+                return;
+            }
+
+            newFiles.push(file);
+            newPreviews.push(file.name);
         }
-        
+
         setImageError("");
         setSelectedVideos(prev => [...prev, ...newFiles]);
         setVideoPreviews(prev => [...prev, ...newPreviews]);
     };
-    
+
     const removeVideo = (index: number) => {
         setVideoPreviews(prev => prev.filter((_, i) => i !== index));
         setSelectedVideos(prev => prev.filter((_, i) => i !== index));
         setImageError("");
         if (videoInputRef.current && selectedVideos.length <= 1) videoInputRef.current.value = "";
+    };
+
+    // Remove existing media from server
+    const removeExistingMedia = async (mediaType: 'image' | 'video', index: number) => {
+        if (!id) return;
+
+        const mediaKey = `${mediaType}-${index}`;
+        setRemovingMedia(prev => ({ ...prev, [mediaKey]: true }));
+
+        try {
+            await serviceAPI.removeMedia(id, {
+                mediaType,
+                mediaIndex: index
+            });
+
+            // Update local state to reflect removal
+            if (mediaType === 'image') {
+                setInitialImages(prev => prev.filter((_, i) => i !== index));
+                setImagePreviews(prev => prev.filter((_, i) => i !== index));
+            } else {
+                setInitialVideos(prev => prev.filter((_, i) => i !== index));
+                setVideoPreviews(prev => prev.filter((_, i) => i !== index));
+            }
+
+            // Refresh service data
+            dispatch(fetchServiceById(id));
+        } catch (error) {
+            console.error('Error removing media:', error);
+            setImageError('Failed to remove media');
+        } finally {
+            setRemovingMedia(prev => ({ ...prev, [mediaKey]: false }));
+        }
+    };
+
+    // Remove newly added media (before saving)
+    const removeNewMedia = (mediaType: 'image' | 'video', index: number) => {
+        if (mediaType === 'image') {
+            removeImage(index);
+        } else {
+            removeVideo(index);
+        }
     };
 
 
@@ -242,13 +287,13 @@ export default function UpdateService() {
     /* ================= LOADING STATE ================= */
     if (serviceLoading && !service) {
         return (
-            <div className="p-6">
-                <Card>
-                    <CardContent className="p-6 text-center">
+            <div className="min-h-screen flex items-center justify-center bg-muted/30">
+               
+                        <Loader2 className="h-8 w-8 mx-auto animate-spin text-primary" />
                         <p className="text-lg font-medium">Loading...</p>
-                    </CardContent>
-                </Card>
+               
             </div>
+
         );
     }
 
@@ -407,25 +452,40 @@ export default function UpdateService() {
                                 onChange={handleImageChange}
                                 multiple
                             />
-                            
+
                             {imagePreviews.length > 0 ? (
                                 <div className="flex flex-wrap gap-2">
-                                    {imagePreviews.map((preview, index) => (
-                                        <div key={index} className="relative">
-                                            <img src={preview} className="w-16 h-16 rounded object-cover" />
-                                            <Button 
-                                                variant="outline" 
-                                                size="icon"
-                                                className="absolute -top-2 -right-2 h-6 w-6 p-0"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    removeImage(index);
-                                                }}
-                                            >
-                                                <X className="w-3 h-3" />
-                                            </Button>
-                                        </div>
-                                    ))}
+                                    {imagePreviews.map((preview, index) => {
+                                        const isExistingImage = index < initialImages.length;
+                                        const mediaKey = `image-${index}`;
+                                        const isRemoving = removingMedia[mediaKey];
+
+                                        return (
+                                            <div key={index} className="relative">
+                                                <img src={preview} className="w-16 h-16 rounded object-cover" />
+                                                <Button
+                                                    variant="outline"
+                                                    size="icon"
+                                                    className="absolute -top-2 -right-2 h-6 w-6 p-0"
+                                                    disabled={isRemoving}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (isExistingImage) {
+                                                            removeExistingMedia('image', index);
+                                                        } else {
+                                                            removeNewMedia('image', index - initialImages.length);
+                                                        }
+                                                    }}
+                                                >
+                                                    {isRemoving ? (
+                                                        <Loader2 className="w-3 h-3 animate-spin" />
+                                                    ) : (
+                                                        <X className="w-3 h-3" />
+                                                    )}
+                                                </Button>
+                                            </div>
+                                        );
+                                    })}
                                     <div className="flex items-center gap-2">
                                         <Upload className="w-6 h-6" />
                                         <span>Add More Images</span>
@@ -458,25 +518,40 @@ export default function UpdateService() {
                                 onChange={handleVideoChange}
                                 multiple
                             />
-                            
+
                             {videoPreviews.length > 0 ? (
                                 <div className="flex flex-wrap gap-2">
-                                    {videoPreviews.map((preview, index) => (
-                                        <div key={index} className="relative flex items-center gap-2 bg-gray-200 px-3 py-1 rounded text-sm">
-                                            <span>{preview}</span>
-                                            <Button 
-                                                variant="outline" 
-                                                size="icon"
-                                                className="h-6 w-6 p-0"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    removeVideo(index);
-                                                }}
-                                            >
-                                                <X className="w-3 h-3" />
-                                            </Button>
-                                        </div>
-                                    ))}
+                                    {videoPreviews.map((preview, index) => {
+                                        const isExistingVideo = index < initialVideos.length;
+                                        const mediaKey = `video-${index}`;
+                                        const isRemoving = removingMedia[mediaKey];
+
+                                        return (
+                                            <div key={index} className="relative flex items-center gap-2 bg-gray-200 px-3 py-1 rounded text-sm">
+                                                <span>{preview}</span>
+                                                <Button
+                                                    variant="outline"
+                                                    size="icon"
+                                                    className="h-6 w-6 p-0"
+                                                    disabled={isRemoving}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (isExistingVideo) {
+                                                            removeExistingMedia('video', index);
+                                                        } else {
+                                                            removeNewMedia('video', index - initialVideos.length);
+                                                        }
+                                                    }}
+                                                >
+                                                    {isRemoving ? (
+                                                        <Loader2 className="w-3 h-3 animate-spin" />
+                                                    ) : (
+                                                        <X className="w-3 h-3" />
+                                                    )}
+                                                </Button>
+                                            </div>
+                                        );
+                                    })}
                                     <div className="flex items-center gap-2">
                                         <Upload className="w-6 h-6" />
                                         <span>Add More Videos</span>
