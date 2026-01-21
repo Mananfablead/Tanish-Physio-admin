@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import VideoCallComponent from "../../../../Tanish-Physio-Client/src/components/VideoCall/VideoCall"; // Adjust path as needed
+import VideoCallComponent from "../../components/VideoCall/VideoCall"; // Adjust path as needed
 
 interface VideoCallProps {
   sessionId: string;
