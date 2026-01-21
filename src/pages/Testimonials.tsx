@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { useDispatch, useSelector } from 'react-redux';
+import { unwrapResult } from '@reduxjs/toolkit';
 import { Search, Plus, Edit, Trash2, Star, User, Calendar, Award, Filter, CheckCircle, MessageSquare, Clock } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -33,8 +35,16 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { testimonialService } from "@/services/testimonialService";
-import { toast } from "@/hooks/use-toast";
+import {
+  fetchTestimonials,
+  fetchTestimonialStats,
+  createTestimonial,
+  updateTestimonial,
+  updateTestimonialStatus,
+  toggleTestimonialFeatured,
+  deleteTestimonial,
+  clearSelectedTestimonial
+} from '@/features/testimonials/testimonialSlice';
 
 interface Testimonial {
   _id: string;
@@ -52,7 +62,8 @@ interface Testimonial {
 }
 
 export default function Testimonials() {
-  const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
+  const dispatch = useDispatch();
+  const { testimonials, stats, loading, error } = useSelector((state: any) => state.testimonials);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -75,87 +86,25 @@ export default function Testimonials() {
     featured: false,
   });
 
-  // Fetch testimonials from API
+  // Load testimonials and stats on component mount
   useEffect(() => {
-    const fetchTestimonials = async () => {
-      try {
-        const response = await testimonialService.getAllTestimonials();
-        if (response.data.success) {
-          setTestimonials(response.data.data);
-        }
-      } catch (error) {
-        console.error("Error fetching testimonials:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load testimonials",
-          variant: "destructive",
-        });
-      }
-    };
+    dispatch(fetchTestimonials({ search: searchQuery, status: statusFilter }));
+    dispatch(fetchTestimonialStats());
+  }, [dispatch, searchQuery, statusFilter]);
 
-    fetchTestimonials();
-  }, []);
-
-  const [filteredTestimonials, setFilteredTestimonials] = useState<
-    Testimonial[]
-  >([]);
-
-  // Fetch testimonials with search and filter
-  useEffect(() => {
-    const fetchFilteredTestimonials = async () => {
-      try {
-        const response = await testimonialService.getAllTestimonials({
-          search: searchQuery,
-          status: statusFilter !== "all" ? statusFilter : undefined,
-        });
-        if (response.data.success) {
-          setFilteredTestimonials(response.data.data);
-        }
-      } catch (error) {
-        console.error("Error fetching filtered testimonials:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load testimonials",
-          variant: "destructive",
-        });
-      }
-    };
-
-    fetchFilteredTestimonials();
-  }, [searchQuery, statusFilter]);
-
-  const [stats, setStats] = useState({
-    total: 0,
-    pending: 0,
-    approved: 0,
-    featured: 0,
+  const filteredTestimonials = testimonials.filter(testimonial => {
+    const matchesSearch = testimonial.clientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         testimonial.serviceUsed.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         testimonial.content.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesStatus = statusFilter === "all" || testimonial.status === statusFilter;
+    
+    return matchesSearch && matchesStatus;
   });
 
-  // Fetch testimonials stats from API
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const response = await testimonialService.getTestimonialStats();
-        if (response.data.success) {
-          setStats(response.data.data);
-        }
-      } catch (error) {
-        console.error("Error fetching testimonial stats:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load testimonial stats",
-          variant: "destructive",
-        });
-      }
-    };
-
-    fetchStats();
-  }, []);
-
-  // Use the fetched stats
-  const pendingCount = stats.pending;
-  const approvedCount = stats.approved;
-  const featuredCount = stats.featured;
+  const pendingCount = stats.pending || 0;
+  const approvedCount = stats.approved || 0;
+  const featuredCount = stats.featured || 0;
 
   const handleCreate = () => {
     setEditingTestimonial(null);
@@ -188,112 +137,54 @@ export default function Testimonials() {
   };
 
   const handleSubmit = async () => {
-    if (editingTestimonial) {
-      // Update existing testimonial via API
-      try {
-        const response = await testimonialService.updateTestimonial(
-          editingTestimonial._id,
-          formData
-        );
-        if (response.data.success) {
-          // Refetch testimonials to get the updated list
-          const updatedResponse = await testimonialService.getAllTestimonials();
-          if (updatedResponse.data.success) {
-            setTestimonials(updatedResponse.data.data);
-            toast({
-              title: "Success",
-              description: "Testimonial updated successfully",
-            });
-          }
-        }
-      } catch (error) {
-        console.error("Error updating testimonial:", error);
-        toast({
-          title: "Error",
-          description: "Failed to update testimonial",
-          variant: "destructive",
-        });
+    try {
+      if (editingTestimonial) {
+        // Update existing testimonial
+        await dispatch(updateTestimonial({ id: editingTestimonial.id, data: formData })).unwrap();
+      } else {
+        // Create new testimonial
+        await dispatch(createTestimonial(formData)).unwrap();
       }
-    } else {
-      // Create new testimonial via API
-      try {
-        const response = await testimonialService.createTestimonial(formData);
-        if (response.data.success) {
-          // Refetch testimonials to get the updated list
-          const updatedResponse = await testimonialService.getAllTestimonials();
-          if (updatedResponse.data.success) {
-            setTestimonials(updatedResponse.data.data);
-            toast({
-              title: "Success",
-              description: "Testimonial created successfully",
-            });
-          }
-        }
-      } catch (error) {
-        console.error("Error creating testimonial:", error);
-        toast({
-          title: "Error",
-          description: "Failed to create testimonial",
-          variant: "destructive",
-        });
-      }
+      
+      // Close modal
+      setIsModalOpen(false);
+      
+      // Refresh testimonials to ensure the new/updated testimonial appears in the filtered list
+      dispatch(fetchTestimonials({ search: searchQuery, status: statusFilter }));
+      dispatch(fetchTestimonialStats());
+    } catch (error) {
+      console.error('Error saving testimonial:', error);
+      // Still refresh in case of error to ensure UI consistency
+      dispatch(fetchTestimonials({ search: searchQuery, status: statusFilter }));
+      dispatch(fetchTestimonialStats());
     }
-    setIsModalOpen(false);
   };
 
-  const handleStatusChange = async (
-    id: string,
-    newStatus: "approved" | "rejected"
-  ) => {
+  const handleStatusChange = async (id: string, newStatus: "approved" | "rejected") => {
     try {
-      const response = await testimonialService.updateTestimonialStatus(
-        id,
-        newStatus
-      );
-      if (response.data.success) {
-        // Refetch testimonials to get the updated list
-        const updatedResponse = await testimonialService.getAllTestimonials();
-        if (updatedResponse.data.success) {
-          setTestimonials(updatedResponse.data.data);
-          toast({
-            title: "Success",
-            description: `Testimonial ${newStatus} successfully`,
-          });
-        }
-      }
+      await dispatch(updateTestimonialStatus({ id, status: newStatus })).unwrap();
+      // Refresh testimonials to ensure the updated status appears in the filtered list
+      dispatch(fetchTestimonials({ search: searchQuery, status: statusFilter }));
+      dispatch(fetchTestimonialStats());
     } catch (error) {
-      console.error("Error updating testimonial status:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update testimonial status",
-        variant: "destructive",
-      });
+      console.error('Error updating testimonial status:', error);
+      // Still refresh in case of error to ensure UI consistency
+      dispatch(fetchTestimonials({ search: searchQuery, status: statusFilter }));
+      dispatch(fetchTestimonialStats());
     }
   };
 
   const handleFeatureToggle = async (id: string) => {
     try {
-      const response = await testimonialService.toggleFeaturedStatus(id);
-      if (response.data.success) {
-        // Refetch testimonials to get the updated list
-        const updatedResponse = await testimonialService.getAllTestimonials();
-        if (updatedResponse.data.success) {
-          setTestimonials(updatedResponse.data.data);
-          toast({
-            title: "Success",
-            description: response.data.data.featured
-              ? "Testimonial featured successfully"
-              : "Testimonial unfeatured successfully",
-          });
-        }
-      }
+      await dispatch(toggleTestimonialFeatured(id)).unwrap();
+      // Refresh testimonials to ensure the updated featured status appears in the filtered list
+      dispatch(fetchTestimonials({ search: searchQuery, status: statusFilter }));
+      dispatch(fetchTestimonialStats());
     } catch (error) {
-      console.error("Error toggling featured status:", error);
-      toast({
-        title: "Error",
-        description: "Failed to toggle featured status",
-        variant: "destructive",
-      });
+      console.error('Error toggling testimonial featured status:', error);
+      // Still refresh in case of error to ensure UI consistency
+      dispatch(fetchTestimonials({ search: searchQuery, status: statusFilter }));
+      dispatch(fetchTestimonialStats());
     }
   };
 
@@ -307,30 +198,20 @@ export default function Testimonials() {
   const confirmDelete = async () => {
     if (deleteTestId) {
       try {
-        const response = await testimonialService.deleteTestimonial(
-          deleteTestId
-        );
-        if (response.data.success) {
-          // Refetch testimonials to get the updated list
-          const updatedResponse = await testimonialService.getAllTestimonials();
-          if (updatedResponse.data.success) {
-            setTestimonials(updatedResponse.data.data);
-            toast({
-              title: "Success",
-              description: "Testimonial deleted successfully",
-            });
-          }
-        }
+        await dispatch(deleteTestimonial(deleteTestId)).unwrap();
+        setDeleteTestId(null);
+        setIsDeleteDialogOpen(false);
+        // Refresh testimonials to ensure the deleted testimonial is removed from the filtered list
+        dispatch(fetchTestimonials({ search: searchQuery, status: statusFilter }));
+        dispatch(fetchTestimonialStats());
       } catch (error) {
-        console.error("Error deleting testimonial:", error);
-        toast({
-          title: "Error",
-          description: "Failed to delete testimonial",
-          variant: "destructive",
-        });
+        console.error('Error deleting testimonial:', error);
+        setDeleteTestId(null);
+        setIsDeleteDialogOpen(false);
+        // Still refresh in case of error to ensure UI consistency
+        dispatch(fetchTestimonials({ search: searchQuery, status: statusFilter }));
+        dispatch(fetchTestimonialStats());
       }
-      setDeleteTestId(null);
-      setIsDeleteDialogOpen(false);
     }
   };
 
@@ -376,6 +257,21 @@ export default function Testimonials() {
 
   return (
     <div className="space-y-6">
+      {/* Loading indicator */}
+      {loading && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+      )}
+      
+      {/* Error message */}
+      {error && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+          <strong className="font-bold">Error: </strong>
+          <span className="block sm:inline">{error}</span>
+        </div>
+      )}
+      
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>

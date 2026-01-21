@@ -5,16 +5,6 @@ import { Plus, Edit2, ToggleLeft, ToggleRight, Search, ChevronLeft, ChevronRight
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -46,19 +36,38 @@ interface SubscriptionPlan {
   subscribers?: number;
 }
 
+interface UserSubscription {
+  _id: string;
+  userId: {
+    _id: string;
+    name: string;
+    email: string;
+  };
+  planId: {
+    _id: string;
+    name: string;
+    price: number;
+  };
+  status: string;
+  startDate: string;
+  endDate: string;
+  sessionsUsed: number;
+  sessionsRemaining: number;
+  autoRenew: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export default function Subscriptions() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { plans, userSubscriptions, loading, error, order } = useSelector((state: any) => state.subscriptions);
   const { toast } = useToast();
-  console.log("userSubscriptions", userSubscriptions);
+
   const [activeTab, setActiveTab] = useState("plans");
   const [searchQuery, setSearchQuery] = useState("");
   const [isEditPlanOpen, setIsEditPlanOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null);
-  const [deletePlanId, setDeletePlanId] = useState<string | null>(null);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   // State for the plan form
   const [planForm, setPlanForm] = useState({
@@ -72,25 +81,36 @@ export default function Subscriptions() {
   });
 
 
-useEffect(() => {
-  dispatch(fetchAllSubscriptionPlans());
-  dispatch(fetchAllUserSubscriptions());
-}, [dispatch]);
 
- const filteredSubscriptions = Array.isArray(userSubscriptions)
-  ? userSubscriptions.filter(
-      (sub) =>
-        sub.userId?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        sub.userId?.email?.toLowerCase().includes(searchQuery.toLowerCase())
-    )
-  : [];
 
-console.log("filteredSubscriptions", filteredSubscriptions)
+  const filteredSubscriptions = userSubscriptions.filter(
+    (sub) =>
+      sub.userId.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      sub.userId.email.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   // Calculate stats from actual plans
   const totalSubscribers = plans.reduce((acc: number, plan: SubscriptionPlan) => acc + (plan.subscribers || 0), 0);
   const totalRevenue = plans.reduce((acc: number, plan: SubscriptionPlan) => acc + plan.price, 0); // Using actual plan prices
 
-  
+  useEffect(() => {
+    if (activeTab === "plans") {
+      // Fetch all subscription plans for admin management
+      dispatch(fetchAllSubscriptionPlans());
+    } else if (activeTab === "subscriptions") {
+      // Fetch all user subscriptions
+      dispatch(fetchAllUserSubscriptions());
+    }
+
+    // Show error toast if there's an error
+    if (error) {
+      toast({
+        title: "Error",
+        description: error,
+        variant: "destructive",
+      });
+    }
+  }, [dispatch, error, toast, activeTab]);
 
   // Populate form when selectedPlan changes (for editing)
   useEffect(() => {
@@ -251,45 +271,28 @@ console.log("filteredSubscriptions", filteredSubscriptions)
     }
   };
 
-  // Handle delete plan - opens confirmation dialog
-  const handleDeletePlan = (planId: string) => {
-    setDeletePlanId(planId);
-    setIsDeleteDialogOpen(true);
-  };
-
-  // Confirm delete plan
-  const confirmDeletePlan = async () => {
-    if (!deletePlanId) return;
-    
+  // Handle delete plan
+  const handleDeletePlan = async (planId: string) => {
     try {
-      const result = await dispatch(deleteSubscriptionPlan(deletePlanId));
+        const result = await dispatch(deleteSubscriptionPlan(planId));
 
-      if (deleteSubscriptionPlan.fulfilled.match(result)) {
+        if (deleteSubscriptionPlan.fulfilled.match(result)) {
+          toast({
+            title: "Success",
+            description: "Subscription plan deleted successfully!",
+          });
+          dispatch(fetchAllSubscriptionPlans());
+        } else {
+          throw new Error(result.payload || 'Failed to delete subscription plan');
+        }
+      } catch (err: any) {
+        console.error('Error deleting subscription plan:', err);
         toast({
-          title: "Success",
-          description: "Subscription plan deleted successfully!",
+          title: "Error",
+          description: err.message || 'Failed to delete subscription plan',
+          variant: "destructive",
         });
-        dispatch(fetchAllSubscriptionPlans());
-      } else {
-        throw new Error(result.payload || 'Failed to delete subscription plan');
       }
-    } catch (err: any) {
-      console.error('Error deleting subscription plan:', err);
-      toast({
-        title: "Error",
-        description: err.message || 'Failed to delete subscription plan',
-        variant: "destructive",
-      });
-    } finally {
-      setDeletePlanId(null);
-      setIsDeleteDialogOpen(false);
-    }
-  };
-
-  // Cancel delete plan
-  const cancelDeletePlan = () => {
-    setDeletePlanId(null);
-    setIsDeleteDialogOpen(false);
   };
   if (loading || !plans) {
     return <PageLoader text="Loading plans..." />;
@@ -479,81 +482,39 @@ console.log("filteredSubscriptions", filteredSubscriptions)
                     <th>Actions</th>
                   </tr>
                 </thead>
-         <tbody>
-  {filteredSubscriptions.map((sub, index) => {
-    console.log("Subscription Row:", index, sub);
-
-    return (
-      <tr key={sub._id}>
-        {/* USER */}
-        <td>
-          <div>
-            <p className="font-medium">{sub.userId?.name || "N/A"}</p>
-            <p className="text-sm text-muted-foreground">
-              {sub.userId?.email || "N/A"}
-            </p>
-          </div>
-        </td>
-
-        {/* PLAN NAME */}
-        <td className="font-medium">
-          {sub.planName}
-        </td>
-
-        {/* START DATE */}
-        <td className="text-muted-foreground">
-          {new Date(sub.startDate).toLocaleDateString()}
-        </td>
-
-        {/* END DATE */}
-        <td className="text-muted-foreground">
-          {sub.planId === "monthly"
-            ? new Date(
-                new Date(sub.startDate).setDate(
-                  new Date(sub.startDate).getDate() + 30
-                )
-              ).toLocaleDateString()
-            : "—"}
-        </td>
-
-        {/* SESSIONS */}
-        <td>—</td>
-
-        {/* STATUS */}
-        <td>
-          <span
-            className={cn(
-              "status-badge",
-              sub.status === "active"
-                ? "status-active"
-                : "status-inactive"
-            )}
-          >
-            {sub.status}
-          </span>
-        </td>
-
-        {/* ACTIONS */}
-        <td>
-          <div className="flex items-center gap-2">
-            {sub.status === "active" ? (
-              <>
-                <Button variant="ghost" size="sm">Pause</Button>
-                <Button variant="ghost" size="sm" className="text-destructive">
-                  Cancel
-                </Button>
-              </>
-            ) : (
-              <Button variant="ghost" size="sm">Reactivate</Button>
-            )}
-          </div>
-        </td>
-      </tr>
-    );
-  })}
-</tbody>
-
-
+                <tbody>
+                  {filteredSubscriptions.map((sub) => (
+                    <tr key={sub._id}>
+                      <td>
+                        <div>
+                          <p className="font-medium">{sub.userId.name}</p>
+                          <p className="text-sm text-muted-foreground">{sub.userId.email}</p>
+                        </div>
+                      </td>
+                      <td className="font-medium">{sub.planId.name}</td>
+                      <td className="text-muted-foreground">{new Date(sub.startDate).toLocaleDateString()}</td>
+                      <td className="text-muted-foreground">{new Date(sub.endDate).toLocaleDateString()}</td>
+                      <td>{sub.sessionsUsed} / {sub.sessionsUsed + sub.sessionsRemaining}</td>
+                      <td>
+                        <span className={cn("status-badge", sub.status === "active" ? "status-active" : "status-inactive")}>
+                          {sub.status}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="flex items-center gap-2">
+                          {sub.status === "active" ? (
+                            <>
+                              <Button variant="ghost" size="sm">Pause</Button>
+                              <Button variant="ghost" size="sm" className="text-destructive">Cancel</Button>
+                            </>
+                          ) : (
+                            <Button variant="ghost" size="sm">Reactivate</Button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
               </table>
             </div>
 
@@ -577,7 +538,7 @@ console.log("filteredSubscriptions", filteredSubscriptions)
 
       {/* Edit/Create Plan Modal */}
       <Dialog open={isEditPlanOpen} onOpenChange={setIsEditPlanOpen}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>{selectedPlan ? "Edit Plan" : "Create New Plan"}</DialogTitle>
             <DialogDescription>
@@ -612,22 +573,22 @@ console.log("filteredSubscriptions", filteredSubscriptions)
                   className="mt-1"
                 />
               </div>
-              <div>
-                <Label htmlFor="duration">Duration</Label>
-                <select
-                  id="duration"
-                  name="duration"
-                  value={planForm.duration}
-                  onChange={handleInputChange}
-                  className="w-full mt-1 px-3 py-2 rounded-md border border-input bg-background"
-                >
-                  <option value="daily">Daily</option>
-                  <option value="weekly">Weekly</option>
-                  <option value="monthly">Monthly</option>
-                  <option value="quarterly">Quarterly</option>
-                  <option value="yearly">Yearly</option>
-                </select>
-              </div>
+              {!isEditPlanOpen &&
+                <div>
+                  <Label htmlFor="duration">Duration</Label>
+                  <select
+                    id="duration"
+                    name="duration"
+                    value={planForm.duration}
+                    onChange={handleInputChange}
+                    className="w-full mt-1 px-3 py-2 rounded-md border border-input bg-background"
+                  >
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="monthly">Monthly</option>
+                    <option value="yearly">Yearly</option>
+                  </select>
+                </div>}
             </div>
 
 
@@ -643,50 +604,52 @@ console.log("filteredSubscriptions", filteredSubscriptions)
               />
             </div>
 
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <Label>Features</Label>
-                <Button type="button" variant="outline" size="sm" onClick={addFeature}>
-                  Add Feature
-                </Button>
-              </div>
-              <div className="space-y-2">
-                {planForm.features.map((feature, index) => (
-                  <div key={index} className="flex gap-2">
-                    <Input
-                      placeholder={`Feature ${index + 1}`}
-                      value={feature}
-                      onChange={(e) => handleFeatureChange(index, e.target.value)}
-                      className="flex-1"
-                    />
-                    {planForm.features.length > 1 && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        onClick={() => removeFeature(index)}
-                        className="h-9 w-9"
-                      >
-                        <span className="text-red-500">-</span>
-                      </Button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between">
+            {!isEditPlanOpen &&
               <div>
-                <Label>Auto-Renew</Label>
-                <p className="text-xs text-muted-foreground">Automatically renew at end of period</p>
-              </div>
-              <Switch
-                id="autoRenew"
-                name="autoRenew"
-                checked={planForm.autoRenew}
-                onCheckedChange={(checked) => setPlanForm(prev => ({ ...prev, autoRenew: checked }))}
-              />
-            </div>
+                <div className="flex items-center justify-between mb-2">
+                  <Label>Features</Label>
+                  <Button type="button" variant="outline" size="sm" onClick={addFeature}>
+                    Add Feature
+                  </Button>
+                </div>
+                <div className="space-y-2">
+                  {planForm.features.map((feature, index) => (
+                    <div key={index} className="flex gap-2">
+                      <Input
+                        placeholder={`Feature ${index + 1}`}
+                        value={feature}
+                        onChange={(e) => handleFeatureChange(index, e.target.value)}
+                        className="flex-1"
+                      />
+                      {planForm.features.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          onClick={() => removeFeature(index)}
+                          className="h-9 w-9"
+                        >
+                          <span className="text-red-500">-</span>
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>}
+
+            {!isEditPlanOpen &&
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label>Auto-Renew</Label>
+                  <p className="text-xs text-muted-foreground">Automatically renew at end of period</p>
+                </div>
+                <Switch
+                  id="autoRenew"
+                  name="autoRenew"
+                  checked={planForm.autoRenew}
+                  onCheckedChange={(checked) => setPlanForm(prev => ({ ...prev, autoRenew: checked }))}
+                />
+              </div>}
 
 
             <div className="flex items-center justify-between">
@@ -719,27 +682,6 @@ console.log("filteredSubscriptions", filteredSubscriptions)
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Delete Confirmation Modal */}
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the subscription plan and remove it from all users.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={cancelDeletePlan}>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={confirmDeletePlan}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Delete Plan
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

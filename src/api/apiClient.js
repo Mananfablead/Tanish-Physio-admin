@@ -9,12 +9,12 @@ apiClient.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
-  
+
   // Only set Content-Type to application/json if not FormData
   if (!(config.data instanceof FormData)) {
     config.headers["Content-Type"] = "application/json";
   }
-  
+
   return config;
 });
 
@@ -24,9 +24,10 @@ apiClient.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401 || error.response?.status === 403) {
       // Check if this is a token expiration/invalid token error
-      const isTokenError = error.response?.data?.message?.includes('Invalid or expired token') ||
-        error.response?.data?.message?.includes('Access token required') ||
-        error.response?.data?.message?.includes('User not found');
+      const isTokenError =
+        error.response?.data?.message?.includes("Invalid or expired token") ||
+        error.response?.data?.message?.includes("Access token required") ||
+        error.response?.data?.message?.includes("User not found");
 
       if (isTokenError) {
         // Remove token from localStorage
@@ -34,7 +35,9 @@ apiClient.interceptors.response.use(
 
         // Update the Redux store by dispatching logout
         // Dispatch logout action to clear the auth state
-        const event = new CustomEvent('tokenExpired', { detail: { message: 'Token expired' } });
+        const event = new CustomEvent("tokenExpired", {
+          detail: { message: "Token expired" },
+        });
         window.dispatchEvent(event);
 
         // Redirect to login page
@@ -48,24 +51,23 @@ apiClient.interceptors.response.use(
 export default apiClient;
 
 export const API = {
-  // auth 
+  // auth
   LOGIN: "/auth/login",
   LOGOUT: "/auth/logout",
   PROFILE: "/auth/profile",
   FORGOT_PASSWORD: "/auth/forgot-password",
   RESET_PASSWORD: "/auth/reset-password",
 
-
   // subscriptions
   SUBSCRIPTIONS: "/subscriptions",
   SUBSCRIPTIONS_CREATE_ORDER: "/subscriptions/create-order",
   SUBSCRIPTION_PLANS: "/subscriptions/plans",
   SUBSCRIPTION_PLAN_BY_ID: "/subscriptions/plans/:id",
+  SUBSCRIPTIONS_ADMIN_ALL: "/subscriptions/admin/all",
 
   // availability
   AVAILABILITY: "/availability",
   AVAILABILITY_BY_THERAPIST: "/availability/therapist",
-
 
   UPDATE_PROFILE: "/auth/profile",
   UPDATE_PASSWORD: "/auth/update-password",
@@ -93,7 +95,7 @@ export const API = {
   NOTIFICATION_MARK_READ: "/notifications/:id/read",
 
   // bookings
-  BOOKINGS: "/bookings",
+  BOOKINGS: "/bookings/admin/all",
   BOOKING_BY_ID: "/bookings/:id",
 
   // questionnaires
@@ -108,13 +110,23 @@ export const API = {
   PAYMENTS_WEBHOOK: "/payments/webhook",
   PAYMENTS_SUBSCRIPTION_ORDER: "/payments/create-subscription-order",
   PAYMENTS_VERIFY_SUBSCRIPTION: "/payments/verify-subscription",
+
+  // testimonials
+  TESTIMONIALS: "/testimonials",
+  TESTIMONIALS_PUBLIC: "/testimonials/public",
+  TESTIMONIALS_FEATURED: "/testimonials/public/featured",
+  TESTIMONIALS_STATS: "/testimonials/stats",
+  TESTIMONIAL_BY_ID: "/testimonials/:id",
+  TESTIMONIAL_STATUS: "/testimonials/:id/status",
+  TESTIMONIAL_FEATURED: "/testimonials/:id/featured",
 };
 export const availabilityAPI = {
   // Get all availability
   getAll: () => apiClient.get(API.AVAILABILITY),
 
   // Get availability by therapist
-  getByTherapist: (therapistId) => apiClient.get(`${API.AVAILABILITY_BY_THERAPIST}/${therapistId}`),
+  getByTherapist: (therapistId) =>
+    apiClient.get(`${API.AVAILABILITY_BY_THERAPIST}/${therapistId}`),
 
   // Create availability
   create: (data) => apiClient.post(API.AVAILABILITY, data),
@@ -136,25 +148,30 @@ export const questionnaireAPI = {
   getActive: () => apiClient.get(`${API.QUESTIONNAIRES}/active`),
 
   // Get questionnaire by ID
-  getById: (id) => apiClient.get(`${API.QUESTIONNAIRE_BY_ID.replace(':id', id)}`),
+  getById: (id) =>
+    apiClient.get(`${API.QUESTIONNAIRE_BY_ID.replace(":id", id)}`),
 
   // Create new questionnaire
   create: (data) => {
     // Format questions according to the specified API structure
-    const formattedQuestions = data.questions ? data.questions.map((q, index) => ({
-      question: String(q.question),
-      type: String(q.type),
-      order: Number(q.order !== undefined ? q.order : index + 1),
-      required: Boolean(q.required !== undefined ? q.required : true),
-      active: Boolean(q.active !== undefined ? q.active : true),
-      options: q.options || []
-    })) : [];
+    const formattedQuestions = data.questions
+      ? data.questions.map((q, index) => ({
+          question: String(q.question),
+          type: String(q.type),
+          order: Number(q.order !== undefined ? q.order : index + 1),
+          required: Boolean(q.required !== undefined ? q.required : true),
+          active: Boolean(q.active !== undefined ? q.active : true),
+          options: q.options || [],
+        }))
+      : [];
 
     const payload = {
       title: String(data.title || "Health Assessment Questionnaire"),
-      description: String(data.description || "Please answer these health-related questions"),
+      description: String(
+        data.description || "Please answer these health-related questions"
+      ),
       isActive: Boolean(data.isActive !== undefined ? data.isActive : true),
-      questions: formattedQuestions
+      questions: formattedQuestions,
     };
     return apiClient.post(API.QUESTIONNAIRES, payload);
   },
@@ -162,44 +179,50 @@ export const questionnaireAPI = {
   // Update questionnaire
   update: (id, data) => {
     // Normalize questions according to backend contract
-    const normalizedQuestions = data.questions ? data.questions.map((q, index) => ({
-      question: String(q.question),
-      type: String(q.type),
-      order: Number(
-        q.order !== undefined && q.order !== null
-          ? q.order
-          : index + 1
-      ),
-      required: Boolean(q.required),
-      active: q.active !== undefined ? Boolean(q.active) : true,
-      options: q.options || [],
-      min: q.min,
-      max: q.max
-    })) : [];
+    const normalizedQuestions = data.questions
+      ? data.questions.map((q, index) => ({
+          question: String(q.question),
+          type: String(q.type),
+          order: Number(
+            q.order !== undefined && q.order !== null ? q.order : index + 1
+          ),
+          required: Boolean(q.required),
+          active: q.active !== undefined ? Boolean(q.active) : true,
+          options: q.options || [],
+          min: q.min,
+          max: q.max,
+        }))
+      : [];
 
     const payload = {
       title: data.title,
       description: data.description,
       questions: normalizedQuestions,
-      isActive: data.isActive
+      isActive: data.isActive,
     };
-    return apiClient.put(`${API.QUESTIONNAIRE_BY_ID.replace(':id', id)}`, payload);
+    return apiClient.put(
+      `${API.QUESTIONNAIRE_BY_ID.replace(":id", id)}`,
+      payload
+    );
   },
-
-
 
   // Update questions in questionnaire
   updateQuestions: (id, data) => {
     // Ensure data is in the correct format { questions: Question[] }
     const payload = Array.isArray(data) ? { questions: data } : data;
-    return apiClient.put(`${API.QUESTIONNAIRE_BY_ID.replace(':id', id)}/questions`, payload);
+    return apiClient.put(
+      `${API.QUESTIONNAIRE_BY_ID.replace(":id", id)}/questions`,
+      payload
+    );
   },
 
   // Delete questionnaire
-  delete: (id) => apiClient.delete(`${API.QUESTIONNAIRE_BY_ID.replace(':id', id)}`),
+  delete: (id) =>
+    apiClient.delete(`${API.QUESTIONNAIRE_BY_ID.replace(":id", id)}`),
 
   // Activate questionnaire
-  activate: (id) => apiClient.put(`${API.QUESTIONNAIRE_BY_ID.replace(':id', id)}/activate`),
+  activate: (id) =>
+    apiClient.put(`${API.QUESTIONNAIRE_BY_ID.replace(":id", id)}/activate`),
 };
 export const subscriptionAPI = {
   // Get all subscription plans
@@ -212,16 +235,22 @@ export const subscriptionAPI = {
   getAllPlans: () => apiClient.get(API.SUBSCRIPTION_PLANS),
 
   // Get subscription plan by ID (admin)
-  getPlanById: (id) => apiClient.get(`${API.SUBSCRIPTION_PLAN_BY_ID.replace(':id', id)}`),
+  getPlanById: (id) =>
+    apiClient.get(`${API.SUBSCRIPTION_PLAN_BY_ID.replace(":id", id)}`),
 
   // Create subscription plan (admin)
   createPlan: (data) => apiClient.post(API.SUBSCRIPTION_PLANS, data),
 
   // Update subscription plan (admin)
-  updatePlan: (id, data) => apiClient.put(`${API.SUBSCRIPTION_PLAN_BY_ID.replace(':id', id)}`, data),
+  updatePlan: (id, data) =>
+    apiClient.put(`${API.SUBSCRIPTION_PLAN_BY_ID.replace(":id", id)}`, data),
 
   // Delete subscription plan (admin)
-  deletePlan: (id) => apiClient.delete(`${API.SUBSCRIPTION_PLAN_BY_ID.replace(':id', id)}`),
+  deletePlan: (id) =>
+    apiClient.delete(`${API.SUBSCRIPTION_PLAN_BY_ID.replace(":id", id)}`),
+  
+  // Get all user subscriptions (admin)
+  getAllUserSubscriptions: () => apiClient.get(API.SUBSCRIPTIONS_ADMIN_ALL),
 };
 
 // Service API endpoints
@@ -230,16 +259,17 @@ export const serviceAPI = {
   getAll: () => apiClient.get(API.SERVICES),
 
   // Get service by ID
-  getById: (id) => apiClient.get(`${API.SERVICE_BY_ID.replace(':id', id)}`),
+  getById: (id) => apiClient.get(`${API.SERVICE_BY_ID.replace(":id", id)}`),
 
   // Create service
   create: (data) => apiClient.post(API.SERVICES, data),
 
   // Update service
-  update: (id, data) => apiClient.put(`${API.SERVICE_BY_ID.replace(':id', id)}`, data),
+  update: (id, data) =>
+    apiClient.put(`${API.SERVICE_BY_ID.replace(":id", id)}`, data),
 
   // Delete service
-  delete: (id) => apiClient.delete(`${API.SERVICE_BY_ID.replace(':id', id)}`),
+  delete: (id) => apiClient.delete(`${API.SERVICE_BY_ID.replace(":id", id)}`),
 };
 
 // Session API endpoints
@@ -251,16 +281,17 @@ export const sessionAPI = {
   getUpcoming: () => apiClient.get(`${API.SESSIONS}/upcoming`),
 
   // Get session by ID
-  getById: (id) => apiClient.get(`${API.SESSION_BY_ID.replace(':id', id)}`),
+  getById: (id) => apiClient.get(`${API.SESSION_BY_ID.replace(":id", id)}`),
 
   // Create session
   create: (data) => apiClient.post(API.SESSIONS, data),
 
   // Update session
-  update: (id, data) => apiClient.put(`${API.SESSION_BY_ID.replace(':id', id)}`, data),
+  update: (id, data) =>
+    apiClient.put(`${API.SESSION_BY_ID.replace(":id", id)}`, data),
 
   // Delete session
-  delete: (id) => apiClient.delete(`${API.SESSION_BY_ID.replace(':id', id)}`),
+  delete: (id) => apiClient.delete(`${API.SESSION_BY_ID.replace(":id", id)}`),
 };
 
 // Therapist API endpoints
@@ -269,16 +300,17 @@ export const therapistAPI = {
   getAll: () => apiClient.get(API.THERAPISTS),
 
   // Get therapist by ID
-  getById: (id) => apiClient.get(`${API.THERAPIST_BY_ID.replace(':id', id)}`),
+  getById: (id) => apiClient.get(`${API.THERAPIST_BY_ID.replace(":id", id)}`),
 
   // Create therapist
   create: (data) => apiClient.post(API.THERAPISTS, data),
 
   // Update therapist
-  update: (id, data) => apiClient.put(`${API.THERAPIST_BY_ID.replace(':id', id)}`, data),
+  update: (id, data) =>
+    apiClient.put(`${API.THERAPIST_BY_ID.replace(":id", id)}`, data),
 
   // Delete therapist
-  delete: (id) => apiClient.delete(`${API.THERAPIST_BY_ID.replace(':id', id)}`),
+  delete: (id) => apiClient.delete(`${API.THERAPIST_BY_ID.replace(":id", id)}`),
 };
 
 // Notification API endpoints
@@ -290,7 +322,8 @@ export const notificationAPI = {
   send: (data) => apiClient.post(API.NOTIFICATIONS, data),
 
   // Mark notification as read
-  markAsRead: (id) => apiClient.put(`${API.NOTIFICATION_MARK_READ.replace(':id', id)}`),
+  markAsRead: (id) =>
+    apiClient.put(`${API.NOTIFICATION_MARK_READ.replace(":id", id)}`),
 };
 
 // Booking API endpoints
@@ -299,16 +332,17 @@ export const bookingAPI = {
   getAll: () => apiClient.get(API.BOOKINGS),
 
   // Get booking by ID
-  getById: (id) => apiClient.get(`${API.BOOKING_BY_ID.replace(':id', id)}`),
+  getById: (id) => apiClient.get(`${API.BOOKING_BY_ID.replace(":id", id)}`),
 
   // Create booking
   create: (data) => apiClient.post(API.BOOKINGS, data),
 
   // Update booking
-  update: (id, data) => apiClient.put(`${API.BOOKING_BY_ID.replace(':id', id)}`, data),
+  update: (id, data) =>
+    apiClient.put(`${API.BOOKING_BY_ID.replace(":id", id)}`, data),
 
   // Delete booking
-  delete: (id) => apiClient.delete(`${API.BOOKING_BY_ID.replace(':id', id)}`),
+  delete: (id) => apiClient.delete(`${API.BOOKING_BY_ID.replace(":id", id)}`),
 };
 
 // Payment API endpoints
@@ -323,11 +357,46 @@ export const paymentAPI = {
   verify: (data) => apiClient.post(API.PAYMENTS_VERIFY, data),
 
   // Create subscription order
-  createSubscriptionOrder: (data) => apiClient.post(API.PAYMENTS_SUBSCRIPTION_ORDER, data),
+  createSubscriptionOrder: (data) =>
+    apiClient.post(API.PAYMENTS_SUBSCRIPTION_ORDER, data),
 
   // Verify subscription payment
-  verifySubscription: (data) => apiClient.post(API.PAYMENTS_VERIFY_SUBSCRIPTION, data),
+  verifySubscription: (data) =>
+    apiClient.post(API.PAYMENTS_VERIFY_SUBSCRIPTION, data),
 
   // Handle payment webhook
   handleWebhook: (data) => apiClient.post(API.PAYMENTS_WEBHOOK, data),
+};
+
+// Testimonial API endpoints
+export const testimonialAPI = {
+  // Get all testimonials (admin)
+  getAll: (params) => apiClient.get(API.TESTIMONIALS, { params }),
+
+  // Get testimonial stats (admin)
+  getStats: () => apiClient.get(API.TESTIMONIALS_STATS),
+
+  // Get testimonial by ID (admin)
+  getById: (id) => apiClient.get(API.TESTIMONIAL_BY_ID.replace(':id', id)),
+
+  // Create testimonial (admin)
+  create: (data) => apiClient.post(API.TESTIMONIALS, data),
+
+  // Update testimonial (admin)
+  update: (id, data) => apiClient.put(API.TESTIMONIAL_BY_ID.replace(':id', id), data),
+
+  // Update testimonial status (admin)
+  updateStatus: (id, status) => apiClient.put(API.TESTIMONIAL_STATUS.replace(':id', id), { status }),
+
+  // Toggle featured status (admin)
+  toggleFeatured: (id) => apiClient.patch(API.TESTIMONIAL_FEATURED.replace(':id', id)),
+
+  // Delete testimonial (admin)
+  delete: (id) => apiClient.delete(API.TESTIMONIAL_BY_ID.replace(':id', id)),
+
+  // Get public testimonials
+  getPublic: () => apiClient.get(API.TESTIMONIALS_PUBLIC),
+
+  // Get featured testimonials
+  getFeatured: () => apiClient.get(API.TESTIMONIALS_FEATURED),
 };
