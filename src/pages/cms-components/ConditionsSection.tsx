@@ -3,7 +3,6 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Edit, Eye } from "lucide-react";
-import { Activity, Bone, HeartPulse, Zap, Dumbbell, Stethoscope } from "lucide-react";
 
 interface ConditionsData {
     _id: string;
@@ -11,7 +10,7 @@ interface ConditionsData {
     description: string;
     conditions: Array<{
         name: string;
-        icon: string;
+        image: string;
     }>;
 }
 
@@ -50,14 +49,15 @@ export default function ConditionsSection({ data, onEdit }: ConditionsSectionPro
                                 className="group cursor-pointer py-3 sm:py-4 bg-gradient-to-br from-white to-muted/20 dark:from-background dark:to-muted/5 rounded-2xl p-4 sm:p-6 text-center shadow-soft border-2 border-transparent transition-all duration-500 border-primary/20 hover:shadow-xl hover:border-primary/30"
                             >
                                 <div className="h-12 w-12 sm:h-16 sm:w-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4 sm:mb-6 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-500 shadow-sm">
-                                    <div className="h-6 w-6 sm:h-8 sm:w-8">
-                                        {condition.icon === 'Activity' && <Activity className="h-6 w-6 sm:h-8 sm:w-8" />}
-                                        {condition.icon === 'Bone' && <Bone className="h-6 w-6 sm:h-8 sm:w-8" />}
-                                        {condition.icon === 'HeartPulse' && <HeartPulse className="h-6 w-6 sm:h-8 sm:w-8" />}
-                                        {condition.icon === 'Zap' && <Zap className="h-6 w-6 sm:h-8 sm:w-8" />}
-                                        {condition.icon === 'Dumbbell' && <Dumbbell className="h-6 w-6 sm:h-8 sm:w-8" />}
-                                        {condition.icon === 'Stethoscope' && <Stethoscope className="h-6 w-6 sm:h-8 sm:w-8" />}
-                                    </div>
+                                    {condition.image ? (
+                                        <img 
+                                            src={condition.image} 
+                                            alt={condition.name}
+                                            className="h-6 w-6 sm:h-8 sm:w-8 object-contain"
+                                        />
+                                    ) : (
+                                        <div className="h-6 w-6 sm:h-8 sm:w-8 flex items-center justify-center text-xs">No Image</div>
+                                    )}
                                 </div>
                                 <span className="font-bold text-sm sm:text-base tracking-wide">{condition.name}</span>
                                 <div className="mt-4 h-1 w-0 bg-primary mx-auto rounded-full group-hover:w-12 transition-all duration-500" />

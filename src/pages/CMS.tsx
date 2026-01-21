@@ -118,7 +118,7 @@ interface StepData {
 
 interface ConditionData {
     name: string;
-    icon: string;
+    image: string;
 }
 
 interface ConditionsSectionData {
@@ -425,6 +425,12 @@ export default function CMS() {
             setData(prev => ({
                 ...prev,
                 about: updatedData
+            }));
+        } else if (modalSection === 'contact') {
+            dispatch(updateContact(updatedData));
+            setData(prev => ({
+                ...prev,
+                contact: updatedData
             }));
         }
         closeEditModal();
@@ -810,6 +816,14 @@ export default function CMS() {
                                 <h4 className="text-sm font-medium text-gray-700">Vision:</h4>
                                 <p className="text-gray-600">{data.about?.vision}</p>
                             </div>
+                            <div>
+                                <h4 className="text-sm font-medium text-gray-700">Primary Image:</h4>
+                                <img 
+                                    src={data.about?.image || ''} 
+                                    alt="About Us" 
+                                    className="w-full h-auto rounded-lg"
+                                />
+                            </div>
                         </div>
                     </div>
                 </TabsContent>
@@ -909,6 +923,14 @@ export default function CMS() {
                             <div>
                                 <h4 className="text-sm font-medium text-gray-700">Vision:</h4>
                                 <p className="text-gray-600">{data.about?.vision}</p>
+                            </div>
+                            <div>
+                                <h4 className="text-sm font-medium text-gray-700">Primary Image:</h4>
+                                <img 
+                                    src={data.about?.image || ''} 
+                                    alt="About Us" 
+                                    className="w-full h-auto rounded-lg"
+                                />
                             </div>
                         </div>
                     </div>
@@ -1030,14 +1052,11 @@ const EditHeroForm = ({ data, onSave, onCancel }) => {
     const handleImageUpload = (e) => {
         const file = e.target.files[0];
         if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setFormData(prev => ({
-                    ...prev,
-                    image: reader.result
-                }));
-            };
-            reader.readAsDataURL(file);
+            // Set the actual file object instead of base64 string
+            setFormData(prev => ({
+                ...prev,
+                image: file
+            }));
         }
     };
 
@@ -1209,14 +1228,11 @@ const EditStepForm = ({ data, onSave, onCancel, isNew }) => {
     const handleImageUpload = (e) => {
         const file = e.target.files[0];
         if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setFormData(prev => ({
-                    ...prev,
-                    image: reader.result
-                }));
-            };
-            reader.readAsDataURL(file);
+            // Set the actual file object instead of base64 string
+            setFormData(prev => ({
+                ...prev,
+                image: file
+            }));
         }
     };
 
@@ -1289,7 +1305,7 @@ const EditStepForm = ({ data, onSave, onCancel, isNew }) => {
                         <div className="flex-1">
                             <div className="aspect-square bg-muted rounded-lg border flex items-center justify-center overflow-hidden">
                                 <img
-                                    src={formData.image}
+                                    src={typeof formData.image === 'string' ? formData.image : URL.createObjectURL(formData.image)}
                                     alt="Preview"
                                     className="w-full h-full object-cover"
                                 />
@@ -1329,7 +1345,7 @@ const EditConditionsForm = ({ data, onSave, onCancel }) => {
     };
 
     const addCondition = () => {
-        const newCondition = { name: '', icon: '' };
+        const newCondition = { name: '', image: '' };
         setFormData(prev => ({
             ...prev,
             conditions: [...(prev.conditions || []), newCondition]
@@ -1348,14 +1364,10 @@ const EditConditionsForm = ({ data, onSave, onCancel }) => {
     const handleImageUpload = (e) => {
         const file = e.target.files[0];
         if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setFormData(prev => ({
-                    ...prev,
-                    image: reader.result
-                }));
-            };
-            reader.readAsDataURL(file);
+            setFormData(prev => ({
+                ...prev,
+                image: file
+            }));
         }
     };
 
@@ -1400,15 +1412,52 @@ const EditConditionsForm = ({ data, onSave, onCancel }) => {
                                     className="text-sm"
                                 />
                             </div>
-                            {/* <div className="flex-1">
-                                <Label className="text-sm">Icon Name</Label>
-                                <Input
-                                    value={condition.icon}
-                                    onChange={(e) => handleConditionChange(index, 'icon', e.target.value)}
-                                    placeholder="Icon name"
-                                    className="text-sm"
-                                />
-                            </div> */}
+                            <div className="flex-1">
+                                <Label className="text-sm">Image</Label>
+                                <div className="flex flex-col sm:flex-row gap-2 mt-1">
+                                    <div className="flex-1">
+                                        <Input
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={(e) => {
+                                                const file = e.target.files?.[0];
+                                                if (file) {
+                                                    handleConditionChange(index, 'image', file);
+                                                }
+                                            }}
+                                            className="hidden"
+                                            id={`condition-image-upload-${index}`}
+                                        />
+                                        <label
+                                            htmlFor={`condition-image-upload-${index}`}
+                                            className="flex flex-col items-center justify-center w-full h-10 border border-input rounded-md cursor-pointer bg-background hover:bg-accent transition-colors text-sm"
+                                        >
+                                            <Upload className="w-4 h-4 text-muted-foreground" />
+                                            <span className="text-xs text-muted-foreground mt-1">Upload Image</span>
+                                        </label>
+                                    </div>
+                                    {condition.image && (
+                                        <div className="flex-1 flex items-center gap-2">
+                                            <div className="w-10 h-10 rounded border overflow-hidden flex-shrink-0">
+                                                <img
+                                                    src={typeof condition.image === 'string' ? condition.image : URL.createObjectURL(condition.image)}
+                                                    alt="Preview"
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            </div>
+                                            <Button 
+                                                type="button" 
+                                                variant="outline" 
+                                                size="sm" 
+                                                onClick={() => handleConditionChange(index, 'image', '')}
+                                                className="h-8 w-8 p-0"
+                                            >
+                                                <X className="h-3 w-3" />
+                                            </Button>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
                             <div className="flex items-end">
                                 <Button 
                                     type="button" 
@@ -1781,14 +1830,10 @@ const EditFeaturedTherapistForm = ({ data, onSave, onCancel }) => {
     const handleImageUpload = (e) => {
         const file = e.target.files[0];
         if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setFormData(prev => ({
-                    ...prev,
-                    image: reader.result
-                }));
-            };
-            reader.readAsDataURL(file);
+            setFormData(prev => ({
+                ...prev,
+                image: file
+            }));
         }
     };
 
@@ -1881,7 +1926,7 @@ const EditFeaturedTherapistForm = ({ data, onSave, onCancel }) => {
                         <div className="flex-1">
                             <div className="aspect-video bg-muted rounded-lg border flex items-center justify-center overflow-hidden">
                                 <img
-                                    src={formData.image}
+                                    src={typeof formData.image === 'string' ? formData.image : URL.createObjectURL(formData.image)}
                                     alt="Preview"
                                     className="w-full h-full object-cover"
                                 />
@@ -2071,14 +2116,10 @@ const EditAboutForm = ({ data, onSave, onCancel }) => {
     const handleImageUpload = (e) => {
         const file = e.target.files[0];
         if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setFormData(prev => ({
-                    ...prev,
-                    image: reader.result
-                }));
-            };
-            reader.readAsDataURL(file);
+            setFormData(prev => ({
+                ...prev,
+                image: file
+            }));
         }
     };
 
@@ -2187,7 +2228,7 @@ const EditAboutForm = ({ data, onSave, onCancel }) => {
                         <div className="flex-1">
                             <div className="aspect-video bg-muted rounded-lg border flex items-center justify-center overflow-hidden">
                                 <img
-                                    src={formData.image}
+                                    src={typeof formData.image === 'string' ? formData.image : URL.createObjectURL(formData.image)}
                                     alt="Preview"
                                     className="w-full h-full object-cover"
                                 />

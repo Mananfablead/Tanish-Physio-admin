@@ -25,7 +25,7 @@ export default function TeamSection({ data, onEdit }: TeamSectionProps) {
         <div className="bg-card rounded-2xl border border-border overflow-hidden animate-fade-in shadow-lg">
             <div className="p-4 sm:p-6 md:p-8">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
-                    <h2 className="text-xl sm:text-2xl font-bold tracking-tight">Therapist</h2>
+                    <h2 className="text-xl sm:text-2xl font-bold tracking-tight">Team Member</h2>
                     <div className="flex flex-wrap items-center gap-2">
 
                         <Button size="sm" variant="outline" onClick={() => onEdit('featuredTherapist', data)}>

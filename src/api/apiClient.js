@@ -441,19 +441,102 @@ export const cmsAPI = {
   // Hero section
   getHeroPublic: () => apiClient.get(API.CMS_HERO_PUBLIC),
   getHeroAdmin: () => apiClient.get(API.CMS_HERO_ADMIN),
-  updateHero: (data) => apiClient.put(API.CMS_HERO_ADMIN, data),
+  updateHero: (data) => {
+    // Check if image data contains actual file objects (not just URLs)
+    if (data.image && typeof data.image !== 'string') {
+      const formData = new FormData();
+      formData.append('image', data.image);
+      // Add other fields except image
+      Object.keys(data).forEach(key => {
+        if (key !== 'image') {
+          formData.append(key, data[key]);
+        }
+      });
+      return apiClient.put(API.CMS_HERO_ADMIN, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+    } else {
+      return apiClient.put(API.CMS_HERO_ADMIN, data);
+    }
+  },
 
   // Steps section
   getStepsPublic: () => apiClient.get(API.CMS_STEPS_PUBLIC),
   getStepsAdmin: () => apiClient.get(API.CMS_STEPS_ADMIN),
-  createStep: (data) => apiClient.post(API.CMS_STEPS_ADMIN, data),
-  updateStep: (id, data) => apiClient.put(`${API.CMS_STEPS_ADMIN}/${id}`, data),
+  createStep: (data) => {
+    // Check if image data contains actual file objects (not just URLs)
+    if (data.image && typeof data.image !== 'string') {
+      const formData = new FormData();
+      formData.append('image', data.image);
+      // Add other fields except image
+      Object.keys(data).forEach(key => {
+        if (key !== 'image') {
+          formData.append(key, data[key]);
+        }
+      });
+      return apiClient.post(API.CMS_STEPS_ADMIN, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+    } else {
+      return apiClient.post(API.CMS_STEPS_ADMIN, data);
+    }
+  },
+  updateStep: (id, data) => {
+    // Check if image data contains actual file objects (not just URLs)
+    if (data.image && typeof data.image !== 'string') {
+      const formData = new FormData();
+      formData.append('image', data.image);
+      // Add other fields except image
+      Object.keys(data).forEach(key => {
+        if (key !== 'image') {
+          formData.append(key, data[key]);
+        }
+      });
+      return apiClient.put(`${API.CMS_STEPS_ADMIN}/${id}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+    } else {
+      return apiClient.put(`${API.CMS_STEPS_ADMIN}/${id}`, data);
+    }
+  },
   deleteStep: (id) => apiClient.delete(`${API.CMS_STEPS_ADMIN}/${id}`),
 
   // Conditions section
   getConditionsPublic: () => apiClient.get(API.CMS_CONDITIONS_PUBLIC),
   getConditionsAdmin: () => apiClient.get(API.CMS_CONDITIONS_ADMIN),
-  updateConditions: (data) => apiClient.put(API.CMS_CONDITIONS_ADMIN, data),
+  updateConditions: (data) => {
+    const formData = new FormData();
+        
+    // Add conditions array as JSON string
+    if (data.conditions && Array.isArray(data.conditions)) {
+      formData.append('conditions', JSON.stringify(data.conditions));
+    }
+        
+    // Add other fields except conditions and images
+    Object.keys(data).forEach(key => {
+      if (key !== 'conditions' && key !== 'image') {
+        formData.append(key, data[key]);
+      }
+    });
+        
+    // Add main image if it's a file object
+    if (data.image && typeof data.image !== 'string') {
+      formData.append('image', data.image);
+    }
+        
+    // Add condition images if they exist
+    if (data.conditions && Array.isArray(data.conditions)) {
+      data.conditions.forEach((condition, index) => {
+        if (condition.image && typeof condition.image !== 'string') {
+          formData.append(`conditions[${index}]`, condition.image);
+        }
+      });
+    }
+        
+    return apiClient.put(API.CMS_CONDITIONS_ADMIN, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  },
 
   // Why Us section
   getWhyUsPublic: () => apiClient.get(API.CMS_WHY_US_PUBLIC),
@@ -475,7 +558,24 @@ export const cmsAPI = {
   // Featured Therapist section
   getFeaturedTherapistPublic: () => apiClient.get(API.CMS_FEATURED_THERAPIST_PUBLIC),
   getFeaturedTherapistAdmin: () => apiClient.get(API.CMS_FEATURED_THERAPIST_ADMIN),
-  updateFeaturedTherapist: (data) => apiClient.put(API.CMS_FEATURED_THERAPIST_ADMIN, data),
+  updateFeaturedTherapist: (data) => {
+    // Check if image data contains actual file objects (not just URLs)
+    if (data.image && typeof data.image !== 'string') {
+      const formData = new FormData();
+      formData.append('image', data.image);
+      // Add other fields except image
+      Object.keys(data).forEach(key => {
+        if (key !== 'image') {
+          formData.append(key, data[key]);
+        }
+      });
+      return apiClient.put(API.CMS_FEATURED_THERAPIST_ADMIN, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+    } else {
+      return apiClient.put(API.CMS_FEATURED_THERAPIST_ADMIN, data);
+    }
+  },
 
   // Contact section
   getContactPublic: () => apiClient.get(API.CMS_CONTACT_PUBLIC),
@@ -485,7 +585,24 @@ export const cmsAPI = {
   // About section
   getAboutPublic: () => apiClient.get(API.CMS_ABOUT_PUBLIC),
   getAboutAdmin: () => apiClient.get(API.CMS_ABOUT_ADMIN),
-  updateAbout: (data) => apiClient.put(API.CMS_ABOUT_ADMIN, data),
+  updateAbout: (data) => {
+    // Check if image data contains actual file objects (not just URLs)
+    if (data.image && typeof data.image !== 'string') {
+      const formData = new FormData();
+      formData.append('image', data.image);
+      // Add other fields except image
+      Object.keys(data).forEach(key => {
+        if (key !== 'image') {
+          formData.append(key, data[key]);
+        }
+      });
+      return apiClient.put(API.CMS_ABOUT_ADMIN, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+    } else {
+      return apiClient.put(API.CMS_ABOUT_ADMIN, data);
+    }
+  },
 
   // Get all CMS data
   getAllCmsData: () => apiClient.get(API.CMS_ALL_ADMIN),

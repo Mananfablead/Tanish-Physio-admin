@@ -11,7 +11,7 @@ interface StepData {
     title: string;
     description: string;
     icon: string;
-    image: string;
+    image: string | File;
 }
 
 interface MultiStepFormProps {
@@ -42,7 +42,7 @@ export default function MultiStepForm({ onSave, onCancel }: MultiStepFormProps) 
         }
     };
 
-    const updateStep = (index: number, field: keyof StepData, value: string) => {
+    const updateStep = (index: number, field: keyof StepData, value: string | File) => {
         setSteps(prev => {
             const newSteps = [...prev];
             newSteps[index] = { ...newSteps[index], [field]: value };
@@ -60,11 +60,7 @@ export default function MultiStepForm({ onSave, onCancel }: MultiStepFormProps) 
     const handleImageUpload = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                updateStep(index, 'image', reader.result as string);
-            };
-            reader.readAsDataURL(file);
+            updateStep(index, 'image', file);
         }
     };
 
@@ -180,7 +176,7 @@ export default function MultiStepForm({ onSave, onCancel }: MultiStepFormProps) 
                                         <div className="flex-1">
                                             <div className="aspect-square bg-muted rounded-lg border flex items-center justify-center overflow-hidden">
                                                 <img
-                                                    src={step.image}
+                                                    src={typeof step.image === 'string' ? step.image : URL.createObjectURL(step.image)}
                                                     alt="Step preview"
                                                     className="w-full h-full object-cover"
                                                 />
