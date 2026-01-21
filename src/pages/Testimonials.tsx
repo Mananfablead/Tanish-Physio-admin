@@ -33,9 +33,11 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { testimonialService } from "@/services/testimonialService";
+import { toast } from "@/hooks/use-toast";
 
 interface Testimonial {
-  id: string;
+  _id: string;
   clientName: string;
   clientEmail?: string;
   rating: number;
@@ -54,7 +56,12 @@ export default function Testimonials() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingTestimonial, setEditingTestimonial] = useState<Testimonial | null>(null);
+  interface FormTestimonial extends Testimonial {
+    id: string; // For backward compatibility with form handling
+  }
+
+  const [editingTestimonial, setEditingTestimonial] =
+    useState<FormTestimonial | null>(null);
   const [deleteTestId, setDeleteTestId] = useState<string | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [formData, setFormData] = useState({
@@ -68,81 +75,87 @@ export default function Testimonials() {
     featured: false,
   });
 
-  // Mock data
+  // Fetch testimonials from API
   useEffect(() => {
-    const mockTestimonials: Testimonial[] = [
-      {
-        id: "1",
-        clientName: "Sarah Johnson",
-        clientEmail: "sarah@example.com",
-        rating: 5,
-        content: "Exceptional care and professional treatment. The physiotherapist really understood my needs and helped me recover faster than expected.",
-        serviceUsed: "Sports Injury Rehabilitation",
-        problem: "Knee injury from running",
-        status: "approved",
-        featured: true,
-        createdAt: "2024-01-15T10:00:00Z",
-        updatedAt: "2024-01-20T14:30:00Z",
-        avatar: "https://ui-avatars.com/api/?name=Sarah+Johnson&background=random"
-      },
-      {
-        id: "2",
-        clientName: "Michael Chen",
-        clientEmail: "michael@example.com",
-        rating: 4,
-        content: "Great facility and knowledgeable staff. My back pain has significantly improved after just a few sessions.",
-        serviceUsed: "Back Pain Treatment",
-        problem: "Chronic lower back pain",
-        status: "approved",
-        featured: false,
-        createdAt: "2024-01-18T09:30:00Z",
-        updatedAt: "2024-01-19T11:15:00Z",
-        avatar: "https://ui-avatars.com/api/?name=Michael+Chen&background=random"
-      },
-      {
-        id: "3",
-        clientName: "Emma Rodriguez",
-        rating: 5,
-        content: "Outstanding service! The team is caring and the results speak for themselves. Highly recommend to anyone needing physiotherapy.",
-        serviceUsed: "Post-Surgery Recovery",
-        problem: "Recovery after knee surgery",
-        status: "pending",
-        featured: false,
-        createdAt: "2024-01-22T14:20:00Z",
-        updatedAt: "2024-01-22T14:20:00Z",
-        avatar: "https://ui-avatars.com/api/?name=Emma+Rodriguez&background=random"
-      },
-      {
-        id: "4",
-        clientName: "David Wilson",
-        clientEmail: "david@example.com",
-        rating: 3,
-        content: "Decent service but felt rushed during sessions. Could use more personalized attention.",
-        serviceUsed: "General Physiotherapy",
-        problem: "General muscle tension",
-        status: "rejected",
-        featured: false,
-        createdAt: "2024-01-10T16:45:00Z",
-        updatedAt: "2024-01-12T09:30:00Z",
-        avatar: "https://ui-avatars.com/api/?name=David+Wilson&background=random"
+    const fetchTestimonials = async () => {
+      try {
+        const response = await testimonialService.getAllTestimonials();
+        if (response.data.success) {
+          setTestimonials(response.data.data);
+        }
+      } catch (error) {
+        console.error("Error fetching testimonials:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load testimonials",
+          variant: "destructive",
+        });
       }
-    ];
-    setTestimonials(mockTestimonials);
+    };
+
+    fetchTestimonials();
   }, []);
 
-  const filteredTestimonials = testimonials.filter(testimonial => {
-    const matchesSearch = testimonial.clientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         testimonial.serviceUsed.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         testimonial.content.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesStatus = statusFilter === "all" || testimonial.status === statusFilter;
-    
-    return matchesSearch && matchesStatus;
+  const [filteredTestimonials, setFilteredTestimonials] = useState<
+    Testimonial[]
+  >([]);
+
+  // Fetch testimonials with search and filter
+  useEffect(() => {
+    const fetchFilteredTestimonials = async () => {
+      try {
+        const response = await testimonialService.getAllTestimonials({
+          search: searchQuery,
+          status: statusFilter !== "all" ? statusFilter : undefined,
+        });
+        if (response.data.success) {
+          setFilteredTestimonials(response.data.data);
+        }
+      } catch (error) {
+        console.error("Error fetching filtered testimonials:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load testimonials",
+          variant: "destructive",
+        });
+      }
+    };
+
+    fetchFilteredTestimonials();
+  }, [searchQuery, statusFilter]);
+
+  const [stats, setStats] = useState({
+    total: 0,
+    pending: 0,
+    approved: 0,
+    featured: 0,
   });
 
-  const pendingCount = testimonials.filter(t => t.status === "pending").length;
-  const approvedCount = testimonials.filter(t => t.status === "approved").length;
-  const featuredCount = testimonials.filter(t => t.featured && t.status === "approved").length;
+  // Fetch testimonials stats from API
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const response = await testimonialService.getTestimonialStats();
+        if (response.data.success) {
+          setStats(response.data.data);
+        }
+      } catch (error) {
+        console.error("Error fetching testimonial stats:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load testimonial stats",
+          variant: "destructive",
+        });
+      }
+    };
+
+    fetchStats();
+  }, []);
+
+  // Use the fetched stats
+  const pendingCount = stats.pending;
+  const approvedCount = stats.approved;
+  const featuredCount = stats.featured;
 
   const handleCreate = () => {
     setEditingTestimonial(null);
@@ -160,7 +173,7 @@ export default function Testimonials() {
   };
 
   const handleEdit = (testimonial: Testimonial) => {
-    setEditingTestimonial(testimonial);
+    setEditingTestimonial({ ...testimonial, id: testimonial._id });
     setFormData({
       clientName: testimonial.clientName,
       clientEmail: testimonial.clientEmail || "",
@@ -174,42 +187,114 @@ export default function Testimonials() {
     setIsModalOpen(true);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (editingTestimonial) {
-      // Update existing testimonial
-      setTestimonials(testimonials.map(t => 
-        t.id === editingTestimonial.id 
-          ? { ...t, ...formData, updatedAt: new Date().toISOString() }
-          : t
-      ));
+      // Update existing testimonial via API
+      try {
+        const response = await testimonialService.updateTestimonial(
+          editingTestimonial._id,
+          formData
+        );
+        if (response.data.success) {
+          // Refetch testimonials to get the updated list
+          const updatedResponse = await testimonialService.getAllTestimonials();
+          if (updatedResponse.data.success) {
+            setTestimonials(updatedResponse.data.data);
+            toast({
+              title: "Success",
+              description: "Testimonial updated successfully",
+            });
+          }
+        }
+      } catch (error) {
+        console.error("Error updating testimonial:", error);
+        toast({
+          title: "Error",
+          description: "Failed to update testimonial",
+          variant: "destructive",
+        });
+      }
     } else {
-      // Create new testimonial
-      const newTestimonial: Testimonial = {
-        id: Math.random().toString(36).substr(2, 9),
-        ...formData,
-        problem: formData.problem,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      setTestimonials([...testimonials, newTestimonial]);
+      // Create new testimonial via API
+      try {
+        const response = await testimonialService.createTestimonial(formData);
+        if (response.data.success) {
+          // Refetch testimonials to get the updated list
+          const updatedResponse = await testimonialService.getAllTestimonials();
+          if (updatedResponse.data.success) {
+            setTestimonials(updatedResponse.data.data);
+            toast({
+              title: "Success",
+              description: "Testimonial created successfully",
+            });
+          }
+        }
+      } catch (error) {
+        console.error("Error creating testimonial:", error);
+        toast({
+          title: "Error",
+          description: "Failed to create testimonial",
+          variant: "destructive",
+        });
+      }
     }
     setIsModalOpen(false);
   };
 
-  const handleStatusChange = (id: string, newStatus: "approved" | "rejected") => {
-    setTestimonials(testimonials.map(t => 
-      t.id === id 
-        ? { ...t, status: newStatus, updatedAt: new Date().toISOString() }
-        : t
-    ));
+  const handleStatusChange = async (
+    id: string,
+    newStatus: "approved" | "rejected"
+  ) => {
+    try {
+      const response = await testimonialService.updateTestimonialStatus(
+        id,
+        newStatus
+      );
+      if (response.data.success) {
+        // Refetch testimonials to get the updated list
+        const updatedResponse = await testimonialService.getAllTestimonials();
+        if (updatedResponse.data.success) {
+          setTestimonials(updatedResponse.data.data);
+          toast({
+            title: "Success",
+            description: `Testimonial ${newStatus} successfully`,
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Error updating testimonial status:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update testimonial status",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleFeatureToggle = (id: string) => {
-    setTestimonials(testimonials.map(t => 
-      t.id === id 
-        ? { ...t, featured: !t.featured, updatedAt: new Date().toISOString() }
-        : t
-    ));
+  const handleFeatureToggle = async (id: string) => {
+    try {
+      const response = await testimonialService.toggleFeaturedStatus(id);
+      if (response.data.success) {
+        // Refetch testimonials to get the updated list
+        const updatedResponse = await testimonialService.getAllTestimonials();
+        if (updatedResponse.data.success) {
+          setTestimonials(updatedResponse.data.data);
+          toast({
+            title: "Success",
+            description: response.data.data.featured
+              ? "Testimonial featured successfully"
+              : "Testimonial unfeatured successfully",
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Error toggling featured status:", error);
+      toast({
+        title: "Error",
+        description: "Failed to toggle featured status",
+        variant: "destructive",
+      });
+    }
   };
 
   // Handle delete - opens confirmation dialog
@@ -219,9 +304,31 @@ export default function Testimonials() {
   };
 
   // Confirm delete
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (deleteTestId) {
-      setTestimonials(testimonials.filter(t => t.id !== deleteTestId));
+      try {
+        const response = await testimonialService.deleteTestimonial(
+          deleteTestId
+        );
+        if (response.data.success) {
+          // Refetch testimonials to get the updated list
+          const updatedResponse = await testimonialService.getAllTestimonials();
+          if (updatedResponse.data.success) {
+            setTestimonials(updatedResponse.data.data);
+            toast({
+              title: "Success",
+              description: "Testimonial deleted successfully",
+            });
+          }
+        }
+      } catch (error) {
+        console.error("Error deleting testimonial:", error);
+        toast({
+          title: "Error",
+          description: "Failed to delete testimonial",
+          variant: "destructive",
+        });
+      }
       setDeleteTestId(null);
       setIsDeleteDialogOpen(false);
     }
@@ -235,10 +342,14 @@ export default function Testimonials() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "approved": return "bg-green-100 text-green-800";
-      case "pending": return "bg-yellow-100 text-yellow-800";
-      case "rejected": return "bg-red-100 text-red-800";
-      default: return "bg-gray-100 text-gray-800";
+      case "approved":
+        return "bg-green-100 text-green-800";
+      case "pending":
+        return "bg-yellow-100 text-yellow-800";
+      case "rejected":
+        return "bg-red-100 text-red-800";
+      default:
+        return "bg-gray-100 text-gray-800";
     }
   };
 
@@ -248,13 +359,15 @@ export default function Testimonials() {
         {[...Array(5)].map((_, i) => (
           <Star
             key={i}
-            className={`w-4 h-4 ${i < rating ? 'text-yellow-400 fill-current' : 'text-gray-300'}`}
+            className={`w-4 h-4 ${
+              i < rating ? "text-yellow-400 fill-current" : "text-gray-300"
+            }`}
             onClick={() => {
               if (interactive) {
-                setFormData({...formData, rating: i + 1});
+                setFormData({ ...formData, rating: i + 1 });
               }
             }}
-            style={{ cursor: interactive ? 'pointer' : 'default' }}
+            style={{ cursor: interactive ? "pointer" : "default" }}
           />
         ))}
       </div>
@@ -267,7 +380,9 @@ export default function Testimonials() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Testimonials</h1>
-          <p className="text-muted-foreground">Manage client testimonials and reviews</p>
+          <p className="text-muted-foreground">
+            Manage client testimonials and reviews
+          </p>
         </div>
         <Button onClick={handleCreate}>
           <Plus className="w-4 h-4 mr-2" />
@@ -276,76 +391,73 @@ export default function Testimonials() {
       </div>
 
       {/* Stats Cards */}
-   <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-  {/* Total Reviews */}
-  <Card>
-    <CardContent className="flex items-center justify-between p-6">
-      <div>
-        <p className="text-sm font-medium text-muted-foreground">
-          Total Reviews
-        </p>
-        <p className="text-2xl font-bold">
-          {testimonials.length}
-        </p>
-      </div>
-      <div className="p-2 rounded-lg bg-primary/10">
-        <MessageSquare className="w-5 h-5 text-primary" />
-      </div>
-    </CardContent>
-  </Card>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {/* Total Reviews */}
+        <Card>
+          <CardContent className="flex items-center justify-between p-6">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">
+                Total Reviews
+              </p>
+              <p className="text-2xl font-bold">{testimonials.length}</p>
+            </div>
+            <div className="p-2 rounded-lg bg-primary/10">
+              <MessageSquare className="w-5 h-5 text-primary" />
+            </div>
+          </CardContent>
+        </Card>
 
-  {/* Pending Approval */}
-  <Card>
-    <CardContent className="flex items-center justify-between p-6">
-      <div>
-        <p className="text-sm font-medium text-muted-foreground">
-          Pending Approval
-        </p>
-        <p className="text-2xl font-bold text-yellow-600">
-          {pendingCount}
-        </p>
-      </div>
-      <div className="p-2 rounded-lg bg-yellow-500/10">
-        <Clock className="w-5 h-5 text-yellow-600" />
-      </div>
-    </CardContent>
-  </Card>
+        {/* Pending Approval */}
+        <Card>
+          <CardContent className="flex items-center justify-between p-6">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">
+                Pending Approval
+              </p>
+              <p className="text-2xl font-bold text-yellow-600">
+                {pendingCount}
+              </p>
+            </div>
+            <div className="p-2 rounded-lg bg-yellow-500/10">
+              <Clock className="w-5 h-5 text-yellow-600" />
+            </div>
+          </CardContent>
+        </Card>
 
-  {/* Approved */}
-  <Card>
-    <CardContent className="flex items-center justify-between p-6">
-      <div>
-        <p className="text-sm font-medium text-muted-foreground">
-          Approved
-        </p>
-        <p className="text-2xl font-bold text-green-600">
-          {approvedCount}
-        </p>
-      </div>
-      <div className="p-2 rounded-lg bg-green-500/10">
-        <CheckCircle className="w-5 h-5 text-green-600" />
-      </div>
-    </CardContent>
-  </Card>
+        {/* Approved */}
+        <Card>
+          <CardContent className="flex items-center justify-between p-6">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">
+                Approved
+              </p>
+              <p className="text-2xl font-bold text-green-600">
+                {approvedCount}
+              </p>
+            </div>
+            <div className="p-2 rounded-lg bg-green-500/10">
+              <CheckCircle className="w-5 h-5 text-green-600" />
+            </div>
+          </CardContent>
+        </Card>
 
-  {/* Featured */}
-  <Card>
-    <CardContent className="flex items-center justify-between p-6">
-      <div>
-        <p className="text-sm font-medium text-muted-foreground">
-          Featured
-        </p>
-        <p className="text-2xl font-bold text-blue-600">
-          {featuredCount}
-        </p>
+        {/* Featured */}
+        <Card>
+          <CardContent className="flex items-center justify-between p-6">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">
+                Featured
+              </p>
+              <p className="text-2xl font-bold text-blue-600">
+                {featuredCount}
+              </p>
+            </div>
+            <div className="p-2 rounded-lg bg-blue-500/10">
+              <Star className="w-5 h-5 text-blue-600" />
+            </div>
+          </CardContent>
+        </Card>
       </div>
-      <div className="p-2 rounded-lg bg-blue-500/10">
-        <Star className="w-5 h-5 text-blue-600" />
-      </div>
-    </CardContent>
-  </Card>
-</div>
-
 
       {/* Search and Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
@@ -377,7 +489,9 @@ export default function Testimonials() {
       <Card>
         <CardHeader>
           <CardTitle>Testimonials</CardTitle>
-          <CardDescription>Manage client testimonials and reviews</CardDescription>
+          <CardDescription>
+            Manage client testimonials and reviews
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
@@ -395,13 +509,13 @@ export default function Testimonials() {
             </TableHeader>
             <TableBody>
               {filteredTestimonials.map((testimonial) => (
-                <TableRow key={testimonial.id}>
+                <TableRow key={testimonial._id}>
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
                         {testimonial.avatar ? (
-                          <img 
-                            src={testimonial.avatar} 
+                          <img
+                            src={testimonial.avatar}
                             alt={testimonial.clientName}
                             className="w-10 h-10 rounded-full object-cover"
                           />
@@ -410,9 +524,13 @@ export default function Testimonials() {
                         )}
                       </div>
                       <div>
-                        <div className="font-medium">{testimonial.clientName}</div>
+                        <div className="font-medium">
+                          {testimonial.clientName}
+                        </div>
                         {testimonial.clientEmail && (
-                          <div className="text-sm text-muted-foreground">{testimonial.clientEmail}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {testimonial.clientEmail}
+                          </div>
                         )}
                       </div>
                     </div>
@@ -420,7 +538,9 @@ export default function Testimonials() {
                   <TableCell>
                     <div className="flex items-center gap-1">
                       {renderStars(testimonial.rating, false)}
-                      <span className="text-sm font-medium ml-1">{testimonial.rating}/5</span>
+                      <span className="text-sm font-medium ml-1">
+                        {testimonial.rating}/5
+                      </span>
                     </div>
                   </TableCell>
                   <TableCell>
@@ -436,7 +556,9 @@ export default function Testimonials() {
                   </TableCell>
                   <TableCell>
                     {testimonial.featured ? (
-                      <Badge className="bg-blue-100 text-blue-800">Featured</Badge>
+                      <Badge className="bg-blue-100 text-blue-800">
+                        Featured
+                      </Badge>
                     ) : (
                       <span className="text-muted-foreground text-sm">-</span>
                     )}
@@ -448,47 +570,55 @@ export default function Testimonials() {
                     <div className="flex items-center justify-end gap-2">
                       {testimonial.status === "pending" && (
                         <>
-                          <Button 
-                            variant="ghost" 
+                          <Button
+                            variant="ghost"
                             size="sm"
-                            onClick={() => handleStatusChange(testimonial.id, "approved")}
+                            onClick={() =>
+                              handleStatusChange(testimonial._id, "approved")
+                            }
                             className="text-green-600 hover:text-green-700"
                           >
                             Approve
                           </Button>
-                          <Button 
-                            variant="ghost" 
+                          <Button
+                            variant="ghost"
                             size="sm"
-                            onClick={() => handleStatusChange(testimonial.id, "rejected")}
+                            onClick={() =>
+                              handleStatusChange(testimonial._id, "rejected")
+                            }
                             className="text-red-600 hover:text-red-700"
                           >
                             Reject
                           </Button>
                         </>
                       )}
-                      
+
                       {testimonial.status === "approved" && (
-                        <Button 
-                          variant="ghost" 
+                        <Button
+                          variant="ghost"
                           size="sm"
-                          onClick={() => handleFeatureToggle(testimonial.id)}
-                          className={testimonial.featured ? "text-blue-600" : "text-muted-foreground"}
+                          onClick={() => handleFeatureToggle(testimonial._id)}
+                          className={
+                            testimonial.featured
+                              ? "text-blue-600"
+                              : "text-muted-foreground"
+                          }
                         >
                           {testimonial.featured ? "Unfeature" : "Feature"}
                         </Button>
                       )}
-                      
-                      <Button 
-                        variant="ghost" 
+
+                      <Button
+                        variant="ghost"
                         size="icon"
                         onClick={() => handleEdit(testimonial)}
                       >
                         <Edit className="w-4 h-4" />
                       </Button>
-                      <Button 
-                        variant="ghost" 
+                      <Button
+                        variant="ghost"
                         size="icon"
-                        onClick={() => handleDelete(testimonial.id)}
+                        onClick={() => handleDelete(testimonial._id)}
                         className="text-destructive hover:text-destructive"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -515,7 +645,7 @@ export default function Testimonials() {
                 : "Add a new client testimonial"}
             </DialogDescription> */}
           </DialogHeader>
-          
+
           <div className="space-y-4 py-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -523,7 +653,9 @@ export default function Testimonials() {
                 <Input
                   id="clientName"
                   value={formData.clientName}
-                  onChange={(e) => setFormData({...formData, clientName: e.target.value})}
+                  onChange={(e) =>
+                    setFormData({ ...formData, clientName: e.target.value })
+                  }
                   placeholder="Enter client name"
                 />
               </div>
@@ -533,12 +665,14 @@ export default function Testimonials() {
                   id="clientEmail"
                   type="email"
                   value={formData.clientEmail}
-                  onChange={(e) => setFormData({...formData, clientEmail: e.target.value})}
+                  onChange={(e) =>
+                    setFormData({ ...formData, clientEmail: e.target.value })
+                  }
                   placeholder="Enter client email"
                 />
               </div>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="rating">Rating *</Label>
@@ -552,25 +686,34 @@ export default function Testimonials() {
                 <Input
                   id="serviceUsed"
                   value={formData.serviceUsed}
-                  onChange={(e) => setFormData({...formData, serviceUsed: e.target.value})}
+                  onChange={(e) =>
+                    setFormData({ ...formData, serviceUsed: e.target.value })
+                  }
                   placeholder="e.g., Sports Injury Rehabilitation"
                 />
               </div>
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="problem">Problem *</Label>
               <Input
                 id="problem"
                 value={formData.problem}
-                onChange={(e) => setFormData({...formData, problem: e.target.value})}
+                onChange={(e) =>
+                  setFormData({ ...formData, problem: e.target.value })
+                }
                 placeholder="Enter the problem that was treated"
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="status">Status</Label>
-              <Select value={formData.status} onValueChange={(value) => setFormData({...formData, status: value as any})}>
+              <Select
+                value={formData.status}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, status: value as any })
+                }
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -581,30 +724,36 @@ export default function Testimonials() {
                 </SelectContent>
               </Select>
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="content">Testimonial Content *</Label>
               <Textarea
                 id="content"
                 value={formData.content}
-                onChange={(e) => setFormData({...formData, content: e.target.value})}
+                onChange={(e) =>
+                  setFormData({ ...formData, content: e.target.value })
+                }
                 placeholder="Enter the client's testimonial..."
                 rows={4}
               />
             </div>
-            
+
             <div className="flex items-center space-x-2">
               <input
                 type="checkbox"
                 id="featured"
                 checked={formData.featured}
-                onChange={(e) => setFormData({...formData, featured: e.target.checked})}
+                onChange={(e) =>
+                  setFormData({ ...formData, featured: e.target.checked })
+                }
                 className="rounded"
               />
-              <Label htmlFor="featured">Feature this testimonial on homepage</Label>
+              <Label htmlFor="featured">
+                Feature this testimonial on homepage
+              </Label>
             </div>
           </div>
-          
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsModalOpen(false)}>
               Cancel
@@ -617,17 +766,21 @@ export default function Testimonials() {
       </Dialog>
 
       {/* Delete Confirmation Modal */}
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+      <AlertDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the testimonial and remove it from the system.
+              This action cannot be undone. This will permanently delete the
+              testimonial and remove it from the system.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={cancelDelete}>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
+            <AlertDialogAction
               onClick={confirmDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >

@@ -74,50 +74,73 @@ export default function Sessions() {
     const currentSessions = (sessions || []).map((session: any) => ({
       ...session,
       // Normalize bookingId to be a string for consistent access
-      bookingId: typeof session.bookingId === 'object' 
-        ? (session.bookingId._id || session.bookingId.id || session.bookingId.serviceName)
-        : session.bookingId,
+      bookingId:
+        typeof session.bookingId === "object" && session.bookingId !== null
+          ? session.bookingId?._id ||
+            session.bookingId?.id ||
+            session.bookingId?.serviceName ||
+            ""
+          : session.bookingId,
       // Also normalize other nested objects
-      therapistId: typeof session.therapistId === 'object' 
-        ? (session.therapistId._id || session.therapistId.id || session.therapistId.name)
-        : session.therapistId,
-      userId: typeof session.userId === 'object' 
-        ? (session.userId._id || session.userId.id || session.userId)
-        : session.userId,
+      therapistId:
+        typeof session.therapistId === "object" && session.therapistId !== null
+          ? session.therapistId?._id ||
+            session.therapistId?.id ||
+            session.therapistId?.name ||
+            ""
+          : session.therapistId,
+      userId:
+        typeof session.userId === "object" && session.userId !== null
+          ? session.userId?._id || session.userId?.id || session.userId || ""
+          : session.userId,
     }));
-    
+
     switch (activeTab) {
       case "upcoming":
-        return currentSessions.filter((session: any) => session.status === 'scheduled');
+        return currentSessions.filter(
+          (session: any) => session.status === "scheduled"
+        );
       case "live":
-        return currentSessions.filter((session: any) => session.status === 'live');
+        return currentSessions.filter(
+          (session: any) => session.status === "live"
+        );
       case "completed":
-        return currentSessions.filter((session: any) => session.status === 'completed');
+        return currentSessions.filter(
+          (session: any) => session.status === "completed"
+        );
       case "cancelled":
-        return currentSessions.filter((session: any) => session.status === 'cancelled');
+        return currentSessions.filter(
+          (session: any) => session.status === "cancelled"
+        );
       default:
         return [];
     }
   };
-const filteredSessions = getCurrentSessions().filter((session) => {
-  const query = searchQuery?.toLowerCase() || "";
+  const filteredSessions = getCurrentSessions().filter((session) => {
+    const query = searchQuery?.toLowerCase() || "";
 
-  // Handle both string IDs and nested objects for bookingId
-  const bookingIdValue = typeof session.bookingId === 'object' 
-    ? session.bookingId._id || session.bookingId.id || session.bookingId.serviceName || ''
-    : session.bookingId || '';
+    // Handle both string IDs and nested objects for bookingId
+    const bookingIdValue =
+      typeof session.bookingId === "object" && session.bookingId !== null
+        ? session.bookingId?._id ||
+          session.bookingId?.id ||
+          session.bookingId?.serviceName ||
+          ""
+        : session.bookingId || "";
 
-  const bookingNameValue = typeof session.bookingId === 'object'
-    ? session.bookingId.serviceName || ''
-    : '';
+    const bookingNameValue =
+      typeof session.bookingId === "object" && session.bookingId !== null
+        ? session.bookingId?.serviceName || ""
+        : "";
 
-  return (
-    String(bookingIdValue).toLowerCase().includes(query) ||
-    String(bookingNameValue).toLowerCase().includes(query) ||
-    String(session.type ?? "").toLowerCase().includes(query)
-  );
-});
-
+    return (
+      String(bookingIdValue).toLowerCase().includes(query) ||
+      String(bookingNameValue).toLowerCase().includes(query) ||
+      String(session.type ?? "")
+        .toLowerCase()
+        .includes(query)
+    );
+  });
 
   // Function to handle creating a new session
   const handleCreateSession = async () => {
@@ -128,7 +151,7 @@ const filteredSessions = getCurrentSessions().filter((session) => {
         // Ensure bookingId is a string if it exists
         bookingId: newSession.bookingId || undefined,
       };
-      
+
       await dispatch(createSession(sessionData));
       setIsCreateSessionModalOpen(false);
       setNewSession({
@@ -137,15 +160,15 @@ const filteredSessions = getCurrentSessions().filter((session) => {
         time: "",
         type: "1-on-1",
         status: "scheduled",
-        notes: "" as string
+        notes: "" as string,
       });
       // Refresh sessions list
       dispatch(fetchSessions());
     } catch (error) {
-      console.error('Failed to create session:', error);
+      console.error("Failed to create session:", error);
     }
   };
-  console.log("bookings", bookings)
+  console.log("bookings", bookings);
 
   return (
     <div className="space-y-6">
@@ -153,7 +176,9 @@ const filteredSessions = getCurrentSessions().filter((session) => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="page-header">
           <h1 className="page-title">Session Management</h1>
-          <p className="page-subtitle">Monitor and manage all platform sessions</p>
+          <p className="page-subtitle">
+            Monitor and manage all platform sessions
+          </p>
         </div>
         <div className="flex items-center gap-3">
           {/* <Button onClick={() => setIsCreateSessionModalOpen(true)}>
@@ -181,7 +206,13 @@ const filteredSessions = getCurrentSessions().filter((session) => {
               <Calendar className="w-5 h-5 text-info" />
             </div>
             <div>
-              <p className="text-2xl font-semibold">{(sessions || []).filter((session: any) => session.status === 'scheduled').length}</p>
+              <p className="text-2xl font-semibold">
+                {
+                  (sessions || []).filter(
+                    (session: any) => session.status === "scheduled"
+                  ).length
+                }
+              </p>
               <p className="text-sm text-muted-foreground">Upcoming</p>
             </div>
           </div>
@@ -192,7 +223,13 @@ const filteredSessions = getCurrentSessions().filter((session) => {
               <Play className="w-5 h-5 text-success" />
             </div>
             <div>
-              <p className="text-2xl font-semibold">{(sessions || []).filter((session: any) => session.status === 'live').length}</p>
+              <p className="text-2xl font-semibold">
+                {
+                  (sessions || []).filter(
+                    (session: any) => session.status === "live"
+                  ).length
+                }
+              </p>
               <p className="text-sm text-muted-foreground">Live Now</p>
             </div>
           </div>
@@ -203,7 +240,13 @@ const filteredSessions = getCurrentSessions().filter((session) => {
               <Video className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <p className="text-2xl font-semibold">{(sessions || []).filter((session: any) => session.status === 'completed').length}</p>
+              <p className="text-2xl font-semibold">
+                {
+                  (sessions || []).filter(
+                    (session: any) => session.status === "completed"
+                  ).length
+                }
+              </p>
               <p className="text-sm text-muted-foreground">Completed</p>
             </div>
           </div>
@@ -214,7 +257,13 @@ const filteredSessions = getCurrentSessions().filter((session) => {
               <X className="w-5 h-5 text-warning" />
             </div>
             <div>
-              <p className="text-2xl font-semibold">{(sessions || []).filter((session: any) => session.status === 'cancelled').length}</p>
+              <p className="text-2xl font-semibold">
+                {
+                  (sessions || []).filter(
+                    (session: any) => session.status === "cancelled"
+                  ).length
+                }
+              </p>
               <p className="text-sm text-muted-foreground">Cancelled</p>
             </div>
           </div>
@@ -227,14 +276,24 @@ const filteredSessions = getCurrentSessions().filter((session) => {
           <TabsTrigger value="upcoming">
             Upcoming
             <span className="ml-1.5 px-1.5 py-0.5 text-xs bg-info/20 text-info rounded-full">
-              {(sessions || []).filter((session: any) => session.status === 'scheduled').length}
+              {
+                (sessions || []).filter(
+                  (session: any) => session.status === "scheduled"
+                ).length
+              }
             </span>
           </TabsTrigger>
           <TabsTrigger value="live" className="relative">
             Live
-            {(sessions || []).filter((session: any) => session.status === 'live').length > 0 && (
+            {(sessions || []).filter(
+              (session: any) => session.status === "live"
+            ).length > 0 && (
               <span className="ml-1.5 px-1.5 py-0.5 text-xs bg-success/20 text-success rounded-full animate-pulse">
-                {(sessions || []).filter((session: any) => session.status === 'live').length}
+                {
+                  (sessions || []).filter(
+                    (session: any) => session.status === "live"
+                  ).length
+                }
               </span>
             )}
           </TabsTrigger>
@@ -267,7 +326,9 @@ const filteredSessions = getCurrentSessions().filter((session) => {
                     <th>Date & Time</th>
                     <th>Format</th>
                     <th>Status</th>
-                    {(activeTab === "live" || activeTab === "completed") && <th>Notes</th>}
+                    {(activeTab === "live" || activeTab === "completed") && (
+                      <th>Notes</th>
+                    )}
                     {activeTab === "cancelled" && <th>Notes</th>}
                     <th className="w-12"></th>
                   </tr>
@@ -281,9 +342,13 @@ const filteredSessions = getCurrentSessions().filter((session) => {
                             <User className="w-4 h-4 text-muted-foreground" />
                           </div>
                           <span className="font-medium">
-                            {typeof session.bookingId === 'object' 
-                              ? session.bookingId.serviceName || session.bookingId._id || session.bookingId.id || 'N/A'
-                              : session.bookingId || 'N/A'}
+                            {typeof session.bookingId === "object" &&
+                            session.bookingId !== null
+                              ? session.bookingId?.serviceName ||
+                                session.bookingId?._id ||
+                                session.bookingId?.id ||
+                                "N/A"
+                              : session.bookingId || "N/A"}
                           </span>
                         </div>
                       </td>
@@ -304,33 +369,52 @@ const filteredSessions = getCurrentSessions().filter((session) => {
                         </div>
                       </td>
                       <td>
-                        <span className="status-badge bg-muted text-muted-foreground">{session.type}</span>
+                        <span className="status-badge bg-muted text-muted-foreground">
+                          {session.type}
+                        </span>
                       </td>
                       <td>
-                        <span className={cn("status-badge", getStatusBadge(session.status))}>
-                          {session.status === "no-show" ? "No-show" : session.status}
+                        <span
+                          className={cn(
+                            "status-badge",
+                            getStatusBadge(session.status)
+                          )}
+                        >
+                          {session.status === "no-show"
+                            ? "No-show"
+                            : session.status}
                         </span>
                       </td>
                       {(activeTab === "live" || activeTab === "completed") && (
-                        <td className="text-muted-foreground">{session.notes || 'N/A'}</td>
+                        <td className="text-muted-foreground">
+                          {session.notes || "N/A"}
+                        </td>
                       )}
                       {activeTab === "cancelled" && (
-                        <td className="text-muted-foreground">{session.notes || 'N/A'}</td>
+                        <td className="text-muted-foreground">
+                          {session.notes || "N/A"}
+                        </td>
                       )}
                       <td>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                            >
                               <MoreHorizontal className="w-4 h-4" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             {activeTab === "upcoming" && (
                               <>
-                                <DropdownMenuItem onClick={() => {
-                                  setSelectedSession(session);
-                                  setIsRescheduleModalOpen(true);
-                                }}>
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    setSelectedSession(session);
+                                    setIsRescheduleModalOpen(true);
+                                  }}
+                                >
                                   <RefreshCw className="w-4 h-4 mr-2" />
                                   Reschedule
                                 </DropdownMenuItem>
@@ -344,12 +428,16 @@ const filteredSessions = getCurrentSessions().filter((session) => {
                                   <X className="w-4 h-4 mr-2" />
                                   Cancel Session
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => {
-                                  if (session.joinLink) {
-                                    navigator.clipboard.writeText(session.joinLink);
-                                    // Here you would typically show a toast notification
-                                  }
-                                }}>
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    if (session.joinLink) {
+                                      navigator.clipboard.writeText(
+                                        session.joinLink
+                                      );
+                                      // Here you would typically show a toast notification
+                                    }
+                                  }}
+                                >
                                   <Copy className="w-4 h-4 mr-2" />
                                   Copy Join Link
                                 </DropdownMenuItem>
@@ -357,30 +445,44 @@ const filteredSessions = getCurrentSessions().filter((session) => {
                             )}
                             {activeTab === "live" && (
                               <>
-                                <DropdownMenuItem onClick={() => {
-                                  if (session.joinLink) {
-                                    // Extract session ID from the join link
-                                    const sessionId = session.joinLink.split('/').pop() || session.id.toString();
-                                    // Open the video call page in a new tab
-                                    window.open(`/video-call/${sessionId}`, '_blank', 'width=1200,height=800');
-                                  }
-                                }}>
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    if (session.joinLink) {
+                                      // Extract session ID from the join link
+                                      const sessionId =
+                                        session.joinLink.split("/").pop() ||
+                                        session.id.toString();
+                                      // Open the video call page in a new tab
+                                      window.open(
+                                        `/video-call/${sessionId}`,
+                                        "_blank",
+                                        "width=1200,height=800"
+                                      );
+                                    }
+                                  }}
+                                >
                                   <Video className="w-4 h-4 mr-2" />
                                   Join Session
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => {
-                                  // Navigate to the live sessions page
-                                  navigate('/live-sessions');
-                                }}>
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    // Navigate to the live sessions page
+                                    navigate("/live-sessions");
+                                  }}
+                                >
                                   <Video className="w-4 h-4 mr-2" />
                                   View All Live Sessions
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => {
-                                  if (session.joinLink) {
-                                    navigator.clipboard.writeText(session.joinLink);
-                                    // Here you would typically show a toast notification
-                                  }
-                                }}>
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    if (session.joinLink) {
+                                      navigator.clipboard.writeText(
+                                        session.joinLink
+                                      );
+                                      // Here you would typically show a toast notification
+                                    }
+                                  }}
+                                >
                                   <Copy className="w-4 h-4 mr-2" />
                                   Copy Join Link
                                 </DropdownMenuItem>
@@ -388,10 +490,16 @@ const filteredSessions = getCurrentSessions().filter((session) => {
                             )}
                             {activeTab === "completed" && (
                               <>
-                                <DropdownMenuItem onClick={() => {
-                                  // Navigate to the session recordings page
-                                  navigate(`/session-recordings/${session.bookingId || session.id}`);
-                                }}>
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    // Navigate to the session recordings page
+                                    navigate(
+                                      `/session-recordings/${
+                                        session.bookingId || session.id
+                                      }`
+                                    );
+                                  }}
+                                >
                                   <Eye className="w-4 h-4 mr-2" />
                                   View Recording
                                 </DropdownMenuItem>
@@ -408,13 +516,17 @@ const filteredSessions = getCurrentSessions().filter((session) => {
 
             <div className="flex items-center justify-between px-4 py-3 border-t border-border">
               <p className="text-sm text-muted-foreground">
-                Showing <span className="font-medium">{filteredSessions.length}</span> sessions
+                Showing{" "}
+                <span className="font-medium">{filteredSessions.length}</span>{" "}
+                sessions
               </p>
               <div className="flex items-center gap-2">
                 <Button variant="outline" size="sm" disabled>
                   <ChevronLeft className="w-4 h-4" />
                 </Button>
-                <Button variant="outline" size="sm" className="min-w-[32px]">1</Button>
+                <Button variant="outline" size="sm" className="min-w-[32px]">
+                  1
+                </Button>
                 <Button variant="outline" size="sm">
                   <ChevronRight className="w-4 h-4" />
                 </Button>
@@ -430,7 +542,8 @@ const filteredSessions = getCurrentSessions().filter((session) => {
           <DialogHeader>
             <DialogTitle>Cancel Session</DialogTitle>
             <DialogDescription>
-              Are you sure you want to cancel this session? This action cannot be undone.
+              Are you sure you want to cancel this session? This action cannot
+              be undone.
             </DialogDescription>
           </DialogHeader>
 
@@ -440,9 +553,13 @@ const filteredSessions = getCurrentSessions().filter((session) => {
                 <p className="text-sm">
                   <span className="text-muted-foreground">Booking ID:</span>{" "}
                   <span className="font-medium">
-                    {typeof selectedSession.bookingId === 'object' 
-                      ? selectedSession.bookingId.serviceName || selectedSession.bookingId._id || selectedSession.bookingId.id || 'N/A'
-                      : selectedSession.bookingId || 'N/A'}
+                    {typeof selectedSession.bookingId === "object" &&
+                    selectedSession.bookingId !== null
+                      ? selectedSession.bookingId?.serviceName ||
+                        selectedSession.bookingId?._id ||
+                        selectedSession.bookingId?.id ||
+                        "N/A"
+                      : selectedSession.bookingId || "N/A"}
                   </span>
                 </p>
                 <p className="text-sm">
@@ -451,12 +568,16 @@ const filteredSessions = getCurrentSessions().filter((session) => {
                 </p>
                 <p className="text-sm">
                   <span className="text-muted-foreground">Scheduled:</span>{" "}
-                  <span className="font-medium">{selectedSession.date} at {selectedSession.time}</span>
+                  <span className="font-medium">
+                    {selectedSession.date} at {selectedSession.time}
+                  </span>
                 </p>
               </div>
 
               <div>
-                <label className="text-sm font-medium">Cancellation Reason</label>
+                <label className="text-sm font-medium">
+                  Cancellation Reason
+                </label>
                 <Textarea
                   placeholder="Please provide a reason for cancellation..."
                   value={cancelReason}
@@ -468,19 +589,30 @@ const filteredSessions = getCurrentSessions().filter((session) => {
           )}
 
           <DialogFooter className="mt-4">
-            <Button variant="outline" onClick={() => setIsCancelModalOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setIsCancelModalOpen(false)}
+            >
               Keep Session
             </Button>
-            <Button variant="destructive" onClick={async () => {
-              try {
-                await dispatch(updateSession({ id: selectedSession.id, sessionData: { status: 'cancelled', notes: cancelReason } }));
-                setIsCancelModalOpen(false);
-                setCancelReason('');
-                dispatch(fetchSessions());
-              } catch (error) {
-                console.error('Failed to cancel session:', error);
-              }
-            }}>
+            <Button
+              variant="destructive"
+              onClick={async () => {
+                try {
+                  await dispatch(
+                    updateSession({
+                      id: selectedSession.id,
+                      sessionData: { status: "cancelled", notes: cancelReason },
+                    })
+                  );
+                  setIsCancelModalOpen(false);
+                  setCancelReason("");
+                  dispatch(fetchSessions());
+                } catch (error) {
+                  console.error("Failed to cancel session:", error);
+                }
+              }}
+            >
               Cancel Session
             </Button>
           </DialogFooter>
@@ -488,7 +620,10 @@ const filteredSessions = getCurrentSessions().filter((session) => {
       </Dialog>
 
       {/* Reschedule Modal */}
-      <Dialog open={isRescheduleModalOpen} onOpenChange={setIsRescheduleModalOpen}>
+      <Dialog
+        open={isRescheduleModalOpen}
+        onOpenChange={setIsRescheduleModalOpen}
+      >
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Reschedule Session</DialogTitle>
@@ -503,14 +638,20 @@ const filteredSessions = getCurrentSessions().filter((session) => {
                 <p className="text-sm">
                   <span className="text-muted-foreground">Booking ID:</span>{" "}
                   <span className="font-medium">
-                    {typeof selectedSession.bookingId === 'object' 
-                      ? selectedSession.bookingId.serviceName || selectedSession.bookingId._id || selectedSession.bookingId.id || 'N/A'
-                      : selectedSession.bookingId || 'N/A'}
+                    {typeof selectedSession.bookingId === "object" &&
+                    selectedSession.bookingId !== null
+                      ? selectedSession.bookingId?.serviceName ||
+                        selectedSession.bookingId?._id ||
+                        selectedSession.bookingId?.id ||
+                        "N/A"
+                      : selectedSession.bookingId || "N/A"}
                   </span>
                 </p>
                 <p className="text-sm">
                   <span className="text-muted-foreground">Current:</span>{" "}
-                  <span className="font-medium">{selectedSession.date} at {selectedSession.time}</span>
+                  <span className="font-medium">
+                    {selectedSession.date} at {selectedSession.time}
+                  </span>
                 </p>
               </div>
 
@@ -526,7 +667,10 @@ const filteredSessions = getCurrentSessions().filter((session) => {
                 </div>
                 <div>
                   <label className="text-sm font-medium">New Time</label>
-                  <Select value={rescheduleTime} onValueChange={setRescheduleTime}>
+                  <Select
+                    value={rescheduleTime}
+                    onValueChange={setRescheduleTime}
+                  >
                     <SelectTrigger className="mt-1">
                       <SelectValue placeholder="Select time" />
                     </SelectTrigger>
@@ -544,27 +688,34 @@ const filteredSessions = getCurrentSessions().filter((session) => {
           )}
 
           <DialogFooter className="mt-4">
-            <Button variant="outline" onClick={() => setIsRescheduleModalOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setIsRescheduleModalOpen(false)}
+            >
               Cancel
             </Button>
-            <Button onClick={async () => {
-              try {
-                await dispatch(updateSession({
-                  id: selectedSession.id,
-                  sessionData: {
-                    status: 'scheduled',
-                    date: rescheduleDate,
-                    time: rescheduleTime
-                  }
-                }));
-                setIsRescheduleModalOpen(false);
-                setRescheduleDate('');
-                setRescheduleTime('');
-                dispatch(fetchSessions());
-              } catch (error) {
-                console.error('Failed to reschedule session:', error);
-              }
-            }}>
+            <Button
+              onClick={async () => {
+                try {
+                  await dispatch(
+                    updateSession({
+                      id: selectedSession.id,
+                      sessionData: {
+                        status: "scheduled",
+                        date: rescheduleDate,
+                        time: rescheduleTime,
+                      },
+                    })
+                  );
+                  setIsRescheduleModalOpen(false);
+                  setRescheduleDate("");
+                  setRescheduleTime("");
+                  dispatch(fetchSessions());
+                } catch (error) {
+                  console.error("Failed to reschedule session:", error);
+                }
+              }}
+            >
               Reschedule Session
             </Button>
           </DialogFooter>
@@ -572,7 +723,10 @@ const filteredSessions = getCurrentSessions().filter((session) => {
       </Dialog>
 
       {/* Create Session Modal */}
-      <Dialog open={isCreateSessionModalOpen} onOpenChange={setIsCreateSessionModalOpen}>
+      <Dialog
+        open={isCreateSessionModalOpen}
+        onOpenChange={setIsCreateSessionModalOpen}
+      >
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Create New Session</DialogTitle>
@@ -598,18 +752,29 @@ const filteredSessions = getCurrentSessions().filter((session) => {
                 >
                   <option value="">Select Booking</option>
 
-                  {bookings && Array.isArray(bookings) ? bookings.map((booking) => (
-                    <option key={booking._id || booking.id} value={booking._id || booking.id}>
-                     {booking.serviceName || booking.name || 'Unnamed Booking'}
-                    </option>
-                  )) : null}
+                  {bookings && Array.isArray(bookings)
+                    ? bookings.map((booking) => (
+                        <option
+                          key={booking?._id || booking?.id}
+                          value={booking?._id || booking?.id}
+                        >
+                          {booking?.serviceName ||
+                            booking?.name ||
+                            "Unnamed Booking"}
+                        </option>
+                      ))
+                    : null}
                 </select>
               </div>
 
-
               <div className="space-y-2">
                 <label className="text-sm font-medium">Session Type</label>
-                <Select value={newSession.type} onValueChange={(value) => setNewSession({ ...newSession, type: value })}>
+                <Select
+                  value={newSession.type}
+                  onValueChange={(value) =>
+                    setNewSession({ ...newSession, type: value })
+                  }
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -622,7 +787,12 @@ const filteredSessions = getCurrentSessions().filter((session) => {
 
               <div className="space-y-2">
                 <label className="text-sm font-medium">Status</label>
-                <Select value={newSession.status} onValueChange={(value) => setNewSession({ ...newSession, status: value })}>
+                <Select
+                  value={newSession.status}
+                  onValueChange={(value) =>
+                    setNewSession({ ...newSession, status: value })
+                  }
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -640,7 +810,9 @@ const filteredSessions = getCurrentSessions().filter((session) => {
                 <Input
                   type="date"
                   value={newSession.date}
-                  onChange={(e) => setNewSession({ ...newSession, date: e.target.value })}
+                  onChange={(e) =>
+                    setNewSession({ ...newSession, date: e.target.value })
+                  }
                 />
               </div>
 
@@ -649,7 +821,9 @@ const filteredSessions = getCurrentSessions().filter((session) => {
                 <Input
                   type="time"
                   value={newSession.time}
-                  onChange={(e) => setNewSession({ ...newSession, time: e.target.value })}
+                  onChange={(e) =>
+                    setNewSession({ ...newSession, time: e.target.value })
+                  }
                 />
               </div>
             </div>
@@ -666,12 +840,13 @@ const filteredSessions = getCurrentSessions().filter((session) => {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsCreateSessionModalOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setIsCreateSessionModalOpen(false)}
+            >
               Cancel
             </Button>
-            <Button onClick={handleCreateSession}>
-              Create Session
-            </Button>
+            <Button onClick={handleCreateSession}>Create Session</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
