@@ -15,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { useSelector, useDispatch } from "react-redux";
-import { fetchSessions, createSession, updateSession, deleteSession } from "@/features/sessions/sessionSlice";
+import { fetchSessions, createSession, updateSession, deleteSession, rescheduleSession, deleteSessionById } from "@/features/sessions/sessionSlice";
 import { fetchBookings } from "@/features/bookings/bookingSlice";
 
 type SessionStatus = "scheduled" | "live" | "completed" | "cancelled" | "no-show";
@@ -28,6 +28,67 @@ export default function Sessions() {
   const { list: sessions = [], loading, error } = useSelector((state: any) => state.sessions);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("upcoming");
+
+  // Count sessions by status for tabs
+  const upcomingCount = (sessions || []).filter((session: any) => session.status === "scheduled").length;
+  const allCount = (sessions || []).length;
+  const liveCount = (sessions || []).filter((session: any) => session.status === "live").length;
+  const completedCount = (sessions || []).filter((session: any) => session.status === "completed").length;
+  const cancelledCount = (sessions || []).filter((session: any) => session.status === "cancelled").length;
+
+  // Filter sessions based on active tab and search query
+  const filteredSessions = sessions.filter((session: any) => {
+    // First filter by tab status
+    let includeInTab = false;
+    switch (activeTab) {
+      case "all":
+        includeInTab = true;
+        break;
+      case "upcoming":
+        includeInTab = session.status === "scheduled";
+        break;
+      case "live":
+        includeInTab = session.status === "live";
+        break;
+      case "completed":
+        includeInTab = session.status === "completed";
+        break;
+      case "cancelled":
+        includeInTab = session.status === "cancelled";
+        break;
+      default:
+        includeInTab = true;
+    }
+
+    if (!includeInTab) return false;
+
+    // Then filter by search query
+    if (!searchQuery) return true;
+
+    const query = searchQuery.toLowerCase();
+
+    // Check booking info
+    const booking = session.bookingId;
+    if (booking?.serviceName?.toLowerCase().includes(query)) return true;
+    if (booking?._id?.toLowerCase().includes(query)) return true;
+
+    // Check user info
+    const user = session.userId;
+    if (user?.name?.toLowerCase().includes(query)) return true;
+    if (user?.email?.toLowerCase().includes(query)) return true;
+
+    // Check therapist info
+    const therapist = session.therapistId;
+    if (therapist?.name?.toLowerCase().includes(query)) return true;
+    if (therapist?.email?.toLowerCase().includes(query)) return true;
+
+    // Check date, time, and status
+    if (session.date?.toLowerCase().includes(query)) return true;
+    if (session.time?.toLowerCase().includes(query)) return true;
+    if (session.status?.toLowerCase().includes(query)) return true;
+
+    return false;
+  });
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false);
   const [isCreateSessionModalOpen, setIsCreateSessionModalOpen] = useState(false);
@@ -70,100 +131,8 @@ export default function Sessions() {
     }
   };
 
-  const getCurrentSessions = () => {
-    const currentSessions = (sessions || []).map((session: any) => ({
-      ...session,
-      // Normalize bookingId to be a string for consistent access
-      bookingId:
-        typeof session.bookingId === "object" && session.bookingId !== null
-          ? session.bookingId?._id ||
-            session.bookingId?.id ||
-            session.bookingId?.serviceName ||
-            ""
-          : session.bookingId,
-      // Also normalize other nested objects
-      therapistId:
-        typeof session.therapistId === "object" && session.therapistId !== null
-          ? session.therapistId?._id ||
-            session.therapistId?.id ||
-            session.therapistId?.name ||
-            ""
-          : session.therapistId,
-      userId:
-        typeof session.userId === "object" && session.userId !== null
-          ? session.userId?._id || session.userId?.id || session.userId || ""
-          : session.userId,
-    }));
 
-    switch (activeTab) {
-      case "upcoming":
-        return currentSessions.filter(
-          (session: any) => session.status === "scheduled"
-        );
-      case "live":
-        return currentSessions.filter(
-          (session: any) => session.status === "live"
-        );
-      case "completed":
-        return currentSessions.filter(
-          (session: any) => session.status === "completed"
-        );
-      case "cancelled":
-        return currentSessions.filter(
-          (session: any) => session.status === "cancelled"
-        );
-      default:
-        return [];
-    }
-  };
-  const filteredSessions = getCurrentSessions().filter((session) => {
-    const query = searchQuery?.toLowerCase() || "";
 
-    // Extract searchable values from nested objects
-    const bookingServiceName =
-      typeof session.bookingId === "object" && session.bookingId !== null
-        ? session.bookingId?.serviceName || ""
-        : "";
-        
-    const bookingIdValue =
-      typeof session.bookingId === "object" && session.bookingId !== null
-        ? session.bookingId?._id || ""
-        : session.bookingId || "";
-
-    const userName =
-      typeof session.userId === "object" && session.userId !== null
-        ? session.userId?.name || ""
-        : "";
-        
-    const userEmail =
-      typeof session.userId === "object" && session.userId !== null
-        ? session.userId?.email || ""
-        : "";
-        
-    const therapistName =
-      typeof session.therapistId === "object" && session.therapistId !== null
-        ? session.therapistId?.name || ""
-        : "";
-        
-    const bookingTherapistName =
-      typeof session.bookingId === "object" && session.bookingId !== null
-        ? session.bookingId?.therapistName || ""
-        : "";
-
-    return (
-      bookingServiceName.toLowerCase().includes(query) ||
-      bookingIdValue.toLowerCase().includes(query) ||
-      userName.toLowerCase().includes(query) ||
-      userEmail.toLowerCase().includes(query) ||
-      therapistName.toLowerCase().includes(query) ||
-      bookingTherapistName.toLowerCase().includes(query) ||
-      String(session.type ?? "").toLowerCase().includes(query) ||
-      String(session.status ?? "").toLowerCase().includes(query) ||
-      String(session.date ?? "").toLowerCase().includes(query) ||
-      String(session.time ?? "").toLowerCase().includes(query) ||
-      (session.sessionId && session.sessionId.toLowerCase().includes(query))
-    );
-  });
 
   // Function to handle creating a new session
   const handleCreateSession = async () => {
@@ -191,7 +160,6 @@ export default function Sessions() {
       console.error("Failed to create session:", error);
     }
   };
-  console.log("bookings", bookings);
 
   return (
     <div className="space-y-6">
@@ -230,11 +198,7 @@ export default function Sessions() {
             </div>
             <div>
               <p className="text-2xl font-semibold">
-                {
-                  (sessions || []).filter(
-                    (session: any) => session.status === "scheduled"
-                  ).length
-                }
+                {upcomingCount}
               </p>
               <p className="text-sm text-muted-foreground">Upcoming</p>
             </div>
@@ -247,11 +211,7 @@ export default function Sessions() {
             </div>
             <div>
               <p className="text-2xl font-semibold">
-                {
-                  (sessions || []).filter(
-                    (session: any) => session.status === "live"
-                  ).length
-                }
+                {liveCount}
               </p>
               <p className="text-sm text-muted-foreground">Live Now</p>
             </div>
@@ -264,11 +224,7 @@ export default function Sessions() {
             </div>
             <div>
               <p className="text-2xl font-semibold">
-                {
-                  (sessions || []).filter(
-                    (session: any) => session.status === "completed"
-                  ).length
-                }
+                {completedCount}
               </p>
               <p className="text-sm text-muted-foreground">Completed</p>
             </div>
@@ -281,11 +237,7 @@ export default function Sessions() {
             </div>
             <div>
               <p className="text-2xl font-semibold">
-                {
-                  (sessions || []).filter(
-                    (session: any) => session.status === "cancelled"
-                  ).length
-                }
+                {cancelledCount}
               </p>
               <p className="text-sm text-muted-foreground">Cancelled</p>
             </div>
@@ -296,27 +248,23 @@ export default function Sessions() {
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
+          <TabsTrigger value="all">
+            All
+            <span className="ml-1.5 px-1.5 py-0.5 text-xs bg-info/20 text-info rounded-full">
+              {allCount}
+            </span>
+          </TabsTrigger>
           <TabsTrigger value="upcoming">
             Upcoming
             <span className="ml-1.5 px-1.5 py-0.5 text-xs bg-info/20 text-info rounded-full">
-              {
-                (sessions || []).filter(
-                  (session: any) => session.status === "scheduled"
-                ).length
-              }
+              {upcomingCount}
             </span>
           </TabsTrigger>
           <TabsTrigger value="live" className="relative">
             Live
-            {(sessions || []).filter(
-              (session: any) => session.status === "live"
-            ).length > 0 && (
+            {liveCount > 0 && (
               <span className="ml-1.5 px-1.5 py-0.5 text-xs bg-success/20 text-success rounded-full animate-pulse">
-                {
-                  (sessions || []).filter(
-                    (session: any) => session.status === "live"
-                  ).length
-                }
+                {liveCount}
               </span>
             )}
           </TabsTrigger>
@@ -346,10 +294,11 @@ export default function Sessions() {
                   <tr>
                     <th>Booking Info</th>
                     <th>User</th>
-                    <th>Therapist</th>
+                   
                     <th>Date & Time</th>
                     <th>Type</th>
                     <th>Status</th>
+                    <th>Actions</th>
                     {(activeTab === "live" || activeTab === "completed") && (
                       <th>Notes</th>
                     )}
@@ -357,171 +306,143 @@ export default function Sessions() {
                     <th className="w-12"></th>
                   </tr>
                 </thead>
-               <tbody>
-  {filteredSessions.map((session: any) => {
-    const booking = session.bookingId;
-    const user = session.userId;
-    const therapist = session.therapistId;
+                <tbody>
+                  {filteredSessions.map((session: any) => {
+                    const booking = session.bookingId;
+                    const user = session.userId;
+                    console.log("booking", session)
+                    return (
+                      <tr key={session._id} className="hover:bg-muted/40 transition">
+                        {/* SERVICE / BOOKING */}
+                        <td className="px-4 py-3">
+                          <div className="space-y-0.5">
+                            <p className="font-medium">{booking?.serviceName || "N/A"}</p>
+                            <p className="text-xs text-muted-foreground">
+                              Booking ID: {booking?._id?.slice(0, 8) || "N/A"}
+                            </p>   
+                          </div>
+                        </td>
 
-    return (
-      <tr key={session._id} className="hover:bg-muted/40 transition">
-        {/* SERVICE / BOOKING */}
-        <td className="px-4 py-3">
-          <div className="space-y-0.5">
-            <p className="font-semibold">
-              {booking?.serviceName || "N/A"}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Booking ID: {booking?._id?.slice(0, 8) || "N/A"}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Session: {session.sessionId?.slice(0, 12)}…
-            </p>
-          </div>
-        </td>
+                        {/* USER */}
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
+                              <User className="h-4 w-4 text-blue-600" />
+                            </div>
+                            <div>
+                              <p className="font-medium">{user?.name || "N/A"}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {user?.email || ""}
+                              </p>
+                            </div>
+                          </div>
+                        </td>
 
-        {/* USER */}
-        <td className="px-4 py-3">
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
-              <User className="h-4 w-4 text-blue-600" />
-            </div>
-            <div>
-              <p className="font-medium">{user?.name || "N/A"}</p>
-              <p className="text-xs text-muted-foreground">
-                {user?.email || ""}
-              </p>
-            </div>
-          </div>
-        </td>
 
-        {/* THERAPIST */}
-        <td className="px-4 py-3">
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-full bg-purple-100 flex items-center justify-center">
-              <UserCog className="h-4 w-4 text-purple-600" />
-            </div>
-            <div>
-              <p className="font-medium">{therapist?.name || "N/A"}</p>
-              <p className="text-xs text-muted-foreground">
-                {therapist?.email || ""}
-              </p>
-            </div>
-          </div>
-        </td>
+                        {/* DATE & TIME */}
+                        <td className="px-4 py-3">
+                          <div className="space-y-0.5">
+                            <div className="flex items-center gap-1">
+                              <Calendar className="h-4 w-4 text-muted-foreground" />
+                              <span>{session.date}</span>
+                            </div>
+                            <div className="flex items-center gap-1 text-muted-foreground">
+                              <Clock className="h-4 w-4" />
+                              <span>{session.time}</span>
+                            </div>
+                           
+                          </div>
+                        </td>
 
-        {/* DATE & TIME */}
-        <td className="px-4 py-3">
-          <div className="space-y-0.5">
-            <div className="flex items-center gap-1">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-              <span>{session.date}</span>
-            </div>
-            <div className="flex items-center gap-1 text-muted-foreground">
-              <Clock className="h-4 w-4" />
-              <span>{session.time}</span>
-            </div>
-            {session.startTime && (
-              <p className="text-xs text-muted-foreground">
-                Start:{" "}
-                {new Date(session.startTime).toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </p>
-            )}
-          </div>
-        </td>
+                        {/* TYPE */}
+                        <td className="px-4 py-3">
+                          <span className="px-3 py-1 rounded-full text-xs font-semibold bg-muted">
+                            {session.type}
+                          </span>
+                        </td>
 
-        {/* TYPE */}
-        <td className="px-4 py-3">
-          <span className="px-3 py-1 rounded-full text-xs font-semibold bg-muted">
-            {session.type}
-          </span>
-        </td>
+                        {/* STATUS */}
+                        <td className="px-4 py-3">
+                          <span
+                            className={cn(
+                              "px-3 py-1 rounded-full text-xs font-bold capitalize",
+                              getStatusBadge(session.status)
+                            )}
+                          >
+                            {session.status}
+                          </span>
+                        </td>
 
-        {/* STATUS */}
-        <td className="px-4 py-3">
-          <span
-            className={cn(
-              "px-3 py-1 rounded-full text-xs font-bold capitalize",
-              getStatusBadge(session.status)
-            )}
-          >
-            {session.status}
-          </span>
-        </td>
+                        {/* ACTIONS */}
+                        <td className="px-4 py-3 text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
 
-        {/* ACTIONS */}
-        <td className="px-4 py-3 text-right">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48">
+                              {/* UPCOMING */}
+                              {activeTab === "upcoming" && (
+                                <>
+                                  <DropdownMenuItem
+                                    onClick={() => {
+                                      setSelectedSession(session);
+                                      setIsRescheduleModalOpen(true);
+                                    }}
+                                  >
+                                    <RefreshCw className="h-4 w-4 mr-2" />
+                                    Reschedule
+                                  </DropdownMenuItem>
 
-            <DropdownMenuContent align="end" className="w-48">
-              {/* UPCOMING */}
-              {activeTab === "upcoming" && (
-                <>
-                  <DropdownMenuItem
-                    onClick={() => {
-                      setSelectedSession(session);
-                      setIsRescheduleModalOpen(true);
-                    }}
-                  >
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    Reschedule
-                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    className="text-destructive"
+                                    onClick={() => {
+                                      setSelectedSession(session);
+                                      setIsCancelModalOpen(true);
+                                    }}
+                                  >
+                                    <X className="h-4 w-4 mr-2" />
+                                    Delete Session
+                                  </DropdownMenuItem>
+                                </>
+                              )}
 
-                  <DropdownMenuItem
-                    className="text-destructive"
-                    onClick={() => {
-                      setSelectedSession(session);
-                      setIsCancelModalOpen(true);
-                    }}
-                  >
-                    <X className="h-4 w-4 mr-2" />
-                    Cancel Session
-                  </DropdownMenuItem>
-                </>
-              )}
+                              {/* LIVE */}
+                              {activeTab === "live" && (
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    window.open(
+                                      `/video-call/${session.sessionId}`,
+                                      "_blank",
+                                      "width=1200,height=800"
+                                    )
+                                  }
+                                >
+                                  <Video className="h-4 w-4 mr-2" />
+                                  Join Session
+                                </DropdownMenuItem>
+                              )}
 
-              {/* LIVE */}
-              {activeTab === "live" && (
-                <DropdownMenuItem
-                  onClick={() =>
-                    window.open(
-                      `/video-call/${session.sessionId}`,
-                      "_blank",
-                      "width=1200,height=800"
-                    )
-                  }
-                >
-                  <Video className="h-4 w-4 mr-2" />
-                  Join Session
-                </DropdownMenuItem>
-              )}
-
-              {/* COMPLETED */}
-              {activeTab === "completed" && (
-                <DropdownMenuItem
-                  onClick={() =>
-                    navigate(`/session-recordings/${session._id}`)
-                  }
-                >
-                  <Eye className="h-4 w-4 mr-2" />
-                  View Recording
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </td>
-      </tr>
-    );
-  })}
-</tbody>
+                              {/* COMPLETED */}
+                              {activeTab === "completed" && (
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    navigate(`/session-recordings/${session._id}`)
+                                  }
+                                >
+                                  <Eye className="h-4 w-4 mr-2" />
+                                  View Recording
+                                </DropdownMenuItem>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
 
               </table>
             </div>
@@ -548,55 +469,34 @@ export default function Sessions() {
         </TabsContent>
       </Tabs>
 
-      {/* Cancel Session Modal */}
+      {/* Delete Session Modal */}
       <Dialog open={isCancelModalOpen} onOpenChange={setIsCancelModalOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Cancel Session</DialogTitle>
+            <DialogTitle>Delete Session</DialogTitle>
             <DialogDescription>
-              Are you sure you want to cancel this session? This action cannot
-              be undone.
+              Are you sure you want to delete this session? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
 
           {selectedSession && (
-            <div className="space-y-4 mt-4">
-              <div className="p-3 rounded-lg bg-muted/50">
-                <p className="text-sm">
-                  <span className="text-muted-foreground">Booking ID:</span>{" "}
-                  <span className="font-medium">
-                    {typeof selectedSession.bookingId === "object" &&
-                    selectedSession.bookingId !== null
-                      ? selectedSession.bookingId?.serviceName ||
-                        selectedSession.bookingId?._id ||
-                        selectedSession.bookingId?.id ||
-                        "N/A"
-                      : selectedSession.bookingId || "N/A"}
-                  </span>
-                </p>
-                <p className="text-sm">
-                  <span className="text-muted-foreground">Type:</span>{" "}
-                  <span className="font-medium">{selectedSession.type}</span>
-                </p>
-                <p className="text-sm">
-                  <span className="text-muted-foreground">Scheduled:</span>{" "}
-                  <span className="font-medium">
-                    {selectedSession.date} at {selectedSession.time}
-                  </span>
-                </p>
-              </div>
-
-              <div>
-                <label className="text-sm font-medium">
-                  Cancellation Reason
-                </label>
-                <Textarea
-                  placeholder="Please provide a reason for cancellation..."
-                  value={cancelReason}
-                  onChange={(e) => setCancelReason(e.target.value)}
-                  className="mt-1"
-                />
-              </div>
+            <div className="p-3 rounded-lg bg-muted/50 mt-4">
+              <p className="text-sm">
+                <span className="text-muted-foreground">Booking:</span>{" "}
+                <span className="font-medium">
+                  {selectedSession.bookingId?.serviceName || "N/A"}
+                </span>
+              </p>
+              <p className="text-sm">
+                <span className="text-muted-foreground">User:</span>{" "}
+                <span className="font-medium">{selectedSession.userId?.name || "N/A"}</span>
+              </p>
+              <p className="text-sm">
+                <span className="text-muted-foreground">Date & Time:</span>{" "}
+                <span className="font-medium">
+                  {selectedSession.date} at {selectedSession.time}
+                </span>
+              </p>
             </div>
           )}
 
@@ -605,27 +505,21 @@ export default function Sessions() {
               variant="outline"
               onClick={() => setIsCancelModalOpen(false)}
             >
-              Keep Session
+              No
             </Button>
             <Button
               variant="destructive"
               onClick={async () => {
                 try {
-                  await dispatch(
-                    updateSession({
-                      id: selectedSession.id,
-                      sessionData: { status: "cancelled", notes: cancelReason },
-                    })
-                  );
+                  await dispatch(deleteSessionById(selectedSession._id));
                   setIsCancelModalOpen(false);
-                  setCancelReason("");
                   dispatch(fetchSessions());
                 } catch (error) {
-                  console.error("Failed to cancel session:", error);
+                  console.error("Failed to delete session:", error);
                 }
               }}
             >
-              Cancel Session
+              Yes, Delete
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -643,20 +537,14 @@ export default function Sessions() {
               Select a new date and time for this session.
             </DialogDescription>
           </DialogHeader>
-
+         
           {selectedSession && (
             <div className="space-y-4 mt-4">
               <div className="p-3 rounded-lg bg-muted/50">
                 <p className="text-sm">
                   <span className="text-muted-foreground">Booking ID:</span>{" "}
                   <span className="font-medium">
-                    {typeof selectedSession.bookingId === "object" &&
-                    selectedSession.bookingId !== null
-                      ? selectedSession.bookingId?.serviceName ||
-                        selectedSession.bookingId?._id ||
-                        selectedSession.bookingId?.id ||
-                        "N/A"
-                      : selectedSession.bookingId || "N/A"}
+                    {selectedSession.bookingId?._id}
                   </span>
                 </p>
                 <p className="text-sm">
@@ -710,12 +598,12 @@ export default function Sessions() {
               onClick={async () => {
                 try {
                   await dispatch(
-                    updateSession({
-                      id: selectedSession.id,
+                    rescheduleSession({
+                      id: selectedSession._id,
                       sessionData: {
-                        status: "scheduled",
                         date: rescheduleDate,
                         time: rescheduleTime,
+                        status: "scheduled",
                       },
                     })
                   );
@@ -766,15 +654,15 @@ export default function Sessions() {
 
                   {bookings && Array.isArray(bookings)
                     ? bookings.map((booking) => (
-                        <option
-                          key={booking?._id || booking?.id}
-                          value={booking?._id || booking?.id}
-                        >
-                          {booking?.serviceName ||
-                            booking?.name ||
-                            "Unnamed Booking"}
-                        </option>
-                      ))
+                      <option
+                        key={booking?._id || booking?.id}
+                        value={booking?._id || booking?.id}
+                      >
+                        {booking?.serviceName ||
+                          booking?.name ||
+                          "Unnamed Booking"}
+                      </option>
+                    ))
                     : null}
                 </select>
               </div>

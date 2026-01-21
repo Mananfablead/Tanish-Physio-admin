@@ -85,6 +85,8 @@ export const API = {
   // sessions
   SESSIONS: "/sessions/all",
   SESSION_BY_ID: "/sessions/:id",
+  RESCHEDULE_SESSION: "sessions/admin/:id/reschedule",
+  DELETE_SESSION: "sessions/admin/:id",
 
   // therapists
   THERAPISTS: "/therapists",
@@ -294,6 +296,13 @@ export const sessionAPI = {
   // Update session
   update: (id, data) =>
     apiClient.put(`${API.SESSION_BY_ID.replace(":id", id)}`, data),
+
+  // Reschedule session
+  reschedule: (id, data) =>
+    apiClient.put(`${API.RESCHEDULE_SESSION.replace(":id", id)}`, data),
+
+  // Delete session by admin
+  deleteById: (id) => apiClient.delete(`${API.DELETE_SESSION.replace(":id", id)}`),
 
   // Delete session
   delete: (id) => apiClient.delete(`${API.SESSION_BY_ID.replace(":id", id)}`),
