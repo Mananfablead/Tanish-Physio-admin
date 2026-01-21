@@ -23,89 +23,41 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { mockSessions } from '@/lib/session-data';
+
+import { fetchSessions, createSession, updateSession, deleteSession, rescheduleSession, deleteSessionById, updateSessionStatus, fetchAllUpcomingSessions } from "@/features/sessions/sessionSlice";
+import { useDispatch, useSelector } from 'react-redux';
 
 const LiveSessions = () => {
+  const dispatch: any = useDispatch();
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [activeTab, setActiveTab] = useState('live');
-  const [sessions, setSessions] = useState<any[]>([]);
-
-  // Mock live sessions data - combining live sessions and upcoming sessions within 24 hours
-  const allLiveSessions = [
-    // Current live sessions
-    ...mockSessions.live.map((session: any) => ({
-      ...session,
-      sessionType: 'live'
-    })),
-    // Upcoming sessions within 24 hours
-    ...mockSessions.upcoming
-      .filter((session: any) => {
-        // Calculate if the session is within 24 hours
-        const sessionDateTime = new Date(`${session.date} ${session.time}`);
-        const now = new Date();
-        const timeDiff = sessionDateTime.getTime() - now.getTime();
-        const hoursDiff = timeDiff / (1000 * 60 * 60);
-        return hoursDiff <= 24 && hoursDiff >= 0;
-      })
-      .map((session: any) => ({
-        ...session,
-        sessionType: 'upcoming-soon'
-      }))
-  ];
-
-  // Filter sessions based on search query and type
+    const { list: allSessions = [], loading, error } = useSelector((state: any) => state.sessions);
+  
+  // Filter to show live sessions based on selected filter
+  const liveSessions = allSessions.filter((session: any) => {
+    // Always filter to only live sessions since this is the Live Sessions page
+    const isLive = session.status === 'live';
+    
+    // Apply additional filter based on user selection
+    if (filterType === 'all') {
+      return isLive;
+    } else if (filterType === '1-on-1') {
+      return isLive && session.type === '1-on-1';
+    } else if (filterType === 'group') {
+      return isLive && session.type === 'group';
+    }
+    
+    return isLive; // Default to showing all live sessions
+  });
+  
   useEffect(() => {
-    let filtered = allLiveSessions;
-    
-    if (searchQuery) {
-      filtered = filtered.filter(session => 
-        session.user.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        session.therapist.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-    
-    if (filterType !== 'all') {
-      if (filterType === 'live') {
-        filtered = filtered.filter(session => session.sessionType === 'live');
-      } else if (filterType === 'upcoming') {
-        filtered = filtered.filter(session => session.sessionType === 'upcoming-soon');
-      } else if (filterType === '1-on-1') {
-        filtered = filtered.filter(session => session.type === '1-on-1');
-      } else if (filterType === 'group') {
-        filtered = filtered.filter(session => session.type.includes('Group'));
-      }
-    }
-    
-    setSessions(filtered);
-  }, [searchQuery, filterType]);
+    dispatch(fetchSessions());
+  }, [dispatch]);
 
-  const handleJoinSession = (session: any) => {
-    // Open the video call page in a new tab
-    const sessionId = session.joinLink.split('/').pop() || session.id.toString();
-    window.open(`/video-call/${sessionId}`, '_blank', 'width=1200,height=800');
-  };
 
-  const handleCopyLink = (joinLink: string) => {
-    navigator.clipboard.writeText(`${window.location.origin}${joinLink}`);
-    // In a real app, you would show a toast notification here
-  };
 
-  const formatTimeLeft = (date: string, time: string) => {
-    const sessionDateTime = new Date(`${date} ${time}`);
-    const now = new Date();
-    const timeDiff = sessionDateTime.getTime() - now.getTime();
-    const hoursDiff = Math.floor(timeDiff / (1000 * 60 * 60));
-    const minutesDiff = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
-    
-    if (hoursDiff > 0) {
-      return `${hoursDiff}h ${minutesDiff}m remaining`;
-    } else if (minutesDiff > 0) {
-      return `${minutesDiff}m remaining`;
-    } else {
-      return 'Starting now';
-    }
-  };
+
 
   return (
     <div className="space-y-6">
@@ -127,7 +79,7 @@ const LiveSessions = () => {
               <Video className="w-5 h-5 text-success" />
             </div>
             <div>
-              <p className="text-2xl font-semibold">{mockSessions.live.length}</p>
+              <p className="text-2xl font-semibold">{liveSessions.length}</p>
               <p className="text-sm text-muted-foreground">Currently Live</p>
             </div>
           </CardContent>
@@ -140,12 +92,12 @@ const LiveSessions = () => {
             </div>
             <div>
               <p className="text-2xl font-semibold">
-                {mockSessions.upcoming.filter((session: any) => {
+                {allSessions.filter((session: any) => {
                   const sessionDateTime = new Date(`${session.date} ${session.time}`);
                   const now = new Date();
                   const timeDiff = sessionDateTime.getTime() - now.getTime();
                   const hoursDiff = timeDiff / (1000 * 60 * 60);
-                  return hoursDiff <= 24 && hoursDiff >= 0;
+                  return hoursDiff <= 24 && hoursDiff >= 0 && session.status === 'scheduled';
                 }).length}
               </p>
               <p className="text-sm text-muted-foreground">Starting in 24h</p>
@@ -159,7 +111,7 @@ const LiveSessions = () => {
               <Play className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <p className="text-2xl font-semibold">{sessions.length}</p>
+              <p className="text-2xl font-semibold">{liveSessions.length}</p>
               <p className="text-sm text-muted-foreground">Available to Join</p>
             </div>
           </CardContent>
@@ -175,9 +127,7 @@ const LiveSessions = () => {
               <SelectValue placeholder="Select type" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Sessions</SelectItem>
-              <SelectItem value="live">Live Only</SelectItem>
-              <SelectItem value="upcoming">Upcoming (24h)</SelectItem>
+              <SelectItem value="all">All Live Sessions</SelectItem>
               <SelectItem value="1-on-1">1-on-1</SelectItem>
               <SelectItem value="group">Group</SelectItem>
             </SelectContent>
@@ -198,41 +148,49 @@ const LiveSessions = () => {
         </div>
       </div>
 
-      {/* Sessions List */}
-      {sessions.length === 0 ? (
+      {/* Live Sessions List */}
+      {liveSessions.length === 0 ? (
         <Card className="shadow-sm rounded-xl border border-border">
           <CardContent className="p-12 text-center">
             <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
               <Video className="w-8 h-8 text-muted-foreground" />
             </div>
-            <h3 className="text-lg font-semibold mb-1">No sessions available to join</h3>
-            <p className="text-muted-foreground">No live sessions or sessions starting within 24 hours found.</p>
+            <h3 className="text-lg font-semibold mb-1">No live sessions available</h3>
+            <p className="text-muted-foreground">No live sessions found. Only showing currently live sessions.</p>
           </CardContent>
         </Card>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {sessions.map((session) => (
+          {liveSessions.filter((session: any) => {
+            if (!searchQuery) return true;
+            const query = searchQuery.toLowerCase();
+            
+            // Search in user name, therapist name, date, time, or type
+            return (
+              session.userId?.name?.toLowerCase().includes(query) ||
+              session.therapistId?.name?.toLowerCase().includes(query) ||
+              session.date?.toLowerCase().includes(query) ||
+              session.time?.toLowerCase().includes(query) ||
+              session.type?.toLowerCase().includes(query)
+            );
+          }).map((session: any) => (
             <Card 
-              key={session.id} 
+              key={session._id} 
               className="shadow-sm rounded-xl border border-border overflow-hidden hover:shadow-md transition-shadow"
             >
               <CardHeader className="pb-3">
                 <div className="flex justify-between items-start">
                   <div>
                     <CardTitle className="text-lg flex items-center gap-2">
-                      {session.user}
+                      {session.userId?.name || 'N/A'}
                       <Badge 
                         variant="secondary" 
-                        className={
-                          session.sessionType === 'live' 
-                            ? 'bg-green-100 text-green-800 border-green-200' 
-                            : 'bg-blue-100 text-blue-800 border-blue-200'
-                        }
+                        className="bg-green-100 text-green-800 border-green-200"
                       >
-                        {session.sessionType === 'live' ? 'LIVE NOW' : 'STARTING SOON'}
+                        LIVE NOW
                       </Badge>
                     </CardTitle>
-                    <p className="text-sm text-muted-foreground mt-1">{session.therapist}</p>
+                    <p className="text-sm text-muted-foreground mt-1">{session.therapistId?.name || 'N/A'}</p>
                   </div>
                   <Badge variant="outline">{session.type}</Badge>
                 </div>
@@ -251,27 +209,18 @@ const LiveSessions = () => {
                     </div>
                   </div>
 
-                  {session.sessionType === 'upcoming-soon' && (
-                    <div className="flex items-center gap-2 p-2 bg-blue-50 rounded-lg border border-blue-200">
-                      <Clock className="w-4 h-4 text-blue-600" />
-                      <span className="text-sm text-blue-700">
-                        {formatTimeLeft(session.date, session.time)}
-                      </span>
-                    </div>
-                  )}
-
                   <div className="flex gap-2 pt-2">
                     <Button 
                       className="flex-1"
-                      onClick={() => handleJoinSession(session)}
+                      onClick={() => window.open(`/video-call/${session.sessionId}`, '_blank', 'width=1200,height=800')}
                     >
                       <Video className="w-4 h-4 mr-2" />
-                      {session.sessionType === 'live' ? 'Join Live Session' : 'Join Session'}
+                      Join Live Session
                     </Button>
                     <Button 
                       variant="outline"
                       size="icon"
-                      onClick={() => handleCopyLink(session.joinLink)}
+                      onClick={() => navigator.clipboard.writeText(`${window.location.origin}/video-call/${session.sessionId}`)}
                     >
                       <Copy className="w-4 h-4" />
                     </Button>

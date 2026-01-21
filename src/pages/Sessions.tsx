@@ -15,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { useSelector, useDispatch } from "react-redux";
-import { fetchSessions, createSession, updateSession, deleteSession, rescheduleSession, deleteSessionById } from "@/features/sessions/sessionSlice";
+import { fetchSessions, createSession, updateSession, deleteSession, rescheduleSession, deleteSessionById, updateSessionStatus, fetchAllUpcomingSessions } from "@/features/sessions/sessionSlice";
 import { fetchBookings } from "@/features/bookings/bookingSlice";
 
 type SessionStatus = "scheduled" | "live" | "completed" | "cancelled" | "no-show";
@@ -25,26 +25,32 @@ export default function Sessions() {
   const dispatch: any = useDispatch();
   const { list: bookings, loading: bookingsLoading, error: bookingsError } = useSelector((state: any) => state.bookings);
 
-  const { list: sessions = [], loading, error } = useSelector((state: any) => state.sessions);
+  const { list: allSessions = [], loading, error } = useSelector((state: any) => state.sessions);
+  const { upcomingSessions = [] } = useSelector((state: any) => state.sessions);
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeTab, setActiveTab] = useState("upcoming");
-
+  const [activeTab, setActiveTab] = useState("all");
+  console.log("upcomingSessions", upcomingSessions)
   // Count sessions by status for tabs
-  const upcomingCount = (sessions || []).filter((session: any) => session.status === "scheduled").length;
-  const allCount = (sessions || []).length;
-  const liveCount = (sessions || []).filter((session: any) => session.status === "live").length;
-  const completedCount = (sessions || []).filter((session: any) => session.status === "completed").length;
-  const cancelledCount = (sessions || []).filter((session: any) => session.status === "cancelled").length;
+  const upcomingCount = (upcomingSessions || []).length;
+  const scheduledCount = (allSessions || []).filter((session: any) => session.status === "scheduled").length;
+  const allCount = (allSessions || []).length;
+  const liveCount = (allSessions || []).filter((session: any) => session.status === "live").length;
+  const completedCount = (allSessions || []).filter((session: any) => session.status === "completed").length;
+  const cancelledCount = (allSessions || []).filter((session: any) => session.status === "cancelled").length;
 
   // Filter sessions based on active tab and search query
-  const filteredSessions = sessions.filter((session: any) => {
+  const filteredSessions = (activeTab === 'upcoming' ? upcomingSessions : allSessions).filter((session: any) => {
     // First filter by tab status
     let includeInTab = false;
     switch (activeTab) {
+    
       case "all":
-        includeInTab = true;
+        includeInTab = true; // Show all sessions regardless of status
         break;
       case "upcoming":
+        includeInTab = true; // Show all upcoming sessions regardless of status
+        break;
+      case "scheduled":
         includeInTab = session.status === "scheduled";
         break;
       case "live":
@@ -89,6 +95,9 @@ export default function Sessions() {
 
     return false;
   });
+
+  // Count sessions by status for the upcoming tab
+  const upcomingTabCount = (upcomingSessions || []).length;
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false);
   const [isCreateSessionModalOpen, setIsCreateSessionModalOpen] = useState(false);
@@ -96,9 +105,20 @@ export default function Sessions() {
   const [selectedSession, setSelectedSession] = useState<any>(null);
 
   useEffect(() => {
+    // Fetch both upcoming and all sessions initially
+    dispatch(fetchAllUpcomingSessions());
     dispatch(fetchSessions());
     dispatch(fetchBookings());
   }, [dispatch]);
+
+  // Refetch based on tab selection
+  useEffect(() => {
+    if (activeTab === 'upcoming') {
+      dispatch(fetchAllUpcomingSessions());
+    } else {
+      dispatch(fetchSessions());
+    }
+  }, [dispatch, activeTab]);
 
   // State for creating a new session
   const [newSession, setNewSession] = useState({
@@ -114,27 +134,6 @@ export default function Sessions() {
   const [rescheduleDate, setRescheduleDate] = useState("");
   const [rescheduleTime, setRescheduleTime] = useState("");
 
-  const getStatusBadge = (status: SessionStatus) => {
-    switch (status) {
-      case "scheduled":
-        return "bg-info/15 text-info";
-      case "live":
-        return "bg-success/15 text-success";
-      case "completed":
-        return "status-active";
-      case "cancelled":
-        return "status-pending";
-      case "no-show":
-        return "status-rejected";
-      default:
-        return "status-inactive";
-    }
-  };
-
-
-
-
-  // Function to handle creating a new session
   const handleCreateSession = async () => {
     try {
       // Prepare the session data for API submission
@@ -166,9 +165,15 @@ export default function Sessions() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="page-header">
-          <h1 className="page-title">Session Management</h1>
+          <h1 className="page-title">{activeTab === 'live' ? 'Live Sessions' : activeTab === 'upcoming' ? 'Upcoming Sessions' : activeTab === 'all' ? 'All Sessions' : 'Session Management'}</h1>
           <p className="page-subtitle">
-            Monitor and manage all platform sessions
+            {activeTab === 'live' 
+              ? 'View and join live sessions' 
+              : activeTab === 'upcoming'
+              ? 'View and manage upcoming sessions'
+              : activeTab === 'all'
+              ? 'Monitor and manage all platform sessions'
+              : 'Monitor and manage all platform sessions'}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -176,16 +181,18 @@ export default function Sessions() {
             <Plus className="w-4 h-4 mr-2" />
             Create Session
           </Button> */}
-          <Select defaultValue="today">
-            <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Filter by date" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="today">Today</SelectItem>
-              <SelectItem value="week">This Week</SelectItem>
-              <SelectItem value="month">This Month</SelectItem>
-            </SelectContent>
-          </Select>
+          {activeTab !== 'live' && activeTab !== 'upcoming' && (
+            <Select defaultValue="today">
+              <SelectTrigger className="w-[140px]">
+                <SelectValue placeholder="Filter by date" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="today">Today</SelectItem>
+                <SelectItem value="week">This Week</SelectItem>
+                <SelectItem value="month">This Month</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
         </div>
       </div>
 
@@ -198,9 +205,9 @@ export default function Sessions() {
             </div>
             <div>
               <p className="text-2xl font-semibold">
-                {upcomingCount}
+                {activeTab === 'upcoming' ? upcomingCount : scheduledCount}
               </p>
-              <p className="text-sm text-muted-foreground">Upcoming</p>
+              <p className="text-sm text-muted-foreground">{activeTab === 'upcoming' ? 'Upcoming' : 'Scheduled'}</p>
             </div>
           </div>
         </div>
@@ -248,16 +255,23 @@ export default function Sessions() {
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
+          
           <TabsTrigger value="all">
             All
-            <span className="ml-1.5 px-1.5 py-0.5 text-xs bg-info/20 text-info rounded-full">
+            <span className="ml-1.5 px-1.5 py-0.5 text-xs bg-primary/20 text-primary rounded-full">
               {allCount}
             </span>
           </TabsTrigger>
           <TabsTrigger value="upcoming">
             Upcoming
             <span className="ml-1.5 px-1.5 py-0.5 text-xs bg-info/20 text-info rounded-full">
-              {upcomingCount}
+              {upcomingTabCount}
+            </span>
+          </TabsTrigger>
+          <TabsTrigger value="scheduled">
+            Scheduled
+            <span className="ml-1.5 px-1.5 py-0.5 text-xs bg-info/20 text-info rounded-full">
+              {scheduledCount}
             </span>
           </TabsTrigger>
           <TabsTrigger value="live" className="relative">
@@ -277,7 +291,11 @@ export default function Sessions() {
           <div className="relative max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Search by booking, user, therapist, date, or status..."
+              placeholder={activeTab === 'live' 
+                ? 'Search by user, therapist, date, time, or type...' 
+                : activeTab === 'upcoming'
+                ? 'Search by booking, user, therapist, date, or status...'
+                : 'Search by booking, user, therapist, date, or status...'}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"
@@ -285,187 +303,377 @@ export default function Sessions() {
           </div>
         </div>
 
-        {/* Sessions Table */}
+        {/* Sessions Content */}
         <TabsContent value={activeTab} className="mt-4">
-          <div className="bg-card rounded-lg border border-border overflow-hidden animate-fade-in">
-            <div className="overflow-x-auto">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Booking Info</th>
-                    <th>User</th>
-                   
-                    <th>Date & Time</th>
-                    <th>Type</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                    {(activeTab === "live" || activeTab === "completed") && (
-                      <th>Notes</th>
-                    )}
-                    {activeTab === "cancelled" && <th>Notes</th>}
-                    <th className="w-12"></th>
-                  </tr>
-                </thead>
-                <tbody>
+          {activeTab === 'live' ? (
+            /* Live Sessions Grid View */
+            <div className="space-y-6">
+              {filteredSessions.length === 0 ? (
+                <div className="bg-card rounded-lg border border-border p-12 text-center">
+                  <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Video className="w-8 h-8 text-muted-foreground" />
+                  </div>
+                  <h3 className="text-lg font-semibold mb-1">No live sessions available</h3>
+                  <p className="text-muted-foreground">No live sessions found. Only showing currently live sessions.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   {filteredSessions.map((session: any) => {
-                    const booking = session.bookingId;
                     const user = session.userId;
-                    console.log("booking", session)
+                    const therapist = session.therapistId;
                     return (
-                      <tr key={session._id} className="hover:bg-muted/40 transition">
-                        {/* SERVICE / BOOKING */}
-                        <td className="px-4 py-3">
-                          <div className="space-y-0.5">
-                            <p className="font-medium">{booking?.serviceName || "N/A"}</p>
-                            <p className="text-xs text-muted-foreground">
-                              Booking ID: {booking?._id?.slice(0, 8) || "N/A"}
-                            </p>   
-                          </div>
-                        </td>
-
-                        {/* USER */}
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2">
-                            <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
-                              <User className="h-4 w-4 text-blue-600" />
-                            </div>
+                      <div 
+                        key={session._id} 
+                        className="bg-card rounded-lg border border-border overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+                      >
+                        <div className="p-6">
+                          <div className="flex justify-between items-start mb-4">
                             <div>
-                              <p className="font-medium">{user?.name || "N/A"}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {user?.email || ""}
-                              </p>
+                              <h3 className="text-lg font-semibold flex items-center gap-2">
+                                {user?.name || 'N/A'}
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                  LIVE NOW
+                                </span>
+                              </h3>
+                              <p className="text-sm text-muted-foreground">{therapist?.name || 'N/A'}</p>
+                            </div>
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-muted">
+                              {session.type}
+                            </span>
+                          </div>
+
+                          <div className="space-y-3 mb-6">
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <Calendar className="w-4 h-4" />
+                                <span>{session.date}</span>
+                              </div>
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <Clock className="w-4 h-4" />
+                                <span>{session.time}</span>
+                              </div>
                             </div>
                           </div>
-                        </td>
 
-
-                        {/* DATE & TIME */}
-                        <td className="px-4 py-3">
-                          <div className="space-y-0.5">
-                            <div className="flex items-center gap-1">
-                              <Calendar className="h-4 w-4 text-muted-foreground" />
-                              <span>{session.date}</span>
-                            </div>
-                            <div className="flex items-center gap-1 text-muted-foreground">
-                              <Clock className="h-4 w-4" />
-                              <span>{session.time}</span>
-                            </div>
-                           
+                          <div className="flex gap-3">
+                            <Button 
+                              className="flex-1"
+                              onClick={() =>
+                                window.open(
+                                  `/video-call/${session.sessionId}`,
+                                  "_blank",
+                                  "width=1200,height=800"
+                                )
+                              }
+                            >
+                              <Video className="w-4 h-4 mr-2" />
+                              Join Live Session
+                            </Button>
+                            <Button 
+                              variant="outline"
+                              size="icon"
+                              onClick={() => {
+                                navigator.clipboard.writeText(`${window.location.origin}/video-call/${session.sessionId}`);
+                              }}
+                            >
+                              <Copy className="w-4 h-4" />
+                            </Button>
                           </div>
-                        </td>
-
-                        {/* TYPE */}
-                        <td className="px-4 py-3">
-                          <span className="px-3 py-1 rounded-full text-xs font-semibold bg-muted">
-                            {session.type}
-                          </span>
-                        </td>
-
-                        {/* STATUS */}
-                        <td className="px-4 py-3">
-                          <span
-                            className={cn(
-                              "px-3 py-1 rounded-full text-xs font-bold capitalize",
-                              getStatusBadge(session.status)
-                            )}
-                          >
-                            {session.status}
-                          </span>
-                        </td>
-
-                        {/* ACTIONS */}
-                        <td className="px-4 py-3 text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-
-                            <DropdownMenuContent align="end" className="w-48">
-                              {/* UPCOMING */}
-                              {activeTab === "upcoming" && (
-                                <>
-                                  <DropdownMenuItem
-                                    onClick={() => {
-                                      setSelectedSession(session);
-                                      setIsRescheduleModalOpen(true);
-                                    }}
-                                  >
-                                    <RefreshCw className="h-4 w-4 mr-2" />
-                                    Reschedule
-                                  </DropdownMenuItem>
-
-                                  <DropdownMenuItem
-                                    className="text-destructive"
-                                    onClick={() => {
-                                      setSelectedSession(session);
-                                      setIsCancelModalOpen(true);
-                                    }}
-                                  >
-                                    <X className="h-4 w-4 mr-2" />
-                                    Delete Session
-                                  </DropdownMenuItem>
-                                </>
-                              )}
-
-                              {/* LIVE */}
-                              {activeTab === "live" && (
-                                <DropdownMenuItem
-                                  onClick={() =>
-                                    window.open(
-                                      `/video-call/${session.sessionId}`,
-                                      "_blank",
-                                      "width=1200,height=800"
-                                    )
-                                  }
-                                >
-                                  <Video className="h-4 w-4 mr-2" />
-                                  Join Session
-                                </DropdownMenuItem>
-                              )}
-
-                              {/* COMPLETED */}
-                              {activeTab === "completed" && (
-                                <DropdownMenuItem
-                                  onClick={() =>
-                                    navigate(`/session-recordings/${session._id}`)
-                                  }
-                                >
-                                  <Eye className="h-4 w-4 mr-2" />
-                                  View Recording
-                                </DropdownMenuItem>
-                              )}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </td>
-                      </tr>
+                        </div>
+                      </div>
                     );
                   })}
-                </tbody>
-
-              </table>
+                </div>
+              )}
             </div>
+          ) : activeTab === 'upcoming' ? (
+            /* Upcoming Sessions Grid View */
+            <div className="space-y-6">
+              {filteredSessions.length === 0 ? (
+                <div className="bg-card rounded-lg border border-border p-12 text-center">
+                  <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Calendar className="w-8 h-8 text-muted-foreground" />
+                  </div>
+                  <h3 className="text-lg font-semibold mb-1">No upcoming sessions</h3>
+                  <p className="text-muted-foreground">No scheduled sessions found. All upcoming sessions will appear here.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {filteredSessions.map((session: any) => {
+                    const user = session.userId;
+                    const therapist = session.therapistId;
+                    return (
+                      <div 
+                        key={session._id} 
+                        className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200 transform hover:-translate-y-1"
+                      >
+                        <div className="p-6">
+                          <div className="flex justify-between items-start mb-4">
+                            <div className="flex items-start gap-3">
+                              <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                                <User className="h-6 w-6 text-blue-600" />
+                              </div>
+                              <div>
+                                <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                                  {user?.name || 'N/A'}
+                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                    SCHEDULED
+                                  </span>
+                                </h3>
+                                <p className="text-sm text-gray-600 mt-1">with {therapist?.name || 'N/A'}</p>
+                              </div>
+                            </div>
+                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-50  border border-green-200">
+                              {session.type}
+                            </span>
+                          </div>
 
-            <div className="flex items-center justify-between px-4 py-3 border-t border-border">
-              <p className="text-sm text-muted-foreground">
-                Showing{" "}
-                <span className="font-medium">{filteredSessions.length}</span>{" "}
-                sessions
-              </p>
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" disabled>
-                  <ChevronLeft className="w-4 h-4" />
-                </Button>
-                <Button variant="outline" size="sm" className="min-w-[32px]">
-                  1
-                </Button>
-                <Button variant="outline" size="sm">
-                  <ChevronRight className="w-4 h-4" />
-                </Button>
+                          <div className="space-y-3 mb-6 pt-2">
+                            <div className="flex items-center gap-3 text-sm text-gray-600">
+                              <div className="flex items-center gap-1.5">
+                                <Calendar className="w-4 h-4" />
+                                <span>{session.date}</span>
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                <Clock className="w-4 h-4" />
+                                <span>{session.time}</span>
+                              </div>
+                            </div>
+                            
+                            {session.notes && (
+                              <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg border border-gray-100">
+                                <span className="font-medium text-gray-700">Notes: </span>
+                                {session.notes}
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="flex gap-3">
+                            <Button 
+                              className="flex-1"
+                              onClick={() =>
+                                window.open(
+                                  `/video-call/${session.sessionId}`,
+                                  "_blank",
+                                  "width=1200,height=800"
+                                )
+                              }
+                            >
+                              <Video className="w-4 h-4 mr-2" />
+                              Join Session
+                            </Button>
+                            <Button 
+                              variant="outline"
+                              size="icon"
+                              onClick={() => {
+                                navigator.clipboard.writeText(`${window.location.origin}/video-call/${session.sessionId}`);
+                              }}
+                            >
+                              <Copy className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          ) : (
+            /* Regular Table View for other tabs including 'all' */
+            <div className="bg-card rounded-lg border border-border overflow-hidden animate-fade-in">
+              <div className="overflow-x-auto">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Booking Info</th>
+                      <th>User</th>
+
+                      <th>Date & Time</th>
+                      <th>Type</th>
+                      <th>Status</th>
+                      <th>Actions</th>
+                     
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredSessions.map((session: any) => {
+                      const booking = session.bookingId;
+                      const user = session.userId;
+                      console.log("booking", session)
+                      return (
+                        <tr key={session._id} className="hover:bg-muted/40 transition">
+                          {/* SERVICE / BOOKING */}
+                          <td className="px-4 py-3">
+                            <div className="space-y-0.5">
+                              <p className="font-medium">{booking?.serviceName || "N/A"}</p>
+                              <p className="text-xs text-muted-foreground">
+                                Booking ID: {booking?._id?.slice(0, 8) || "N/A"}
+                              </p>
+                            </div>
+                          </td>
+
+                          {/* USER */}
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
+                                <User className="h-4 w-4 text-blue-600" />
+                              </div>
+                              <div>
+                                <p className="font-medium">{user?.name || "N/A"}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {user?.email || ""}
+                                </p>
+                              </div>
+                            </div>
+                          </td>
+
+
+                          {/* DATE & TIME */}
+                          <td className="px-4 py-3">
+                            <div className="space-y-0.5">
+                              <div className="flex items-center gap-1">
+                                <Calendar className="h-4 w-4 text-muted-foreground" />
+                                <span>{session.date}</span>
+                              </div>
+                              <div className="flex items-center gap-1 text-muted-foreground">
+                                <Clock className="h-4 w-4" />
+                                <span>{session.time}</span>
+                              </div>
+
+                            </div>
+                          </td>
+
+                          {/* TYPE */}
+                          <td className="px-4 py-3">
+                            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-muted">
+                              {session.type}
+                            </span>
+                          </td>
+
+                          {/* STATUS */}
+                          <td className="px-4 py-3">
+                            <Select
+                              value={session.status}
+                              onValueChange={async (value) => {
+                                try {
+                                  await dispatch(updateSessionStatus({
+                                    id: session._id,
+                                    status: value,
+                                    notes: `Status updated to ${value}`
+                                  }));
+                                  dispatch(fetchSessions());
+                                } catch (error) {
+                                  console.error("Failed to update session status:", error);
+                                }
+                              }}
+                            >
+                              <SelectTrigger className="w-[120px]">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="scheduled">Scheduled</SelectItem>
+                                <SelectItem value="live">Live</SelectItem>
+                                <SelectItem value="completed">Completed</SelectItem>
+                                <SelectItem value="cancelled">Cancelled</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </td>
+
+                          {/* ACTIONS */}
+                          <td className="px-4 py-3 text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+
+                              <DropdownMenuContent align="end" className="w-48">
+                                {/* UPCOMING */}
+                                {(activeTab === "scheduled" || activeTab === "upcoming" || activeTab === "all") && (
+                                  <>
+                                    <DropdownMenuItem
+                                      onClick={() => {
+                                        setSelectedSession(session);
+                                        setIsRescheduleModalOpen(true);
+                                      }}
+                                    >
+                                      <RefreshCw className="h-4 w-4 mr-2" />
+                                      Reschedule
+                                    </DropdownMenuItem>
+
+                                    <DropdownMenuItem
+                                      className="text-destructive"
+                                      onClick={() => {
+                                        setSelectedSession(session);
+                                        setIsCancelModalOpen(true);
+                                      }}
+                                    >
+                                      <X className="h-4 w-4 mr-2" />
+                                      Delete Session
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
+
+                                {/* LIVE */}
+                                {activeTab === "live" && (
+                                  <DropdownMenuItem
+                                    onClick={() =>
+                                      window.open(
+                                        `/video-call/${session.sessionId}`,
+                                        "_blank",
+                                        "width=1200,height=800"
+                                      )
+                                    }
+                                  >
+                                    <Video className="h-4 w-4 mr-2" />
+                                    Join Session
+                                  </DropdownMenuItem>
+                                )}
+
+                                {/* COMPLETED */}
+                                {activeTab === "completed" && (
+                                  <DropdownMenuItem
+                                    onClick={() =>
+                                      navigate(`/session-recordings/${session._id}`)
+                                    }
+                                  >
+                                    <Eye className="h-4 w-4 mr-2" />
+                                    View Recording
+                                  </DropdownMenuItem>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+
+                </table>
+              </div>
+
+              <div className="flex items-center justify-between px-4 py-3 border-t border-border">
+                <p className="text-sm text-muted-foreground">
+                  Showing{" "}
+                  <span className="font-medium">{filteredSessions.length}</span>{" "}
+                  sessions
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" disabled>
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
+                  <Button variant="outline" size="sm" className="min-w-[32px]">
+                    1
+                  </Button>
+                  <Button variant="outline" size="sm">
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </TabsContent>
       </Tabs>
 
@@ -537,7 +745,7 @@ export default function Sessions() {
               Select a new date and time for this session.
             </DialogDescription>
           </DialogHeader>
-         
+
           {selectedSession && (
             <div className="space-y-4 mt-4">
               <div className="p-3 rounded-lg bg-muted/50">
