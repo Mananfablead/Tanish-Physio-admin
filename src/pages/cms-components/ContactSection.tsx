@@ -8,7 +8,7 @@ interface SocialLink {
 }
 
 interface ContactData {
-    id: number;
+    _id: string;
     title: string;
     description: string;
     email: string;
@@ -121,7 +121,7 @@ export default function ContactSection({ data, onEdit }: ContactSectionProps) {
                                             Social Media
                                         </h4>
                                         <div className="flex flex-wrap gap-2 mt-2">
-                                            {data.socialLinks.map((social, index) => (
+                                            {(data.socialLinks || []).map((social, index) => (
                                                 <Badge key={index} variant="secondary" className="px-3 py-1">
                                                     {social.platform}
                                                 </Badge>

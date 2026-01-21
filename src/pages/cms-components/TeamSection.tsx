@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Edit, ArrowRight, Clock, Star, UserCheck, Eye } from "lucide-react";
 
 interface TeamData {
-    id: number;
+    _id: string;
     name: string;
     specialty: string;
     experience: string;

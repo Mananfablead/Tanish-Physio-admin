@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Edit3, FileImage, Eye, EyeOff } from "lucide-react";
 
 interface HeroData {
-    id: number;
+    _id: string;
     heading: string;
     subHeading: string;
     description: string;
@@ -70,7 +70,7 @@ export default function HeroSection({ data, onEdit }: HeroSectionProps) {
                             <div className="space-y-3">
                                 <span className="font-medium text-sm text-muted-foreground">Features:</span>
                                 <ul className="list-disc list-inside space-y-1">
-                                    {data.features.map((feature, idx) => (
+                                    {(data.features || []).map((feature, idx) => (
                                         <li key={idx} className="text-sm text-muted-foreground">{feature}</li>
                                     ))}
                                 </ul>

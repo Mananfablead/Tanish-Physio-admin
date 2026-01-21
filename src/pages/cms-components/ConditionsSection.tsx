@@ -6,7 +6,7 @@ import { Edit, Eye } from "lucide-react";
 import { Activity, Bone, HeartPulse, Zap, Dumbbell, Stethoscope } from "lucide-react";
 
 interface ConditionsData {
-    id: number;
+    _id: string;
     title: string;
     description: string;
     conditions: Array<{
@@ -44,7 +44,7 @@ export default function ConditionsSection({ data, onEdit }: ConditionsSectionPro
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                        {data.conditions.map((condition, index) => (
+                        {(data.conditions || []).map((condition, index) => (
                             <div 
                                 key={index}
                                 className="group cursor-pointer py-3 sm:py-4 bg-gradient-to-br from-white to-muted/20 dark:from-background dark:to-muted/5 rounded-2xl p-4 sm:p-6 text-center shadow-soft border-2 border-transparent transition-all duration-500 border-primary/20 hover:shadow-xl hover:border-primary/30"

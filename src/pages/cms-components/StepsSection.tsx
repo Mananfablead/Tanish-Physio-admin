@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Edit, PlusCircle, Trash2, FileImage, Eye } from "lucide-react";
 
 interface StepData {
-    id: number;
+    _id: string;
     title: string;
     description: string;
     icon: string;
@@ -13,7 +13,7 @@ interface StepData {
 interface StepsSectionProps {
     data: StepData[];
     onAdd: () => void;
-    onDelete: (id: number) => void;
+    onDelete: (_id: string) => void;
     onEdit: (item: StepData) => void;
 }
 
@@ -26,7 +26,7 @@ export default function StepsSection({ data, onAdd, onDelete, onEdit }: StepsSec
                     <div className="flex flex-wrap items-center gap-2">
 
                         <Button size="sm" variant="outline" onClick={onAdd}>
-                            <PlusCircle className="w-4 h-4 mr-2" /> Add Step
+                            <PlusCircle className="w-4 h-4 mr-2" /> Add Multiple Steps
                         </Button>
                     </div>
                 </div>
@@ -38,15 +38,15 @@ export default function StepsSection({ data, onAdd, onDelete, onEdit }: StepsSec
                                 <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">#</th>
                                 <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden sm:table-cell">Title</th>
                                 <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">Description</th>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden lg:table-cell">Icon</th>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden xl:table-cell">Image</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden lg:table-cell">Image</th>
+                                {/* <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden xl:table-cell">Image</th> */}
                                 <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-border">
-                            {data.map((step, index) => (
-                                <tr key={step.id} className="hover:bg-muted/50 transition-colors text-sm">
-                                    <td className="px-4 py-3 font-mono text-xs sm:text-sm">{step.id}</td>
+                            {(data || []).map((step, index) => (
+                                <tr key={step._id} className="hover:bg-muted/50 transition-colors text-sm">
+                                    <td className="px-4 py-3 font-mono text-xs sm:text-sm">{step._id}</td>
                                     <td className="px-4 py-3 hidden sm:table-cell">
                                         <div className="font-medium text-sm">{step.title}</div>
                                     </td>
@@ -60,11 +60,25 @@ export default function StepsSection({ data, onAdd, onDelete, onEdit }: StepsSec
                                         <div className="text-xs sm:text-sm text-muted-foreground max-w-xs">{step.description}</div>
                                     </td>
                                     <td className="px-4 py-3 hidden lg:table-cell">
-                                        <Badge variant="secondary" className="text-xs">
-                                            {step.icon}
-                                        </Badge>
+                                        {step.image ? (
+                                            <div className="w-16 h-16 rounded-lg overflow-hidden border border-border flex items-center justify-center bg-muted">
+                                                <img
+                                                    src={step.image}
+                                                    alt="Step preview"
+                                                    className="w-full h-full object-cover"
+                                                    onError={(e) => {
+                                                        e.currentTarget.style.display = 'none';
+                                                        e.currentTarget.parentElement!.innerHTML = '<div class="text-xs text-muted-foreground p-2">Invalid image</div>';
+                                                    }}
+                                                />
+                                            </div>
+                                        ) : (
+                                            <Badge variant="secondary" className="text-xs">
+                                                No image
+                                            </Badge>
+                                        )}
                                     </td>
-                                    <td className="px-4 py-3 hidden xl:table-cell">
+                                    {/* <td className="px-4 py-3 hidden xl:table-cell">
                                         {step.image ? (
                                             <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg overflow-hidden border">
                                                 <img
@@ -76,7 +90,7 @@ export default function StepsSection({ data, onAdd, onDelete, onEdit }: StepsSec
                                         ) : (
                                             <span className="text-xs text-muted-foreground">No image</span>
                                         )}
-                                    </td>
+                                    </td> */}
                                     <td className="px-4 py-3">
                                         <div className="flex items-center gap-1 sm:gap-2">
                                             <Button variant="ghost" size="sm" onClick={() => onEdit(step)} className="h-8 w-8 p-0 sm:h-9 sm:w-9">
@@ -85,7 +99,7 @@ export default function StepsSection({ data, onAdd, onDelete, onEdit }: StepsSec
                                             <Button
                                                 variant="ghost"
                                                 size="sm"
-                                                onClick={() => onDelete(step.id)}
+                                                onClick={() => onDelete(step._id)}
                                                 disabled={data.length <= 1}
                                                 className="h-8 w-8 p-0 sm:h-9 sm:w-9"
                                             >

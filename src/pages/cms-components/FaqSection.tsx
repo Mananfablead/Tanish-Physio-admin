@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { PlusCircle, Edit, Trash2, Eye } from "lucide-react";
 
 interface FaqData {
-    id: number;
+    _id: string;
     question: string;
     answer: string;
 }
@@ -12,7 +12,7 @@ interface FaqData {
 interface FaqSectionProps {
     data: FaqData[];
     onAdd: () => void;
-    onDelete: (id: number) => void;
+    onDelete: (_id: string) => void;
     onEdit: (item: FaqData) => void;
 }
 
@@ -42,8 +42,8 @@ export default function FaqSection({ data, onAdd, onDelete, onEdit }: FaqSection
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-border">
-                            {data.map((faq, index) => (
-                                <tr key={faq.id} className="hover:bg-muted/50 transition-colors text-sm">
+                            {(data || []).map((faq, index) => (
+                                <tr key={faq._id} className="hover:bg-muted/50 transition-colors text-sm">
                                     <td className="px-4 py-3">
                                         <div className="font-medium">Q: {faq.question}</div>
                                     </td>
@@ -61,7 +61,7 @@ export default function FaqSection({ data, onAdd, onDelete, onEdit }: FaqSection
                                             <Button
                                                 variant="ghost"
                                                 size="sm"
-                                                onClick={() => onDelete(faq.id)}
+                                                onClick={() => onDelete(faq._id)}
                                                 disabled={data.length <= 1}
                                                 className="h-8 w-8 p-0 sm:h-9 sm:w-9"
                                             >

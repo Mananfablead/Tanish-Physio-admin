@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Edit, FileText, Calendar, User, Eye } from "lucide-react";
 
 interface TermsData {
-    id: number;
+    _id: string;
     title: string;
     content: string;
     lastUpdated?: string;

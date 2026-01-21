@@ -119,6 +119,27 @@ export const API = {
   TESTIMONIAL_BY_ID: "/testimonials/:id",
   TESTIMONIAL_STATUS: "/testimonials/:id/status",
   TESTIMONIAL_FEATURED: "/testimonials/:id/featured",
+
+  // cms
+  CMS_HERO_PUBLIC: "/cms/public/hero",
+  CMS_HERO_ADMIN: "/cms/admin/hero",
+  CMS_STEPS_PUBLIC: "/cms/public/steps",
+  CMS_STEPS_ADMIN: "/cms/admin/steps",
+  CMS_CONDITIONS_PUBLIC: "/cms/public/conditions",
+  CMS_CONDITIONS_ADMIN: "/cms/admin/conditions",
+  CMS_WHY_US_PUBLIC: "/cms/public/whyUs",
+  CMS_WHY_US_ADMIN: "/cms/admin/whyUs",
+  CMS_FAQ_PUBLIC: "/cms/public/faq",
+  CMS_FAQ_ADMIN: "/cms/admin/faq",
+  CMS_TERMS_PUBLIC: "/cms/public/terms",
+  CMS_TERMS_ADMIN: "/cms/admin/terms",
+  CMS_FEATURED_THERAPIST_PUBLIC: "/cms/public/featuredTherapist",
+  CMS_FEATURED_THERAPIST_ADMIN: "/cms/admin/featuredTherapist",
+  CMS_CONTACT_PUBLIC: "/cms/public/contact",
+  CMS_CONTACT_ADMIN: "/cms/admin/contact",
+  CMS_ABOUT_PUBLIC: "/cms/public/about",
+  CMS_ABOUT_ADMIN: "/cms/admin/about",
+  CMS_ALL_ADMIN: "/cms/admin/all",
 };
 export const availabilityAPI = {
   // Get all availability
@@ -399,4 +420,59 @@ export const testimonialAPI = {
 
   // Get featured testimonials
   getFeatured: () => apiClient.get(API.TESTIMONIALS_FEATURED),
+};
+
+// CMS API endpoints
+export const cmsAPI = {
+  // Hero section
+  getHeroPublic: () => apiClient.get(API.CMS_HERO_PUBLIC),
+  getHeroAdmin: () => apiClient.get(API.CMS_HERO_ADMIN),
+  updateHero: (data) => apiClient.put(API.CMS_HERO_ADMIN, data),
+
+  // Steps section
+  getStepsPublic: () => apiClient.get(API.CMS_STEPS_PUBLIC),
+  getStepsAdmin: () => apiClient.get(API.CMS_STEPS_ADMIN),
+  createStep: (data) => apiClient.post(API.CMS_STEPS_ADMIN, data),
+  updateStep: (id, data) => apiClient.put(`${API.CMS_STEPS_ADMIN}/${id}`, data),
+  deleteStep: (id) => apiClient.delete(`${API.CMS_STEPS_ADMIN}/${id}`),
+
+  // Conditions section
+  getConditionsPublic: () => apiClient.get(API.CMS_CONDITIONS_PUBLIC),
+  getConditionsAdmin: () => apiClient.get(API.CMS_CONDITIONS_ADMIN),
+  updateConditions: (data) => apiClient.put(API.CMS_CONDITIONS_ADMIN, data),
+
+  // Why Us section
+  getWhyUsPublic: () => apiClient.get(API.CMS_WHY_US_PUBLIC),
+  getWhyUsAdmin: () => apiClient.get(API.CMS_WHY_US_ADMIN),
+  updateWhyUs: (data) => apiClient.put(API.CMS_WHY_US_ADMIN, data),
+
+  // FAQ section
+  getFaqsPublic: () => apiClient.get(API.CMS_FAQ_PUBLIC),
+  getFaqsAdmin: () => apiClient.get(API.CMS_FAQ_ADMIN),
+  createFaq: (data) => apiClient.post(API.CMS_FAQ_ADMIN, data),
+  updateFaq: (id, data) => apiClient.put(`${API.CMS_FAQ_ADMIN}/${id}`, data),
+  deleteFaq: (id) => apiClient.delete(`${API.CMS_FAQ_ADMIN}/${id}`),
+
+  // Terms section
+  getTermsPublic: () => apiClient.get(API.CMS_TERMS_PUBLIC),
+  getTermsAdmin: () => apiClient.get(API.CMS_TERMS_ADMIN),
+  updateTerms: (data) => apiClient.put(API.CMS_TERMS_ADMIN, data),
+
+  // Featured Therapist section
+  getFeaturedTherapistPublic: () => apiClient.get(API.CMS_FEATURED_THERAPIST_PUBLIC),
+  getFeaturedTherapistAdmin: () => apiClient.get(API.CMS_FEATURED_THERAPIST_ADMIN),
+  updateFeaturedTherapist: (data) => apiClient.put(API.CMS_FEATURED_THERAPIST_ADMIN, data),
+
+  // Contact section
+  getContactPublic: () => apiClient.get(API.CMS_CONTACT_PUBLIC),
+  getContactAdmin: () => apiClient.get(API.CMS_CONTACT_ADMIN),
+  updateContact: (data) => apiClient.put(API.CMS_CONTACT_ADMIN, data),
+
+  // About section
+  getAboutPublic: () => apiClient.get(API.CMS_ABOUT_PUBLIC),
+  getAboutAdmin: () => apiClient.get(API.CMS_ABOUT_ADMIN),
+  updateAbout: (data) => apiClient.put(API.CMS_ABOUT_ADMIN, data),
+
+  // Get all CMS data
+  getAllCmsData: () => apiClient.get(API.CMS_ALL_ADMIN),
 };

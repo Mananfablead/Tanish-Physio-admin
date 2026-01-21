@@ -12,6 +12,7 @@ import bookingReducer from "@/features/bookings/bookingSlice";
 import notificationReducer from "@/features/notifications/notificationSlice";
 import paymentReducer from "@/features/payments/paymentSlice";
 import testimonialReducer from "@/features/testimonials/testimonialSlice";
+import cmsReducer from "@/features/cms/cmsSlice";
 
 export const store = configureStore({
   reducer: {
@@ -28,6 +29,7 @@ export const store = configureStore({
     bookings: bookingReducer,
     payments: paymentReducer,
     testimonials: testimonialReducer,
+    cms: cmsReducer,
   },
 });
 

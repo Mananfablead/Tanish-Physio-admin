@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSelector, useDispatch } from 'react-redux';
 import { cn } from "@/lib/utils";
-import cmsData from "@/lib/data.json";
+import { fetchAllCmsData, updateHero, createStep, updateStep, deleteStep, updateConditions, updateWhyUs, createFaq, updateFaq, deleteFaq, updateTerms, updateFeaturedTherapist, updateContact, updateAbout } from '@/features/cms/cmsSlice';
 import {
     Tabs,
     TabsContent,
@@ -91,7 +92,7 @@ interface CMSData {
 }
 
 interface HeroData {
-    id: number;
+    _id: string;
     heading: string;
     subHeading: string;
     description: string;
@@ -107,7 +108,7 @@ interface HeroData {
 }
 
 interface StepData {
-    id: number;
+    _id: string;
     title: string;
     description: string;
     icon: string;
@@ -121,7 +122,7 @@ interface ConditionData {
 }
 
 interface ConditionsSectionData {
-    id: number;
+    _id: string;
     title: string;
     description: string;
     conditions: ConditionData[];
@@ -136,7 +137,7 @@ interface StatData {
 }
 
 interface WhyUsData {
-    id: number;
+    _id: string;
     title: string;
     description: string;
     stats: StatData[];
@@ -145,14 +146,14 @@ interface WhyUsData {
 }
 
 interface FaqData {
-    id: number;
+    _id: string;
     question: string;
     answer: string;
     isPublic: boolean;
 }
 
 interface TermsData {
-    id: number;
+    _id: string;
     title: string;
     content: string;
     lastUpdated?: string;
@@ -161,7 +162,7 @@ interface TermsData {
 }
 
 interface TeamMemberData {
-    id: number;
+    _id: string;
     name: string;
     specialty: string;
     experience: string;
@@ -180,7 +181,7 @@ interface SocialLink {
 }
 
 interface ContactData {
-    id: number;
+    _id: string;
     title: string;
     description: string;
     email: string;
@@ -192,7 +193,7 @@ interface ContactData {
 }
 
 interface AboutData {
-    id: number;
+    _id: string;
     title: string;
     description: string;
     mission: string;
@@ -213,59 +214,79 @@ import StepsSection from "./cms-components/StepsSection";
 import WhyUsSection from "./cms-components/WhyUsSection";
 import FaqSection from "./cms-components/FaqSection";
 import TermsSection from "./cms-components/TermsSection";
+import MultiStepForm from "./cms-components/MultiStepForm";
 
 
 export default function CMS() {
-    // Initialize with data from JSON file
-    const [data, setData] = useState<CMSData>((): CMSData => {
-        const cmsDataAny: any = cmsData;
-        return {
-            hero: {
-                ...cmsDataAny.hero,
-                isPublic: cmsDataAny.hero?.isPublic ?? true
-            },
-            steps: (cmsDataAny.steps || []).map(step => ({
-                ...step,
-                isPublic: step.isPublic ?? true
-            })),
-            conditions: {
-                ...cmsDataAny.conditions,
-                isPublic: cmsDataAny.conditions?.isPublic ?? true
-            },
-            whyUs: {
-                ...cmsDataAny.whyUs,
-                isPublic: cmsDataAny.whyUs?.isPublic ?? true
-            },
-            faq: (cmsDataAny.faq || []).map(faq => ({
-                ...faq,
-                isPublic: faq.isPublic ?? true
-            })),
-            terms: {
-                ...cmsDataAny.terms,
-                isPublic: cmsDataAny.terms?.isPublic ?? true
-            },
-            featuredTherapist: {
-                ...cmsDataAny.featuredTherapist,
-                isPublic: cmsDataAny.featuredTherapist?.isPublic ?? true
-            },
-            contact: {
-                ...cmsDataAny.contact,
-                isPublic: cmsDataAny.contact?.isPublic ?? true
-            },
-            about: cmsDataAny.about || {
-                id: 8,
-                title: "About Us",
-                description: "Learn more about our physiotherapy services and commitment to patient care.",
-                mission: "Our mission is to provide exceptional physiotherapy services that help patients regain their strength and mobility.",
-                vision: "To be the leading provider of personalized physiotherapy services in the community.",
-                values: ["Patient-centered care", "Professional excellence", "Compassion", "Innovation"],
-                foundingStory: "Founded in 2020, our clinic was established with the vision of providing holistic physiotherapy services.",
-                teamInfo: "Our team consists of experienced physiotherapsits committed to your recovery.",
-                image: "",
-                isPublic: true
-            }
-        };
+    const dispatch = useDispatch();
+    const { data: cmsStateData, loading, error } = useSelector((state: any) => state.cms);
+    
+    // Load CMS data on component mount
+    useEffect(() => {
+        dispatch(fetchAllCmsData());
+    }, [dispatch]);
+    
+    // Initialize with empty data
+    const [data, setData] = useState<CMSData>({ 
+        hero: { _id: '', heading: '', subHeading: '', description: '', ctaText: '', secondaryCtaText: '', image: '', isTherapistAvailable: false, trustedBy: '', certifiedTherapists: false, rating: '', features: [], isPublic: true },
+        steps: [],
+        conditions: { _id: '', title: '', description: '', conditions: [], image: '', isPublic: true },
+        whyUs: { _id: '', title: '', description: '', stats: [], features: [], isPublic: true },
+        faq: [],
+        terms: { _id: '', title: '', content: '', isPublic: true },
+        featuredTherapist: { _id: '', name: '', specialty: '', experience: '', rating: '', description: '', image: '', availableToday: false, ctaText: '', viewProfileText: '', isPublic: true },
+        contact: { _id: '', title: '', description: '', email: '', phone: '', address: '', hours: '', socialLinks: [], isPublic: true },
+        about: { _id: '', title: '', description: '', mission: '', vision: '', values: [], foundingStory: '', teamInfo: '', image: '', isPublic: true }
     });
+    
+    // Update local state when Redux state changes
+    useEffect(() => {
+        if (cmsStateData) {
+            setData({
+                hero: {
+                    ...cmsStateData.hero,
+                    isPublic: cmsStateData.hero?.isPublic ?? true
+                },
+                steps: (cmsStateData.steps || []).map((step: any) => ({
+                    ...step,
+                    isPublic: step.isPublic ?? true
+                })),
+                conditions: {
+                    ...cmsStateData.conditions,
+                    conditions: cmsStateData.conditions?.conditions || [],
+                    isPublic: cmsStateData.conditions?.isPublic ?? true
+                },
+                whyUs: {
+                    ...cmsStateData.whyUs,
+                    stats: cmsStateData.whyUs?.stats || [],
+                    features: cmsStateData.whyUs?.features || [],
+                    isPublic: cmsStateData.whyUs?.isPublic ?? true
+                },
+                faq: (cmsStateData.faq || []).map((faq: any) => ({
+                    ...faq,
+                    isPublic: faq.isPublic ?? true
+                })),
+                terms: {
+                    ...cmsStateData.terms,
+                    isPublic: cmsStateData.terms?.isPublic ?? true
+                },
+                featuredTherapist: {
+                    ...cmsStateData.featuredTherapist,
+                    isPublic: cmsStateData.featuredTherapist?.isPublic ?? true
+                },
+                contact: {
+                    ...cmsStateData.contact,
+                    socialLinks: cmsStateData.contact?.socialLinks || [],
+                    isPublic: cmsStateData.contact?.isPublic ?? true
+                },
+                about: {
+                    ...cmsStateData.about,
+                    values: cmsStateData.about?.values || [],
+                    isPublic: cmsStateData.about?.isPublic ?? true
+                }
+            });
+        }
+    }, [cmsStateData]);
     
     // State for mobile dropdown selection
     const [activeTab, setActiveTab] = useState("hero");
@@ -287,9 +308,10 @@ export default function CMS() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalSection, setModalSection] = useState(null);
     const [modalItem, setModalItem] = useState(null);
+
     
     // Delete confirmation state
-    const [deleteItemId, setDeleteItemId] = useState<number | null>(null);
+    const [deleteItemId, setDeleteItemId] = useState<string | null>(null);
     const [deleteItemType, setDeleteItemType] = useState<"step" | "faq" | null>(null);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
@@ -308,55 +330,87 @@ export default function CMS() {
     };
 
     // Save changes from modal
-    const saveModalChanges = (updatedData) => {
+    const saveModalChanges = async (updatedData) => {
         if (modalSection === 'hero') {
+            dispatch(updateHero(updatedData));
             setData(prev => ({
                 ...prev,
                 hero: updatedData
             }));
         } else if (modalSection === 'step') {
-            if (updatedData.isNew) {
-                // Adding a new step
+            if (!modalItem) {
+                // Adding multiple steps
+                for (const step of updatedData) {
+                    dispatch(createStep(step));
+                }
                 setData(prev => ({
                     ...prev,
-                    steps: [...prev.steps, { ...updatedData, id: Date.now(), isPublic: true }]
+                    steps: [...prev.steps, ...updatedData.map(s => ({ ...s, isPublic: true }))] 
                 }));
             } else {
                 // Updating an existing step
-                setData(prev => ({
-                    ...prev,
-                    steps: prev.steps.map(step =>
-                        step.id === updatedData.id ? updatedData : step
-                    )
-                }));
+                if (!updatedData._id) {
+                    // Adding a new step
+                    dispatch(createStep(updatedData));
+                    setData(prev => ({
+                        ...prev,
+                        steps: [...prev.steps, { ...updatedData, isPublic: true }]
+                    }));
+                } else {
+                    // Updating an existing step
+                    // Clean up the stepData to remove problematic id fields
+                    const cleanStepData = { ...updatedData };
+                    delete cleanStepData._id;
+                    delete cleanStepData.id;
+                    const result = await dispatch(updateStep({ id: updatedData._id, stepData: cleanStepData }));
+                    if (updateStep.fulfilled.match(result)) {
+                        setData(prev => ({
+                            ...prev,
+                            steps: prev.steps.map(step =>
+                                step._id === updatedData._id ? result.payload : step
+                            )
+                        }));
+                    }
+                }
             }
         } else if (modalSection === 'conditions') {
+            dispatch(updateConditions(updatedData));
             setData(prev => ({
                 ...prev,
                 conditions: updatedData
             }));
         } else if (modalSection === 'whyUs') {
+            dispatch(updateWhyUs(updatedData));
             setData(prev => ({
                 ...prev,
                 whyUs: updatedData
             }));
         } else if (modalSection === 'faq') {
-            if (updatedData.isNew) {
+            if (!updatedData._id) {
                 // Adding a new FAQ
+                dispatch(createFaq(updatedData));
                 setData(prev => ({
                     ...prev,
-                    faq: [...prev.faq, { ...updatedData, id: Date.now(), isPublic: true }]
+                    faq: [...prev.faq, { ...updatedData, isPublic: true }]
                 }));
             } else {
                 // Updating an existing FAQ
-                setData(prev => ({
-                    ...prev,
-                    faq: prev.faq.map(faq =>
-                        faq.id === updatedData.id ? updatedData : faq
-                    )
-                }));
+                // Clean up the faqData to remove problematic id fields
+                const cleanFaqData = { ...updatedData };
+                delete cleanFaqData._id;
+                delete cleanFaqData.id;
+                const result = await dispatch(updateFaq({ id: updatedData._id, faqData: cleanFaqData }));
+                if (updateFaq.fulfilled.match(result)) {
+                    setData(prev => ({
+                        ...prev,
+                        faq: prev.faq.map(faq =>
+                            faq._id === updatedData._id ? result.payload : faq
+                        )
+                    }));
+                }
             }
         } else if (modalSection === 'terms') {
+            dispatch(updateTerms(updatedData));
             setData(prev => ({
                 ...prev,
                 terms: updatedData
@@ -367,6 +421,7 @@ export default function CMS() {
                 seo: updatedData
             }));
         } else if (modalSection === 'about') {
+            dispatch(updateAbout(updatedData));
             setData(prev => ({
                 ...prev,
                 about: updatedData
@@ -393,14 +448,16 @@ export default function CMS() {
         }
     };
 
-    // Add new step
+    // Add new step (multi-step only)
     const addStep = () => {
-        openEditModal('step', null);
+        setModalSection('step');
+        setModalItem(null); // Ensure modalItem is null to trigger multi-step form
+        setIsModalOpen(true);
     };
 
     // Delete step - opens confirmation dialog
-    const deleteStep = (id) => {
-        setDeleteItemId(id);
+    const openDeleteStepDialog = (_id) => {
+        setDeleteItemId(_id);
         setDeleteItemType("step");
         setIsDeleteDialogOpen(true);
     };
@@ -411,8 +468,8 @@ export default function CMS() {
     };
 
     // Delete FAQ - opens confirmation dialog
-    const deleteFaq = (id) => {
-        setDeleteItemId(id);
+    const openDeleteFaqDialog = (_id) => {
+        setDeleteItemId(_id);
         setDeleteItemType("faq");
         setIsDeleteDialogOpen(true);
     };
@@ -420,19 +477,15 @@ export default function CMS() {
     // Confirm delete item
     const confirmDeleteItem = () => {
         if (deleteItemId === null || deleteItemType === null) return;
-        
+            
         if (deleteItemType === "step") {
-            setData(prev => ({
-                ...prev,
-                steps: prev.steps.filter(step => step.id !== deleteItemId)
-            }));
+            // Actually delete from backend
+            dispatch(deleteStep(deleteItemId));
         } else if (deleteItemType === "faq") {
-            setData(prev => ({
-                ...prev,
-                faq: prev.faq.filter(faq => faq.id !== deleteItemId)
-            }));
+            // Actually delete from backend
+            dispatch(deleteFaq(deleteItemId));
         }
-        
+            
         // Reset delete state
         setDeleteItemId(null);
         setDeleteItemType(null);
@@ -472,21 +525,21 @@ export default function CMS() {
     };
 
     // Update step data
-    const updateStepData = (id, field, value) => {
+    const updateStepData = (_id, field, value) => {
         setData(prev => ({
             ...prev,
             steps: prev.steps.map(step =>
-                step.id === id ? { ...step, [field]: value } : step
+                step._id === _id ? { ...step, [field]: value } : step
             )
         }));
     };
 
     // Update FAQ data
-    const updateFaqData = (id, field, value) => {
+    const updateFaqData = (_id, field, value) => {
         setData(prev => ({
             ...prev,
             faq: prev.faq.map(faq =>
-                faq.id === id ? { ...faq, [field]: value } : faq
+                faq._id === _id ? { ...faq, [field]: value } : faq
             )
         }));
     };
@@ -514,7 +567,15 @@ export default function CMS() {
 
     // Save all content function
     const saveAllContent = () => {
-        // In a real app, this would make an API call to save all content
+        // Dispatch actions to save all CMS data
+        dispatch(updateHero(data.hero));
+        dispatch(updateConditions(data.conditions));
+        dispatch(updateWhyUs(data.whyUs));
+        dispatch(updateTerms(data.terms));
+        dispatch(updateFeaturedTherapist(data.featuredTherapist));
+        dispatch(updateContact(data.contact));
+        dispatch(updateAbout(data.about));
+        
         console.log('Saving all content:', data);
         alert('Content saved successfully!');
     };
@@ -533,6 +594,12 @@ export default function CMS() {
                     {Object.keys(data).length} Sections
                 </Badge>
             </div>
+            
+            {/* {loading && (
+                <div className="flex justify-center items-center p-8">
+                    <p>Loading CMS data...</p>
+                </div>
+            )} */}
 
             {/* Stats Cards */}
             {/* <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
@@ -653,7 +720,10 @@ export default function CMS() {
                 {/* HERO */}
                 <TabsContent value="hero">
                     <HeroSection 
-                        data={data.hero} 
+                        data={{
+                            ...data.hero,
+                            features: data.hero?.features || []
+                        }} 
                         onEdit={openEditModal} 
                     />
                 </TabsContent>
@@ -663,7 +733,7 @@ export default function CMS() {
                     <StepsSection 
                         data={data.steps} 
                         onAdd={addStep} 
-                        onDelete={deleteStep} 
+                        onDelete={openDeleteStepDialog} 
                         onEdit={(item) => openEditModal('step', item)} 
                     />
                 </TabsContent>
@@ -689,7 +759,7 @@ export default function CMS() {
                     <FaqSection 
                         data={data.faq} 
                         onAdd={addFaq} 
-                        onDelete={deleteFaq} 
+                        onDelete={openDeleteFaqDialog} 
                         onEdit={(item) => openEditModal('faq', item)}
                     />
                 </TabsContent>
@@ -757,7 +827,10 @@ export default function CMS() {
             <div className="lg:hidden space-y-4">
                 {activeTab === "hero" && (
                     <HeroSection 
-                        data={data.hero} 
+                        data={{
+                            ...data.hero,
+                            features: data.hero?.features || []
+                        }} 
                         onEdit={openEditModal} 
                     />
                 )}
@@ -766,7 +839,7 @@ export default function CMS() {
                     <StepsSection 
                         data={data.steps} 
                         onAdd={addStep} 
-                        onDelete={deleteStep} 
+                        onDelete={openDeleteStepDialog} 
                         onEdit={(item) => openEditModal('step', item)}
                     />
                 )}
@@ -789,7 +862,7 @@ export default function CMS() {
                     <FaqSection 
                         data={data.faq} 
                         onAdd={addFaq} 
-                        onDelete={deleteFaq} 
+                        onDelete={openDeleteFaqDialog} 
                         onEdit={(item) => openEditModal('faq', item)}
                     />
                 )}
@@ -855,7 +928,7 @@ export default function CMS() {
                     <DialogHeader>
                         <DialogTitle className="text-lg sm:text-xl">
                             {modalSection === 'hero' && 'Edit Hero Section'}
-                            {modalSection === 'step' && (modalItem ? 'Edit Step' : 'Manage Steps')}
+                            {modalSection === 'step' && (modalItem ? 'Edit Step' : 'Add Multiple Steps')}
                             {modalSection === 'conditions' && 'Edit Conditions'}
                             {modalSection === 'whyUs' && 'Edit Why Choose Us'}
                             {modalSection === 'faq' && (modalItem ? 'Edit FAQ' : 'Manage FAQs')}
@@ -873,7 +946,11 @@ export default function CMS() {
                         )}
 
                         {modalSection === 'step' && (
-                            <EditStepForm data={modalItem} onSave={saveModalChanges} onCancel={closeEditModal} isNew={!modalItem} />
+                            modalItem ? (
+                                <EditStepForm data={modalItem} onSave={saveModalChanges} onCancel={closeEditModal} isNew={!modalItem} />
+                            ) : (
+                                <MultiStepForm onSave={saveModalChanges} onCancel={closeEditModal} />
+                            )
                         )}
 
                         {modalSection === 'conditions' && (
@@ -965,7 +1042,7 @@ const EditHeroForm = ({ data, onSave, onCancel }) => {
     };
 
     const handleFeatureChange = (index, value) => {
-        const newFeatures = [...formData.features];
+        const newFeatures = [...(formData.features || [])];
         newFeatures[index] = value;
         setFormData(prev => ({
             ...prev,
@@ -976,12 +1053,12 @@ const EditHeroForm = ({ data, onSave, onCancel }) => {
     const addFeature = () => {
         setFormData(prev => ({
             ...prev,
-            features: [...prev.features, '']
+            features: [...(prev.features || []), '']
         }));
     };
 
     const removeFeature = (index) => {
-        const newFeatures = formData.features.filter((_, i) => i !== index);
+        const newFeatures = (formData.features || []).filter((_, i) => i !== index);
         setFormData(prev => ({
             ...prev,
             features: newFeatures
@@ -1058,7 +1135,7 @@ const EditHeroForm = ({ data, onSave, onCancel }) => {
                     </Button>
                 </div>
                 <div className="space-y-2">
-                    {formData.features.map((feature, index) => (
+                    {(formData.features || []).map((feature, index) => (
                         <div key={index} className="flex items-center gap-2">
                             <Input
                                 value={feature}
@@ -1070,7 +1147,7 @@ const EditHeroForm = ({ data, onSave, onCancel }) => {
                                 variant="outline" 
                                 size="sm" 
                                 onClick={() => removeFeature(index)}
-                                disabled={formData.features.length <= 1}
+                                disabled={(formData.features || []).length <= 1}
                             >
                                 <Trash2 className="h-4 w-4" />
                             </Button>
@@ -1119,7 +1196,7 @@ const EditHeroForm = ({ data, onSave, onCancel }) => {
 };
 
 const EditStepForm = ({ data, onSave, onCancel, isNew }) => {
-    const [formData, setFormData] = useState(data || { id: Date.now(), title: '', description: '', icon: '', image: '' });
+    const [formData, setFormData] = useState(data || { _id: '', title: '', description: '', icon: '', image: '' });
 
     const handleChange = (field, value) => {
         setFormData(prev => ({
@@ -1150,6 +1227,22 @@ const EditStepForm = ({ data, onSave, onCancel, isNew }) => {
     return (
         <div className="space-y-3 sm:space-y-4">
             <div>
+                <Label className="text-sm">Main Heading</Label>
+                <Input
+                    value={formData.heading}
+                    onChange={(e) => handleChange('heading', e.target.value)}
+                    className="text-sm"
+                />
+            </div>
+            <div>
+                <Label className="text-sm">Sub Heading</Label>
+                <Input
+                    value={formData.subHeading}
+                    onChange={(e) => handleChange('subHeading', e.target.value)}
+                    className="text-sm"
+                />
+            </div>
+            <div>
                 <Label className="text-sm">Step Title</Label>
                 <Input
                     value={formData.title}
@@ -1165,14 +1258,14 @@ const EditStepForm = ({ data, onSave, onCancel, isNew }) => {
                     className="text-sm"
                 />
             </div>
-            <div>
+            {/* <div>
                 <Label className="text-sm">Icon name (lucide)</Label>
                 <Input
                     value={formData.icon}
                     onChange={(e) => handleChange('icon', e.target.value)}
                     className="text-sm"
                 />
-            </div>
+            </div> */}
             <div>
                 <Label className="text-sm">Step Image</Label>
                 <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-2">
@@ -1214,7 +1307,10 @@ const EditStepForm = ({ data, onSave, onCancel, isNew }) => {
 };
 
 const EditConditionsForm = ({ data, onSave, onCancel }) => {
-    const [formData, setFormData] = useState(data);
+    const [formData, setFormData] = useState({
+        ...data,
+        conditions: data?.conditions || []
+    });
 
     const handleChange = (field, value) => {
         setFormData(prev => ({
@@ -1224,7 +1320,7 @@ const EditConditionsForm = ({ data, onSave, onCancel }) => {
     };
 
     const handleConditionChange = (index, field, value) => {
-        const newConditions = [...formData.conditions];
+        const newConditions = [...(formData.conditions || [])];
         newConditions[index][field] = value;
         setFormData(prev => ({
             ...prev,
@@ -1236,12 +1332,12 @@ const EditConditionsForm = ({ data, onSave, onCancel }) => {
         const newCondition = { name: '', icon: '' };
         setFormData(prev => ({
             ...prev,
-            conditions: [...prev.conditions, newCondition]
+            conditions: [...(prev.conditions || []), newCondition]
         }));
     };
 
     const removeCondition = (index) => {
-        const newConditions = formData.conditions.filter((_, i) => i !== index);
+        const newConditions = (formData.conditions || []).filter((_, i) => i !== index);
         setFormData(prev => ({
             ...prev,
             conditions: newConditions
@@ -1293,7 +1389,7 @@ const EditConditionsForm = ({ data, onSave, onCancel }) => {
                     </Button>
                 </div>
                 <div className="space-y-3">
-                    {formData.conditions.map((condition, index) => (
+                    {(formData.conditions || []).map((condition, index) => (
                         <div key={index} className="flex gap-2">
                             <div className="flex-1">
                                 <Label className="text-sm">Condition Name</Label>
@@ -1304,7 +1400,7 @@ const EditConditionsForm = ({ data, onSave, onCancel }) => {
                                     className="text-sm"
                                 />
                             </div>
-                            <div className="flex-1">
+                            {/* <div className="flex-1">
                                 <Label className="text-sm">Icon Name</Label>
                                 <Input
                                     value={condition.icon}
@@ -1312,14 +1408,14 @@ const EditConditionsForm = ({ data, onSave, onCancel }) => {
                                     placeholder="Icon name"
                                     className="text-sm"
                                 />
-                            </div>
+                            </div> */}
                             <div className="flex items-end">
                                 <Button 
                                     type="button" 
                                     variant="outline" 
                                     size="sm" 
                                     onClick={() => removeCondition(index)}
-                                    disabled={formData.conditions.length <= 1}
+                                    disabled={(formData.conditions || []).length <= 1}
                                     className="h-8 w-8 p-0 sm:h-9 sm:w-9"
                                 >
                                     <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
@@ -1370,7 +1466,11 @@ const EditConditionsForm = ({ data, onSave, onCancel }) => {
 };
 
 const EditWhyUsForm = ({ data, onSave, onCancel }) => {
-    const [formData, setFormData] = useState(data);
+    const [formData, setFormData] = useState({
+        ...data,
+        stats: data?.stats || [],
+        features: data?.features || []
+    });
 
     const handleChange = (field, value) => {
         setFormData(prev => ({
@@ -1380,7 +1480,7 @@ const EditWhyUsForm = ({ data, onSave, onCancel }) => {
     };
 
     const handleStatChange = (index, field, value) => {
-        const newStats = [...formData.stats];
+        const newStats = [...(formData.stats || [])];
         newStats[index][field] = value;
         setFormData(prev => ({
             ...prev,
@@ -1392,12 +1492,12 @@ const EditWhyUsForm = ({ data, onSave, onCancel }) => {
         const newStat = { label: '', value: '', description: '' };
         setFormData(prev => ({
             ...prev,
-            stats: [...prev.stats, newStat]
+            stats: [...(prev.stats || []), newStat]
         }));
     };
 
     const removeStat = (index) => {
-        const newStats = formData.stats.filter((_, i) => i !== index);
+        const newStats = (formData.stats || []).filter((_, i) => i !== index);
         setFormData(prev => ({
             ...prev,
             stats: newStats
@@ -1405,7 +1505,7 @@ const EditWhyUsForm = ({ data, onSave, onCancel }) => {
     };
 
     const handleFeatureChange = (index, value) => {
-        const newFeatures = [...formData.features];
+        const newFeatures = [...(formData.features || [])];
         newFeatures[index] = value;
         setFormData(prev => ({
             ...prev,
@@ -1416,12 +1516,12 @@ const EditWhyUsForm = ({ data, onSave, onCancel }) => {
     const addFeature = () => {
         setFormData(prev => ({
             ...prev,
-            features: [...prev.features, '']
+            features: [...(prev.features || []), '']
         }));
     };
 
     const removeFeature = (index) => {
-        const newFeatures = formData.features.filter((_, i) => i !== index);
+        const newFeatures = (formData.features || []).filter((_, i) => i !== index);
         setFormData(prev => ({
             ...prev,
             features: newFeatures
@@ -1456,7 +1556,7 @@ const EditWhyUsForm = ({ data, onSave, onCancel }) => {
                     </Button>
                 </div>
                 <div className="space-y-3">
-                    {formData.stats.map((stat, index) => (
+                    {(formData.stats || []).map((stat, index) => (
                         <div key={index} className="grid grid-cols-3 gap-2">
                             <div>
                                 <Label>Label</Label>
@@ -1488,7 +1588,7 @@ const EditWhyUsForm = ({ data, onSave, onCancel }) => {
                                     variant="outline" 
                                     size="sm" 
                                     onClick={() => removeStat(index)}
-                                    disabled={formData.stats.length <= 1}
+                                    disabled={(formData.stats || []).length <= 1}
                                 >
                                     <Trash2 className="h-4 w-4 mr-2" /> Remove Stat
                                 </Button>
@@ -1505,7 +1605,7 @@ const EditWhyUsForm = ({ data, onSave, onCancel }) => {
                     </Button>
                 </div>
                 <div className="space-y-2">
-                    {formData.features.map((feature, index) => (
+                    {(formData.features || []).map((feature, index) => (
                         <div key={index} className="flex items-center gap-2">
                             <Input
                                 value={feature}
@@ -1517,7 +1617,7 @@ const EditWhyUsForm = ({ data, onSave, onCancel }) => {
                                 variant="outline" 
                                 size="sm" 
                                 onClick={() => removeFeature(index)}
-                                disabled={formData.features.length <= 1}
+                                disabled={(formData.features || []).length <= 1}
                             >
                                 <Trash2 className="h-4 w-4" />
                             </Button>
@@ -1534,7 +1634,7 @@ const EditWhyUsForm = ({ data, onSave, onCancel }) => {
 };
 
 const EditFaqForm = ({ data, onSave, onCancel, isNew }) => {
-    const [formData, setFormData] = useState(data || { id: Date.now(), question: '', answer: '' });
+    const [formData, setFormData] = useState(data || { _id: '', question: '', answer: '' });
 
     const handleChange = (field, value) => {
         setFormData(prev => ({
@@ -1799,7 +1899,10 @@ const EditFeaturedTherapistForm = ({ data, onSave, onCancel }) => {
 };
 
 const EditContactForm = ({ data, onSave, onCancel }) => {
-    const [formData, setFormData] = useState(data);
+    const [formData, setFormData] = useState({
+        ...data,
+        socialLinks: data?.socialLinks || []
+    });
 
     const handleChange = (field, value) => {
         setFormData(prev => ({
@@ -1809,7 +1912,7 @@ const EditContactForm = ({ data, onSave, onCancel }) => {
     };
 
     const handleSocialLinkChange = (index, field, value) => {
-        const newSocialLinks = [...formData.socialLinks];
+        const newSocialLinks = [...(formData.socialLinks || [])];
         newSocialLinks[index][field] = value;
         setFormData(prev => ({
             ...prev,
@@ -1820,12 +1923,12 @@ const EditContactForm = ({ data, onSave, onCancel }) => {
     const addSocialLink = () => {
         setFormData(prev => ({
             ...prev,
-            socialLinks: [...prev.socialLinks, { platform: '', url: '' }]
+            socialLinks: [...(prev.socialLinks || []), { platform: '', url: '' }]
         }));
     };
 
     const removeSocialLink = (index) => {
-        const newSocialLinks = formData.socialLinks.filter((_, i) => i !== index);
+        const newSocialLinks = (formData.socialLinks || []).filter((_, i) => i !== index);
         setFormData(prev => ({
             ...prev,
             socialLinks: newSocialLinks
@@ -1889,7 +1992,7 @@ const EditContactForm = ({ data, onSave, onCancel }) => {
                     </Button>
                 </div>
                 <div className="space-y-2">
-                    {formData.socialLinks.map((social, index) => (
+                    {(formData.socialLinks || []).map((social, index) => (
                         <div key={index} className="grid grid-cols-2 gap-2">
                             <div>
                                 <Input
@@ -1909,7 +2012,7 @@ const EditContactForm = ({ data, onSave, onCancel }) => {
                                     variant="outline" 
                                     size="sm" 
                                     onClick={() => removeSocialLink(index)}
-                                    disabled={formData.socialLinks.length <= 1}
+                                    disabled={(formData.socialLinks || []).length <= 1}
                                 >
                                     <Trash2 className="h-4 w-4" />
                                 </Button>
@@ -1928,7 +2031,10 @@ const EditContactForm = ({ data, onSave, onCancel }) => {
 
 
 const EditAboutForm = ({ data, onSave, onCancel }) => {
-    const [formData, setFormData] = useState(data);
+    const [formData, setFormData] = useState({
+        ...data,
+        values: data?.values || []
+    });
 
     const handleChange = (field, value) => {
         setFormData(prev => ({
@@ -1938,7 +2044,7 @@ const EditAboutForm = ({ data, onSave, onCancel }) => {
     };
 
     const handleValuesChange = (index, value) => {
-        const newValues = [...formData.values];
+        const newValues = [...(formData.values || [])];
         newValues[index] = value;
         setFormData(prev => ({
             ...prev,
@@ -1949,12 +2055,12 @@ const EditAboutForm = ({ data, onSave, onCancel }) => {
     const addValue = () => {
         setFormData(prev => ({
             ...prev,
-            values: [...prev.values, '']
+            values: [...(prev.values || []), '']
         }));
     };
 
     const removeValue = (index) => {
-        const newValues = formData.values.filter((_, i) => i !== index);
+        const newValues = (formData.values || []).filter((_, i) => i !== index);
         setFormData(prev => ({
             ...prev,
             values: newValues
@@ -2038,7 +2144,7 @@ const EditAboutForm = ({ data, onSave, onCancel }) => {
                     </Button>
                 </div>
                 <div className="space-y-2">
-                    {formData.values.map((value, index) => (
+                    {(formData.values || []).map((value, index) => (
                         <div key={index} className="flex items-center gap-2">
                             <Input
                                 value={value}
@@ -2050,7 +2156,7 @@ const EditAboutForm = ({ data, onSave, onCancel }) => {
                                 variant="outline" 
                                 size="sm" 
                                 onClick={() => removeValue(index)}
-                                disabled={formData.values.length <= 1}
+                                disabled={(formData.values || []).length <= 1}
                             >
                                 <Trash2 className="h-4 w-4" />
                             </Button>

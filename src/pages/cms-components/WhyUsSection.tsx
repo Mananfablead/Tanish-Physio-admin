@@ -9,7 +9,7 @@ interface StatData {
 }
 
 interface WhyUsData {
-    id: number;
+    _id: string;
     title: string;
     description: string;
     stats: StatData[];
@@ -42,7 +42,7 @@ export default function WhyUsSection({ data, onEdit }: WhyUsSectionProps) {
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-                        {data.stats.map((stat, index) => (
+                        {(data.stats || []).map((stat, index) => (
                             <div key={index} className="bg-gradient-to-br from-primary/5 to-accent/5 rounded-2xl p-4 sm:p-6 border border-primary/10 shadow-sm hover:shadow-md transition-shadow">
                                 <div className="flex items-center gap-3 sm:gap-4">
                                     <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full gradient-primary flex items-center justify-center">
@@ -59,7 +59,7 @@ export default function WhyUsSection({ data, onEdit }: WhyUsSectionProps) {
                     </div>
 
                     <div className="grid sm:grid-cols-2 gap-3 sm:gap-4">
-                        {data.features.map((feature, index) => (
+                        {(data.features || []).map((feature, index) => (
                             <div 
                                 key={index}
                                 className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-2xl bg-gradient-to-r from-white/80 to-muted/50 border border-border shadow-sm backdrop-blur-sm hover:shadow-md transition-all"
