@@ -8,7 +8,7 @@ const useSocket = (roomId, roomType) => {
     const [error, setError] = useState(null);
     const { token } = useAuthRedux();
 
-    // Initialize socket connection
+    // Initialize socket connection when roomId or token changes
     useEffect(() => {
         if (!roomId || !token) return;
 
