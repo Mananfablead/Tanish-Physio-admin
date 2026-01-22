@@ -123,6 +123,13 @@ export const API = {
   TESTIMONIAL_STATUS: "/testimonials/:id/status",
   TESTIMONIAL_FEATURED: "/testimonials/:id/featured",
 
+  // reports
+  DASHBOARD_REPORT: "/reports/dashboard",
+  USERS_REPORT: "/reports/users",
+  SESSIONS_REPORT: "/reports/sessions",
+  REVENUE_REPORT: "/reports/revenue",
+  THERAPISTS_REPORT: "/reports/therapists", 
+
   // cms
   CMS_HERO_PUBLIC: "/cms/public/hero",
   CMS_HERO_ADMIN: "/cms/admin/hero",
@@ -408,6 +415,24 @@ export const paymentAPI = {
 
   // Handle payment webhook
   handleWebhook: (data) => apiClient.post(API.PAYMENTS_WEBHOOK, data),
+};
+
+// Reports API endpoints
+export const reportAPI = {
+  // Get dashboard report
+  getDashboardReport: (params) => apiClient.get(API.DASHBOARD_REPORT, { params }),
+
+  // Get user reports
+  getUserReport: (params) => apiClient.get(API.USERS_REPORT, { params }),
+
+  // Get session reports
+  getSessionReport: (params) => apiClient.get(API.SESSIONS_REPORT, { params }),
+
+  // Get revenue reports
+  getRevenueReport: (params) => apiClient.get(API.REVENUE_REPORT, { params }),
+
+  // Get therapist reports
+  getTherapistReport: (params) => apiClient.get(API.THERAPISTS_REPORT, { params }),
 };
 
 // Testimonial API endpoints
