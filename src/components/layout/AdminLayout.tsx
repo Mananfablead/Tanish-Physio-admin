@@ -34,7 +34,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
   useEffect(() => {
     dispatch(fetchProfile());
-  }, [dispatch]);
+  }, []);
   // Mock notifications data
   const [notifications] = useState([
     {
