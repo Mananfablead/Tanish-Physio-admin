@@ -1,21 +1,10 @@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
-const data = [
-  { month: "Jan", users: 1200, therapists: 45 },
-  { month: "Feb", users: 1450, therapists: 52 },
-  { month: "Mar", users: 1680, therapists: 58 },
-  { month: "Apr", users: 2100, therapists: 65 },
-  { month: "May", users: 2580, therapists: 72 },
-  { month: "Jun", users: 3200, therapists: 78 },
-  { month: "Jul", users: 3850, therapists: 85 },
-  { month: "Aug", users: 4200, therapists: 91 },
-  { month: "Sep", users: 4800, therapists: 98 },
-  { month: "Oct", users: 5400, therapists: 105 },
-  { month: "Nov", users: 6100, therapists: 112 },
-  { month: "Dec", users: 6850, therapists: 120 },
-];
+interface UserGrowthChartProps {
+  userGrowthData?: Array<{ month: string; users: number; therapists: number }>;
+}
 
-export function UserGrowthChart() {
+export function UserGrowthChart({ userGrowthData = [] }: UserGrowthChartProps) {
   return (
     <div className="bg-card rounded-lg border border-border p-5 animate-fade-in">
       <div className="flex items-center justify-between mb-6">
@@ -37,7 +26,7 @@ export function UserGrowthChart() {
       
       <div className="h-[280px]">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
+          <LineChart data={userGrowthData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
             <XAxis 
               dataKey="month" 

@@ -124,7 +124,7 @@ export const API = {
   TESTIMONIAL_FEATURED: "/testimonials/:id/featured",
 
   // reports
-  DASHBOARD_REPORT: "/reports/dashboard",
+  DASHBOARD_REPORT: "/reports/admin/dashboard",
   USERS_REPORT: "/reports/users",
   SESSIONS_REPORT: "/reports/sessions",
   REVENUE_REPORT: "/reports/revenue",

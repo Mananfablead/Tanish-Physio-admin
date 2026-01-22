@@ -20,7 +20,19 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import '../assets/style.css';
 
+// Import Redux hooks
+import { useSelector, useDispatch } from 'react-redux';
+import { fetchDashboard } from '@/features/dashboard/dashboardSlice';
+import { useEffect } from 'react';
+
 export default function Dashboard() {
+  const dispatch = useDispatch();
+  const { stats, loading, error } = useSelector((state: any) => state.dashboard);
+
+  useEffect(() => {
+    dispatch(fetchDashboard());
+  }, [dispatch]);
+
   const exportToPDF = async () => {
     const dashboardElement = document.querySelector('.dashboard-content') as HTMLElement;
 
@@ -72,6 +84,22 @@ export default function Dashboard() {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="text-red-500 text-xl">Error loading dashboard: {error}</div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 dashboard-content">
       {/* Header */}
@@ -101,36 +129,28 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Total Users"
-          value="6,850"
+          value={stats?.stats?.totalUsers ? stats.stats.totalUsers.toLocaleString() : '0'}
           change={{ value: 12.5, isPositive: true }}
           icon={Users}
           iconColor="bg-info"
-
         />
-        {/* <StatCard
-          title="Active Staff"
-          value="120"
-          change={{ value: 8.2, isPositive: true }}
-          icon={Stethoscope}
-          iconColor="bg-warning"
-        /> */}
         <StatCard
           title="Active Subscriptions"
-          value="4,230"
+          value={stats?.stats?.activeSubscriptions ? stats.stats.activeSubscriptions.toLocaleString() : '0'}
           change={{ value: 15.3, isPositive: true }}
           icon={CreditCard}
           iconColor="bg-primary"
         />
         <StatCard
           title="Total Revenue"
-          value="₹45,800"
+          value={`₹${stats?.stats?.totalRevenue ? stats.stats.totalRevenue.toLocaleString() : '0'}`}
           change={{ value: 18.7, isPositive: true }}
           icon={DollarSign}
           iconColor="bg-success"
         />
         <StatCard
           title="Upcoming Sessions"
-          value="156"
+          value={stats?.stats?.upcomingSessions ? stats.stats.upcomingSessions.toString() : '0'}
           icon={Calendar}
           iconColor="bg-warning"
         />
@@ -138,29 +158,28 @@ export default function Dashboard() {
 
       {/* Secondary Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-
         <StatCard
           title="Completed Today"
-          value="48"
+          value={stats?.stats?.completedToday ? stats.stats.completedToday.toString() : '0'}
           icon={Clock}
           iconColor="bg-primary"
         />
         <StatCard
           title="Avg. Therapist Rating"
-          value="4.8"
+          value={stats?.stats?.avgRating ? stats.stats.avgRating.toString() : '0'}
           icon={Star}
           iconColor="bg-warning"
         />
         <StatCard
           title="Conversion Rate"
-          value="68%"
+          value={`${stats?.stats?.conversionRate ? stats.stats.conversionRate : 0}%`}
           change={{ value: 5.2, isPositive: true }}
           icon={TrendingUp}
           iconColor="bg-success"
         />
         <StatCard
           title="Total Services"
-          value="250"
+          value={stats?.stats?.totalServices ? stats.stats.totalServices.toString() : '0'}
           icon={Stethoscope}
           iconColor="bg-info"
         />
@@ -168,17 +187,17 @@ export default function Dashboard() {
 
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <RevenueChart />
-        <SessionsChart />
+        <RevenueChart revenueData={stats?.revenueChart || []} />
+        <SessionsChart sessionsData={stats?.sessionsChart || []} />
       </div>
 
       {/* User Growth Chart */}
-      <UserGrowthChart />
+      <UserGrowthChart userGrowthData={stats?.userGrowthChart || []} />
 
       {/* Activity & Sessions Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <RecentActivity />
-        <UpcomingSessions />
+        <RecentActivity recentActivityData={stats?.recentActivity || []} />
+        <UpcomingSessions upcomingSessionsData={stats?.upcomingSessions || []} />
       </div>
     </div>
   );

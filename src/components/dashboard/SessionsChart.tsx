@@ -1,16 +1,10 @@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 
-const data = [
-  { day: "Mon", completed: 45, cancelled: 3, noShow: 2 },
-  { day: "Tue", completed: 52, cancelled: 4, noShow: 1 },
-  { day: "Wed", completed: 48, cancelled: 2, noShow: 3 },
-  { day: "Thu", completed: 61, cancelled: 5, noShow: 2 },
-  { day: "Fri", completed: 55, cancelled: 3, noShow: 4 },
-  { day: "Sat", completed: 32, cancelled: 2, noShow: 1 },
-  { day: "Sun", completed: 18, cancelled: 1, noShow: 0 },
-];
+interface SessionsChartProps {
+  sessionsData?: Array<{ day: string; completed: number; cancelled: number; noShow: number }>;
+}
 
-export function SessionsChart() {
+export function SessionsChart({ sessionsData = [] }: SessionsChartProps) {
   return (
     <div className="bg-card rounded-lg border border-border p-5 animate-fade-in">
       <div className="flex items-center justify-between mb-6">
@@ -22,7 +16,7 @@ export function SessionsChart() {
       
       <div className="h-[280px]">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
+          <BarChart data={sessionsData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
             <XAxis 
               dataKey="day" 

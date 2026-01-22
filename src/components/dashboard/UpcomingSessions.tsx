@@ -2,50 +2,19 @@ import { Video, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 
-const sessions = [
-  {
-    id: 1,
-    user: "John Doe",
-    therapist: "Dr. Sarah Johnson",
-    time: "10:00 AM",
-    type: "1-on-1",
-    status: "starting_soon",
-  },
-  {
-    id: 2,
-    user: "Emily Parker",
-    therapist: "Dr. Michael Chen",
-    time: "10:30 AM",
-    type: "1-on-1",
-    status: "scheduled",
-  },
-  {
-    id: 3,
-    user: "Group Session",
-    therapist: "Dr. Lisa Williams",
-    time: "11:00 AM",
-    type: "Group(8)",
-    status: "scheduled",
-  },
-  {
-    id: 4,
-    user: "Mike Wilson",
-    therapist: "Dr. Sarah Johnson",
-    time: "11:30 AM",
-    type: "1-on-1",
-    status: "scheduled",
-  },
-  {
-    id: 5,
-    user: "Anna Smith",
-    therapist: "Dr. James Brown",
-    time: "12:00 PM",
-    type: "1-on-1",
-    status: "scheduled",
-  },
-];
+interface UpcomingSessionsProps {
+  upcomingSessionsData?: Array<{
+    _id?: string;
+    id?: number;
+    user: string;
+    therapist: string;
+    time: string;
+    type: string;
+    status: string;
+  }>;
+}
 
-export function UpcomingSessions() {
+export function UpcomingSessions({ upcomingSessionsData = [] }: UpcomingSessionsProps) {
   const navigate = useNavigate();
   const handleViewAll = () => {
     navigate("/sessions");
@@ -58,12 +27,12 @@ export function UpcomingSessions() {
       </div>
       
       <div className="space-y-3">
-        {sessions.map((session) => (
+        {upcomingSessionsData.map((session, index) => (
           <div
-            key={session.id}
+            key={session._id || session.id || index}
             className={cn(
               "flex items-center justify-between p-3 rounded-lg border",
-              session.status === "starting_soon"
+              session.status === "starting_soon" || session.status === "live"
                 ? "border-primary/30 bg-primary/5"
                 : "border-border bg-muted/30"
             )}
@@ -71,11 +40,11 @@ export function UpcomingSessions() {
             <div className="flex items-center gap-3">
               <div className={cn(
                 "p-2 rounded-lg",
-                session.status === "starting_soon" ? "bg-primary/10" : "bg-muted"
+                session.status === "starting_soon" || session.status === "live" ? "bg-primary/10" : "bg-muted"
               )}>
                 <Video className={cn(
                   "w-4 h-4",
-                  session.status === "starting_soon" ? "text-primary" : "text-muted-foreground"
+                  session.status === "starting_soon" || session.status === "live" ? "text-primary" : "text-muted-foreground"
                 )} />
               </div>
               <div>
@@ -86,7 +55,7 @@ export function UpcomingSessions() {
             <div className="text-right">
               <div className="flex items-center gap-1 text-sm">
                 <Clock className="w-3.5 h-3.5 text-muted-foreground" />
-                <span className={session.status === "starting_soon" ? "text-primary font-medium" : ""}>
+                <span className={(session.status === "starting_soon" || session.status === "live") ? "text-primary font-medium" : ""}>
                   {session.time}
                 </span>
               </div>

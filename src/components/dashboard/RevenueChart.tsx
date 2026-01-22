@@ -1,21 +1,13 @@
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
-const data = [
-  { month: "Jan", revenue: 12400 },
-  { month: "Feb", revenue: 15800 },
-  { month: "Mar", revenue: 18200 },
-  { month: "Apr", revenue: 21500 },
-  { month: "May", revenue: 24800 },
-  { month: "Jun", revenue: 28900 },
-  { month: "Jul", revenue: 32100 },
-  { month: "Aug", revenue: 29800 },
-  { month: "Sep", revenue: 35200 },
-  { month: "Oct", revenue: 38500 },
-  { month: "Nov", revenue: 42100 },
-  { month: "Dec", revenue: 45800 },
-];
+interface RevenueChartProps {
+  revenueData?: Array<{ month: string; revenue: number }>;
+}
 
-export function RevenueChart() {
+export function RevenueChart({ revenueData = [] }: RevenueChartProps) {
+  // Calculate the latest revenue value for display
+  const latestRevenue = revenueData.length > 0 ? revenueData[revenueData.length - 1].revenue : 0;
+  
   return (
     <div className="bg-card rounded-lg border border-border p-5 animate-fade-in">
       <div className="flex items-center justify-between mb-6">
@@ -24,14 +16,14 @@ export function RevenueChart() {
           <p className="text-sm text-muted-foreground">Monthly revenue overview</p>
         </div>
         <div className="text-right">
-          <p className="text-2xl font-semibold">&#8377;45,800</p>
+          <p className="text-2xl font-semibold">&#8377;{latestRevenue?.toLocaleString()}</p>
           <p className="text-xs text-success font-medium">+12.5% this month</p>
         </div>
       </div>
       
       <div className="h-[280px]">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={data} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
+          <AreaChart data={revenueData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
             <defs>
               <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.2} />
