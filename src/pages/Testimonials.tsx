@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from 'react-redux';
 import { unwrapResult } from '@reduxjs/toolkit';
-import { Search, Plus, Edit, Trash2, Star, User, Calendar, Award, Filter, CheckCircle, MessageSquare, Clock } from "lucide-react";
+import { Search, Plus, Edit, Trash2, Star, User, Calendar, Award, Filter, CheckCircle, MessageSquare, Clock, ChevronDown, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -45,11 +45,28 @@ import {
   deleteTestimonial,
   clearSelectedTestimonial
 } from '@/features/testimonials/testimonialSlice';
+import { fetchUsers } from '@/features/users/userSlice';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { cn } from "@/lib/utils"
 
 interface Testimonial {
   _id: string;
-  clientName: string;
+  clientName?: string;
   clientEmail?: string;
+  userId?: {
+    _id: string;
+    name: string;
+    email: string;
+    profilePicture?: string;
+  };
   rating: number;
   content: string;
   serviceUsed: string;
@@ -61,23 +78,57 @@ interface Testimonial {
   avatar?: string;
 }
 
+interface FormTestimonial {
+  _id: string;
+  clientName: string;
+  clientEmail?: string;
+  userId: string; // For form handling, we expect a string ID
+  rating: number;
+  content: string;
+  serviceUsed: string;
+  problem: string;
+  status: "pending" | "approved" | "rejected";
+  featured: boolean;
+  createdAt: string;
+  updatedAt: string;
+  avatar?: string;
+  id: string; // For backward compatibility with form handling
+}
+
 export default function Testimonials() {
   const dispatch = useDispatch();
   const { testimonials, stats, loading, error } = useSelector((state: any) => state.testimonials);
+  const { list: allUsers, loading: usersLoading, pagination } = useSelector((state: any) => state.users);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [isModalOpen, setIsModalOpen] = useState(false);
-  interface FormTestimonial extends Testimonial {
-    id: string; // For backward compatibility with form handling
-  }
+
 
   const [editingTestimonial, setEditingTestimonial] =
     useState<FormTestimonial | null>(null);
   const [deleteTestId, setDeleteTestId] = useState<string | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [formData, setFormData] = useState({
+  const [openUserSelector, setOpenUserSelector] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [usersPage, setUsersPage] = useState(1);
+  const [usersPerPage] = useState(20);
+  const [hasMoreUsers, setHasMoreUsers] = useState(true);
+  interface FormData {
+    clientName: string;
+    clientEmail: string;
+    userId: string; // Store just the user ID as string for form submission
+    rating: number;
+    content: string;
+    serviceUsed: string;
+    problem: string;
+    status: "pending" | "approved" | "rejected";
+    featured: boolean;
+  }
+
+  const [formData, setFormData] = useState<FormData>({
     clientName: "",
     clientEmail: "",
+    userId: "", // Store just the user ID as string for form submission
     rating: 5,
     content: "",
     serviceUsed: "",
@@ -92,10 +143,24 @@ export default function Testimonials() {
     dispatch(fetchTestimonialStats());
   }, [dispatch, searchQuery, statusFilter]);
 
+  // Load first page of users when modal opens
+  useEffect(() => {
+    if (isModalOpen && !editingTestimonial) {
+      dispatch(fetchUsers({ page: 1, limit: usersPerPage }));
+    }
+  }, [isModalOpen, editingTestimonial, dispatch]);
+
+  // Update hasMoreUsers based on pagination data
+  useEffect(() => {
+    if (pagination) {
+      setHasMoreUsers(allUsers.length < pagination.totalDocs);
+    }
+  }, [allUsers, pagination]);
+
   const filteredTestimonials = testimonials.filter(testimonial => {
-    const matchesSearch = testimonial.clientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         testimonial.serviceUsed.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         testimonial.content.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = (testimonial.clientName && testimonial.clientName.toLowerCase().includes(searchQuery.toLowerCase())) ||
+                         (testimonial.serviceUsed && testimonial.serviceUsed.toLowerCase().includes(searchQuery.toLowerCase())) ||
+                         (testimonial.content && testimonial.content.toLowerCase().includes(searchQuery.toLowerCase()));
     
     const matchesStatus = statusFilter === "all" || testimonial.status === statusFilter;
     
@@ -108,9 +173,13 @@ export default function Testimonials() {
 
   const handleCreate = () => {
     setEditingTestimonial(null);
+    setSelectedUser(null);
+    setUsersPage(1);
+    setHasMoreUsers(true);
     setFormData({
       clientName: "",
       clientEmail: "",
+      userId: "",
       rating: 5,
       content: "",
       serviceUsed: "",
@@ -122,10 +191,31 @@ export default function Testimonials() {
   };
 
   const handleEdit = (testimonial: Testimonial) => {
-    setEditingTestimonial({ ...testimonial, id: testimonial._id });
+    const userIdString = testimonial.userId ? (typeof testimonial.userId === 'string' ? testimonial.userId : testimonial.userId._id) : "";
+    
+    setEditingTestimonial({
+      _id: testimonial._id,
+      clientName: testimonial.clientName || '',
+      clientEmail: testimonial.clientEmail || testimonial.userId?.email,
+      userId: userIdString, // Convert object to string for form handling
+      rating: testimonial.rating,
+      content: testimonial.content,
+      serviceUsed: testimonial.serviceUsed,
+      problem: testimonial.problem,
+      status: testimonial.status,
+      featured: testimonial.featured,
+      createdAt: testimonial.createdAt,
+      updatedAt: testimonial.updatedAt,
+      avatar: testimonial.avatar,
+      id: testimonial._id,
+    });
+    setSelectedUser(null); // Clear selected user when editing
+    setUsersPage(1);
+    setHasMoreUsers(true);
     setFormData({
-      clientName: testimonial.clientName,
-      clientEmail: testimonial.clientEmail || "",
+      clientName: testimonial.clientName || '',
+      clientEmail: testimonial.clientEmail || testimonial.userId?.email || "",
+      userId: userIdString, // Extract ID from populated object
       rating: testimonial.rating,
       content: testimonial.content,
       serviceUsed: testimonial.serviceUsed,
@@ -138,6 +228,12 @@ export default function Testimonials() {
 
   const handleSubmit = async () => {
     try {
+      // Validate required fields
+      if (!editingTestimonial && !formData.userId) {
+        alert('Please select a user from the dropdown');
+        return;
+      }
+      
       if (editingTestimonial) {
         // Update existing testimonial
         await dispatch(updateTestimonial({ id: editingTestimonial.id, data: formData })).unwrap();
@@ -219,6 +315,26 @@ export default function Testimonials() {
   const cancelDelete = () => {
     setDeleteTestId(null);
     setIsDeleteDialogOpen(false);
+  };
+
+  const handleUserSelect = (user: any) => {
+    setSelectedUser(user);
+    setFormData(prev => ({
+      ...prev,
+      userId: user._id,
+      clientName: user.name || user.fullName || (user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user._id),
+      clientEmail: user.email || "",
+    }));
+    setOpenUserSelector(false);
+  };
+
+  const loadMoreUsers = () => {
+    if (hasMoreUsers && !usersLoading) {
+      const nextPage = usersPage + 1;
+      setUsersPage(nextPage);
+      // Dispatch fetchUsers with pagination parameters
+      dispatch(fetchUsers({ page: nextPage, limit: usersPerPage }));
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -409,10 +525,10 @@ export default function Testimonials() {
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-                        {testimonial.avatar ? (
+                        {testimonial.userId?.profilePicture ? (
                           <img
-                            src={testimonial.avatar}
-                            alt={testimonial.clientName}
+                            src={testimonial.userId.profilePicture}
+                            alt={testimonial.userId.name || ''}
                             className="w-10 h-10 rounded-full object-cover"
                           />
                         ) : (
@@ -421,11 +537,11 @@ export default function Testimonials() {
                       </div>
                       <div>
                         <div className="font-medium">
-                          {testimonial.clientName}
+                          {testimonial.userId?.name || testimonial.clientName || 'N/A'}
                         </div>
-                        {testimonial.clientEmail && (
+                        {(testimonial.userId?.email || testimonial.clientEmail) && (
                           <div className="text-sm text-muted-foreground">
-                            {testimonial.clientEmail}
+                            {testimonial.userId?.email || testimonial.clientEmail}
                           </div>
                         )}
                       </div>
@@ -440,10 +556,10 @@ export default function Testimonials() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <span className="text-sm">{testimonial.problem}</span>
+                    <span className="text-sm">{testimonial.problem || 'N/A'}</span>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="secondary">{testimonial.serviceUsed}</Badge>
+                    <Badge variant="secondary">{testimonial.serviceUsed || 'N/A'}</Badge>
                   </TableCell>
                   <TableCell>
                     <Badge className={getStatusColor(testimonial.status)}>
@@ -460,7 +576,7 @@ export default function Testimonials() {
                     )}
                   </TableCell>
                   <TableCell>
-                    {new Date(testimonial.createdAt).toLocaleDateString()}
+                    {testimonial.createdAt ? new Date(testimonial.createdAt).toLocaleDateString() : 'N/A'}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
@@ -546,14 +662,58 @@ export default function Testimonials() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="clientName">Client Name *</Label>
-                <Input
-                  id="clientName"
-                  value={formData.clientName}
-                  onChange={(e) =>
-                    setFormData({ ...formData, clientName: e.target.value })
-                  }
-                  placeholder="Enter client name"
-                />
+                <Popover open={openUserSelector} onOpenChange={setOpenUserSelector}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={openUserSelector}
+                      className="w-full justify-between"
+                    >
+                      {selectedUser
+                        ? selectedUser.name || selectedUser.fullName || selectedUser.firstName + " " + selectedUser.lastName
+                        : "Select user..."}
+                      <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-full p-0">
+                    <Command>
+                      <CommandInput placeholder="Search users..." />
+                      <CommandList>
+                        <CommandEmpty>No users found.</CommandEmpty>
+                        <CommandGroup>
+                          {allUsers.map((user) => (
+                            <CommandItem
+                              key={user._id}
+                              value={user.name || user.fullName || user.firstName + " " + user.lastName}
+                              onSelect={() => handleUserSelect(user)}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  selectedUser?._id === user._id
+                                    ? "opacity-100"
+                                    : "opacity-0"
+                                )}
+                              />
+                              {user.name || user.fullName || `${user.firstName} ${user.lastName}`}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                        {usersLoading && (
+                          <div className="py-2 text-center text-sm text-muted-foreground">
+                            Loading more users...
+                          </div>
+                        )}
+                        {!usersLoading && hasMoreUsers && (
+                          <CommandItem onSelect={loadMoreUsers} className="py-2 text-sm text-center justify-center">
+                            Load more users
+                          </CommandItem>
+                        )}
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="clientEmail">Client Email</Label>

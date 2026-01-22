@@ -46,7 +46,7 @@ export default function StepsSection({ data, onAdd, onDelete, onEdit }: StepsSec
                         <tbody className="divide-y divide-border">
                             {(data || []).map((step, index) => (
                                 <tr key={step._id} className="hover:bg-muted/50 transition-colors text-sm">
-                                    <td className="px-4 py-3 font-mono text-xs sm:text-sm">{step._id}</td>
+                                    <td className="px-4 py-3 font-mono text-xs sm:text-sm">{index + 1}</td>
                                     <td className="px-4 py-3 hidden sm:table-cell">
                                         <div className="font-medium text-sm">{step.title}</div>
                                     </td>

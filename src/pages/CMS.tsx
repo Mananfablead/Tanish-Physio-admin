@@ -202,6 +202,7 @@ interface AboutData {
     foundingStory: string;
     teamInfo: string;
     image: string;
+    images: (string | File)[];
     isPublic: boolean;
 }
 
@@ -236,7 +237,7 @@ export default function CMS() {
         terms: { _id: '', title: '', content: '', isPublic: true },
         featuredTherapist: { _id: '', name: '', specialty: '', experience: '', rating: '', description: '', image: '', availableToday: false, ctaText: '', viewProfileText: '', isPublic: true },
         contact: { _id: '', title: '', description: '', email: '', phone: '', address: '', hours: '', socialLinks: [], isPublic: true },
-        about: { _id: '', title: '', description: '', mission: '', vision: '', values: [], foundingStory: '', teamInfo: '', image: '', isPublic: true }
+        about: { _id: '', title: '', description: '', mission: '', vision: '', values: [], foundingStory: '', teamInfo: '', image: '', images: [], isPublic: true }
     });
     
     // Update local state when Redux state changes
@@ -253,7 +254,11 @@ export default function CMS() {
                 })),
                 conditions: {
                     ...cmsStateData.conditions,
-                    conditions: cmsStateData.conditions?.conditions || [],
+                    conditions: (cmsStateData.conditions?.conditions || []).map(condition => ({
+                        ...condition,
+                        // Clean up existing problematic image data
+                        image: condition.image && typeof condition.image === 'object' ? null : condition.image
+                    })),
                     isPublic: cmsStateData.conditions?.isPublic ?? true
                 },
                 whyUs: {
@@ -343,19 +348,13 @@ export default function CMS() {
                 for (const step of updatedData) {
                     dispatch(createStep(step));
                 }
-                setData(prev => ({
-                    ...prev,
-                    steps: [...prev.steps, ...updatedData.map(s => ({ ...s, isPublic: true }))] 
-                }));
+                // Note: The steps will be added to local state via useEffect when Redux state updates
             } else {
                 // Updating an existing step
                 if (!updatedData._id) {
                     // Adding a new step
                     dispatch(createStep(updatedData));
-                    setData(prev => ({
-                        ...prev,
-                        steps: [...prev.steps, { ...updatedData, isPublic: true }]
-                    }));
+                    // Note: The step will be added to local state via useEffect when Redux state updates
                 } else {
                     // Updating an existing step
                     // Clean up the stepData to remove problematic id fields
@@ -389,10 +388,7 @@ export default function CMS() {
             if (!updatedData._id) {
                 // Adding a new FAQ
                 dispatch(createFaq(updatedData));
-                setData(prev => ({
-                    ...prev,
-                    faq: [...prev.faq, { ...updatedData, isPublic: true }]
-                }));
+                // Note: The FAQ will be added to local state via useEffect when Redux state updates
             } else {
                 // Updating an existing FAQ
                 // Clean up the faqData to remove problematic id fields
@@ -1325,7 +1321,11 @@ const EditStepForm = ({ data, onSave, onCancel, isNew }) => {
 const EditConditionsForm = ({ data, onSave, onCancel }) => {
     const [formData, setFormData] = useState({
         ...data,
-        conditions: data?.conditions || []
+        conditions: data?.conditions?.map(condition => ({
+            ...condition,
+            // Ensure image is null if it's an empty string
+            image: condition.image || null
+        })) || []
     });
 
     const handleChange = (field, value) => {
@@ -1337,7 +1337,9 @@ const EditConditionsForm = ({ data, onSave, onCancel }) => {
 
     const handleConditionChange = (index, field, value) => {
         const newConditions = [...(formData.conditions || [])];
-        newConditions[index][field] = value;
+        // For image field, convert empty string to null
+        const finalValue = field === 'image' && value === '' ? null : value;
+        newConditions[index][field] = finalValue;
         setFormData(prev => ({
             ...prev,
             conditions: newConditions
@@ -1345,7 +1347,7 @@ const EditConditionsForm = ({ data, onSave, onCancel }) => {
     };
 
     const addCondition = () => {
-        const newCondition = { name: '', image: '' };
+        const newCondition = { name: '', image: null };
         setFormData(prev => ({
             ...prev,
             conditions: [...(prev.conditions || []), newCondition]
@@ -1372,7 +1374,17 @@ const EditConditionsForm = ({ data, onSave, onCancel }) => {
     };
 
     const handleSubmit = () => {
-        onSave(formData);
+        // Clean up the form data before submitting
+        const cleanedData = {
+            ...formData,
+            conditions: formData.conditions?.map(condition => ({
+                ...condition,
+                // Remove image field if it's null
+                ...(condition.image ? { image: condition.image } : {})
+            })) || []
+        };
+        
+        onSave(cleanedData);
     };
 
     return (
@@ -2075,10 +2087,11 @@ const EditContactForm = ({ data, onSave, onCancel }) => {
 };
 
 
-const EditAboutForm = ({ data, onSave, onCancel }) => {
+const EditAboutForm = ({ data, onSave, onCancel }: { data: AboutData; onSave: (data: any) => void; onCancel: () => void }) => {
     const [formData, setFormData] = useState({
         ...data,
-        values: data?.values || []
+        values: data?.values || [],
+        images: data?.images || []
     });
 
     const handleChange = (field, value) => {
@@ -2112,7 +2125,7 @@ const EditAboutForm = ({ data, onSave, onCancel }) => {
         }));
     };
 
-    // Handle image upload
+    // Handle single image upload (legacy support)
     const handleImageUpload = (e) => {
         const file = e.target.files[0];
         if (file) {
@@ -2121,6 +2134,54 @@ const EditAboutForm = ({ data, onSave, onCancel }) => {
                 image: file
             }));
         }
+    };
+
+    // Handle multiple images upload
+    const handleMultipleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = Array.from(e.target.files || []);
+        if (files.length > 0) {
+            setFormData(prev => ({
+                ...prev,
+                images: [...prev.images, ...files]
+            }));
+        }
+    };
+
+    // Remove image from array
+    const removeImage = (index) => {
+        setFormData(prev => ({
+            ...prev,
+            images: prev.images.filter((_, i) => i !== index)
+        }));
+    };
+
+    // Set primary image (move to first position)
+    const setPrimaryImage = (index) => {
+        const newImages = [...formData.images];
+        const [movedImage] = newImages.splice(index, 1);
+        newImages.unshift(movedImage);
+        
+        setFormData(prev => ({
+            ...prev,
+            images: newImages
+        }));
+    };
+
+    // Get image source (handles both File objects and URLs)
+    const getImageSrc = (image: string | File | Blob) => {
+        if (typeof image === 'string') {
+            return image;
+        } else if (image && typeof image === 'object' && 'type' in image && 
+                   typeof image.type === 'string' && image.type.startsWith('image/')) {
+            // Check if it's a File-like object without using instanceof
+            try {
+                return URL.createObjectURL(image as Blob);
+            } catch (error) {
+                console.warn('Failed to create object URL:', error);
+                return '';
+            }
+        }
+        return '';
     };
 
     const handleSubmit = () => {
@@ -2206,9 +2267,77 @@ const EditAboutForm = ({ data, onSave, onCancel }) => {
                 </div>
             </div>
             <div>
-                <Label>About Us Image</Label>
-                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-2">
-                    <div className="flex-1">
+                <Label>About Us Images</Label>
+                <div className="space-y-4 mt-2">
+                    {/* Multiple Image Upload */}
+                    <div>
+                        <Input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleMultipleImageUpload}
+                            multiple
+                            className="hidden"
+                            id="about-images-upload"
+                        />
+                        <label
+                            htmlFor="about-images-upload"
+                            className="flex flex-col items-center justify-center w-full h-24 sm:h-32 border-2 border-dashed rounded-lg cursor-pointer bg-muted hover:bg-accent transition-colors"
+                        >
+                            <Upload className="w-6 h-6 sm:w-8 sm:h-8 text-muted-foreground mb-1 sm:mb-2" />
+                            <span className="text-xs sm:text-sm text-muted-foreground">Click to upload multiple images</span>
+                            <span className="text-xs text-muted-foreground mt-1">Supports JPG, PNG, GIF (Max 5MB each)</span>
+                        </label>
+                    </div>
+                    
+                    {/* Image Gallery Preview */}
+                    {formData.images && formData.images.length > 0 && (
+                        <div>
+                            <h4 className="text-sm font-medium mb-2">Uploaded Images ({formData.images.length})</h4>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                                {formData.images.map((image, index) => (
+                                    <div key={index} className="relative group">
+                                        <div className="aspect-square bg-muted rounded-lg border overflow-hidden">
+                                            <img
+                                                src={getImageSrc(image)}
+                                                alt={`Preview ${index + 1}`}
+                                                className="w-full h-full object-cover"
+                                            />
+                                        </div>
+                                        <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-2 p-2">
+                                            <Button
+                                                type="button"
+                                                variant="secondary"
+                                                size="sm"
+                                                onClick={() => setPrimaryImage(index)}
+                                                className="h-8 w-8 p-0"
+                                                title="Set as primary image"
+                                            >
+                                                <Star className="h-4 w-4" />
+                                            </Button>
+                                            <Button
+                                                type="button"
+                                                variant="destructive"
+                                                size="sm"
+                                                onClick={() => removeImage(index)}
+                                                className="h-8 w-8 p-0"
+                                                title="Remove image"
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                        {index === 0 && (
+                                            <Badge className="absolute top-2 left-2 bg-primary text-primary-foreground text-xs">
+                                                Primary
+                                            </Badge>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                    
+                    {/* Legacy Single Image Upload (Hidden but kept for backward compatibility) */}
+                    <div className="hidden">
                         <Input
                             type="file"
                             accept="image/*"
@@ -2216,25 +2345,8 @@ const EditAboutForm = ({ data, onSave, onCancel }) => {
                             className="hidden"
                             id="about-image-upload"
                         />
-                        <label
-                            htmlFor="about-image-upload"
-                            className="flex flex-col items-center justify-center w-full h-24 sm:h-32 border-2 border-dashed rounded-lg cursor-pointer bg-muted hover:bg-accent transition-colors"
-                        >
-                            <Upload className="w-6 h-6 sm:w-8 sm:h-8 text-muted-foreground mb-1 sm:mb-2" />
-                            <span className="text-xs sm:text-sm text-muted-foreground">Click to upload image</span>
-                        </label>
+                        <label htmlFor="about-image-upload">Legacy upload</label>
                     </div>
-                    {formData.image && (
-                        <div className="flex-1">
-                            <div className="aspect-video bg-muted rounded-lg border flex items-center justify-center overflow-hidden">
-                                <img
-                                    src={typeof formData.image === 'string' ? formData.image : URL.createObjectURL(formData.image)}
-                                    alt="Preview"
-                                    className="w-full h-full object-cover"
-                                />
-                            </div>
-                        </div>
-                    )}
                 </div>
             </div>
             <div className="flex items-center space-x-2">

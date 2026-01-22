@@ -11,10 +11,22 @@ import apiClient, { API } from "@/api/apiClient";
  */
 export const fetchUsers = createAsyncThunk(
   "users/fetch",
-  async (_, { rejectWithValue }) => {
+  async (params = {}, { rejectWithValue }) => {
     try {
-      const res = await apiClient.get(API.USERS);
-      return res.data?.data?.users || []; // ✅ FIXED
+      // Build query string from params
+      const queryParams = new URLSearchParams();
+      if (params.page) queryParams.append('page', params.page);
+      if (params.limit) queryParams.append('limit', params.limit);
+      
+      const queryString = queryParams.toString();
+      const url = queryString ? `${API.USERS}?${queryString}` : API.USERS;
+      
+      const res = await apiClient.get(url);
+      // Return both users and pagination info
+      return {
+        users: res.data?.data?.users || [],
+        pagination: res.data?.data?.pagination || null
+      };
     } catch (err) {
       return rejectWithValue("Users fetch failed");
     }
@@ -81,6 +93,7 @@ const userSlice = createSlice({
   initialState: {
     list: [],
     selectedUser: null, // User object when selected, null when none
+    pagination: null,
     loading: false,
     error: null,
   },
@@ -95,7 +108,14 @@ const userSlice = createSlice({
       })
       .addCase(fetchUsers.fulfilled, (state, action) => {
         state.loading = false;
-        state.list = action.payload; // payload = users[]
+        // If it's the first page, replace the list; otherwise, append to it
+        if (action.meta.arg.page === 1 || !action.meta.arg.page) {
+          state.list = action.payload.users;
+        } else {
+          // Append new users to existing list
+          state.list = [...state.list, ...action.payload.users];
+        }
+        state.pagination = action.payload.pagination;
       })
       .addCase(fetchUsers.rejected, (state, action) => {
         state.loading = false;

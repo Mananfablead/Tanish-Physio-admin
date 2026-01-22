@@ -514,9 +514,21 @@ export const cmsAPI = {
   updateConditions: (data) => {
     const formData = new FormData();
         
-    // Add conditions array as JSON string
+    // DEBUG: Log what we're sending
+    console.log('=== FRONTEND CONDITIONS UPDATE DEBUG ===');
+    console.log('Sending data:', data);
+    
+    // Process conditions - clean up image fields before stringifying
+    let processedConditions = data.conditions;
     if (data.conditions && Array.isArray(data.conditions)) {
-      formData.append('conditions', JSON.stringify(data.conditions));
+      processedConditions = data.conditions.map(condition => ({
+        ...condition,
+        // Remove image field if it's not a string (i.e., file object or problematic object)
+        ...(condition.image && typeof condition.image === 'string' ? { image: condition.image } : {})
+      }));
+      
+      // Add conditions array as JSON string
+      formData.append('conditions', JSON.stringify(processedConditions));
     }
         
     // Add other fields except conditions and images
@@ -534,10 +546,17 @@ export const cmsAPI = {
     // Add condition images if they exist
     if (data.conditions && Array.isArray(data.conditions)) {
       data.conditions.forEach((condition, index) => {
-        if (condition.image && typeof condition.image !== 'string') {
-          formData.append(`conditions[${index}]`, condition.image);
+        if (condition.image && typeof condition.image !== 'string' && condition.image instanceof File) {
+          console.log(`Appending file for condition ${index}:`, condition.image.name);
+          formData.append(`conditions[${index}].image`, condition.image);
         }
       });
+    }
+    
+    // DEBUG: Log FormData contents
+    console.log('FormData entries:');
+    for (let [key, value] of formData.entries()) {
+      console.log(key, value instanceof File ? `File: ${value.name}` : value);
     }
         
     return apiClient.put(API.CMS_CONDITIONS_ADMIN, formData, {
@@ -593,16 +612,31 @@ export const cmsAPI = {
   getAboutPublic: () => apiClient.get(API.CMS_ABOUT_PUBLIC),
   getAboutAdmin: () => apiClient.get(API.CMS_ABOUT_ADMIN),
   updateAbout: (data) => {
-    // Check if image data contains actual file objects (not just URLs)
-    if (data.image && typeof data.image !== 'string') {
+    // Check if images data contains actual file objects (not just URLs)
+    const hasImageFiles = data.images && Array.isArray(data.images) && 
+                          data.images.some(img => img instanceof File);
+    
+    if (hasImageFiles) {
       const formData = new FormData();
-      formData.append('image', data.image);
-      // Add other fields except image
-      Object.keys(data).forEach(key => {
-        if (key !== 'image') {
-          formData.append(key, data[key]);
+      
+      // Append all image files
+      data.images.forEach((image, index) => {
+        if (image instanceof File) {
+          formData.append('images', image);
         }
       });
+      
+      // Add other fields except images array
+      Object.keys(data).forEach(key => {
+        if (key !== 'images') {
+          if (typeof data[key] === 'object' && data[key] !== null) {
+            formData.append(key, JSON.stringify(data[key]));
+          } else {
+            formData.append(key, data[key]);
+          }
+        }
+      });
+      
       return apiClient.put(API.CMS_ABOUT_ADMIN, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
