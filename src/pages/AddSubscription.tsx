@@ -11,11 +11,11 @@ import { Link, useNavigate } from "react-router-dom";
 /* ---------------- CONSTANTS ---------------- */
 
 const planOptions = [
-  { label: "Daily", value: "daily" },
-  { label: "Weekly", value: "weekly" },
-  { label: "Monthly", value: "monthly" },
-  { label: "Quarterly", value: "quarterly" },
-  { label: "Yearly", value: "yearly" },
+  { label: "Daily", value: "daily", months: 1 },
+  { label: "Weekly", value: "weekly", months: 1 },
+  { label: "Monthly", value: "monthly", months: 1 },
+  { label: "Quarterly", value: "quarterly", months: 3 },
+  { label: "Yearly", value: "yearly", months: 12 },
 ];
 
 const durationOptions = [
@@ -23,42 +23,29 @@ const durationOptions = [
   { label: "Yearly", value: "yearly" },
 ];
 
-const planValidityMap: Record<string, number> = {
-  daily: 1,
-  weekly: 1,
-  monthly: 1,
-  quarterly: 3,
-  yearly: 12,
-};
-
 /* ---------------- COMPONENT ---------------- */
 
 export default function AddSubscription() {
-  const dispatch = useDispatch();
+  const dispatch = useDispatch<any>();
   const navigate = useNavigate();
   const { toast } = useToast();
 
   const [planForm, setPlanForm] = useState({
     planId: "",
     name: "",
+    description: "",
     price: 0,
     originalPrice: 0,
     discountPercent: 0,
-
-    description: "",
+    duration: "monthly",
+    validityInMonths: 1,
+    sessions: 0, // 0 = Unlimited
+    sessionDuration: 60,
     features: [""],
     benefits: [""],
     services: ["Physiotherapy"],
-
-    sessions: 0, // 0 = Unlimited
-    sessionDuration: 60,
-
-    duration: "monthly",
-    validityInMonths: 1,
-
     maxBookingsPerDay: 1,
     cancellationWindow: 12,
-
     popular: false,
     autoRenew: true,
     status: "active",
@@ -66,12 +53,12 @@ export default function AddSubscription() {
 
   /* ---------------- HANDLERS ---------------- */
 
-  const handleInputChange = (
+  const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
-    setPlanForm((prev) => ({
-      ...prev,
+    setPlanForm((p) => ({
+      ...p,
       [name]: ["price", "originalPrice", "discountPercent"].includes(name)
         ? Number(value)
         : value,
@@ -97,42 +84,40 @@ export default function AddSubscription() {
       [field]: p[field].filter((_, i) => i !== index),
     }));
 
-  const handleSavePlan = async () => {
-    try {
-      if (!planForm.planId || !planForm.name || !planForm.price) {
-        toast({
-          title: "Validation Error",
-          description: "Plan Type, Name and Price are required",
-          variant: "destructive",
-        });
-        return;
-      }
+  const handleSave = async () => {
+    if (!planForm.planId || !planForm.name || !planForm.price) {
+      toast({
+        title: "Validation Error",
+        description: "Plan Type, Name and Price are required",
+        variant: "destructive",
+      });
+      return;
+    }
 
-      const payload = {
-        ...planForm,
-        price: Number(planForm.price),
-        originalPrice: Number(planForm.originalPrice),
-        sessions: Number(planForm.sessions),
-        sessionDuration: Number(planForm.sessionDuration),
-      };
+    const payload = {
+      ...planForm,
+      price: Number(planForm.price),
+      originalPrice: Number(planForm.originalPrice),
+      discountPercent: Number(planForm.discountPercent),
+      sessions: Number(planForm.sessions),
+      sessionDuration: Number(planForm.sessionDuration),
+      validityInMonths: Number(planForm.validityInMonths),
+      maxBookingsPerDay: Number(planForm.maxBookingsPerDay),
+      cancellationWindow: Number(planForm.cancellationWindow),
+    };
 
-      const result: any = await dispatch(createSubscriptionPlan(payload));
+    const result = await dispatch(createSubscriptionPlan(payload));
 
-      if (createSubscriptionPlan.fulfilled.match(result)) {
-        toast({
-          title: "Success",
-          description: "Subscription plan created successfully",
-        });
-        navigate("/subscriptions");
-      } else {
-        throw new Error(
-          result.payload?.message || "Failed to create subscription plan"
-        );
-      }
-    } catch (err: any) {
+    if (createSubscriptionPlan.fulfilled.match(result)) {
+      toast({
+        title: "Success",
+        description: "Subscription plan created successfully",
+      });
+      navigate("/subscriptions");
+    } else {
       toast({
         title: "Error",
-        description: err.message,
+        description: result.payload?.message || "Failed to create plan",
         variant: "destructive",
       });
     }
@@ -141,7 +126,7 @@ export default function AddSubscription() {
   /* ---------------- UI ---------------- */
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6 max-w-6xl mx-auto">
       {/* HEADER */}
       <div className="flex justify-between items-center">
         <div>
@@ -157,21 +142,23 @@ export default function AddSubscription() {
 
       {/* FORM */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* LEFT */}
-        <div className="bg-card p-6 rounded-lg border space-y-4">
+        {/* LEFT COLUMN */}
+        <div className="border rounded-lg p-6 space-y-4 bg-card">
           <div>
             <Label>Plan Type</Label>
             <select
               className="w-full mt-1 p-2 border rounded"
               value={planForm.planId}
-              onChange={(e) =>
+              onChange={(e) => {
+                const plan = planOptions.find(
+                  (p) => p.value === e.target.value
+                );
                 setPlanForm((p) => ({
                   ...p,
                   planId: e.target.value,
-                  validityInMonths:
-                    planValidityMap[e.target.value] || 1,
-                }))
-              }
+                  validityInMonths: plan?.months || 1,
+                }));
+              }}
             >
               <option value="">Select Plan</option>
               {planOptions.map((p) => (
@@ -184,40 +171,35 @@ export default function AddSubscription() {
 
           <div>
             <Label>Plan Name</Label>
-            <Input name="name" value={planForm.name} onChange={handleInputChange} />
+            <Input name="name" value={planForm.name} onChange={handleChange} />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label>Price (₹)</Label>
-              <Input name="price" type="number" value={planForm.price} onChange={handleInputChange} />
-            </div>
-            <div>
-              <Label>Original Price (₹)</Label>
-              <Input name="originalPrice" type="number" value={planForm.originalPrice} onChange={handleInputChange} />
+              <Input
+                name="price"
+                type="number"
+                value={planForm.price}
+                onChange={handleChange}
+              />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label>Discount (%)</Label>
-              <Input name="discountPercent" type="number" value={planForm.discountPercent} onChange={handleInputChange} />
-            </div>
-            <div>
-              <Label>Billing Duration</Label>
-              <select
-                name="duration"
-                value={planForm.duration}
-                onChange={handleInputChange}
-                className="w-full mt-1 p-2 border rounded"
-              >
-                {durationOptions.map((d) => (
-                  <option key={d.value} value={d.value}>
-                    {d.label}
-                  </option>
-                ))}
-              </select>
-            </div>
+          <div>
+            <Label>Billing Duration</Label>
+            <select
+              name="duration"
+              value={planForm.duration}
+              onChange={handleChange}
+              className="w-full mt-1 p-2 border rounded"
+            >
+              {durationOptions.map((d) => (
+                <option key={d.value} value={d.value}>
+                  {d.label}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>
@@ -225,8 +207,8 @@ export default function AddSubscription() {
             <textarea
               name="description"
               value={planForm.description}
-              onChange={handleInputChange}
-              className="w-full mt-1 p-2 border rounded"
+              onChange={handleChange}
+              className="w-full mt-1 p-2 border rounded min-h-[80px]"
             />
           </div>
 
@@ -237,7 +219,10 @@ export default function AddSubscription() {
                 type="number"
                 value={planForm.sessions}
                 onChange={(e) =>
-                  setPlanForm((p) => ({ ...p, sessions: Number(e.target.value) }))
+                  setPlanForm((p) => ({
+                    ...p,
+                    sessions: Number(e.target.value),
+                  }))
                 }
                 placeholder="0 = Unlimited"
               />
@@ -262,8 +247,8 @@ export default function AddSubscription() {
           </div>
         </div>
 
-        {/* RIGHT */}
-        <div className="bg-card p-6 rounded-lg border space-y-4">
+        {/* RIGHT COLUMN */}
+        <div className="border rounded-lg p-6 space-y-4 bg-card">
           {/* FEATURES */}
           <div>
             <div className="flex justify-between mb-2">
@@ -274,9 +259,18 @@ export default function AddSubscription() {
             </div>
             {planForm.features.map((f, i) => (
               <div key={i} className="flex gap-2 mb-2">
-                <Input value={f} onChange={(e) => updateArrayField("features", i, e.target.value)} />
+                <Input
+                  value={f}
+                  onChange={(e) =>
+                    updateArrayField("features", i, e.target.value)
+                  }
+                />
                 {planForm.features.length > 1 && (
-                  <Button size="icon" variant="outline" onClick={() => removeArrayItem("features", i)}>
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    onClick={() => removeArrayItem("features", i)}
+                  >
                     −
                   </Button>
                 )}
@@ -285,7 +279,7 @@ export default function AddSubscription() {
           </div>
 
           {/* BENEFITS */}
-          <div>
+          {/* <div>
             <div className="flex justify-between mb-2">
               <Label>Benefits</Label>
               <Button size="sm" variant="outline" onClick={() => addArrayItem("benefits")}>
@@ -297,33 +291,14 @@ export default function AddSubscription() {
                 key={i}
                 className="mb-2"
                 value={b}
-                onChange={(e) => updateArrayField("benefits", i, e.target.value)}
+                onChange={(e) =>
+                  updateArrayField("benefits", i, e.target.value)
+                }
               />
             ))}
-          </div>
+          </div> */}
 
-          {/* SERVICES */}
-          <div>
-            <Label>Services Included</Label>
-            <select
-              multiple
-              className="w-full mt-1 p-2 border rounded"
-              value={planForm.services}
-              onChange={(e) =>
-                setPlanForm((p) => ({
-                  ...p,
-                  services: Array.from(e.target.selectedOptions, (o) => o.value),
-                }))
-              }
-            >
-              <option value="Physiotherapy">Physiotherapy</option>
-              <option value="Sports Rehab">Sports Rehab</option>
-              <option value="Post Surgery Rehab">Post Surgery Rehab</option>
-              <option value="Pain Management">Pain Management</option>
-            </select>
-          </div>
-
-          <div className="flex justify-between items-center">
+          {/* <div className="flex justify-between items-center">
             <Label>Popular Plan</Label>
             <Switch
               checked={planForm.popular}
@@ -331,17 +306,7 @@ export default function AddSubscription() {
                 setPlanForm((p) => ({ ...p, popular: v }))
               }
             />
-          </div>
-
-          <div className="flex justify-between items-center">
-            <Label>Auto Renew</Label>
-            <Switch
-              checked={planForm.autoRenew}
-              onCheckedChange={(v) =>
-                setPlanForm((p) => ({ ...p, autoRenew: v }))
-              }
-            />
-          </div>
+          </div> */}
 
           <div className="flex justify-between items-center">
             <Label>Active</Label>
@@ -363,7 +328,7 @@ export default function AddSubscription() {
         <Button variant="outline" asChild>
           <Link to="/subscriptions">Cancel</Link>
         </Button>
-        <Button onClick={handleSavePlan}>Create Plan</Button>
+        <Button onClick={handleSave}>Create Plan</Button>
       </div>
     </div>
   );

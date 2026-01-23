@@ -10,9 +10,9 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '@/types/store';
-import { 
-  getAllAvailability, 
-  createAvailability, 
+import {
+  getAllAvailability,
+  createAvailability,
   updateAvailability,
   bulkUpdateAvailability,
   setSelectedAvailability,
@@ -24,31 +24,41 @@ const Availability = () => {
   const dispatch = useDispatch();
   const { availability, loading: isLoading, error } = useSelector((state: RootState) => state.availability);
   const { user: currentUser } = useSelector((state: RootState) => state.auth);
-  
+
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [startTime, setStartTime] = useState('09:00');
-  const [endTime, setEndTime] = useState('17:00');
-  const [isAvailable, setIsAvailable] = useState(true);
-  const [isHoliday, setIsHoliday] = useState(false);
+   const [startTime, setStartTime] = useState('10:00');
+  const [endTime, setEndTime] = useState('11:00');
   const [viewMode, setViewMode] = useState<'day' | 'week' | 'month'>('month');
   
+  // State for managing custom time slots
+  const [customSlots, setCustomSlots] = useState<any[]>([]);
+  
+  // State for new slot form
+
+  
+  // State for editing slots
+  const [editingSlotIndex, setEditingSlotIndex] = useState<number | null>(null);
+  const [editSlotStart, setEditSlotStart] = useState('');
+  const [editSlotEnd, setEditSlotEnd] = useState('');
+  const [editSlotStatus, setEditSlotStatus] = useState('available');
+
   // State for bulk apply preview
   const [bulkApplyPreview, setBulkApplyPreview] = useState<boolean>(false);
   const [bulkApplyDates, setBulkApplyDates] = useState<string[]>([]);
-  
+
   // State for warnings
   const [warnings, setWarnings] = useState<string[]>([]);
-  
+
   // State for saving
   const [saving, setSaving] = useState(false);
   const [bulkSaving, setBulkSaving] = useState(false);
-  
+
   const { toast } = useToast();
-  
+
   // Get today's date for highlighting
   const today = new Date();
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-  
+
   // Function to check if a date is in the past
   const isPastDate = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -60,36 +70,43 @@ const Availability = () => {
   // Calendar data from API
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
-  
+
   // Fetch availability data from Redux store
   useEffect(() => {
     dispatch(getAllAvailability());
   }, [dispatch]);
-  
+
   // Memoize the calendar weeks to avoid regenerating on every render
   const calendarWeeks = React.useMemo(() => {
     // Generate days for the current month
     const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
     const firstDayOfMonth = new Date(currentYear, currentMonth, 1).getDay();
-    
+
     // Create an array of days with their availability status
     const calendarDays = Array.from({ length: daysInMonth }, (_, i) => {
       const day = i + 1;
       const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-      
+
       // Find availability for this date
       const availabilityForDate = availability.find(item => item.date === dateStr);
-      
-      // Determine status based on availability data
+
+      // Determine status based on time slots
       let status = 0; // default to available
-      if (availabilityForDate) {
-        if (availabilityForDate.status === 'booked') {
-          status = 1; // booked
-        } else if (availabilityForDate.status === 'unavailable') {
-          status = 2; // holiday/unavailable
+      if (availabilityForDate && availabilityForDate.timeSlots) {
+        const slots = availabilityForDate.timeSlots;
+        const bookedSlots = slots.filter(slot => slot.status === 'booked');
+        const unavailableSlots = slots.filter(slot => slot.status === 'unavailable');
+        const availableSlots = slots.filter(slot => slot.status === 'available');
+
+        if (bookedSlots.length > 0) {
+          status = 1; // booked (if any slots are booked)
+        } else if (unavailableSlots.length > 0 && availableSlots.length === 0) {
+          status = 2; // holiday/unavailable (all slots unavailable)
+        } else if (availableSlots.length > 0) {
+          status = 0; // available (has available slots)
         }
       }
-      
+
       return {
         date: dateStr,
         day,
@@ -101,23 +118,23 @@ const Availability = () => {
     // Create weeks for the calendar
     const weeks = [];
     let week = Array(7).fill(null);
-    
+
     // Fill in the first week
     for (let i = 0; i < firstDayOfMonth; i++) {
       week[i] = null;
     }
-    
+
     // Fill in the days
     for (let day = 0; day < calendarDays.length; day++) {
       const dayOfWeek = (firstDayOfMonth + day) % 7;
       week[dayOfWeek] = calendarDays[day];
-      
+
       if (dayOfWeek === 6 || day === calendarDays.length - 1) {
         weeks.push([...week]);
         week = Array(7).fill(null);
       }
     }
-    
+
     return weeks;
   }, [currentMonth, currentYear, availability]);
 
@@ -126,30 +143,27 @@ const Availability = () => {
     if (date) {
       // Find existing availability for this date
       const existingAvailability = availability.find(item => item.date === date);
-      
+
       if (existingAvailability) {
-        // Load existing availability data
-        setStartTime(existingAvailability.availableTimes?.[0] || '09:00');
+        // Load existing availability data from time slots
+        const allSlots = existingAvailability.timeSlots || [];
         
-        // Calculate end time based on the last available time slot
-        const availableTimes = existingAvailability.availableTimes || [];
-        if (availableTimes.length > 0) {
-          const lastTime = availableTimes[availableTimes.length - 1];
-          const [hours, minutes] = lastTime.split(':').map(Number);
-          const endTime = new Date(0, 0, 0, hours + 1, minutes);
-          setEndTime(endTime.toTimeString().substring(0, 5));
+        if (allSlots.length > 0) {
+          // Set custom slots to all existing slots
+          setCustomSlots(allSlots);
+          
+          // Use first slot start time and last slot end time as defaults
+          setStartTime(allSlots[0].start);
+          setEndTime(allSlots[allSlots.length - 1].end);
         } else {
-          setEndTime('17:00');
+      
+          setCustomSlots([]);
         }
-        
-        setIsHoliday(existingAvailability.status === 'unavailable');
-        setIsAvailable(existingAvailability.status !== 'unavailable');
+
+        // No need to set holiday/available states - custom slots handle this
       } else {
-        // Reset to default values when a date is selected
-        setStartTime('09:00');
-        setEndTime('17:00');
-        setIsAvailable(true);
-        setIsHoliday(false);
+   
+        setCustomSlots([]);
       }
     }
   };
@@ -159,68 +173,63 @@ const Availability = () => {
 
   const handleSave = async () => {
     if (!selectedDate) return;
-    
+
     try {
       setSaving(true);
-      
-      // Determine status based on isHoliday flag
-      const status = isHoliday ? 'unavailable' : 'available';
-      
-      // Generate available times based on start and end times
-      const availableTimes = [];
-      if (isAvailable && !isHoliday) {
-        // Simple logic: generate time slots between start and end time
-        const start = new Date(`1970-01-01T${startTime}`);
-        const end = new Date(`1970-01-01T${endTime}`);
-        
-        while (start < end) {
-          availableTimes.push(start.toTimeString().substring(0, 5));
-          start.setHours(start.getHours() + 1);
-        }
-      }
-      
-      // Prepare the availability data
+
+      // Use custom slots if available, otherwise create single slot
+      const timeSlots = customSlots.length > 0 
+        ? [...customSlots]
+        : [{
+            start: startTime,
+            end: endTime,
+            status: "available",
+          }];
+
+
       const payload = {
+        therapistId: currentUser?._id,
         date: selectedDate,
-        status,
-        availableTimes,
-        therapistId: currentUser?._id // Use actual therapist ID from current user
+        timeSlots,
       };
-      
-      // Check if availability already exists for this date
-      const existingAvailability = availability.find(item => item.date === selectedDate);
-      
+
+      const existingAvailability = availability.find(
+        (item: any) => item.date === payload.date
+      );
+
       if (existingAvailability) {
-        // Update existing availability
-        await dispatch(updateAvailability({ id: existingAvailability._id, availabilityData: payload }));
+        await dispatch(
+          updateAvailability({
+            id: existingAvailability._id,
+            availabilityData: payload,
+          })
+        );
         toast({
-          title: 'Success',
-          description: 'Availability updated successfully',
+          title: "Success",
+          description: "Availability updated successfully",
         });
       } else {
-        // Create new availability
         await dispatch(createAvailability(payload));
         toast({
-          title: 'Success',
-          description: 'Availability created successfully',
+          title: "Success",
+          description: "Availability created successfully",
         });
       }
-      
-      // Refresh the availability data to ensure UI updates immediately
+
       await dispatch(getAllAvailability());
-      
       setSelectedDate(null);
     } catch (error) {
-      console.error('Error saving availability:', error);
+      console.error("Error saving availability:", error);
       toast({
-        title: 'Error',
-        description: 'Failed to save availability',
-        variant: 'destructive',
+        title: "Error",
+        description: "Failed to save availability",
+        variant: "destructive",
       });
     } finally {
       setSaving(false);
     }
   };
+
 
   // Function to handle bulk apply
   const handleBulkApply = () => {
@@ -229,7 +238,7 @@ const Availability = () => {
       .flat()
       .filter(day => day && day.date && !isPastDate(day.date) && !day.availability)
       .map(day => day.date);
-    
+
     if (datesWithoutAvailability.length === 0) {
       toast({
         title: 'No Dates Available',
@@ -238,77 +247,69 @@ const Availability = () => {
       });
       return;
     }
-    
+
     setBulkApplyDates(datesWithoutAvailability);
     setBulkApplyPreview(true);
     setWarnings([`Bulk apply will update ${datesWithoutAvailability.length} dates with the same availability settings`]);
   };
-  
+
   // Function to clear bulk apply preview
   const clearBulkApplyPreview = () => {
     setBulkApplyPreview(false);
     setBulkApplyDates([]);
     setWarnings([]);
   };
-  
+
   // Function to execute bulk update
   const executeBulkUpdate = async () => {
     if (bulkApplyDates.length === 0) return;
-    
+
     try {
       setBulkSaving(true);
-      
-      // Determine status based on isHoliday flag
-      const status = isHoliday ? 'unavailable' : 'available';
-      
-      // Generate available times based on start and end times
-      const availableTimes = [];
-      if (isAvailable && !isHoliday) {
-        // Simple logic: generate time slots between start and end time
-        const start = new Date(`1970-01-01T${startTime}`);
-        const end = new Date(`1970-01-01T${endTime}`);
-        
-        while (start < end) {
-          availableTimes.push(start.toTimeString().substring(0, 5));
-          start.setHours(start.getHours() + 1);
-        }
-      }
-      
+
+      // For bulk update, use custom slots logic
+      const timeSlots = customSlots.length > 0
+        ? [...customSlots]
+        : [{
+            start: startTime,
+            end: endTime,
+            status: "available",
+          }];
+
       // Process each date individually since backend bulk update affects entire month
       const promises = bulkApplyDates.map(async (date) => {
         const payload = {
           date,
-          status,
-          availableTimes,
+          timeSlots,
           therapistId: currentUser?._id
         };
-        
+
         // Check if availability already exists for this date
         const existingAvailability = availability.find(item => item.date === date);
-        
+
         if (existingAvailability) {
           // Update existing availability
-          return dispatch(updateAvailability({ 
-            id: existingAvailability._id, 
-            availabilityData: payload 
+          return dispatch(updateAvailability({
+            id: existingAvailability._id,
+            availabilityData: payload
           }));
         } else {
           // Create new availability
           return dispatch(createAvailability(payload));
         }
       });
-      
+
       // Execute all updates concurrently
       await Promise.all(promises);
-      
+
       toast({
         title: 'Success',
         description: `Successfully updated availability for ${bulkApplyDates.length} dates`,
       });
-      
+
       // Refresh the availability data
       await dispatch(getAllAvailability());
-      
+
       // Clear bulk apply state
       clearBulkApplyPreview();
     } catch (error) {
@@ -346,7 +347,7 @@ const Availability = () => {
       {/* Header */}
       <div className="space-y-4">
         <div>
-           <h1 className="page-title">Availability & Schedule</h1>
+          <h1 className="page-title">Availability & Schedule</h1>
           <p className="text-muted-foreground mt-2">
             Manage your availability, holidays, and working hours
           </p>
@@ -362,7 +363,7 @@ const Availability = () => {
             <TabsTrigger value="month">Month</TabsTrigger>
           </TabsList>
         </Tabs>
-        
+
         <div className="flex gap-2">
           <Button variant="outline" onClick={handleBulkApply}>
             <Plus className="w-4 h-4 mr-2" />
@@ -370,7 +371,7 @@ const Availability = () => {
           </Button>
         </div>
       </div>
-      
+
       {/* Warnings */}
       {warnings.length > 0 && (
         <div className="space-y-2">
@@ -383,7 +384,7 @@ const Availability = () => {
         </div>
       )}
 
-     <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-2">
 
         {/* Calendar Section */}
         <div className="lg:col-span-3">
@@ -423,7 +424,7 @@ const Availability = () => {
                     </Button>
                   </div>
                 </div>
-                
+
                 {/* Calendar Grid */}
                 {isLoading ? (
                   <div className="flex justify-center items-center py-16">
@@ -440,23 +441,22 @@ const Availability = () => {
                         {day}
                       </div>
                     ))}
-                    
+
                     {/* Calendar days */}
                     {calendarWeeks.flat().map((day, index) => {
                       const isCurrentDay = day && isToday(day.date);
                       const isCurrentSelected = day && isSelected(day.date);
                       const isInBulkApply = bulkApplyPreview && day && bulkApplyDates.includes(day.date);
-                      
+
                       return (
-                        <div 
-                          key={index} 
-                          className={`h-16 p-2 border rounded-lg flex flex-col items-center justify-center transition-all ${
-                            day 
-                              ? isPastDate(day.date)
-                                ? 'opacity-50 cursor-not-allowed bg-gray-100 border-gray-200'
-                                : `cursor-pointer ${getStatusColor(day.status)} ${isCurrentDay ? 'ring-2 ring-primary ring-offset-2' : ''} ${isCurrentSelected ? 'ring-2 ring-primary ring-offset-2 ring-blue-500' : ''} ${isInBulkApply ? 'ring-2 ring-blue-500 ring-offset-2 bg-blue-50' : ''}`
-                              : 'border-transparent'
-                          } ${day && !isPastDate(day.date) ? 'hover:shadow-sm hover:scale-[1.02]' : ''}`}
+                        <div
+                          key={index}
+                          className={`h-16 p-2 border rounded-lg flex flex-col items-center justify-center transition-all ${day
+                            ? isPastDate(day.date)
+                              ? 'opacity-50 cursor-not-allowed bg-gray-100 border-gray-200'
+                              : `cursor-pointer ${getStatusColor(day.status)} ${isCurrentDay ? 'ring-2 ring-primary ring-offset-2' : ''} ${isCurrentSelected ? 'ring-2 ring-primary ring-offset-2 ring-blue-500' : ''} ${isInBulkApply ? 'ring-2 ring-blue-500 ring-offset-2 bg-blue-50' : ''}`
+                            : 'border-transparent'
+                            } ${day && !isPastDate(day.date) ? 'hover:shadow-sm hover:scale-[1.02]' : ''}`}
                           onClick={() => day && !isPastDate(day.date) && handleDateClick(day.date)}
                         >
                           {day ? (
@@ -466,11 +466,10 @@ const Availability = () => {
                               </span>
                               <div className="flex justify-center mt-1">
                                 {day.availability && (
-                                  <div className={`w-2 h-2 rounded-full ${
-                                    day.status === 0 ? 'bg-green-500' :
+                                  <div className={`w-2 h-2 rounded-full ${day.status === 0 ? 'bg-green-500' :
                                     day.status === 1 ? 'bg-blue-500' :
-                                    'bg-red-500'
-                                  }`} />
+                                      'bg-red-500'
+                                    }`} />
                                 )}
                               </div>
                             </>
@@ -484,7 +483,7 @@ const Availability = () => {
                   <div className="space-y-6">
                     <div className="flex items-center justify-between">
                       <h3 className="text-lg font-medium">
-                        {selectedDate 
+                        {selectedDate
                           ? `Day View: ${new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}`
                           : `Day View: ${new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}`}
                       </h3>
@@ -492,7 +491,7 @@ const Availability = () => {
                         Switch to Month View
                       </Button>
                     </div>
-                    
+
                     <div className="space-y-4">
                       {/* Day availability summary */}
                       <Card className="border">
@@ -524,36 +523,54 @@ const Availability = () => {
                                   {(() => {
                                     const dateToCheck = selectedDate || todayStr;
                                     const dayAvailability = availability.find(item => item.date === dateToCheck);
-                                    if (dayAvailability && dayAvailability.availableTimes && dayAvailability.availableTimes.length > 0) {
-                                      return `${dayAvailability.availableTimes[0]} - ${dayAvailability.availableTimes[dayAvailability.availableTimes.length - 1]}`;
+                                    if (dayAvailability && dayAvailability.timeSlots && dayAvailability.timeSlots.length > 0) {
+                                      const availableSlots = dayAvailability.timeSlots.filter(slot => slot.status === 'available');
+                                      if (availableSlots.length > 0) {
+                                        return `${availableSlots[0].start} - ${availableSlots[availableSlots.length - 1].end}`;
+                                      }
                                     }
                                     return 'Not set';
                                   })()}
                                 </p>
                               </div>
                             </div>
-                            
+
                             <div>
-                              <p className="text-sm text-muted-foreground mb-2">Available Time Slots</p>
-                              <div className="flex flex-wrap gap-2">
+                              <p className="text-sm text-muted-foreground mb-2">Time Slots</p>
+                              <div className="space-y-2">
                                 {(() => {
                                   const dateToCheck = selectedDate || todayStr;
                                   const dayAvailability = availability.find(item => item.date === dateToCheck);
-                                  if (dayAvailability && dayAvailability.availableTimes && dayAvailability.availableTimes.length > 0) {
-                                    return dayAvailability.availableTimes.map((time, index) => (
-                                      <Badge key={index} variant="secondary" className="px-3 py-1">
-                                        {time}
-                                      </Badge>
-                                    ));
+                                  if (dayAvailability && dayAvailability.timeSlots && dayAvailability.timeSlots.length > 0) {
+                                    return (
+                                      <div className="space-y-1">
+                                        {dayAvailability.timeSlots.map((slot, index) => (
+                                          <div key={index} className="flex items-center gap-2">
+                                            <Badge
+                                              variant="secondary"
+                                              className={`px-3 py-1 ${slot.status === 'available' ? 'bg-green-100 text-green-800' :
+                                                  slot.status === 'booked' ? 'bg-red-100 text-red-800' :
+                                                    'bg-gray-100 text-gray-800'
+                                                }`}
+                                            >
+                                              {slot.start} - {slot.end}
+                                            </Badge>
+                                            <span className="text-xs text-muted-foreground capitalize">
+                                              {slot.status}
+                                            </span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    );
                                   }
-                                  return <p className="text-muted-foreground">No time slots set</p>;
+                                  return <p className="text-muted-foreground text-sm">No time slots set</p>;
                                 })()}
                               </div>
                             </div>
                           </div>
                         </CardContent>
                       </Card>
-                      
+
                       {/* Bookings for the day */}
                       <Card className="border">
                         <CardHeader>
@@ -579,10 +596,10 @@ const Availability = () => {
                           const day = startOfWeek.getDay();
                           const diff = startOfWeek.getDate() - day;
                           startOfWeek.setDate(diff);
-                          
+
                           const endOfWeek = new Date(startOfWeek);
                           endOfWeek.setDate(startOfWeek.getDate() + 6);
-                          
+
                           return `${startOfWeek.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${endOfWeek.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
                         })()}
                       </h3>
@@ -590,45 +607,44 @@ const Availability = () => {
                         Switch to Month View
                       </Button>
                     </div>
-                    
+
                     <div className="grid grid-cols-7 gap-2">
                       {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, index) => (
                         <div key={day} className="text-center p-2 font-medium text-sm">
                           {day}
                         </div>
                       ))}
-                      
+
                       {(() => {
                         const date = selectedDate ? new Date(selectedDate) : new Date();
                         const startOfWeek = new Date(date);
                         const day = startOfWeek.getDay();
                         const diff = startOfWeek.getDate() - day;
                         startOfWeek.setDate(diff);
-                        
+
                         const weekDays = [];
                         for (let i = 0; i < 7; i++) {
                           const dayDate = new Date(startOfWeek);
                           dayDate.setDate(startOfWeek.getDate() + i);
-                          
+
                           const dateStr = `${dayDate.getFullYear()}-${String(dayDate.getMonth() + 1).padStart(2, '0')}-${String(dayDate.getDate()).padStart(2, '0')}`;
-                          
+
                           const dayAvailability = availability.find(item => item.date === dateStr);
-                          const status = dayAvailability ? 
-                            (dayAvailability.status === 'booked' ? 1 : 
-                             dayAvailability.status === 'unavailable' ? 2 : 0) : 0;
-                          
+                          const status = dayAvailability ?
+                            (dayAvailability.status === 'booked' ? 1 :
+                              dayAvailability.status === 'unavailable' ? 2 : 0) : 0;
+
                           const isCurrentDay = dateStr === todayStr;
                           const isCurrentSelected = dateStr === selectedDate;
                           const isInBulkApply = bulkApplyPreview && bulkApplyDates.includes(dateStr);
-                          
+
                           weekDays.push(
-                            <div 
+                            <div
                               key={i}
-                              className={`p-2 border rounded-lg flex flex-col items-center justify-center transition-all ${
-                                isPastDate(dateStr)
-                                  ? 'opacity-50 cursor-not-allowed bg-gray-100 border-gray-200'
-                                  : `cursor-pointer ${getStatusColor(status)} ${isCurrentDay ? 'ring-2 ring-primary ring-offset-2' : ''} ${isCurrentSelected ? 'ring-2 ring-primary ring-offset-2 ring-blue-500' : ''} ${isInBulkApply ? 'ring-2 ring-blue-500 ring-offset-2 bg-blue-50' : ''}`
-                              } ${!isPastDate(dateStr) ? 'hover:shadow-sm hover:scale-[1.02]' : ''}`}
+                              className={`p-2 border rounded-lg flex flex-col items-center justify-center transition-all ${isPastDate(dateStr)
+                                ? 'opacity-50 cursor-not-allowed bg-gray-100 border-gray-200'
+                                : `cursor-pointer ${getStatusColor(status)} ${isCurrentDay ? 'ring-2 ring-primary ring-offset-2' : ''} ${isCurrentSelected ? 'ring-2 ring-primary ring-offset-2 ring-blue-500' : ''} ${isInBulkApply ? 'ring-2 ring-blue-500 ring-offset-2 bg-blue-50' : ''}`
+                                } ${!isPastDate(dateStr) ? 'hover:shadow-sm hover:scale-[1.02]' : ''}`}
                               onClick={() => !isPastDate(dateStr) && handleDateClick(dateStr)}
                             >
                               <span className={`text-sm font-medium ${isCurrentDay ? 'font-bold' : ''}`}>
@@ -636,11 +652,10 @@ const Availability = () => {
                               </span>
                               <div className="flex justify-center mt-1">
                                 {dayAvailability && (
-                                  <div className={`w-2 h-2 rounded-full ${
-                                    status === 0 ? 'bg-green-500' :
+                                  <div className={`w-2 h-2 rounded-full ${status === 0 ? 'bg-green-500' :
                                     status === 1 ? 'bg-blue-500' :
-                                    'bg-red-500'
-                                  }`} />
+                                      'bg-red-500'
+                                    }`} />
                                 )}
                               </div>
                             </div>
@@ -649,7 +664,7 @@ const Availability = () => {
                         return weekDays;
                       })()}
                     </div>
-                    
+
                     <div className="flex flex-wrap gap-4 pt-4 border-t border-border">
                       <div className="flex items-center gap-2">
                         <div className="w-2 h-2 rounded-full bg-green-500"></div>
@@ -667,7 +682,7 @@ const Availability = () => {
                   </div>
                 )}
               </div>
-              
+
               {/* Legend */}
               {viewMode === 'month' && (
                 <div className="flex flex-wrap gap-4 pt-4 border-t border-border">
@@ -688,18 +703,18 @@ const Availability = () => {
             </CardContent>
           </Card>
         </div>
-        
+
         {/* Availability Editor Panel */}
-    <div className="lg:col-span-2 sticky top-4">
+        <div className="lg:col-span-2 sticky top-4">
 
           {selectedDate ? (
             <Card className="shadow-lg rounded-xl border border-border bg-card">
               <CardHeader className="pb-3">
                 <div className="flex justify-between items-center">
                   <CardTitle className="text-lg">Edit Availability</CardTitle>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={() => setSelectedDate(null)}
                     className="h-8 w-8 p-0"
                   >
@@ -711,69 +726,258 @@ const Availability = () => {
                 <div className="p-3 bg-primary/10 rounded-lg">
                   <Label className="text-sm font-medium">Selected Date</Label>
                   <p className="text-lg font-semibold mt-1">
-                    {new Date(selectedDate).toLocaleDateString('en-US', { 
-                      weekday: 'short', 
-                      month: 'short', 
-                      day: 'numeric' 
+                    {new Date(selectedDate).toLocaleDateString('en-US', {
+                      weekday: 'short',
+                      month: 'short',
+                      day: 'numeric'
                     })}
                   </p>
                 </div>
-                
+
                 <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="startTime" className="text-sm font-medium">Start Time</Label>
-                      <Input 
-                        id="startTime" 
-                        type="time" 
-                        value={startTime}
-                        onChange={(e) => setStartTime(e.target.value)}
-                        className="mt-1 p-1"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="endTime" className="text-sm font-medium">End Time</Label>
-                      <Input 
-                        id="endTime" 
-                        type="time" 
-                        value={endTime}
-                        onChange={(e) => setEndTime(e.target.value)}
-                        className="mt-1 p-1"
-                      />
+                  <div>
+                    <h2 className="text-lg font-medium mb-4">Time Slots Management</h2>
+                  </div>
+
+                  {/* Display all current slots */}
+                  <div className="border rounded-lg p-4 bg-muted/10">
+                    <h3 className="font-medium text-sm mb-3">Current Slots ({customSlots.length})</h3>
+                    {customSlots.length > 0 ? (
+                      <div className="space-y-2 max-h-32 overflow-y-auto">
+                        {customSlots.map((slot, index) => (
+                          <div key={index} className="flex items-center gap-2 p-2 bg-background rounded border">
+                            {editingSlotIndex === index ? (
+                              // Edit mode
+                              <>
+                                <div className="flex-1 grid grid-cols-12 gap-2 items-center">
+                                  <div className="col-span-4">
+                                    <Input
+                                      type="time"
+                                      value={editSlotStart}
+                                      onChange={(e) => setEditSlotStart(e.target.value)}
+                                      className="text-sm p-1 h-8"
+                                    />
+                                  </div>
+                                  <div className="col-span-4">
+                                    <Input
+                                      type="time"
+                                      value={editSlotEnd}
+                                      onChange={(e) => setEditSlotEnd(e.target.value)}
+                                      className="text-sm p-1 h-8"
+                                    />
+                                  </div>
+                                  <div className="col-span-2">
+                                    <select
+                                      value={editSlotStatus}
+                                      onChange={(e) => setEditSlotStatus(e.target.value)}
+                                      className="w-full h-8 text-sm border border-input rounded px-2 bg-background"
+                                    >
+                                      <option value="available">Avail</option>
+                                      <option value="booked">Booked</option>
+                                      <option value="unavailable">Unavai</option>
+                                    </select>
+                                  </div>
+                                  <div className="col-span-2 flex gap-1">
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-8 w-8 p-0"
+                                      onClick={() => {
+                                        // Validate inputs
+                                        if (editSlotStart >= editSlotEnd) {
+                                          toast({
+                                            title: "Error",
+                                            description: "End time must be after start time",
+                                            variant: "destructive",
+                                          });
+                                          return;
+                                        }
+                                        
+                                        // Check for overlapping slots (excluding current slot)
+                                        const isOverlapping = customSlots.some((s, i) => {
+                                          if (i === index) return false;
+                                          return (
+                                            (editSlotStart < s.end && editSlotEnd > s.start) ||
+                                            (editSlotStart === s.start && editSlotEnd === s.end)
+                                          );
+                                        });
+                                        
+                                        if (isOverlapping) {
+                                          toast({
+                                            title: "Error",
+                                            description: "Time slot overlaps with another slot",
+                                            variant: "destructive",
+                                          });
+                                          return;
+                                        }
+                                        
+                                        // Update the slot
+                                        const updatedSlots = [...customSlots];
+                                        updatedSlots[index] = {
+                                          ...updatedSlots[index],
+                                          start: editSlotStart,
+                                          end: editSlotEnd,
+                                          status: editSlotStatus,
+                                        };
+                                        setCustomSlots(updatedSlots);
+                                        setEditingSlotIndex(null);
+                                      }}
+                                    >
+                                      ✓
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-8 w-8 p-0"
+                                      onClick={() => {
+                                        setEditingSlotIndex(null);
+                                      }}
+                                    >
+                                      ✕
+                                    </Button>
+                                  </div>
+                                </div>
+                              </>
+                            ) : (
+                              // View mode
+                              <>
+                                <div className="flex-1 text-sm">
+                                  <span className="font-medium">{slot.start} - {slot.end}</span>
+                                  <span className={`ml-2 px-2 py-0.5 rounded-full text-xs ${
+                                    slot.status === 'available' ? 'bg-green-100 text-green-800' :
+                                    slot.status === 'booked' ? 'bg-red-100 text-red-800' :
+                                    'bg-gray-100 text-gray-800'
+                                  }`}>
+                                    {slot.status}
+                                  </span>
+                                </div>
+                                <div className="flex gap-1">
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-6 px-2"
+                                    onClick={() => {
+                                      setEditingSlotIndex(index);
+                                      setEditSlotStart(slot.start);
+                                      setEditSlotEnd(slot.end);
+                                      setEditSlotStatus(slot.status);
+                                    }}
+                                  >
+                                    Edit
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-6 px-2"
+                                    onClick={() => {
+                                      setCustomSlots(customSlots.filter((_, i) => i !== index));
+                                    }}
+                                  >
+                                    Remove
+                                  </Button>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-muted-foreground text-sm py-2 text-center">No slots configured</p>
+                    )}
+                  </div>
+
+                  {/* Add More Slot Section */}
+                  <div className="border rounded-lg p-4 bg-muted/10">
+                    <h3 className="font-medium text-sm mb-3">Add New Slot</h3>
+                    <div className="grid grid-cols-12 gap-2 mb-3">
+                      <div className="col-span-5">
+                        <Label htmlFor="startTime" className="text-xs">Start</Label>
+                        <Input
+                          id="startTime"
+                          type="time"
+                          value={startTime}
+                          onChange={(e) => setStartTime(e.target.value)}
+                          className="text-sm p-1"
+                        />
+                      </div>
+                      <div className="col-span-5">
+                        <Label htmlFor="endTime" className="text-xs">End</Label>
+                        <Input
+                          id="endTime"
+                          type="time"
+                          value={endTime}
+                          onChange={(e) => setEndTime(e.target.value)}
+                          className="text-sm p-1"
+                        />
+                      </div>
+                      <div className="col-span-2 flex items-end">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size=""
+                          className="w-full"
+                          onClick={() => {
+                            // Validate inputs
+                            if (startTime >= endTime) {
+                              toast({
+                                title: "Error",
+                                description: "End time must be after start time",
+                                variant: "destructive",
+                              });
+                              return;
+                            }
+                            
+                            // Check for overlapping slots
+                            const isOverlapping = customSlots.some(slot => {
+                              return (
+                                (startTime < slot.end && endTime > slot.start) ||
+                                (startTime === slot.start && endTime === slot.end)
+                              );
+                            });
+                            
+                            if (isOverlapping) {
+                              toast({
+                                title: "Error",
+                                description: "Time slot overlaps with an existing slot",
+                                variant: "destructive",
+                              });
+                              return;
+                            }
+                            
+                            // Add new slot
+                            setCustomSlots([
+                              ...customSlots,
+                              {
+                                start: startTime,
+                                end: endTime,
+                                status: "available",
+                              }
+                            ]);
+                            
+                            // Reset form
+                            setStartTime(endTime);
+                            const newEnd = new Date(`1970-01-01T${endTime}`);
+                            newEnd.setMinutes(newEnd.getMinutes() + 60);
+                            setEndTime(newEnd.toTimeString().substring(0, 5));
+                          }}
+                        >
+                          Add
+                        </Button>
+                      </div>
                     </div>
                   </div>
-                  
-                  <div className="space-y-3 pt-2">
-                    <div className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/30 transition-colors">
-                      <Label htmlFor="available" className="flex items-center gap-2">
-                        <Check className="w-4 h-4" />
-                        Available
-                      </Label>
-                      <Switch
-                        id="available"
-                        checked={isAvailable}
-                        onCheckedChange={setIsAvailable}
-                      />
-                    </div>
-                    
-                    <div className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/30 transition-colors">
-                      <Label htmlFor="holiday" className="flex items-center gap-2">
-                        <Sun className="w-4 h-4" />
-                        Mark as Holiday
-                      </Label>
-                      <Switch
-                        id="holiday"
-                        checked={isHoliday}
-                        onCheckedChange={setIsHoliday}
-                      />
-                    </div>
-                  </div>
-                  
+
+
+
                   <div className="space-y-2">
                     {!bulkApplyPreview ? (
                       <>
-                        <Button 
-                          className="w-full mt-4" 
+                        <Button
+                          className="w-full mt-4"
                           onClick={handleSave}
                           disabled={saving}
                         >
@@ -792,8 +996,8 @@ const Availability = () => {
                       </>
                     ) : (
                       <>
-                        <Button 
-                          className="w-full mt-4" 
+                        <Button
+                          className="w-full mt-4"
                           onClick={executeBulkUpdate}
                           disabled={bulkSaving || bulkApplyDates.length === 0}
                         >
@@ -809,8 +1013,8 @@ const Availability = () => {
                             </>
                           )}
                         </Button>
-                        <Button 
-                          className="w-full" 
+                        <Button
+                          className="w-full"
                           variant="outline"
                           onClick={clearBulkApplyPreview}
                         >
