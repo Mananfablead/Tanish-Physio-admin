@@ -55,6 +55,7 @@ export const API = {
   LOGIN: "/auth/login",
   LOGOUT: "/auth/logout",
   PROFILE: "/auth/profile",
+  PUBLIC_PROFILE: "/auth/profile/:userId",
   FORGOT_PASSWORD: "/auth/forgot-password",
   RESET_PASSWORD: "/auth/reset-password",
 

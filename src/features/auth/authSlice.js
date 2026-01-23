@@ -123,6 +123,18 @@ export const updateProfile = createAsyncThunk(
   }
 );
 
+export const getPublicProfile = createAsyncThunk(
+  "auth/getPublicProfile",
+  async (userId, { rejectWithValue }) => {
+    try {
+      const res = await apiClient.get(API.PUBLIC_PROFILE.replace(':userId', userId));
+      return res.data.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || "Failed to fetch public profile");
+    }
+  }
+);
+
 /* =========================
    INITIAL STATE
 ========================= */
@@ -201,6 +213,20 @@ const authSlice = createSlice({
         };
       })
       .addCase(updateProfile.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      
+      // GET PUBLIC PROFILE
+      .addCase(getPublicProfile.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(getPublicProfile.fulfilled, (state, action) => {
+        state.loading = false;
+        // Note: Public profile is typically used for displaying other users' info, not updating current user state
+      })
+      .addCase(getPublicProfile.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })

@@ -102,10 +102,18 @@ export default function Profile() {
           specialization: user.doctorProfile.specialization || prev.specialization,
           bio: user.doctorProfile.bio || prev.bio,
           education: user.doctorProfile.education || prev.education,
-          languages: user.doctorProfile.languages || prev.languages,
+          languages: user.doctorProfile.languages && user.doctorProfile.languages.length > 0 
+            ? user.doctorProfile.languages 
+            : ['Hindi', 'English', 'Gujarati'],
           fee: user.doctorProfile.fee || prev.fee,
           availability: user.doctorProfile.availability || prev.availability,
           certifications: user.doctorProfile.certifications || prev.certifications,
+        }));
+      } else {
+        // Set default languages if no doctor profile exists
+        setDoctorProfile(prev => ({
+          ...prev,
+          languages: ['Hindi', 'English', 'Gujarati']
         }));
       }
     }
@@ -455,71 +463,7 @@ export default function Profile() {
             </div>
           </div>
 
-          {/* JOIN DATE */}
-          <div className="pt-4 border-t">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Calendar className="w-4 h-4" />
-              <span>Joined {profile.joinDate || "—"}</span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* DOCTOR PROFILE */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Doctor Profile</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* DOCTOR IMAGE & BASIC INFO */}
-          <div className="flex flex-col md:flex-row gap-6">
-            <div className="flex-shrink-0">
-              <div className="relative">
-                <Avatar className="w-24 h-24 cursor-pointer" onClick={() => document.getElementById('doctor-avatar-upload')?.click()}>
-                  <AvatarImage src={doctorImagePreview || user?.profilePicture || ""} />
-                  <AvatarFallback>
-                    {doctorProfile.name
-                      ? doctorProfile.name
-                          .split(" ")
-                          .map((n) => n[0])
-                          .join("")
-                      : "D"}
-                  </AvatarFallback>
-                </Avatar>
-                <input
-                  id="doctor-avatar-upload"
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => handleDoctorImageChange(e)}
-                  disabled={!isEditing}
-                />
-                {isEditing && (
-                  <div className="absolute bottom-0 right-0 bg-primary rounded-full p-1 cursor-pointer">
-                    <Edit className="w-3 h-3 text-white" />
-                  </div>
-                )}
-              </div>
-            </div>
-            
-            <div className="flex-grow space-y-4">
-              {/* DOCTOR NAME */}
-              <div className="space-y-2">
-                <Label>Doctor Name</Label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input
-                    value={doctorProfile.name}
-                    onChange={(e) =>
-                      setDoctorProfile({ ...doctorProfile, name: e.target.value })
-                    }
-                    className="pl-10"
-                    disabled={!isEditing}
-                  />
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* EXPERIENCE */}
                 <div className="space-y-2">
                   <Label>Years of Experience</Label>
@@ -553,10 +497,8 @@ export default function Profile() {
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* EDUCATION */}
             <div className="space-y-2">
               <Label>Education</Label>
@@ -583,7 +525,7 @@ export default function Profile() {
               />
             </div>
           </div>
-          
+
           {/* BIOGRAPHY */}
           <div className="space-y-2">
             <Label>Biography</Label>
@@ -598,22 +540,35 @@ export default function Profile() {
               disabled={!isEditing}
             />
           </div>
-          
-          {/* LANGUAGES */}
+            
+           {/* LANGUAGES */}
           <div className="space-y-2">
             <Label>Languages Spoken</Label>
-            <Input
-              value={doctorProfile.languages.join(", ")}
+            <select
+              multiple
+              value={doctorProfile.languages}
               onChange={(e) => {
-                const languagesArray = e.target.value.split(",").map(lang => lang.trim()).filter(lang => lang);
-                setDoctorProfile({ ...doctorProfile, languages: languagesArray });
+                const selectedOptions = Array.from(e.target.selectedOptions, option => option.value);
+                setDoctorProfile({ ...doctorProfile, languages: selectedOptions });
               }}
-              placeholder="e.g., English, Spanish, French"
+              className="w-full p-2 border border-input rounded-md focus:ring-2 focus:ring-ring focus:border-transparent disabled:cursor-not-allowed disabled:opacity-50 min-h-[100px]"
               disabled={!isEditing}
-            />
+            >
+              <option value="Hindi">Hindi</option>
+              <option value="English">English</option>
+              <option value="Gujarati">Gujarati</option>
+              <option value="Marathi">Marathi</option>
+              <option value="Tamil">Tamil</option>
+              <option value="Telugu">Telugu</option>
+              <option value="Bengali">Bengali</option>
+              <option value="Kannada">Kannada</option>
+              <option value="Malayalam">Malayalam</option>
+              <option value="Punjabi">Punjabi</option>
+            </select>
+            <p className="text-sm text-muted-foreground">Hold Ctrl/Cmd to select multiple languages</p>
           </div>
-          
-          {/* CERTIFICATIONS */}
+
+            {/* CERTIFICATIONS */}
           <div className="space-y-2">
             <Label>Certifications</Label>
             <div className="space-y-4">
@@ -661,7 +616,7 @@ export default function Profile() {
               </div>
             </div>
           </div>
-          
+
           {/* AVAILABILITY */}
           <div className="space-y-2">
             <Label>Availability</Label>
@@ -679,6 +634,14 @@ export default function Profile() {
               <option value="weekends">Weekends Only</option>
               <option value="by-appointment">By Appointment</option>
             </select>
+          </div>
+
+          {/* JOIN DATE */}
+          <div className="pt-4 border-t">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Calendar className="w-4 h-4" />
+              <span>Joined {profile.joinDate || "—"}</span>
+            </div>
           </div>
         </CardContent>
       </Card>

@@ -248,8 +248,8 @@ export default function Login() {
     (state: RootState) => state.auth
   );
 
-  const [email, setEmail] = useState("mananfablead@gmail.com");
-  const [password, setPassword] = useState("admin2026");
+  const [email, setEmail] = useState("admin@clinic.com");
+  const [password, setPassword] = useState("adminpassword123");
   const [showPassword, setShowPassword] = useState(false);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");

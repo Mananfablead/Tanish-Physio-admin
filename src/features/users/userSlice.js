@@ -107,16 +107,19 @@ const userSlice = createSlice({
         state.error = null;
       })
       .addCase(fetchUsers.fulfilled, (state, action) => {
-        state.loading = false;
-        // If it's the first page, replace the list; otherwise, append to it
-        if (action.meta.arg.page === 1 || !action.meta.arg.page) {
-          state.list = action.payload.users;
-        } else {
-          // Append new users to existing list
-          state.list = [...state.list, ...action.payload.users];
-        }
-        state.pagination = action.payload.pagination;
-      })
+  state.loading = false;
+
+  const page = action.meta.arg?.page ?? 1;
+
+  if (page === 1) {
+    state.list = action.payload.users;
+  } else {
+    state.list.push(...action.payload.users);
+  }
+
+  state.pagination = action.payload.pagination;
+})
+
       .addCase(fetchUsers.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
