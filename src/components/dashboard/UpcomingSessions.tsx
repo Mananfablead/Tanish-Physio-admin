@@ -27,7 +27,7 @@ export function UpcomingSessions({ upcomingSessionsData = [] }: UpcomingSessions
       </div>
       
       <div className="space-y-3">
-        {upcomingSessionsData.map((session, index) => (
+        {upcomingSessionsData.slice(0, 5).map((session, index) => (
           <div
             key={session._id || session.id || index}
             className={cn(

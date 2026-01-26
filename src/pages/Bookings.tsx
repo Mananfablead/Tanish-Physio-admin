@@ -173,25 +173,7 @@ export default function Bookings() {
     setIsEditing(true);
   };
 
-  /* ===========================
-     DELETE BOOKING
-  =========================== */
-  const handleDeleteBooking = async (id: number) => {
-    try {
-      await dispatch(deleteBooking(id)).unwrap();
-
-      // Optional: only if backend doesn't return updated list
-      dispatch(fetchBookings());
-
-      toast({ title: "Booking deleted successfully", variant: "default" });
-    } catch (error) {
-      toast({ title: "Failed to delete booking", variant: "destructive" });
-    }
-  };
-
-  /* ===========================
-     STATUS BADGE
-  =========================== */
+ 
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "confirmed":
@@ -344,16 +326,16 @@ export default function Bookings() {
                   {booking.time}
                 </td>
                 <td>
-                
-                    <span
-                      className={cn(
-                        "status-badge",
-                        getStatusBadge(booking.status)
-                      )}
-                    >
-                      {booking.status}
-                    </span>
-                  
+
+                  <span
+                    className={cn(
+                      "status-badge",
+                      getStatusBadge(booking.status)
+                    )}
+                  >
+                    {booking.status}
+                  </span>
+
                 </td>
                 <td>
                   <DropdownMenu>
@@ -362,28 +344,28 @@ export default function Bookings() {
                         <MoreHorizontal className="w-4 h-4" />
                       </Button>
                     </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-44">
-  {/* EDIT BOOKING */}
-  <DropdownMenuItem
-    onClick={() => prepareEditBooking(booking)}
-    className="cursor-pointer"
-  >
-    <Edit className="w-4 h-4 mr-2 text-slate-600" />
-    Edit Booking
-  </DropdownMenuItem>
+                    <DropdownMenuContent align="end" className="w-44">
+                      {/* EDIT BOOKING */}
+                      <DropdownMenuItem
+                        onClick={() => prepareEditBooking(booking)}
+                        className="cursor-pointer"
+                      >
+                        <Edit className="w-4 h-4 mr-2 text-slate-600" />
+                        Edit Booking
+                      </DropdownMenuItem>
 
-  {/* STATUS UPDATE */}
-  <DropdownMenuItem
-    onClick={() => {
-      setSelectedBooking(booking);
-      setIsStatusDialogOpen(true);
-    }}
-     className="cursor-pointer"
-  >
-    <Activity className="w-4 h-4 mr-2" />
-    Update Status
-  </DropdownMenuItem>
-</DropdownMenuContent>
+                      {/* STATUS UPDATE */}
+                      <DropdownMenuItem
+                        onClick={() => {
+                          setSelectedBooking(booking);
+                          setIsStatusDialogOpen(true);
+                        }}
+                        className="cursor-pointer"
+                      >
+                        <Activity className="w-4 h-4 mr-2" />
+                        Update Status
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
 
                   </DropdownMenu>
                 </td>
@@ -412,34 +394,6 @@ export default function Bookings() {
               <select
                 className="w-full p-2 border rounded-md"
                 value={(() => {
-                  // Find the service ID that matches the current serviceId
-                  // In edit mode, serviceId might be an object with _id, or just a string ID
-  //                 const serviceIdValue = bookingForm.serviceId;
-  //                 if (serviceIdValue) {
-  //                   if (typeof serviceIdValue === "object" && '_id' in serviceIdValue) {
-  //                     const obj = serviceIdValue as { _id: string };
-  //                     if (obj._id) {
-  //                       return obj._id;
-  //                     }
-  //                   } else {
-  //                     return String(serviceIdValue);
-  //                   }
-  //                 }
-  //                 return "";
-                  // Simple approach to handle the serviceId
-                  // Temporarily commenting out to avoid type errors
-                  // const serviceIdValue = bookingForm.serviceId;
-                  // if (
-                  //   serviceIdValue &&
-                  //   typeof serviceIdValue === "object" &&
-                  //   '_id' in serviceIdValue
-                  // ) {
-                  //   const typedValue = serviceIdValue as any;
-                  //   return String(typedValue._id);
-                  // }
-                  // return String(serviceIdValue || "");
-                                  
-                  // Simple fallback
                   return String(bookingForm.serviceId || "");
                 })()}
                 onChange={(e) =>
@@ -582,7 +536,7 @@ export default function Bookings() {
               Change the status of the booking
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="py-4">
             <div className="mb-4">
               <p className="text-sm font-medium mb-2">Current Status:</p>
@@ -593,7 +547,7 @@ export default function Bookings() {
                 {selectedBooking?.status}
               </span>
             </div>
-            
+
             <div className="space-y-2">
               <label className="text-sm font-medium">New Status:</label>
               <Select value={newStatus} onValueChange={setNewStatus}>
@@ -608,7 +562,7 @@ export default function Bookings() {
               </Select>
             </div>
           </div>
-          
+
           <DialogFooter>
             <Button
               variant="outline"

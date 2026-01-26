@@ -38,7 +38,7 @@ export function RecentActivity({ recentActivityData = [] }: RecentActivityProps)
       </div>
       
       <div className="space-y-4">
-        {recentActivityData.map((activity, index) => {
+        {recentActivityData.slice(0, 5).map((activity, index) => {
           const { icon: Icon, iconColor, bgColor } = getActivityConfig(activity.type);
           return (
             <div key={activity.id || index} className="flex items-start gap-3">
