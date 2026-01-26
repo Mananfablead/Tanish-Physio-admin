@@ -131,6 +131,32 @@ export const updateSessionStatus = createAsyncThunk(
   }
 );
 
+// Accept session
+export const acceptSession = createAsyncThunk(
+  "sessions/accept",
+  async (id, { rejectWithValue }) => {
+    try {
+      const res = await sessionAPI.accept(id);
+      return res.data.data;
+    } catch (err) {
+      return rejectWithValue("Session accept failed");
+    }
+  }
+);
+
+// Reject session
+export const rejectSession = createAsyncThunk(
+  "sessions/reject",
+  async (id, { rejectWithValue }) => {
+    try {
+      const res = await sessionAPI.reject(id);
+      return res.data.data;
+    } catch (err) {
+      return rejectWithValue("Session reject failed");
+    }
+  }
+);
+
 const sessionSlice = createSlice({
   name: "sessions",
   initialState: {
@@ -284,6 +310,46 @@ const sessionSlice = createSlice({
         state.loading = true;
       })
       .addCase(updateSessionStatus.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      
+      // Accept session
+      .addCase(acceptSession.fulfilled, (state, action) => {
+        state.loading = false;
+        const index = state.list.findIndex(session => session._id === action.payload._id);
+        if (index !== -1) {
+          state.list[index] = action.payload;
+        }
+        // Update single session if it matches
+        if (state.singleSession && state.singleSession._id === action.payload._id) {
+          state.singleSession = action.payload;
+        }
+      })
+      .addCase(acceptSession.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(acceptSession.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      
+      // Reject session
+      .addCase(rejectSession.fulfilled, (state, action) => {
+        state.loading = false;
+        const index = state.list.findIndex(session => session._id === action.payload._id);
+        if (index !== -1) {
+          state.list[index] = action.payload;
+        }
+        // Update single session if it matches
+        if (state.singleSession && state.singleSession._id === action.payload._id) {
+          state.singleSession = action.payload;
+        }
+      })
+      .addCase(rejectSession.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(rejectSession.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })

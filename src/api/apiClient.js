@@ -88,6 +88,8 @@ export const API = {
   SESSION_BY_ID: "/sessions/:id",
   RESCHEDULE_SESSION: "sessions/admin/:id/reschedule",
   DELETE_SESSION: "sessions/admin/:id",
+  ACCEPT_SESSION: "sessions/accept/:id",
+  REJECT_SESSION: "sessions/reject/:id",
 
   // therapists
   THERAPISTS: "/therapists",
@@ -342,6 +344,12 @@ export const sessionAPI = {
 
   // Delete session
   delete: (id) => apiClient.delete(`${API.SESSION_BY_ID.replace(":id", id)}`),
+
+  // Accept session
+  accept: (id) => apiClient.put(`${API.ACCEPT_SESSION.replace(":id", id)}`),
+
+  // Reject session
+  reject: (id) => apiClient.put(`${API.REJECT_SESSION.replace(":id", id)}`),
 };
 
 // Therapist API endpoints

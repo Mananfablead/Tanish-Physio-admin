@@ -15,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { useSelector, useDispatch } from "react-redux";
-import { fetchSessions, createSession, updateSession, deleteSession, rescheduleSession, deleteSessionById, updateSessionStatus, fetchAllUpcomingSessions } from "@/features/sessions/sessionSlice";
+import { fetchSessions, createSession, updateSession, deleteSession, rescheduleSession, deleteSessionById, updateSessionStatus, fetchAllUpcomingSessions, acceptSession, rejectSession } from "@/features/sessions/sessionSlice";
 import { fetchBookings } from "@/features/bookings/bookingSlice";
 
 type SessionStatus = "scheduled" | "live" | "completed" | "cancelled" | "no-show";
@@ -35,6 +35,7 @@ export default function Sessions() {
   const liveCount = (allSessions || []).filter((session: any) => session.status === "live").length;
   const completedCount = (allSessions || []).filter((session: any) => session.status === "completed").length;
   const cancelledCount = (allSessions || []).filter((session: any) => session.status === "cancelled").length;
+  const pendingCount = (allSessions || []).filter((session: any) => session.status === "pending").length;
 
   // Filter sessions based on active tab and search query
   const filteredSessions = allSessions.filter((session: any) => {
@@ -44,6 +45,9 @@ export default function Sessions() {
     
       case "all":
         includeInTab = true; // Show all sessions regardless of status
+        break;
+      case "pending":
+        includeInTab = session.status === "pending";
         break;
       case "scheduled":
         includeInTab = session.status === "scheduled";
@@ -107,7 +111,7 @@ export default function Sessions() {
     date: "",
     time: "",
     type: "1-on-1",
-    status: "scheduled",
+    status: "pending",
     notes: ""
   });
 
@@ -131,7 +135,7 @@ export default function Sessions() {
         date: "",
         time: "",
         type: "1-on-1",
-        status: "scheduled",
+        status: "pending",
         notes: "" as string,
       });
       // Refresh sessions list
@@ -146,10 +150,12 @@ export default function Sessions() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="page-header">
-          <h1 className="page-title">{activeTab === 'live' ? 'Live Sessions' : activeTab === 'all' ? 'All Sessions' : 'Session Management'}</h1>
+          <h1 className="page-title">{activeTab === 'live' ? 'Live Sessions' : activeTab === 'pending' ? 'Pending Sessions' : activeTab === 'all' ? 'All Sessions' : 'Session Management'}</h1>
           <p className="page-subtitle">
             {activeTab === 'live' 
               ? 'View and join live sessions' 
+              : activeTab === 'pending'
+              ? 'Review and approve pending session requests'
               : activeTab === 'all'
               ? 'Monitor and manage all platform sessions'
               : 'Monitor and manage all platform sessions'}
@@ -176,7 +182,20 @@ export default function Sessions() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+        <div className="stat-card">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-warning/10">
+              <UserCog className="w-5 h-5 text-warning" />
+            </div>
+            <div>
+              <p className="text-2xl font-semibold">
+                {pendingCount}
+              </p>
+              <p className="text-sm text-muted-foreground">Pending</p>
+            </div>
+          </div>
+        </div>
         <div className="stat-card">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-info/10">
@@ -241,6 +260,12 @@ export default function Sessions() {
               {allCount}
             </span>
           </TabsTrigger>
+          <TabsTrigger value="pending">
+            Pending
+            <span className="ml-1.5 px-1.5 py-0.5 text-xs bg-warning/20 text-warning rounded-full">
+              {pendingCount}
+            </span>
+          </TabsTrigger>
           <TabsTrigger value="scheduled">
             Scheduled
             <span className="ml-1.5 px-1.5 py-0.5 text-xs bg-info/20 text-info rounded-full">
@@ -266,6 +291,8 @@ export default function Sessions() {
             <Input
               placeholder={activeTab === 'live' 
                 ? 'Search by user, therapist, date, time, or type...' 
+                : activeTab === 'pending'
+                ? 'Search by booking, user, therapist, date, or status...'
                 : 'Search by booking, user, therapist, date, or status...'}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -431,31 +458,38 @@ export default function Sessions() {
 
                           {/* STATUS */}
                           <td className="px-4 py-3">
-                            <Select
-                              value={session.status}
-                              onValueChange={async (value) => {
-                                try {
-                                  await dispatch(updateSessionStatus({
-                                    id: session._id,
-                                    status: value,
-                                    notes: `Status updated to ${value}`
-                                  }));
-                                  dispatch(fetchSessions());
-                                } catch (error) {
-                                  console.error("Failed to update session status:", error);
-                                }
-                              }}
-                            >
-                              <SelectTrigger className="w-[120px]">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="scheduled">Scheduled</SelectItem>
-                                <SelectItem value="live">Live</SelectItem>
-                                <SelectItem value="completed">Completed</SelectItem>
-                                <SelectItem value="cancelled">Cancelled</SelectItem>
-                              </SelectContent>
-                            </Select>
+                            {session.status === 'pending' ? (
+                              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800 border border-yellow-300">
+                                <UserCog className="w-3 h-3 mr-1" />
+                                Pending Review
+                              </span>
+                            ) : (
+                              <Select
+                                value={session.status}
+                                onValueChange={async (value) => {
+                                  try {
+                                    await dispatch(updateSessionStatus({
+                                      id: session._id,
+                                      status: value,
+                                      notes: `Status updated to ${value}`
+                                    }));
+                                    dispatch(fetchSessions());
+                                  } catch (error) {
+                                    console.error("Failed to update session status:", error);
+                                  }
+                                }}
+                              >
+                                <SelectTrigger className="w-[120px]">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="scheduled">Scheduled</SelectItem>
+                                  <SelectItem value="live">Live</SelectItem>
+                                  <SelectItem value="completed">Completed</SelectItem>
+                                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            )}
                           </td>
 
                           {/* ACTIONS */}
@@ -468,8 +502,43 @@ export default function Sessions() {
                               </DropdownMenuTrigger>
 
                               <DropdownMenuContent align="end" className="w-48">
-                                {/* UPCOMING */}
-                                {(activeTab === "scheduled" || activeTab === "all") && (
+                                {/* PENDING SESSIONS */}
+                                {session.status === "pending" && (
+                                  <>
+                                    <DropdownMenuItem
+                                      className="text-success"
+                                      onClick={async () => {
+                                        try {
+                                          await dispatch(acceptSession(session._id));
+                                          dispatch(fetchSessions());
+                                        } catch (error) {
+                                          console.error("Failed to accept session:", error);
+                                        }
+                                      }}
+                                    >
+                                      <UserCog className="h-4 w-4 mr-2" />
+                                      Accept Session
+                                    </DropdownMenuItem>
+
+                                    <DropdownMenuItem
+                                      className="text-destructive"
+                                      onClick={async () => {
+                                        try {
+                                          await dispatch(rejectSession(session._id));
+                                          dispatch(fetchSessions());
+                                        } catch (error) {
+                                          console.error("Failed to reject session:", error);
+                                        }
+                                      }}
+                                    >
+                                      <X className="h-4 w-4 mr-2" />
+                                      Reject Session
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
+
+                                {/* SCHEDULED/CANCELLED SESSIONS (non-pending) */}
+                                {(activeTab === "scheduled" || activeTab === "all") && session.status !== "pending" && (
                                   <>
                                     <DropdownMenuItem
                                       onClick={() => {
@@ -481,6 +550,24 @@ export default function Sessions() {
                                       Reschedule
                                     </DropdownMenuItem>
 
+                                    <DropdownMenuItem
+                                      className="text-destructive"
+                                      onClick={async () => {
+                                        try {
+                                          await dispatch(updateSessionStatus({
+                                            id: session._id,
+                                            status: "cancelled",
+                                            notes: "Session cancelled by admin"
+                                          }));
+                                          dispatch(fetchSessions());
+                                        } catch (error) {
+                                          console.error("Failed to cancel session:", error);
+                                        }
+                                      }}
+                                    >
+                                      <X className="h-4 w-4 mr-2" />
+                                      Cancel Session
+                                    </DropdownMenuItem>
                                     <DropdownMenuItem
                                       className="text-destructive"
                                       onClick={() => {
@@ -783,6 +870,7 @@ export default function Sessions() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="pending">Pending</SelectItem>
                     <SelectItem value="scheduled">Scheduled</SelectItem>
                     <SelectItem value="live">Live</SelectItem>
                     <SelectItem value="completed">Completed</SelectItem>
