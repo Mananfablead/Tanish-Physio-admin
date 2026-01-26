@@ -364,7 +364,7 @@ export default function Sessions() {
                 <table className="data-table">
                   <thead>
                     <tr>
-                      <th>Booking Info</th>
+                      {/* <th>Booking Info</th> */}
                       <th>User</th>
 
                       <th>Date & Time</th>
@@ -382,14 +382,14 @@ export default function Sessions() {
                       return (
                         <tr key={session._id} className="hover:bg-muted/40 transition">
                           {/* SERVICE / BOOKING */}
-                          <td className="px-4 py-3">
+                          {/* <td className="px-4 py-3">
                             <div className="space-y-0.5">
                               <p className="font-medium">{booking?.serviceName || "N/A"}</p>
                               <p className="text-xs text-muted-foreground">
                                 Booking ID: {booking?._id?.slice(0, 8) || "N/A"}
                               </p>
                             </div>
-                          </td>
+                          </td> */}
 
                           {/* USER */}
                           <td className="px-4 py-3">
