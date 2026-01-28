@@ -711,19 +711,33 @@ const Availability = () => {
             <Card className="shadow-lg rounded-xl border border-border bg-card">
               <CardHeader className="pb-3">
                 <div className="flex justify-between items-center">
-                  <CardTitle className="text-lg">Edit Availability</CardTitle>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Calendar className="w-5 h-5 text-primary" />
+                    Edit Availability
+                  </CardTitle>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => setSelectedDate(null)}
-                    className="h-8 w-8 p-0"
+                    className="h-8 w-8 p-0 rounded-full hover:bg-destructive/10 hover:text-destructive"
                   >
                     <XIcon className="w-4 h-4" />
                   </Button>
                 </div>
+                <div className="p-3 bg-primary/5 rounded-lg border border-primary/10 ">
+                  <p className="text-sm font-medium text-primary">Selected Date</p>
+                  <p className="text-lg font-semibold mt-1 text-foreground">
+                    {new Date(selectedDate).toLocaleDateString('en-US', {
+                      weekday: 'long',
+                      month: 'long',
+                      day: 'numeric',
+                      year: 'numeric'
+                    })}
+                  </p>
+                </div>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="p-3 bg-primary/10 rounded-lg">
+                {/* <div className="p-3 bg-primary/10 rounded-lg">
                   <Label className="text-sm font-medium">Selected Date</Label>
                   <p className="text-lg font-semibold mt-1">
                     {new Date(selectedDate).toLocaleDateString('en-US', {
@@ -732,133 +746,176 @@ const Availability = () => {
                       day: 'numeric'
                     })}
                   </p>
-                </div>
+                </div> */}
 
                 <div className="space-y-4">
-                  <div>
-                    <h2 className="text-lg font-medium mb-4">Time Slots Management</h2>
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-lg font-semibold flex items-center gap-2">
+                      <Clock className="w-5 h-5 text-primary" />
+                      Time Slots
+                    </h2>
+                    <Badge variant="secondary" className="text-sm">
+                      {customSlots.length} slot{customSlots.length !== 1 ? 's' : ''}
+                    </Badge>
                   </div>
 
                   {/* Display all current slots */}
-                  <div className="border rounded-lg p-4 bg-muted/10">
-                    <h3 className="font-medium text-sm mb-3">Current Slots ({customSlots.length})</h3>
+                  <div className="border rounded-xl p-4 bg-muted/5">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="font-medium text-foreground">Current Slots</h3>
+                      {customSlots.length > 0 && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCustomSlots([])}
+                          className="h-8 text-xs"
+                        >
+                          <X className="w-3 h-3 mr-1" />
+                          Clear All
+                        </Button>
+                      )}
+                    </div>
                     {customSlots.length > 0 ? (
-                      <div className="space-y-2 max-h-32 overflow-y-auto">
+                      <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
                         {customSlots.map((slot, index) => (
-                          <div key={index} className="flex items-center gap-2 p-2 bg-background rounded border">
+                          <div 
+                            key={index} 
+                            className={`p-3 rounded-lg border transition-all ${
+                              editingSlotIndex === index 
+                                ? 'border-primary bg-primary/5 shadow-sm' 
+                                : 'border-border bg-background hover:border-primary/30 hover:shadow-sm'
+                            }`}
+                          >
                             {editingSlotIndex === index ? (
-                              // Edit mode
-                              <>
-                                <div className="flex-1 grid grid-cols-12 gap-2 items-center">
-                                  <div className="col-span-4">
+                              // Edit Mode
+                              <div className="space-y-3">
+                                <div className="grid grid-cols-12 gap-2 items-center">
+                                  <div className="col-span-5">
+                                    <Label htmlFor={`edit-start-${index}`} className="text-xs text-muted-foreground">Start</Label>
                                     <Input
+                                      id={`edit-start-${index}`}
                                       type="time"
                                       value={editSlotStart}
                                       onChange={(e) => setEditSlotStart(e.target.value)}
-                                      className="text-sm p-1 h-8"
+                                      className="text-sm h-9"
                                     />
                                   </div>
-                                  <div className="col-span-4">
+                                  <div className="col-span-5">
+                                    <Label htmlFor={`edit-end-${index}`} className="text-xs text-muted-foreground">End</Label>
                                     <Input
+                                      id={`edit-end-${index}`}
                                       type="time"
                                       value={editSlotEnd}
                                       onChange={(e) => setEditSlotEnd(e.target.value)}
-                                      className="text-sm p-1 h-8"
+                                      className="text-sm h-9"
                                     />
                                   </div>
-                                  <div className="col-span-2">
+                                  <div className="col-span-2 flex flex-col gap-1">
+                                    <Label className="text-xs text-muted-foreground">Status</Label>
                                     <select
                                       value={editSlotStatus}
                                       onChange={(e) => setEditSlotStatus(e.target.value)}
-                                      className="w-full h-8 text-sm border border-input rounded px-2 bg-background"
+                                      className="w-full h-9 text-sm border border-input rounded-md px-2 bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary"
                                     >
-                                      <option value="available">Avail</option>
+                                      <option value="available">Available</option>
                                       <option value="booked">Booked</option>
-                                      <option value="unavailable">Unavai</option>
+                                      <option value="unavailable">Unavailable</option>
                                     </select>
                                   </div>
-                                  <div className="col-span-2 flex gap-1">
-                                    <Button
-                                      type="button"
-                                      variant="outline"
-                                      size="sm"
-                                      className="h-8 w-8 p-0"
-                                      onClick={() => {
-                                        // Validate inputs
-                                        if (editSlotStart >= editSlotEnd) {
-                                          toast({
-                                            title: "Error",
-                                            description: "End time must be after start time",
-                                            variant: "destructive",
-                                          });
-                                          return;
-                                        }
-                                        
-                                        // Check for overlapping slots (excluding current slot)
-                                        const isOverlapping = customSlots.some((s, i) => {
-                                          if (i === index) return false;
-                                          return (
-                                            (editSlotStart < s.end && editSlotEnd > s.start) ||
-                                            (editSlotStart === s.start && editSlotEnd === s.end)
-                                          );
-                                        });
-                                        
-                                        if (isOverlapping) {
-                                          toast({
-                                            title: "Error",
-                                            description: "Time slot overlaps with another slot",
-                                            variant: "destructive",
-                                          });
-                                          return;
-                                        }
-                                        
-                                        // Update the slot
-                                        const updatedSlots = [...customSlots];
-                                        updatedSlots[index] = {
-                                          ...updatedSlots[index],
-                                          start: editSlotStart,
-                                          end: editSlotEnd,
-                                          status: editSlotStatus,
-                                        };
-                                        setCustomSlots(updatedSlots);
-                                        setEditingSlotIndex(null);
-                                      }}
-                                    >
-                                      ✓
-                                    </Button>
-                                    <Button
-                                      type="button"
-                                      variant="outline"
-                                      size="sm"
-                                      className="h-8 w-8 p-0"
-                                      onClick={() => {
-                                        setEditingSlotIndex(null);
-                                      }}
-                                    >
-                                      ✕
-                                    </Button>
-                                  </div>
                                 </div>
-                              </>
-                            ) : (
-                              // View mode
-                              <>
-                                <div className="flex-1 text-sm">
-                                  <span className="font-medium">{slot.start} - {slot.end}</span>
-                                  <span className={`ml-2 px-2 py-0.5 rounded-full text-xs ${
-                                    slot.status === 'available' ? 'bg-green-100 text-green-800' :
-                                    slot.status === 'booked' ? 'bg-red-100 text-red-800' :
-                                    'bg-gray-100 text-gray-800'
-                                  }`}>
-                                    {slot.status}
-                                  </span>
-                                </div>
-                                <div className="flex gap-1">
+                                <div className="flex gap-2 justify-end pt-1">
                                   <Button
                                     type="button"
                                     variant="outline"
                                     size="sm"
-                                    className="h-6 px-2"
+                                    className="h-8 px-3"
+                                    onClick={() => {
+                                      // Validate inputs
+                                      if (editSlotStart >= editSlotEnd) {
+                                        toast({
+                                          title: "Error",
+                                          description: "End time must be after start time",
+                                          variant: "destructive",
+                                        });
+                                        return;
+                                      }
+                                      
+                                      // Check for overlapping slots (excluding current slot)
+                                      const isOverlapping = customSlots.some((s, i) => {
+                                        if (i === index) return false;
+                                        return (
+                                          (editSlotStart < s.end && editSlotEnd > s.start) ||
+                                          (editSlotStart === s.start && editSlotEnd === s.end)
+                                        );
+                                      });
+                                      
+                                      if (isOverlapping) {
+                                        toast({
+                                          title: "Error",
+                                          description: "Time slot overlaps with another slot",
+                                          variant: "destructive",
+                                        });
+                                        return;
+                                      }
+                                      
+                                      // Update the slot
+                                      const updatedSlots = [...customSlots];
+                                      updatedSlots[index] = {
+                                        ...updatedSlots[index],
+                                        start: editSlotStart,
+                                        end: editSlotEnd,
+                                        status: editSlotStatus,
+                                      };
+                                      setCustomSlots(updatedSlots);
+                                      setEditingSlotIndex(null);
+                                      toast({
+                                        title: "Success",
+                                        description: "Slot updated successfully",
+                                      });
+                                    }}
+                                  >
+                                    <Check className="w-4 h-4 mr-1" />
+                                    Save
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-8 px-3"
+                                    onClick={() => setEditingSlotIndex(null)}
+                                  >
+                                    <X className="w-4 h-4 mr-1" />
+                                    Cancel
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : (
+                              // View Mode
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                  <div className="flex flex-col">
+                                    <span className="font-medium text-foreground">{slot.start} - {slot.end}</span>
+                                    <span className="text-xs text-muted-foreground capitalize">{slot.status}</span>
+                                  </div>
+                                  <Badge
+                                    variant="secondary"
+                                    className={`px-2 py-1 text-xs ${
+                                      slot.status === 'available' 
+                                        ? 'bg-green-100 text-green-800 border-green-200' 
+                                        : slot.status === 'booked' 
+                                          ? 'bg-red-100 text-red-800 border-red-200' 
+                                          : 'bg-gray-100 text-gray-800 border-gray-200'
+                                    }`}
+                                  >
+                                    {slot.status}
+                                  </Badge>
+                                </div>
+                                <div className="flex gap-1">
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-8 w-8 p-0 hover:bg-primary/10 hover:text-primary"
                                     onClick={() => {
                                       setEditingSlotIndex(index);
                                       setEditSlotStart(slot.start);
@@ -866,60 +923,76 @@ const Availability = () => {
                                       setEditSlotStatus(slot.status);
                                     }}
                                   >
-                                    Edit
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                      <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+                                      <path d="m15 5 4 4"/>
+                                    </svg>
                                   </Button>
                                   <Button
                                     type="button"
-                                    variant="outline"
+                                    variant="ghost"
                                     size="sm"
-                                    className="h-6 px-2"
+                                    className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive"
                                     onClick={() => {
                                       setCustomSlots(customSlots.filter((_, i) => i !== index));
+                                      toast({
+                                        title: "Success",
+                                        description: "Slot removed successfully",
+                                      });
                                     }}
                                   >
-                                    Remove
+                                    <X className="w-4 h-4" />
                                   </Button>
                                 </div>
-                              </>
+                              </div>
                             )}
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <p className="text-muted-foreground text-sm py-2 text-center">No slots configured</p>
+                      <div className="text-center py-8 text-muted-foreground">
+                        <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center mx-auto mb-3">
+                          <Clock className="w-6 h-6" />
+                        </div>
+                        <p className="text-sm">No time slots configured</p>
+                        <p className="text-xs mt-1">Add your first slot below</p>
+                      </div>
                     )}
                   </div>
 
                   {/* Add More Slot Section */}
-                  <div className="border rounded-lg p-4 bg-muted/10">
-                    <h3 className="font-medium text-sm mb-3">Add New Slot</h3>
-                    <div className="grid grid-cols-12 gap-2 mb-3">
+                  <div className="border rounded-xl p-4 bg-muted/5">
+                    <h3 className="font-medium text-foreground mb-3 flex items-center gap-2">
+                      <Plus className="w-4 h-4 text-primary" />
+                      Add New Slot
+                    </h3>
+                    <div className="grid grid-cols-12 gap-3">
                       <div className="col-span-5">
-                        <Label htmlFor="startTime" className="text-xs">Start</Label>
+                        <Label htmlFor="startTime" className="text-xs text-muted-foreground">Start Time</Label>
                         <Input
                           id="startTime"
                           type="time"
                           value={startTime}
                           onChange={(e) => setStartTime(e.target.value)}
-                          className="text-sm p-1"
+                          className="text-sm h-10"
                         />
                       </div>
                       <div className="col-span-5">
-                        <Label htmlFor="endTime" className="text-xs">End</Label>
+                        <Label htmlFor="endTime" className="text-xs text-muted-foreground">End Time</Label>
                         <Input
                           id="endTime"
                           type="time"
                           value={endTime}
                           onChange={(e) => setEndTime(e.target.value)}
-                          className="text-sm p-1"
+                          className="text-sm h-10"
                         />
                       </div>
                       <div className="col-span-2 flex items-end">
                         <Button
                           type="button"
-                          variant="outline"
-                          size=""
-                          className="w-full"
+                          variant="default"
+                          size="sm"
+                          className="w-full h-10"
                           onClick={() => {
                             // Validate inputs
                             if (startTime >= endTime) {
@@ -963,41 +1036,47 @@ const Availability = () => {
                             const newEnd = new Date(`1970-01-01T${endTime}`);
                             newEnd.setMinutes(newEnd.getMinutes() + 60);
                             setEndTime(newEnd.toTimeString().substring(0, 5));
+                            
+                            toast({
+                              title: "Success",
+                              description: "Slot added successfully",
+                            });
                           }}
                         >
-                          Add
+                          <Plus className="w-4 h-4" />
                         </Button>
                       </div>
                     </div>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Tip: Click the + button to add the slot. The next slot will auto-populate.
+                    </p>
                   </div>
 
 
 
-                  <div className="space-y-2">
+                  <div className="space-y-3 pt-4 border-t border-border">
                     {!bulkApplyPreview ? (
-                      <>
-                        <Button
-                          className="w-full mt-4"
-                          onClick={handleSave}
-                          disabled={saving}
-                        >
-                          {saving ? (
-                            <>
-                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                              Saving...
-                            </>
-                          ) : (
-                            <>
-                              <Save className="w-4 h-4 mr-2" />
-                              Save Changes
-                            </>
-                          )}
-                        </Button>
-                      </>
+                      <Button
+                        className="w-full h-11 text-base font-medium"
+                        onClick={handleSave}
+                        disabled={saving || customSlots.length === 0}
+                      >
+                        {saving ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Saving Changes...
+                          </>
+                        ) : (
+                          <>
+                            <Save className="w-4 h-4 mr-2" />
+                            Save Availability
+                          </>
+                        )}
+                      </Button>
                     ) : (
                       <>
                         <Button
-                          className="w-full mt-4"
+                          className="w-full h-11 text-base font-medium"
                           onClick={executeBulkUpdate}
                           disabled={bulkSaving || bulkApplyDates.length === 0}
                         >
@@ -1014,14 +1093,18 @@ const Availability = () => {
                           )}
                         </Button>
                         <Button
-                          className="w-full"
+                          className="w-full h-11"
                           variant="outline"
                           onClick={clearBulkApplyPreview}
                         >
+                          <X className="w-4 h-4 mr-2" />
                           Cancel Bulk Apply
                         </Button>
                         <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                          <p className="text-sm text-blue-800 font-medium">Bulk Apply Preview</p>
+                          <p className="text-sm text-blue-800 font-medium flex items-center gap-2">
+                            <Info className="w-4 h-4" />
+                            Bulk Apply Preview
+                          </p>
                           <p className="text-xs text-blue-600 mt-1">
                             Will apply these settings to {bulkApplyDates.length} dates without existing availability
                           </p>
@@ -1035,7 +1118,10 @@ const Availability = () => {
           ) : (
             <Card className="shadow-lg rounded-xl border border-border bg-card">
               <CardHeader>
-                <CardTitle className="text-lg">Availability Editor</CardTitle>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Calendar className="w-5 h-5 text-primary" />
+                  Availability Editor
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-center py-12 text-muted-foreground">
@@ -1043,7 +1129,15 @@ const Availability = () => {
                     <Calendar className="w-8 h-8 text-muted-foreground" />
                   </div>
                   <p className="text-lg font-medium mb-1">No Date Selected</p>
-                  <p className="text-sm">Select a date to edit availability</p>
+                  <p className="text-sm">Select a date from the calendar to edit availability</p>
+                  <div className="mt-4 p-3 bg-primary/5 rounded-lg border border-primary/10 max-w-xs mx-auto">
+                    <p className="text-xs text-primary font-medium">How to use:</p>
+                    <ul className="text-xs text-muted-foreground mt-1 space-y-1 text-left">
+                      <li>• Click on any date in the calendar</li>
+                      <li>• Add time slots for your availability</li>
+                      <li>• Set slots as available, booked, or unavailable</li>
+                    </ul>
+                  </div>
                 </div>
               </CardContent>
             </Card>

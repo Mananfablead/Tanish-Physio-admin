@@ -547,52 +547,25 @@ export const cmsAPI = {
   getConditionsAdmin: () => apiClient.get(API.CMS_CONDITIONS_ADMIN),
   updateConditions: (data) => {
     const formData = new FormData();
-        
-    // DEBUG: Log what we're sending
-    console.log('=== FRONTEND CONDITIONS UPDATE DEBUG ===');
-    console.log('Sending data:', data);
     
-    // Process conditions - clean up image fields before stringifying
-    let processedConditions = data.conditions;
-    if (data.conditions && Array.isArray(data.conditions)) {
-      processedConditions = data.conditions.map(condition => ({
-        ...condition,
-        // Remove image field if it's not a string (i.e., file object or problematic object)
-        ...(condition.image && typeof condition.image === 'string' ? { image: condition.image } : {})
-      }));
-      
-      // Add conditions array as JSON string
-      formData.append('conditions', JSON.stringify(processedConditions));
-    }
-        
-    // Add other fields except conditions and images
-    Object.keys(data).forEach(key => {
-      if (key !== 'conditions' && key !== 'image') {
-        formData.append(key, data[key]);
-      }
-    });
-        
-    // Add main image if it's a file object
-    if (data.image && typeof data.image !== 'string') {
-      formData.append('image', data.image);
-    }
-        
-    // Add condition images if they exist
+    // Append basic fields
+    formData.append('title', data.title);
+    formData.append('description', data.description);
+    formData.append('isPublic', data.isPublic ? 'true' : 'false');
+    
+    // Append conditions with indexed keys format
     if (data.conditions && Array.isArray(data.conditions)) {
       data.conditions.forEach((condition, index) => {
-        if (condition.image && typeof condition.image !== 'string' && condition.image instanceof File) {
-          console.log(`Appending file for condition ${index}:`, condition.image.name);
-          formData.append(`conditions[${index}].image`, condition.image);
+        formData.append(`conditions[${index}][title]`, condition.name || '');
+        formData.append(`conditions[${index}][content]`, ''); // Empty content as per backend expectation
+        
+        // Append image only if it's a File object
+        if (condition.image && condition.image instanceof File) {
+          formData.append(`conditions[${index}][image]`, condition.image);
         }
       });
     }
     
-    // DEBUG: Log FormData contents
-    console.log('FormData entries:');
-    for (let [key, value] of formData.entries()) {
-      console.log(key, value instanceof File ? `File: ${value.name}` : value);
-    }
-        
     return apiClient.put(API.CMS_CONDITIONS_ADMIN, formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });

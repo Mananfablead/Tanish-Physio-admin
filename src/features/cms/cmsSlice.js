@@ -7,7 +7,20 @@ export const fetchAllCmsData = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const response = await cmsAPI.getAllCmsData();
-      return response.data.data;
+      const data = response.data.data;
+      
+      // Transform conditions data to match frontend structure
+      if (data.conditions) {
+        data.conditions = {
+          ...data.conditions,
+          conditions: (data.conditions.conditions || []).map(condition => ({
+            name: condition.title || '',
+            image: condition.imageUrl || ''
+          }))
+        };
+      }
+      
+      return data;
     } catch (error) {
       return rejectWithValue(error.response?.data || error.message);
     }
@@ -292,7 +305,15 @@ const cmsSlice = createSlice({
       })
       .addCase(updateConditions.fulfilled, (state, action) => {
         state.loading.updateConditions = false;
-        state.data.conditions = action.payload;
+        // Transform backend response to match frontend structure
+        const backendData = action.payload;
+        state.data.conditions = {
+          ...backendData,
+          conditions: (backendData.conditions || []).map(condition => ({
+            name: condition.title || '',
+            image: condition.imageUrl || ''
+          }))
+        };
       })
       .addCase(updateConditions.rejected, (state, action) => {
         state.loading.updateConditions = false;

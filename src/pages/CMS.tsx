@@ -118,7 +118,7 @@ interface StepData {
 
 interface ConditionData {
     name: string;
-    image: string;
+    image: string | File; // Can be URL string or File object
 }
 
 interface ConditionsSectionData {
@@ -256,8 +256,8 @@ export default function CMS() {
                     ...cmsStateData.conditions,
                     conditions: (cmsStateData.conditions?.conditions || []).map(condition => ({
                         ...condition,
-                        // Clean up existing problematic image data
-                        image: condition.image && typeof condition.image === 'object' ? null : condition.image
+                        // Handle both image URL strings and File objects
+                        image: condition.image || ''
                     })),
                     isPublic: cmsStateData.conditions?.isPublic ?? true
                 },

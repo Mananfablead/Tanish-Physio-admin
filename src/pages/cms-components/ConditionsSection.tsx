@@ -10,7 +10,7 @@ interface ConditionsData {
     description: string;
     conditions: Array<{
         name: string;
-        image: string;
+        image: string; // This will be imageUrl from backend
     }>;
 }
 
