@@ -22,14 +22,20 @@ import {
 } from "lucide-react";
 import useSocket from "@/hooks/useSocket";
 import useWebRTC from "@/hooks/useWebRTC";
+import { adminVideoCallApi } from "@/lib/videoCallApi";
+import { adminChatApi } from "@/lib/chatApi";
 
 const VideoCall = ({
   roomId,
   roomType = "session",
   isTherapist = false,
   onEndCall,
+  sessionId, // Add sessionId prop for API calls
 }) => {
-  const { socket, connected, error, emit, on } = useSocket(roomId, roomType);
+  const { socket, connected, error, emit, on, setError } = useSocket(
+    roomId,
+    roomType
+  );
   const {
     localStream,
     remoteStreams,
@@ -67,6 +73,10 @@ const VideoCall = ({
   const [callStartTime, setCallStartTime] = useState(null);
   const [callDuration, setCallDuration] = useState(0);
   const [connectionAttempts, setConnectionAttempts] = useState(0);
+  const [chatMessages, setChatMessages] = useState([]);
+  const [newMessage, setNewMessage] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
+  const [typingUsers, setTypingUsers] = useState([]);
 
   // Initialize media when socket connects
   useEffect(() => {
@@ -77,7 +87,9 @@ const VideoCall = ({
         })
         .catch((err) => {
           console.error("Error initializing media:", err);
-          setError("Failed to access camera and microphone. Please check permissions.");
+          setError(
+            "Failed to access camera and microphone. Please check permissions."
+          );
         });
     }
   }, [connected, localStream, initLocalMedia]);
@@ -98,43 +110,93 @@ const VideoCall = ({
     };
   }, [callActive, callStartTime]);
 
+  // Load chat messages
+  useEffect(() => {
+    if (sessionId) {
+      loadChatMessages();
+    }
+  }, [sessionId]);
+
+  const loadChatMessages = async () => {
+    try {
+      const response = await adminChatApi.getMessages(sessionId);
+      if (response.success) {
+        setChatMessages(response.data.messages || []);
+      }
+    } catch (error) {
+      console.error("Error loading chat messages:", error);
+    }
+  };
+
+  const sendChatMessage = async () => {
+    if (!newMessage.trim() || !sessionId) return;
+
+    try {
+      await adminChatApi.sendMessage(sessionId, newMessage.trim());
+      setNewMessage("");
+      await loadChatMessages(); // Refresh messages
+    } catch (error) {
+      console.error("Error sending message:", error);
+    }
+  };
+
+  const handleTyping = async () => {
+    if (sessionId) {
+      try {
+        await adminChatApi.sendTyping();
+      } catch (error) {
+        console.error("Error sending typing indicator:", error);
+      }
+    }
+  };
+
+  const handleStopTyping = async () => {
+    if (sessionId) {
+      try {
+        await adminChatApi.sendStopTyping();
+      } catch (error) {
+        console.error("Error sending stop typing indicator:", error);
+      }
+    }
+  };
+
   // Handle socket connection errors
   useEffect(() => {
     if (!socket) return;
-    
+
     const handleError = (data) => {
-      console.error('Socket error:', data);
-      setError(data.message || 'Connection error occurred');
-      setCallStatus('ended');
+      console.error("Socket error:", data);
+      setError(data.message || "Connection error occurred");
+      setCallStatus("ended");
     };
-    
+
     const handleJoinedCall = (data) => {
-      console.log('Successfully joined call:', data);
-      setCallStatus('connected');
+      console.log("Successfully joined call:", data);
+      setCallStatus("connected");
     };
-    
-    const cleanupError = on('error', handleError);
-    const cleanupJoined = on('joined-call', handleJoinedCall);
-    
+
+    const cleanupError = on("error", handleError);
+    const cleanupJoined = on("joined-call", handleJoinedCall);
+
     return () => {
       if (cleanupError) cleanupError();
       if (cleanupJoined) cleanupJoined();
     };
   }, [socket, on]);
-  
+
   // Retry connection if it fails
   useEffect(() => {
     if (error && connectionAttempts < 3) {
       const timer = setTimeout(() => {
-        setConnectionAttempts(prev => prev + 1);
+        setConnectionAttempts((prev) => prev + 1);
         setError(null);
         // The socket will automatically reconnect
       }, 3000);
-      
+
       return () => clearTimeout(timer);
     }
   }, [error, connectionAttempts]);
-  
+
   // Set up socket listeners
   useEffect(() => {
     if (!socket || !connected) return;
@@ -162,10 +224,10 @@ const VideoCall = ({
 
     // Handle participant joined
     const participantJoinedListener = (data) => {
-      console.log('Participant joined:', data);
+      console.log("Participant joined:", data);
       setParticipants((prev) => {
         // Avoid duplicates
-        const exists = prev.some(p => p.userId === data.userId);
+        const exists = prev.some((p) => p.userId === data.userId);
         if (exists) return prev;
         return [...prev, data];
       });
@@ -176,12 +238,12 @@ const VideoCall = ({
 
     // Handle participant left
     const participantLeftListener = (data) => {
-      console.log('Participant left:', data);
+      console.log("Participant left:", data);
       setParticipants((prev) => prev.filter((p) => p.userId !== data.userId));
-      
+
       // If this was the last participant, end the call
       if (participants.length <= 1) {
-        setCallStatus('ended');
+        setCallStatus("ended");
         if (onEndCall) onEndCall();
       }
     };
@@ -214,7 +276,7 @@ const VideoCall = ({
 
     // Handle call ended
     const callEndedListener = (data) => {
-      console.log('Call ended by:', data.endedBy);
+      console.log("Call ended by:", data.endedBy);
       setCallStatus("ended");
       setCallActive(false);
       setCallStartTime(null);
@@ -246,9 +308,29 @@ const VideoCall = ({
       }
     };
 
+    // Handle chat message
+    const chatMessageListener = (data) => {
+      setChatMessages((prev) => [...prev, data.message]);
+    };
+
+    // Handle typing indicator
+    const typingListener = (data) => {
+      setTypingUsers((prev) => {
+        if (!prev.includes(data.userId)) {
+          return [...prev, data.userId];
+        }
+        return prev;
+      });
+    };
+
+    // Handle stop typing indicator
+    const stopTypingListener = (data) => {
+      setTypingUsers((prev) => prev.filter((id) => id !== data.userId));
+    };
+
     // Add listeners with proper cleanup
     const cleanupFunctions = [];
-    
+
     cleanupFunctions.push(on("offer", offerListener));
     cleanupFunctions.push(on("answer", answerListener));
     cleanupFunctions.push(on("ice-candidate", iceCandidateListener));
@@ -262,11 +344,14 @@ const VideoCall = ({
     cleanupFunctions.push(on("video-toggle", videoToggleListener));
     cleanupFunctions.push(on("screen-share-toggle", screenShareToggleListener));
     cleanupFunctions.push(on("user-muted", userMutedListener));
+    cleanupFunctions.push(on("new-message", chatMessageListener));
+    cleanupFunctions.push(on("typing", typingListener));
+    cleanupFunctions.push(on("stop-typing", stopTypingListener));
 
     // Cleanup listeners
     return () => {
-      cleanupFunctions.forEach(cleanup => {
-        if (typeof cleanup === 'function') {
+      cleanupFunctions.forEach((cleanup) => {
+        if (typeof cleanup === "function") {
           cleanup();
         }
       });
@@ -288,8 +373,8 @@ const VideoCall = ({
       const enabled = toggleAudio();
       setAudioEnabled(enabled);
     } catch (error) {
-      console.error('Error toggling audio:', error);
-      setError('Failed to toggle audio');
+      console.error("Error toggling audio:", error);
+      setError("Failed to toggle audio");
     }
   };
 
@@ -299,8 +384,8 @@ const VideoCall = ({
       const enabled = toggleVideo();
       setVideoEnabled(enabled);
     } catch (error) {
-      console.error('Error toggling video:', error);
-      setError('Failed to toggle video');
+      console.error("Error toggling video:", error);
+      setError("Failed to toggle video");
     }
   };
 
@@ -310,8 +395,8 @@ const VideoCall = ({
       await toggleScreenShare();
       setScreenSharing(!screenSharing);
     } catch (error) {
-      console.error('Error toggling screen share:', error);
-      setError('Failed to toggle screen sharing');
+      console.error("Error toggling screen share:", error);
+      setError("Failed to toggle screen sharing");
     }
   };
 
@@ -555,10 +640,60 @@ const VideoCall = ({
                           ? "Therapist"
                           : `Participant ${index}`}
                       </p>
+                      {/* Admin Controls */}
+                      {isTherapist && !participant.isTherapist && (
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          className="mt-1 text-xs"
+                          onClick={() => {
+                            // Force leave participant or other admin action
+                            if (roomId) {
+                              // TODO: Add force leave API endpoint
+                            }
+                          }}
+                        >
+                          Force Leave
+                        </Button>
+                      )}
                     </div>
                   </div>
                 ))}
               </div>
+              {/* Admin Tools */}
+              {isTherapist && (
+                <div className="mt-4 pt-4 border-t border-gray-700">
+                  <h4 className="font-medium text-white mb-2">Admin Tools</h4>
+                  <div className="space-y-2">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="w-full"
+                      onClick={() => {
+                        // Mute all participants
+                        participants.forEach((participant) => {
+                          if (!participant.isTherapist) {
+                            muteUser(participant.userId);
+                          }
+                        });
+                      }}
+                    >
+                      Mute All
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="w-full"
+                      onClick={() => {
+                        // End call for all participants
+                        endCall();
+                      }}
+                    >
+                      End Call for All
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -576,18 +711,50 @@ const VideoCall = ({
                 </Button>
               </div>
               <div className="h-64 overflow-y-auto mb-4">
-                <div className="text-center text-gray-500 py-8">
-                  <MessageCircle className="mx-auto h-8 w-8 mb-2" />
-                  <p>No messages yet</p>
-                </div>
+                {chatMessages.length > 0 ? (
+                  <div className="space-y-2">
+                    {chatMessages.map((msg, index) => (
+                      <div key={index} className="text-sm">
+                        <span className="font-medium text-blue-400">
+                          {msg.senderId?.name || "Unknown"}:
+                        </span>
+                        <span className="text-gray-300 ml-2">
+                          {msg.message}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center text-gray-500 py-8">
+                    <MessageCircle className="mx-auto h-8 w-8 mb-2" />
+                    <p>No messages yet</p>
+                  </div>
+                )}
+                {typingUsers.length > 0 && (
+                  <div className="text-xs text-gray-400 italic">
+                    {typingUsers.length} user{typingUsers.length > 1 ? "s" : ""}{" "}
+                    typing...
+                  </div>
+                )}
               </div>
               <div className="flex gap-2">
                 <input
                   type="text"
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === "Enter") {
+                      sendChatMessage();
+                    }
+                  }}
+                  onFocus={handleTyping}
+                  onBlur={handleStopTyping}
                   placeholder="Type a message..."
                   className="flex-1 bg-gray-700 text-white rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
-                <Button size="sm">Send</Button>
+                <Button size="sm" onClick={sendChatMessage}>
+                  Send
+                </Button>
               </div>
             </div>
           )}
@@ -734,7 +901,7 @@ const VideoCall = ({
                 </p>
               )}
             </div>
-            <button 
+            <button
               onClick={() => setError(null)}
               className="text-white hover:text-gray-200"
             >
