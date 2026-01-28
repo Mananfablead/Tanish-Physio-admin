@@ -15,7 +15,7 @@ export const fetchAllCmsData = createAsyncThunk(
           ...data.conditions,
           conditions: (data.conditions.conditions || []).map(condition => ({
             name: condition.title || '',
-            image: condition.imageUrl || ''
+            image: condition.image || ''
           }))
         };
       }
@@ -311,7 +311,7 @@ const cmsSlice = createSlice({
           ...backendData,
           conditions: (backendData.conditions || []).map(condition => ({
             name: condition.title || '',
-            image: condition.imageUrl || ''
+            image: condition.image || ''
           }))
         };
       })

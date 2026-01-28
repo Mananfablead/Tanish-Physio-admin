@@ -125,7 +125,10 @@ interface ConditionsSectionData {
     _id: string;
     title: string;
     description: string;
-    conditions: ConditionData[];
+    conditions: {
+        name: string;
+        image: string;
+    }[];
     image: string;
     isPublic: boolean;
 }
@@ -255,8 +258,7 @@ export default function CMS() {
                 conditions: {
                     ...cmsStateData.conditions,
                     conditions: (cmsStateData.conditions?.conditions || []).map(condition => ({
-                        ...condition,
-                        // Handle both image URL strings and File objects
+                        name: condition.title || '',
                         image: condition.image || ''
                     })),
                     isPublic: cmsStateData.conditions?.isPublic ?? true

@@ -304,7 +304,7 @@ const LiveSessions = () => {
                       <>
                         <Button 
                           className="flex-1"
-                          onClick={() => window.open(`/video-call/${session.sessionId}`, '_blank', 'width=1200,height=800')}
+                          onClick={() => window.open(`/video-call/${session._id}`, '_blank', 'width=1200,height=800')}
                         >
                           <Video className="w-4 h-4 mr-2" />
                           Join Session
@@ -312,7 +312,7 @@ const LiveSessions = () => {
                         <Button 
                           variant="outline"
                           size="icon"
-                          onClick={() => navigator.clipboard.writeText(`${window.location.origin}/video-call/${session.sessionId}`)}
+                          onClick={() => navigator.clipboard.writeText(`${window.location.origin}/video-call/${session._id}`)}
                         >
                           <Copy className="w-4 h-4" />
                         </Button>

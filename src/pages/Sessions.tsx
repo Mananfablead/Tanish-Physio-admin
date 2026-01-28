@@ -358,7 +358,7 @@ export default function Sessions() {
                               className="flex-1"
                               onClick={() =>
                                 window.open(
-                                  `/video-call/${session.sessionId}`,
+                                  `/video-call/${session._id}`,
                                   "_blank",
                                   "width=1200,height=800"
                                 )
@@ -371,7 +371,7 @@ export default function Sessions() {
                               variant="outline"
                               size="icon"
                               onClick={() => {
-                                navigator.clipboard.writeText(`${window.location.origin}/video-call/${session.sessionId}`);
+                                navigator.clipboard.writeText(`${window.location.origin}/video-call/${session._id}`);
                               }}
                             >
                               <Copy className="w-4 h-4" />
@@ -584,13 +584,13 @@ export default function Sessions() {
                                 {/* LIVE */}
                                 {activeTab === "live" && (
                                   <DropdownMenuItem
-                                    onClick={() =>
+                                    onClick={() => {
                                       window.open(
-                                        `/video-call/${session.sessionId}`,
+                                        `/video-call/${session._id}`,
                                         "_blank",
                                         "width=1200,height=800"
-                                      )
-                                    }
+                                      );
+                                    }}
                                   >
                                     <Video className="h-4 w-4 mr-2" />
                                     Join Session

@@ -386,7 +386,7 @@ const App = () => (
 
           {/* Video Call (Protected but no layout) */}
           <Route
-            path="/video-call/:sessionId"
+            path="/video-call/:id"
             element={
               <ProtectedRoute>
                 <VideoCallPage />

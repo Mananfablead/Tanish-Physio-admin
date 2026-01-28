@@ -4,18 +4,18 @@ import { VideoCall } from '@/components/ui/VideoCall';
 import { mockSessions } from '@/lib/session-data';
 
 export default function VideoCallPage() {
-  const { sessionId } = useParams<{ sessionId: string }>();
-  console.log("sessionId", sessionId)
+  const { id } = useParams<{ id: string }>();
+  console.log("session _id", id)
   const navigate = useNavigate();
   const [sessionData, setSessionData] = useState<{ user: string; therapist: string } | null>(null);
 
   // In a real app, this would fetch from an API
   useEffect(() => {
     // Mock data for demonstration
-    if (sessionId) {
+    if (id) {
       // Find the session in mock data
       const allSessions = [...mockSessions.upcoming, ...mockSessions.live, ...mockSessions.completed, ...mockSessions.cancelled];
-      const session = allSessions.find(s => s.id.toString() === sessionId);
+      const session = allSessions.find(s => s.id.toString() === id);
       
       if (session) {
         setSessionData({
@@ -24,7 +24,7 @@ export default function VideoCallPage() {
         });
       }
     }
-  }, [sessionId]);
+  }, [id]);
 
   const handleEndCall = () => {
     // Close the current tab/window
@@ -50,7 +50,7 @@ console.log("sessionData------>>",sessionData)
 
   return (
     <VideoCall 
-      roomId={sessionId || ''} 
+      roomId={id || ''} 
       roomType="session"
       isTherapist={true}
       onEndCall={handleEndCall}
