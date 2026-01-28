@@ -49,6 +49,7 @@ import {
   activateQuestionnaire,
   addQuestionToQuestionnaire,
 } from "@/features/questionnaires/questionnaireSlice";
+import PageLoader from "@/components/PageLoader";
 
 type QuestionType = "text" | "mcq" | "slider";
 
@@ -440,16 +441,12 @@ export default function Questionnaires() {
         return "bg-muted text-muted-foreground";
     }
   };
-
+  if (loading) {
+    return <PageLoader text="Loading..." />;
+  }
   return (
     <div className="space-y-6">
-      {/* Loading and Error Indicators */}
-      {loading && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center gap-3">
-          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
-          <p className="text-sm text-blue-700">Loading questionnaires...</p>
-        </div>
-      )}
+     
 
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
