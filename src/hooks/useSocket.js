@@ -43,7 +43,7 @@ const useSocket = (roomId, roomType) => {
             // Always add auth token since we checked it exists above
             socketOptions.auth = { token: token };
 
-            const serverUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+            const serverUrl = import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:5000';
             console.log('useSocket: Connecting to server:', serverUrl);
             console.log('useSocket: Token length:', token?.length);
 
