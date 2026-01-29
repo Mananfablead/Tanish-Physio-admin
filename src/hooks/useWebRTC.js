@@ -6,7 +6,7 @@ if (typeof window !== 'undefined' && typeof window.global === 'undefined') {
 import { useState, useEffect, useRef } from 'react';
 import Peer from 'simple-peer';
 
-const useWebRTC = (roomId, socket, isTherapist = false) => {
+const useWebRTC = (roomId, socket, userRole = 'admin') => {
     const [peers, setPeers] = useState({});
     const [localStream, setLocalStream] = useState(null);
     const [remoteStreams, setRemoteStreams] = useState({});
@@ -14,6 +14,8 @@ const useWebRTC = (roomId, socket, isTherapist = false) => {
     const [callStarted, setCallStarted] = useState(false);
     const [callLogId, setCallLogId] = useState(null);
     const [participants, setParticipants] = useState([]);
+    const [userIdentity, setUserIdentity] = useState(null);
+    const [initialized, setInitialized] = useState(false);
 
     const peerRefs = useRef({});
     const localVideoRef = useRef(null);
@@ -77,8 +79,16 @@ const useWebRTC = (roomId, socket, isTherapist = false) => {
     const createPeer = (userId, initiator, stream) => {
         const peer = new Peer({
             initiator,
-            trickle: false,
-            stream: stream || localStream
+            trickle: true, // Changed to true for better ICE candidate handling
+            stream: stream || localStream,
+            config: {
+                iceServers: [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:stun1.l.google.com:19302' },
+                    { urls: 'stun:stun.stunprotocol.org:3478' },
+                    { urls: 'stun:stun.voiparound.com:3478' }
+                ]
+            }
         });
 
         peer.on('signal', (data) => {
@@ -124,6 +134,12 @@ const useWebRTC = (roomId, socket, isTherapist = false) => {
 
         peer.on('error', (err) => {
             console.error('Peer connection error:', err);
+            // Add more detailed error logging
+            if (err.code === 'ERR_CONNECTION_FAILURE') {
+                console.error('Connection failure - check network/firewall');
+            } else if (err.code === 'ERR_DATA_CHANNEL') {
+                console.error('Data channel error');
+            }
         });
 
         peerRefs.current[userId] = peer;
@@ -243,7 +259,7 @@ const useWebRTC = (roomId, socket, isTherapist = false) => {
 
     // Mute a specific user (therapist only)
     const muteUser = (userId) => {
-        if (isTherapist && socket) {
+        if ((userRole === 'therapist' || userRole === 'admin') && socket) {
             socket.emit('mute-user', {
                 roomId,
                 userIdToMute: userId,
@@ -254,7 +270,7 @@ const useWebRTC = (roomId, socket, isTherapist = false) => {
 
     // End call (therapist only)
     const endCall = () => {
-        if (isTherapist && socket) {
+        if ((userRole === 'therapist' || userRole === 'admin') && socket) {
             socket.emit('end-call', {
                 roomId,
                 roomType: roomId.startsWith('group') ? 'group' : 'session'
@@ -264,7 +280,7 @@ const useWebRTC = (roomId, socket, isTherapist = false) => {
 
     // Start call (therapist only)
     const startCall = () => {
-        if (isTherapist && socket) {
+        if ((userRole === 'therapist' || userRole === 'admin') && socket) {
             socket.emit('call-start', {
                 roomId,
                 roomType: roomId.startsWith('group') ? 'group' : 'session'
@@ -292,6 +308,92 @@ const useWebRTC = (roomId, socket, isTherapist = false) => {
             });
         }
     };
+
+    // Handle socket events for participants
+    useEffect(() => {
+        if (!socket) return;
+
+        const handleParticipantJoined = (data) => {
+            console.log('ADMIN: Participant joined:', data);
+            setParticipants(prev => {
+                // Avoid duplicates by checking both userId and socketId
+                const exists = prev.some(p =>
+                    p.userId === data.userId && p.socketId === data.socketId
+                );
+                if (exists) {
+                    console.log('ADMIN: Participant already exists, skipping');
+                    return prev;
+                }
+                const newParticipant = {
+                    userId: data.userId,
+                    socketId: data.socketId,
+                    role: data.role || (data.isTherapist ? 'therapist' : 'patient'),
+                    isTherapist: data.isTherapist,
+                    isUser: data.isUser,
+                    joinedAt: new Date(),
+                    isSelf: data.socketId === socket.id
+                };
+                console.log('ADMIN: Adding new participant:', newParticipant);
+                return [...prev, newParticipant];
+            });
+        };
+
+        const handleParticipantLeft = (data) => {
+            console.log('ADMIN: Participant left:', data);
+            setParticipants(prev => {
+                const filtered = prev.filter(p =>
+                    p.userId !== data.userId && p.socketId !== data.socketId
+                );
+                console.log('ADMIN: Participants after removal:', filtered);
+                return filtered;
+            });
+        };
+
+        const handleJoinedCall = (data) => {
+            console.log('ADMIN: Joined call successful:', data);
+            // Set current user identity
+            const identity = {
+                userId: socket.user?.userId,
+                socketId: socket.id,
+                role: userRole,
+                isTherapist: userRole === 'therapist' || userRole === 'admin',
+                isUser: userRole === 'patient'
+            };
+            setUserIdentity(identity);
+            console.log('ADMIN: User identity set:', identity);
+
+            // Add self to participants list
+            setParticipants(prev => {
+                const selfExists = prev.some(p => p.socketId === socket.id);
+                if (!selfExists) {
+                    const selfParticipant = {
+                        userId: socket.user?.userId,
+                        socketId: socket.id,
+                        role: userRole,
+                        isTherapist: userRole === 'therapist' || userRole === 'admin',
+                        isUser: userRole === 'patient',
+                        joinedAt: new Date(),
+                        isSelf: true
+                    };
+                    console.log('ADMIN: Adding self to participants:', selfParticipant);
+                    return [...prev, selfParticipant];
+                }
+                return prev;
+            });
+        };
+
+        // Add listeners
+        socket.on('participant-joined', handleParticipantJoined);
+        socket.on('participant-left', handleParticipantLeft);
+        socket.on('joined-call', handleJoinedCall);
+
+        // Cleanup
+        return () => {
+            socket.off('participant-joined', handleParticipantJoined);
+            socket.off('participant-left', handleParticipantLeft);
+            socket.off('joined-call', handleJoinedCall);
+        };
+    }, [socket, userRole, setParticipants]);
 
     // Cleanup on unmount
     useEffect(() => {

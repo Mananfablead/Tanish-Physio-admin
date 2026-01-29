@@ -28,14 +28,18 @@ import { adminChatApi } from "@/lib/chatApi";
 const VideoCall = ({
   roomId,
   roomType = "session",
-  isTherapist = false,
+  userRole = "admin",
   onEndCall,
   sessionId, // Add sessionId prop for API calls
+  connected: externalConnected = false, // Add connected prop from parent
 }) => {
   const { socket, connected, error, emit, on, setError } = useSocket(
     roomId,
     roomType
   );
+
+  // Track joined call status separately from socket connection
+  const [joinedCall, setJoinedCall] = useState(false);
   const {
     localStream,
     remoteStreams,
@@ -60,7 +64,7 @@ const VideoCall = ({
     setCallActive,
     setParticipants,
     setCallLogId,
-  } = useWebRTC(roomId, socket, isTherapist);
+  } = useWebRTC(roomId, socket, userRole);
 
   const [audioEnabled, setAudioEnabled] = useState(true);
   const [videoEnabled, setVideoEnabled] = useState(true);
@@ -80,19 +84,24 @@ const VideoCall = ({
 
   // Initialize media when socket connects
   useEffect(() => {
+    console.log("Admin: Socket connected status:", connected);
+    console.log("Admin: Joined call status:", joinedCall);
+    console.log("Admin: Local stream status:", !!localStream);
+
     if (connected && !localStream) {
+      console.log("Admin: Initializing local media...");
       initLocalMedia()
         .then(() => {
-          console.log("Local media initialized successfully");
+          console.log("Admin: Local media initialized successfully");
         })
         .catch((err) => {
-          console.error("Error initializing media:", err);
+          console.error("Admin: Error initializing media:", err);
           setError(
             "Failed to access camera and microphone. Please check permissions."
           );
         });
     }
-  }, [connected, localStream, initLocalMedia]);
+  }, [connected, joinedCall, localStream, initLocalMedia]);
 
   // Timer for call duration
   useEffect(() => {
@@ -160,7 +169,7 @@ const VideoCall = ({
     }
   };
 
-  // Handle socket connection errors
+  // Handle socket connection errors and join events
   useEffect(() => {
     if (!socket) return;
 
@@ -172,15 +181,34 @@ const VideoCall = ({
 
     const handleJoinedCall = (data) => {
       console.log("Successfully joined call:", data);
+      setJoinedCall(true);
       setCallStatus("connected");
+      setError(null); // Clear any previous errors
+    };
+
+    const handleParticipantJoined = (data) => {
+      console.log("Participant joined (admin):", data);
+      // Update participants list
+      setParticipants((prev) => {
+        const exists = prev.some(
+          (p) => p.userId === data.userId && p.socketId === data.socketId
+        );
+        if (exists) return prev;
+        return [...prev, { ...data, isSelf: data.socketId === socket.id }];
+      });
     };
 
     const cleanupError = on("error", handleError);
     const cleanupJoined = on("joined-call", handleJoinedCall);
+    const cleanupParticipant = on(
+      "participant-joined",
+      handleParticipantJoined
+    );
 
     return () => {
       if (cleanupError) cleanupError();
       if (cleanupJoined) cleanupJoined();
+      if (cleanupParticipant) cleanupParticipant();
     };
   }, [socket, on]);
 
@@ -199,7 +227,7 @@ const VideoCall = ({
 
   // Set up socket listeners
   useEffect(() => {
-    if (!socket || !connected) return;
+    if (!socket || !(externalConnected || connected)) return;
 
     // Handle incoming offer
     const offerListener = (data) => {
@@ -227,11 +255,17 @@ const VideoCall = ({
       console.log("Participant joined:", data);
       setParticipants((prev) => {
         // Avoid duplicates
-        const exists = prev.some((p) => p.userId === data.userId);
+        const exists = prev.some(
+          (p) => p.userId === data.userId && p.socketId === data.socketId
+        );
         if (exists) return prev;
-        return [...prev, data];
+        return [...prev, { ...data, isSelf: data.socketId === socket.id }];
       });
-      if (data.isTherapist && !isTherapist) {
+      if (
+        data.isTherapist &&
+        userRole !== "therapist" &&
+        userRole !== "admin"
+      ) {
         setIncomingCall(true);
       }
     };
@@ -358,13 +392,15 @@ const VideoCall = ({
     };
   }, [
     socket,
+    externalConnected,
     connected,
     on,
     handleOffer,
     handleAnswer,
     handleIceCandidate,
-    isTherapist,
+    userRole,
     onEndCall,
+    setParticipants,
   ]);
 
   // Toggle audio
@@ -534,7 +570,11 @@ const VideoCall = ({
               {roomType === "group" ? "Group Session" : "Video Call"}
             </h1>
             <p className="text-xs text-gray-400">
-              {connected ? "Connected" : "Connecting..."}
+              {joinedCall
+                ? "Connected"
+                : connected
+                ? "Joining call..."
+                : "Connecting..."}
               {callActive && callDuration > 0 && (
                 <span className="ml-2">
                   • {Math.floor(callDuration / 60)}:
@@ -628,40 +668,50 @@ const VideoCall = ({
               <div className="space-y-2">
                 {participants.map((participant, index) => (
                   <div
-                    key={participant.userId}
+                    key={`${participant.userId}-${participant.socketId}`}
                     className="flex items-center gap-3 p-2 bg-gray-700 rounded"
                   >
                     <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-xs">
-                      {participant.isUser ? "P" : "T"}
+                      {participant.isTherapist ? "T" : "P"}
                     </div>
                     <div className="flex-1">
                       <p className="text-sm text-white">
-                        {participant.isTherapist
-                          ? "Therapist"
-                          : `Participant ${index}`}
+                        {participant.isSelf
+                          ? "You (Therapist)"
+                          : participant.isTherapist
+                          ? "Another Therapist"
+                          : `Patient ${index + 1}`}
+                      </p>
+                      <p className="text-xs text-gray-400">
+                        {participant.joinedAt
+                          ? `Joined: ${new Date(
+                              participant.joinedAt
+                            ).toLocaleTimeString()}`
+                          : ""}
                       </p>
                       {/* Admin Controls */}
-                      {isTherapist && !participant.isTherapist && (
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          className="mt-1 text-xs"
-                          onClick={() => {
-                            // Force leave participant or other admin action
-                            if (roomId) {
-                              // TODO: Add force leave API endpoint
-                            }
-                          }}
-                        >
-                          Force Leave
-                        </Button>
-                      )}
+                      {(userRole === "therapist" || userRole === "admin") &&
+                        !participant.isTherapist && (
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            className="mt-1 text-xs"
+                            onClick={() => {
+                              // Force leave participant or other admin action
+                              if (roomId) {
+                                // TODO: Add force leave API endpoint
+                              }
+                            }}
+                          >
+                            Force Leave
+                          </Button>
+                        )}
                     </div>
                   </div>
                 ))}
               </div>
               {/* Admin Tools */}
-              {isTherapist && (
+              {(userRole === "therapist" || userRole === "admin") && (
                 <div className="mt-4 pt-4 border-t border-gray-700">
                   <h4 className="font-medium text-white mb-2">Admin Tools</h4>
                   <div className="space-y-2">
@@ -803,7 +853,7 @@ const VideoCall = ({
             )}
           </Button>
 
-          {isTherapist && (
+          {(userRole === "therapist" || userRole === "admin") && (
             <Button
               variant="secondary"
               size="icon"
@@ -820,7 +870,7 @@ const VideoCall = ({
             size="icon"
             className="rounded-full h-14 w-14 bg-red-500 hover:bg-red-600"
             onClick={
-              isTherapist
+              userRole === "therapist" || userRole === "admin"
                 ? endCall
                 : () => emit("leave-room", { roomId, roomType })
             }

@@ -19,7 +19,7 @@ export const useAuthRedux = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const { user, isAuthenticated, loading, error } = useSelector(
+  const { user, isAuthenticated, loading, error, token } = useSelector(
     (state: RootState) => state.auth
   );
 
@@ -148,6 +148,7 @@ export const useAuthRedux = () => {
     isAuthenticated,
     loading,
     error,
+    token,
     handleLogin,
     handleRegister,
     handleLogout,

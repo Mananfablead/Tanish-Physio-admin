@@ -34,8 +34,7 @@ export const adminChatApi = {
 
     // Send a chat message
     sendMessage: async (sessionId, message) => {
-        const response = await apiClient.post('/send', {
-            sessionId,
+        const response = await apiClient.post(`/send/${sessionId}`, {
             message,
         });
         return response.data;
