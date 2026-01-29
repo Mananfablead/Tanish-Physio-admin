@@ -295,11 +295,16 @@ const toggleUserStatus = async () => {
                   <span
                     className={cn(
                       "inline-block px-3 py-1 rounded-full text-xs font-bold",
-                      getSubscriptionBadge(user.subscription)
+                      getSubscriptionBadge(user.subscriptionInfo?.status || user.subscription)
                     )}
                   >
-                    {user.subscription}
+                    {user.subscriptionInfo?.planName || user.subscription}
                   </span>
+                  {user.subscriptionInfo && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Status: {user.subscriptionInfo.status} | Ends: {new Date(user.subscriptionInfo.endDate).toLocaleDateString()}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -357,6 +362,85 @@ const toggleUserStatus = async () => {
             </div>
           </div>
 
+          {/* SERVICES USED SECTION */}
+          <div className="bg-card rounded-xl border p-6 shadow-sm">
+            <div className="flex items-center gap-2 mb-6">
+              <div className="p-2 rounded-lg bg-green-500/10">
+                <Star className="w-5 h-5 text-green-500" />
+              </div>
+              <h3 className="text-xl font-bold">Services Used</h3>
+            </div>
+            
+            {user.servicesUsed && user.servicesUsed.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {user.servicesUsed.map((service, index) => (
+                  <div key={index} className="p-4 border rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h4 className="font-semibold">{service.serviceName}</h4>
+                      </div>
+                      <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                        {new Date(service.bookingDate).toLocaleDateString()}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <p>No services used yet</p>
+              </div>
+            )}
+          </div>
+          
+          {/* SUBSCRIPTION DETAILS SECTION */}
+          {user.subscriptionInfo && (
+            <div className="bg-card rounded-xl border p-6 shadow-sm">
+              <div className="flex items-center gap-2 mb-6">
+                <div className="p-2 rounded-lg bg-purple-500/10">
+                  <CreditCard className="w-5 h-5 text-purple-500" />
+                </div>
+                <h3 className="text-xl font-bold">Subscription Details</h3>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="p-4 border rounded-lg bg-muted/30">
+                  <h4 className="text-sm font-semibold text-muted-foreground mb-1">Plan Name</h4>
+                  <p className="font-medium">{user.subscriptionInfo.planName}</p>
+                </div>
+                
+                <div className="p-4 border rounded-lg bg-muted/30">
+                  <h4 className="text-sm font-semibold text-muted-foreground mb-1">Status</h4>
+                  <p className="font-medium">
+                    <span className={user.subscriptionInfo.status === 'active' ? 'text-emerald-600' : 'text-orange-600'}>
+                      {user.subscriptionInfo.status}
+                    </span>
+                  </p>
+                </div>
+                
+                <div className="p-4 border rounded-lg bg-muted/30">
+                  <h4 className="text-sm font-semibold text-muted-foreground mb-1">Start Date</h4>
+                  <p className="font-medium">{new Date(user.subscriptionInfo.startDate).toLocaleDateString()}</p>
+                </div>
+                
+                <div className="p-4 border rounded-lg bg-muted/30">
+                  <h4 className="text-sm font-semibold text-muted-foreground mb-1">End Date</h4>
+                  <p className="font-medium">{new Date(user.subscriptionInfo.endDate).toLocaleDateString()}</p>
+                </div>
+                
+                <div className="p-4 border rounded-lg bg-muted/30 md:col-span-2">
+                  <h4 className="text-sm font-semibold text-muted-foreground mb-1">Amount</h4>
+                  <p className="font-medium">₹{user.subscriptionInfo.amount}</p>
+                </div>
+                
+                <div className="p-4 border rounded-lg bg-muted/30 md:col-span-2">
+                  <h4 className="text-sm font-semibold text-muted-foreground mb-1">Plan ID</h4>
+                  <p className="font-medium">{user.subscriptionInfo.planId}</p>
+                </div>
+              </div>
+            </div>
+          )}
+          
           {/* ADDITIONAL SECTIONS CAN BE ADDED HERE */}
           <div className="bg-card rounded-xl border p-6 shadow-sm text-center py-12">
             <MessageSquare className="w-12 h-12 text-muted-foreground mx-auto mb-4" />

@@ -125,7 +125,7 @@ export default function Payments() {
 
   const stats = {
     total: payments?.reduce((acc: number, p: Payment) => acc + p.amount, 0) || 0,
-    successful: payments?.filter((p: Payment) => p.status === "captured" || p.status === "successful").length || 0,
+    successful: payments?.filter((p: Payment) => p.status === "captured" || p.status === "successful" || p.status === "paid").length || 0,
     failed: payments?.filter((p: Payment) => p.status === "failed").length || 0,
     refunded: payments?.filter((p: Payment) => p.status === "refunded").reduce((acc: number, p: Payment) => acc + p.amount, 0) || 0,
     pending: payments?.filter((p: Payment) => p.status === "pending" || p.status === "created").length || 0,

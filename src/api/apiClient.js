@@ -79,7 +79,8 @@ export const API = {
   USER_BY_ID: "/users/:id",
 
   // services
-  SERVICES: "/services",
+  CREATE_SERVICES: "/services",
+  SERVICES: "/services/admin/all",
   SERVICE_BY_ID: "/services/:id",
   SERVICE_REMOVE_MEDIA: "/services/:id/remove-media",
 
@@ -296,7 +297,7 @@ export const serviceAPI = {
   getById: (id) => apiClient.get(`${API.SERVICE_BY_ID.replace(":id", id)}`),
 
   // Create service
-  create: (data) => apiClient.post(API.SERVICES, data),
+  create: (data) => apiClient.post(API.CREATE_SERVICES, data),
 
   // Update service
   update: (id, data) =>

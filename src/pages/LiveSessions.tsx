@@ -201,14 +201,14 @@ const LiveSessions = () => {
                     const timeDiff = sessionDateTime.getTime() - now.getTime();
                     const hoursDiff = timeDiff / (1000 * 60 * 60);
                     return (
-                      hoursDiff <= 24 &&
+                      hoursDiff <= 2 &&
                       hoursDiff >= 0 &&
                       session.status === "scheduled"
                     );
                   }).length
                 }
               </p>
-              <p className="text-sm text-muted-foreground">Starting in 24h</p>
+              <p className="text-sm text-muted-foreground">Starting in 2h</p>
             </div>
           </CardContent>
         </Card>
