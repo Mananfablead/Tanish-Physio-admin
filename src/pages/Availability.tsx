@@ -760,7 +760,7 @@ const Availability = () => {
                   </div>
 
                   {/* Display all current slots */}
-                  <div className="border rounded-xl p-4 bg-muted/5">
+                  <div className="border rounded-xl p-2 bg-muted/5">
                     <div className="flex items-center justify-between mb-3">
                       <h3 className="font-medium text-foreground">Current Slots</h3>
                       {customSlots.length > 0 && (
@@ -780,7 +780,7 @@ const Availability = () => {
                         {customSlots.map((slot, index) => (
                           <div 
                             key={index} 
-                            className={`p-3 rounded-lg border transition-all ${
+                            className={`p-2 rounded-lg border transition-all ${
                               editingSlotIndex === index 
                                 ? 'border-primary bg-primary/5 shadow-sm' 
                                 : 'border-border bg-background hover:border-primary/30 hover:shadow-sm'
@@ -788,29 +788,29 @@ const Availability = () => {
                           >
                             {editingSlotIndex === index ? (
                               // Edit Mode
-                              <div className="space-y-3">
-                                <div className="grid grid-cols-12 gap-2 items-center">
-                                  <div className="col-span-5">
+                              <div className="space-y-2">
+                                <div className="grid grid-cols-12  gap-2 items-center">
+                                  <div className="col-span-4">
                                     <Label htmlFor={`edit-start-${index}`} className="text-xs text-muted-foreground">Start</Label>
                                     <Input
                                       id={`edit-start-${index}`}
                                       type="time"
                                       value={editSlotStart}
                                       onChange={(e) => setEditSlotStart(e.target.value)}
-                                      className="text-sm h-9"
+                                      className="text-xs h-9"
                                     />
                                   </div>
-                                  <div className="col-span-5">
+                                  <div className="col-span-4">
                                     <Label htmlFor={`edit-end-${index}`} className="text-xs text-muted-foreground">End</Label>
                                     <Input
                                       id={`edit-end-${index}`}
                                       type="time"
                                       value={editSlotEnd}
                                       onChange={(e) => setEditSlotEnd(e.target.value)}
-                                      className="text-sm h-9"
+                                      className="text-xs h-9"
                                     />
                                   </div>
-                                  <div className="col-span-2 flex flex-col gap-1">
+                                  <div className="col-span-4 flex flex-col gap-1">
                                     <Label className="text-xs text-muted-foreground">Status</Label>
                                     <select
                                       value={editSlotStatus}
@@ -895,7 +895,7 @@ const Availability = () => {
                                 <div className="flex items-center gap-3">
                                   <div className="flex flex-col">
                                     <span className="font-medium text-foreground">{slot.start} - {slot.end}</span>
-                                    <span className="text-xs text-muted-foreground capitalize">{slot.status}</span>
+                                    {/* <span className="text-xs text-muted-foreground capitalize">{slot.status}</span> */}
                                   </div>
                                   <Badge
                                     variant="secondary"

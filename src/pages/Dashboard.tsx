@@ -87,21 +87,15 @@ export default function Dashboard() {
 
   if (loading && !error) {
     return <PageLoader text="Loading dashboard..." />;
-}  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
-      </div>
-    );
-  }
+}  
 
-  if (error) {
-    return (
-      <div className="flex justify-center items-center h-screen">
-        <div className="text-red-500 text-xl">Error loading dashboard: {error}</div>
-      </div>
-    );
-  }
+  // if (error) {
+  //   return (
+  //     <div className="flex justify-center items-center h-screen">
+  //       <div className="text-red-500 text-xl">Error loading dashboard: {error}</div>
+  //     </div>
+  //   );
+  // }
 
   return (
     <div className="space-y-6 dashboard-content">

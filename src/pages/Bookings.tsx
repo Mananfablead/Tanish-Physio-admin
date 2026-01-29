@@ -309,10 +309,10 @@ export default function Bookings() {
             <tr>
               <th>Service</th>
               <th>Client</th>
-              <th>Therapist</th>
+              {/* <th>Therapist</th> */}
               <th>Date & Time</th>
               <th>Status</th>
-              <th></th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -320,7 +320,7 @@ export default function Bookings() {
               <tr key={booking.id}>
                 <td>{booking.serviceName}</td>
                 <td>{booking.clientName}</td>
-                <td>{booking.therapistName}</td>
+                {/* <td>{booking.therapistName}</td> */}
                 <td>
                   {booking.date} <Clock className="inline w-4 h-4 ml-2" />{" "}
                   {booking.time}
