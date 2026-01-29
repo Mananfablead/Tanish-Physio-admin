@@ -23,6 +23,7 @@ const VideoCall = ({
   roomId,
   roomType = "session",
   userRole = "admin",
+  isTherapist = false, // Add isTherapist prop
   onEndCall,
   sessionId, // Add sessionId prop for API calls
   connected: externalConnected = false, // Add connected prop from parent
@@ -267,13 +268,15 @@ const VideoCall = ({
     // Handle participant left
     const participantLeftListener = (data) => {
       console.log("Participant left:", data);
-      setParticipants((prev) => prev.filter((p) => p.userId !== data.userId));
-
-      // If this was the last participant, end the call
-      if (participants.length <= 1) {
-        setCallStatus("ended");
-        if (onEndCall) onEndCall();
-      }
+      // Remove the participant from the list
+      setParticipants((prev) => {
+        const updatedParticipants = prev.filter(
+          (p) => p.userId !== data.userId
+        );
+        // If this was the last participant (other than admin), don't end the call
+        // Admin session should continue even if all participants leave
+        return updatedParticipants;
+      });
     };
 
     // Handle call started
@@ -305,12 +308,22 @@ const VideoCall = ({
     // Handle call ended
     const callEndedListener = (data) => {
       console.log("Call ended by:", data.endedBy);
-      setCallStatus("ended");
-      setCallActive(false);
-      setCallStartTime(null);
-      setIncomingCall(false);
-      setCallDuration(0);
-      if (onEndCall) onEndCall();
+      // Only end admin session if admin themselves ended the call
+      if (data.endedBy === socket.id) {
+        setCallStatus("ended");
+        setCallActive(false);
+        setCallStartTime(null);
+        setIncomingCall(false);
+        setCallDuration(0);
+        if (onEndCall) onEndCall();
+      } else {
+        // If someone else ended the call, just remove them from participants
+        setParticipants((prev) =>
+          prev.filter((p) => p.socketId !== data.endedBy)
+        );
+        // Keep admin session active
+        console.log("Participant left, admin session continues");
+      }
     };
 
     // Handle audio toggle
@@ -553,7 +566,6 @@ const VideoCall = ({
 
   return (
     <div className="h-screen bg-black flex flex-col">
-
       {/* Header */}
       <div className="flex items-center justify-between px-8 py-4 bg-slate-900 border-b border-slate-800">
         <div className="flex items-center gap-6">
@@ -562,17 +574,28 @@ const VideoCall = ({
           </div>
           <div>
             <div className="flex items-center gap-2 mb-0.5">
-              <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-[10px] font-bold uppercase tracking-wider px-2 py-0">Admin Monitoring</Badge>
-              <span className="text-slate-500 text-xs font-medium">• Live Session</span>
+              <Badge
+                variant="outline"
+                className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-[10px] font-bold uppercase tracking-wider px-2 py-0"
+              >
+                Admin Monitoring
+              </Badge>
+              <span className="text-slate-500 text-xs font-medium">
+                • Live Session
+              </span>
             </div>
-            <h1 className="text-white font-semibold tracking-tight">Session Monitoring</h1>
+            <h1 className="text-white font-semibold tracking-tight">
+              Session Monitoring
+            </h1>
           </div>
         </div>
         <div className="flex items-center gap-3">
           <Button
             variant="ghost"
             size="sm"
-            className={`text-slate-400 hover:text-white hover:bg-slate-800 ${showParticipants ? 'bg-slate-800 text-white' : ''}`}
+            className={`text-slate-400 hover:text-white hover:bg-slate-800 ${
+              showParticipants ? "bg-slate-800 text-white" : ""
+            }`}
             onClick={() => {
               setShowParticipants(!showParticipants);
               setShowChat(false);
@@ -585,7 +608,9 @@ const VideoCall = ({
           <Button
             variant="ghost"
             size="sm"
-            className={`text-slate-400 hover:text-white hover:bg-slate-800 ${showChat ? 'bg-slate-800 text-white' : ''}`}
+            className={`text-slate-400 hover:text-white hover:bg-slate-800 ${
+              showChat ? "bg-slate-800 text-white" : ""
+            }`}
             onClick={() => {
               setShowChat(!showChat);
               setShowParticipants(false);
@@ -601,18 +626,26 @@ const VideoCall = ({
       {/* Main Video Area */}
       <div className="flex-1 relative bg-slate-950 flex overflow-hidden">
         {/* Main Video (Primary Participant) */}
-        <div className={`flex-1 relative flex items-center justify-center transition-all duration-500 ${showParticipants || showChat ? 'md:mr-0' : ''}`}>
+        <div
+          className={`flex-1 relative flex items-center justify-center transition-all duration-500 ${
+            showParticipants || showChat ? "md:mr-0" : ""
+          }`}
+        >
           <div className="absolute inset-0 bg-gradient-to-b from-slate-900/50 to-slate-950/50 pointer-events-none" />
           <div className="text-center">
             <div className="w-40 h-40 bg-slate-900 rounded-[2.5rem] mx-auto mb-6 flex items-center justify-center border border-slate-800 shadow-2xl relative overflow-hidden">
-              <img 
-                src="https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=300&h=300&fit=crop&crop=face" 
-                alt="Participant" 
-                className="w-full h-full object-cover opacity-60" 
+              <img
+                src="https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=300&h=300&fit=crop&crop=face"
+                alt="Participant"
+                className="w-full h-full object-cover opacity-60"
               />
             </div>
-            <h2 className="text-2xl font-semibold text-white tracking-tight mb-2">Primary Participant</h2>
-            <p className="text-slate-500 font-medium">Monitoring Active Session</p>
+            <h2 className="text-2xl font-semibold text-white tracking-tight mb-2">
+              Primary Participant
+            </h2>
+            <p className="text-slate-500 font-medium">
+              Monitoring Active Session
+            </p>
           </div>
         </div>
 
@@ -621,11 +654,21 @@ const VideoCall = ({
           <div className="md:w-80 w-full bg-slate-900 md:border-l border-slate-800 flex flex-col animate-in slide-in-from-right duration-300 md:relative absolute inset-0 md:inset-auto md:right-0 z-50">
             <div className="p-6 border-b border-slate-800 flex items-center justify-between">
               <h3 className="text-white font-semibold">Participants</h3>
-              <Button variant="ghost" size="icon" className="text-slate-400 hover:text-white" onClick={() => setShowParticipants(false)}><X className="h-4 w-4" /></Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-slate-400 hover:text-white"
+                onClick={() => setShowParticipants(false)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
             </div>
             <div className="flex-1 p-6 space-y-6">
               {participants.map((participant, index) => (
-                <div key={`${participant.userId}-${participant.socketId}`} className="flex items-center gap-4">
+                <div
+                  key={`${participant.userId}-${participant.socketId}`}
+                  className="flex items-center gap-4"
+                >
                   <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-300 font-semibold text-sm">
                     {participant.isTherapist ? "T" : "P"}
                   </div>
@@ -639,16 +682,22 @@ const VideoCall = ({
                           : `Patient ${index + 1}`}
                       </p>
                       <Badge className="bg-slate-800 text-slate-400 border-none text-[8px] h-4">
-                        {participant.isSelf ? "You" : participant.isTherapist ? "Staff" : "User"}
+                        {participant.isSelf
+                          ? "You"
+                          : participant.isTherapist
+                          ? "Staff"
+                          : "User"}
                       </Badge>
                     </div>
                     <p className="text-slate-500 text-xs">
                       {participant.joinedAt
-                        ? `Joined: ${new Date(participant.joinedAt).toLocaleTimeString()}`
+                        ? `Joined: ${new Date(
+                            participant.joinedAt
+                          ).toLocaleTimeString()}`
                         : "Active"}
                     </p>
                     {/* Admin Controls */}
-                    {(userRole === "admin") && !participant.isSelf && (
+                    {userRole === "admin" && !participant.isSelf && (
                       <Button
                         variant="destructive"
                         size="sm"
@@ -656,10 +705,10 @@ const VideoCall = ({
                         onClick={() => {
                           // Force leave participant
                           if (roomId && socket) {
-                            socket.emit("force-leave", { 
-                              roomId, 
+                            socket.emit("force-leave", {
+                              roomId,
                               userId: participant.userId,
-                              reason: "Admin removed participant"
+                              reason: "Admin removed participant",
                             });
                           }
                         }}
@@ -670,11 +719,13 @@ const VideoCall = ({
                   </div>
                 </div>
               ))}
-              
+
               {/* Admin Tools */}
               {userRole === "admin" && (
                 <div className="pt-6 border-t border-slate-800">
-                  <h4 className="text-slate-300 font-medium text-sm mb-3">Admin Controls</h4>
+                  <h4 className="text-slate-300 font-medium text-sm mb-3">
+                    Admin Controls
+                  </h4>
                   <div className="space-y-2">
                     <Button
                       variant="secondary"
@@ -684,7 +735,14 @@ const VideoCall = ({
                         // Mute all non-admin participants
                         participants.forEach((participant) => {
                           if (!participant.isSelf) {
-                            muteUser(participant.userId);
+                            // Emit the mute-user event to the server
+                            if (socket) {
+                              socket.emit("mute-user", {
+                                roomId,
+                                userIdToMute: participant.userId,
+                                roomType: roomType,
+                              });
+                            }
                           }
                         });
                       }}
@@ -713,14 +771,25 @@ const VideoCall = ({
           <div className="md:w-80 w-full bg-slate-900 md:border-l border-slate-800 flex flex-col animate-in slide-in-from-right duration-300 md:relative absolute inset-0 md:inset-auto md:right-0 z-50">
             <div className="p-6 border-b border-slate-800 flex items-center justify-between">
               <h3 className="text-white font-semibold">Admin Chat</h3>
-              <Button variant="ghost" size="icon" className="text-slate-400 hover:text-white" onClick={() => setShowChat(false)}><X className="h-4 w-4" /></Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-slate-400 hover:text-white"
+                onClick={() => setShowChat(false)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
             </div>
             <div className="flex-1 p-6 flex flex-col justify-center items-center text-center">
               <div className="w-12 h-12 bg-slate-800 rounded-2xl flex items-center justify-center mb-4 border border-slate-700">
                 <MessageSquare className="h-5 w-5 text-slate-500" />
               </div>
-              <p className="text-slate-400 text-sm font-medium">Secure admin communication channel</p>
-              <p className="text-slate-600 text-[10px] mt-2 px-6">Messages are encrypted and logged for compliance.</p>
+              <p className="text-slate-400 text-sm font-medium">
+                Secure admin communication channel
+              </p>
+              <p className="text-slate-600 text-[10px] mt-2 px-6">
+                Messages are encrypted and logged for compliance.
+              </p>
             </div>
             <div className="p-6 border-t border-slate-800">
               <div className="flex gap-2">
@@ -730,13 +799,17 @@ const VideoCall = ({
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
                   onKeyPress={(e) => {
-                    if (e.key === 'Enter') {
+                    if (e.key === "Enter") {
                       sendChatMessage();
                     }
                   }}
                   className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 text-white text-sm focus:outline-none focus:border-slate-500 placeholder:text-slate-600"
                 />
-                <Button size="icon" className="bg-slate-100 hover:bg-white text-slate-900 rounded-xl" onClick={sendChatMessage}>
+                <Button
+                  size="icon"
+                  className="bg-slate-100 hover:bg-white text-slate-900 rounded-xl"
+                  onClick={sendChatMessage}
+                >
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </div>
@@ -744,13 +817,19 @@ const VideoCall = ({
           </div>
         )}
         {/* Self Video (Admin View) */}
-        <div className={`absolute md:bottom-8 md:right-8 bottom-4 right-4 md:w-64 md:h-44 w-44 h-36 rounded-[2rem] overflow-hidden border-4 border-slate-900 shadow-2xl transition-all duration-500 ${showParticipants || showChat ? 'md:translate-x-[-320px]' : ''}`}>
+        <div
+          className={`absolute md:bottom-8 md:right-8 bottom-4 right-4 md:w-64 md:h-44 w-44 h-36 rounded-[2rem] overflow-hidden border-4 border-slate-900 shadow-2xl transition-all duration-500 ${
+            showParticipants || showChat ? "md:translate-x-[-320px]" : ""
+          }`}
+        >
           <div className="w-full h-full bg-slate-800 relative flex items-center justify-center">
             <div className="text-center">
               <div className="w-14 h-14 bg-slate-700 rounded-2xl mx-auto mb-2 flex items-center justify-center border border-slate-600">
                 <Video className="h-6 w-6 text-slate-500" />
               </div>
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Admin View</p>
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                Admin View
+              </p>
             </div>
             {!videoEnabled && (
               <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center">
@@ -765,9 +844,14 @@ const VideoCall = ({
       <div className="bg-slate-900 px-4 py-4 md:px-8 md:py-8 border-t border-slate-800 md:relative fixed bottom-0 left-0 right-0 z-40">
         <div className="max-w-screen-xl mx-auto flex items-center justify-between">
           <div className="w-32 hidden md:flex items-center gap-2">
-            <Badge variant="outline" className="border-slate-700 text-slate-500">HD 1080p</Badge>
+            <Badge
+              variant="outline"
+              className="border-slate-700 text-slate-500"
+            >
+              HD 1080p
+            </Badge>
           </div>
-          
+
           <div className="flex items-center justify-center gap-4">
             <Button
               variant={audioEnabled ? "secondary" : "destructive"}
@@ -775,7 +859,11 @@ const VideoCall = ({
               className="rounded-2xl md:w-14 md:h-14 w-12 h-12 bg-slate-800 hover:bg-slate-700 border-slate-700"
               onClick={toggleAudioHandler}
             >
-              {audioEnabled ? <Mic className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}
+              {audioEnabled ? (
+                <Mic className="h-5 w-5" />
+              ) : (
+                <MicOff className="h-5 w-5" />
+              )}
             </Button>
 
             <Button
@@ -784,19 +872,27 @@ const VideoCall = ({
               className="rounded-2xl md:w-14 md:h-14 w-12 h-12 bg-slate-800 hover:bg-slate-700 border-slate-700"
               onClick={toggleVideoHandler}
             >
-              {videoEnabled ? <Video className="h-5 w-5" /> : <VideoOff className="h-5 w-5" />}
+              {videoEnabled ? (
+                <Video className="h-5 w-5" />
+              ) : (
+                <VideoOff className="h-5 w-5" />
+              )}
             </Button>
 
             <Button
               variant={screenSharing ? "default" : "secondary"}
               size="icon"
-              className={`rounded-2xl md:w-14 md:h-14 w-12 h-12 border-slate-700 ${screenSharing ? 'bg-white text-slate-900' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
+              className={`rounded-2xl md:w-14 md:h-14 w-12 h-12 border-slate-700 ${
+                screenSharing
+                  ? "bg-white text-slate-900"
+                  : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+              }`}
               onClick={toggleScreenShareHandler}
             >
               <Share className="h-5 w-5" />
             </Button>
 
-            {(userRole === "admin") && (
+            {userRole === "admin" && (
               <Button
                 variant="secondary"
                 size="icon"
@@ -813,7 +909,7 @@ const VideoCall = ({
               size="icon"
               className="rounded-2xl md:w-16 md:h-14 w-14 h-12 bg-rose-500 hover:bg-rose-600 shadow-lg shadow-rose-500/20 ml-4"
               onClick={
-                userRole === "admin"
+                userRole === "admin" || isTherapist
                   ? endCall
                   : () => emit("leave-room", { roomId, roomType })
               }
@@ -834,7 +930,9 @@ const VideoCall = ({
           <div className="w-32 flex justify-end">
             <div className="flex items-center gap-2">
               <div className="h-2 w-2 bg-emerald-500 rounded-full animate-pulse" />
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Monitoring</span>
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                Monitoring
+              </span>
             </div>
           </div>
         </div>
@@ -847,28 +945,39 @@ const VideoCall = ({
             <div className="p-6 border-b border-slate-800">
               <div className="flex items-center justify-between">
                 <h3 className="text-white font-semibold">Admin Settings</h3>
-                <Button variant="ghost" size="icon" className="text-slate-400 hover:text-white" onClick={() => setShowSettings(false)}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-slate-400 hover:text-white"
+                  onClick={() => setShowSettings(false)}
+                >
                   <X className="h-4 w-4" />
                 </Button>
               </div>
             </div>
             <div className="p-6 space-y-6">
               <div>
-                <h4 className="text-slate-300 font-medium mb-3 text-sm">Audio Input</h4>
+                <h4 className="text-slate-300 font-medium mb-3 text-sm">
+                  Audio Input
+                </h4>
                 <select className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-slate-600">
                   <option>Default Microphone</option>
                   <option>External USB Microphone</option>
                 </select>
               </div>
               <div>
-                <h4 className="text-slate-300 font-medium mb-3 text-sm">Video Input</h4>
+                <h4 className="text-slate-300 font-medium mb-3 text-sm">
+                  Video Input
+                </h4>
                 <select className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-slate-600">
                   <option>Default Camera</option>
                   <option>External Webcam</option>
                 </select>
               </div>
               <div>
-                <h4 className="text-slate-300 font-medium mb-3 text-sm">Connection Quality</h4>
+                <h4 className="text-slate-300 font-medium mb-3 text-sm">
+                  Connection Quality
+                </h4>
                 <div className="flex items-center gap-2">
                   <div className="flex-1 h-2 bg-slate-800 rounded-full overflow-hidden">
                     <div className="h-full bg-emerald-500 rounded-full w-3/4"></div>
@@ -878,7 +987,9 @@ const VideoCall = ({
               </div>
               {userRole === "admin" && (
                 <div className="pt-4 border-t border-slate-800">
-                  <h4 className="text-slate-300 font-medium mb-3 text-sm">Admin Options</h4>
+                  <h4 className="text-slate-300 font-medium mb-3 text-sm">
+                    Admin Options
+                  </h4>
                   <div className="space-y-2">
                     <Button
                       variant="secondary"
