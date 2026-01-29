@@ -31,7 +31,7 @@ const filters = ["All", "Active Subscription", "Expired", "No Subscription"];
 export default function Users() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { list: users, loading } = useSelector((state: RootState) => state.users);
+  const { list: users, loading, pagination } = useSelector((state: RootState) => state.users);
 
   console.log("list of users", users)
   const [searchQuery, setSearchQuery] = useState("");
@@ -39,41 +39,41 @@ export default function Users() {
   const [currentPage, setCurrentPage] = useState(1);
   const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const itemsPerPage = 8;
 
   useEffect(() => {
-    dispatch(fetchUsers());
-  }, [dispatch]);
+    let statusFilter = null;
+    let subscriptionFilter = null;
+    
+    if (activeFilter === "All") {
+      // No filter needed
+    } else if (activeFilter === "Active Subscription") {
+      subscriptionFilter = "active";
+    } else if (activeFilter === "No Subscription") {
+      subscriptionFilter = "none";
+    } else if (activeFilter === "Expired") {
+      statusFilter = "suspended";
+    }
+    
+    // Prepare params object conditionally
+    const params: any = { 
+      page: currentPage, 
+      limit: 10, 
+      search: searchQuery
+    };
+    
+    if (statusFilter) params.status = statusFilter;
+    if (subscriptionFilter) params.subscription = subscriptionFilter;
+    
+    dispatch(fetchUsers(params));
+  }, [dispatch, currentPage, searchQuery, activeFilter]);
+
+  const handleFilterChange = (filter) => {
+    setActiveFilter(filter);
+  };
 
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, activeFilter]);
-
-
-  const filteredUsers = users.filter((user) => {
-    const matchesSearch =
-      user.name?.toLowerCase().includes(searchQuery?.toLowerCase()) ||
-      user.email?.toLowerCase().includes(searchQuery?.toLowerCase()) ||
-      user?.phone?.includes(searchQuery);
-
-    if (activeFilter === "All") return matchesSearch;
-    if (activeFilter === "Active Subscription") return matchesSearch && ["Monthly", "Weekly", "Daily"].includes(user.subscription);
-    if (activeFilter === "Expired") return matchesSearch && user.subscription === "Expired";
-    if (activeFilter === "No Subscription") return matchesSearch && user.subscription === "None";
-    return matchesSearch;
-  });
-
-  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
-
-  useEffect(() => {
-    if (currentPage > totalPages && totalPages > 0) {
-      setCurrentPage(totalPages);
-    }
-  }, [currentPage, totalPages]);
-
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const paginatedUsers = filteredUsers.slice(startIndex, endIndex);
 
   const getSubscriptionBadge = (subscription) => {
     switch (subscription) {
@@ -95,7 +95,7 @@ export default function Users() {
   };
 
   const exportToExcel = () => {
-    const exportData = filteredUsers.map(user => ({
+    const exportData = users.map(user => ({
       'Name': user.name,
       'Email': user.email,
       'Phone': user.phone,
@@ -155,7 +155,8 @@ export default function Users() {
         userData: { status: newStatus },
       })
     );
-    dispatch(fetchUsers());
+    // Refresh users with current pagination settings
+    dispatch(fetchUsers({ page: currentPage, limit: 10, search: searchQuery }));
   };
 
   const getSubscriptionLabel = (subscription) => {
@@ -195,11 +196,11 @@ export default function Users() {
             className="pl-10"
           />
         </div>
-        {/* <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
           {filters.map((filter) => (
             <button
               key={filter}
-              onClick={() => setActiveFilter(filter)}
+              onClick={() => handleFilterChange(filter)}
               className={cn(
                 "filter-button",
                 activeFilter === filter && "filter-button-active"
@@ -208,7 +209,7 @@ export default function Users() {
               {filter}
             </button>
           ))}
-        </div> */}
+        </div>
       </div>
 
       <div className="bg-card rounded-lg border border-border overflow-hidden animate-fade-in">
@@ -226,23 +227,20 @@ export default function Users() {
               </tr>
             </thead>
             <tbody>
-              {paginatedUsers.map((user) => (
+              {users.map((user) => (
                 <tr key={user._id} className="cursor-pointer">
                   <td className="font-medium">{user.name}</td>
                   <td className="text-muted-foreground">{user.email}</td>
                   <td className="text-muted-foreground">{user.phone}</td>
                   <td>
-                    <td>
-                      <span
-                        className={cn(
-                          "status-badge px-2 py-1 rounded-full text-xs font-medium",
-                          getSubscriptionBadge(user.subscription)
-                        )}
-                      >
-                        {getSubscriptionLabel(user.subscription)}
-                      </span>
-                    </td>
-
+                    <span
+                      className={cn(
+                        "status-badge px-2 py-1 rounded-full text-xs font-medium",
+                        getSubscriptionBadge(user.subscription)
+                      )}
+                    >
+                      {getSubscriptionLabel(user.subscription)}
+                    </span>
                   </td>
                   <td>
                     <span className={cn("status-badge", user.status === "active" ? "status-active" : "status-inactive")}>
@@ -285,22 +283,25 @@ export default function Users() {
 
         <div className="flex items-center justify-between px-4 py-3 border-t border-border">
           <p className="text-sm text-muted-foreground">
-            Showing <span className="font-medium">{startIndex + 1}-{Math.min(endIndex, filteredUsers.length)}</span> of{" "}
-            <span className="font-medium">{filteredUsers.length}</span> users
+            Showing <span className="font-medium">{(pagination?.page || 1) * (pagination?.limit || 10) - (pagination?.limit || 10) + 1 || 1}-{Math.min((pagination?.page || 1) * (pagination?.limit || 10), pagination?.total || 0)}</span> of{" "}
+            <span className="font-medium">{pagination?.total || 0}</span> users
           </p>
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
               size="sm"
-              disabled={currentPage === 1}
-              onClick={() => setCurrentPage(currentPage - 1)}
+              disabled={(pagination?.page || 1) === 1}
+              onClick={() => setCurrentPage((pagination?.page || 1) - 1)}
             >
               <ChevronLeft className="w-4 h-4" />
             </Button>
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+            {Array.from({ length: pagination?.totalPages || 1 }, (_, i) => i + 1).slice(
+              Math.max(0, (pagination?.page || 1) - 3),
+              Math.min(pagination?.totalPages || 1, (pagination?.page || 1) + 2)
+            ).map((page) => (
               <Button
                 key={page}
-                variant={currentPage === page ? "outline" : "ghost"}
+                variant={(pagination?.page || 1) === page ? "outline" : "ghost"}
                 size="sm"
                 className="min-w-[32px]"
                 onClick={() => setCurrentPage(page)}
@@ -311,8 +312,8 @@ export default function Users() {
             <Button
               variant="outline"
               size="sm"
-              disabled={currentPage === totalPages}
-              onClick={() => setCurrentPage(currentPage + 1)}
+              disabled={(pagination?.page || 1) === (pagination?.totalPages || 1)}
+              onClick={() => setCurrentPage((pagination?.page || 1) + 1)}
             >
               <ChevronRight className="w-4 h-4" />
             </Button>
