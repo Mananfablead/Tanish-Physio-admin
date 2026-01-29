@@ -88,7 +88,7 @@ const VideoCall = ({
     console.log("Admin: Joined call status:", joinedCall);
     console.log("Admin: Local stream status:", !!localStream);
 
-    if (connected && !localStream) {
+    if (socket && connected && !localStream) {
       console.log("Admin: Initializing local media...");
       initLocalMedia()
         .then(() => {
@@ -101,7 +101,7 @@ const VideoCall = ({
           );
         });
     }
-  }, [connected, joinedCall, localStream, initLocalMedia]);
+  }, [socket, connected, joinedCall, localStream, initLocalMedia]);
 
   // Timer for call duration
   useEffect(() => {
