@@ -100,9 +100,10 @@ export default function Services() {
                     <th>Description</th>
                     <th>Price</th>
                     <th>Duration</th>
-                    {/* <th>Category</th> */}
+                    <th>Sessions</th>
+                    <th>Validity</th>
                     <th>Status</th>
-                    <th className="w-12"></th>
+                    <th className="w-12">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -142,11 +143,8 @@ export default function Services() {
                       </td>
                       <td>&#8377;{service.price}</td>
                       <td>{service.duration}</td>
-                      {/* <td>
-                        <span className="status-badge bg-muted text-muted-foreground">
-                          {service.category}
-                        </span>
-                      </td> */}
+                      <td>{service.sessions}</td>
+                      <td>{service.validity} days</td>
                       <td>
                         <span className={cn("status-badge", (service.status === "active" || service.status === true) ? "status-active" : "status-inactive")}>
                           {service.status === true ? 'active' : service.status === false ? 'inactive' : service.status}

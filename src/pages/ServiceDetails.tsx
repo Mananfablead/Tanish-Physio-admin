@@ -202,7 +202,7 @@ export default function ServiceDetails() {
                     {service.description}
                   </p>
 
-                  <div className="flex gap-6">
+                  <div className="flex gap-6 flex-wrap">
                     <div className="flex items-center gap-2">
                       <Wallet className="w-4 h-4" />
                       ₹{service.price}
@@ -210,6 +210,14 @@ export default function ServiceDetails() {
                     <div className="flex items-center gap-2">
                       <Clock className="w-4 h-4" />
                       {service.duration}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">Sessions:</span>
+                      {service.sessions}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">Validity:</span>
+                      {service.validity} days
                     </div>
                   </div>
                 </div>
@@ -284,6 +292,8 @@ export default function ServiceDetails() {
               <InfoRow label="Service ID" value={service._id} />
               <InfoRow label="Category" value={service.category} />
               <InfoRow label="Duration" value={service.duration} />
+              <InfoRow label="Sessions" value={service.sessions} />
+              <InfoRow label="Validity" value={`${service.validity} days`} />
               <InfoRow label="Price" value={`₹${service.price}`} />
               <InfoRow
                 label="Created"

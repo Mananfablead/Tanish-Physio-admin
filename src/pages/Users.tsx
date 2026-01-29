@@ -1,7 +1,15 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, MoreHorizontal, Eye, UserX, RefreshCw, Download, ChevronLeft, ChevronRight, Delete, Trash } from "lucide-react";
-import * as XLSX from 'xlsx';
+import {
+  Search,
+  MoreHorizontal,
+  Eye,
+  UserX,
+  Download,
+
+  Trash,
+} from "lucide-react";
+import * as XLSX from "xlsx";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,7 +31,6 @@ import {
 import { cn } from "@/lib/utils";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchUsers, deleteUser, updateUser } from "@/features/users/userSlice";
-import { RootState } from "@/store";
 import PageLoader from "@/components/PageLoader";
 
 const filters = ["All", "Active Subscription", "Expired", "No Subscription"];
@@ -31,176 +38,164 @@ const filters = ["All", "Active Subscription", "Expired", "No Subscription"];
 export default function Users() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { list: users, loading, pagination } = useSelector((state: RootState) => state.users);
+  const { list: users, loading, pagination } = useSelector(
+    (state) => state.users
+  );
 
-  console.log("list of users", users)
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState("All");
   const [currentPage, setCurrentPage] = useState(1);
-  const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
+  const [deleteUserId, setDeleteUserId] = useState(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
+  /* ---------------- FETCH USERS ---------------- */
   useEffect(() => {
-    let statusFilter = null;
-    let subscriptionFilter = null;
-    
-    if (activeFilter === "All") {
-      // No filter needed
-    } else if (activeFilter === "Active Subscription") {
-      subscriptionFilter = "active";
-    } else if (activeFilter === "No Subscription") {
-      subscriptionFilter = "none";
-    } else if (activeFilter === "Expired") {
-      statusFilter = "suspended";
-    }
-    
-    // Prepare params object conditionally
-    const params: any = { 
-      page: currentPage, 
-      limit: 10, 
-      search: searchQuery
-    };
-    
-    if (statusFilter) params.status = statusFilter;
-    if (subscriptionFilter) params.subscription = subscriptionFilter;
-    
-    dispatch(fetchUsers(params));
-  }, [dispatch, currentPage, searchQuery, activeFilter]);
-
-  const handleFilterChange = (filter) => {
-    setActiveFilter(filter);
-  };
+    dispatch(
+      fetchUsers({
+        page: currentPage,
+        limit: 10,
+        search: searchQuery,
+      })
+    );
+  }, [dispatch, currentPage, searchQuery]);
 
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, activeFilter]);
 
-  const getSubscriptionBadge = (subscription) => {
-    switch (subscription) {
-      case "Monthly":
-        return "bg-blue-100 text-blue-700";
-      case "Yearly":
-        return "bg-purple-100 text-purple-700";
-      case "Trial":
-        return "bg-yellow-100 text-yellow-700";
-      case "none":
+  const matchesSearch = (user, query) => {
+    if (!query) return true;
+
+    const q = query.toLowerCase();
+
+    return (
+      user.name?.toLowerCase().includes(q) ||
+      user.email?.toLowerCase().includes(q) ||
+      user.phone?.toLowerCase().includes(q)
+    );
+  };
+
+  /* ---------------- FILTER LOGIC (FIX) ---------------- */
+  const filteredUsers = useMemo(() => {
+    return users.filter((user) => {
+      // 🔍 SEARCH FILTER
+      if (!matchesSearch(user, searchQuery)) {
+        return false;
+      }
+
+      // 🎯 SUBSCRIPTION FILTER
+      if (activeFilter === "All") return true;
+
+      if (activeFilter === "Active Subscription") {
+        return user.subscriptionInfo?.status === "active";
+      }
+
+      if (activeFilter === "Expired") {
+        return user.subscriptionInfo?.status === "expired";
+      }
+
+      if (activeFilter === "No Subscription") {
+        return !user.subscriptionInfo;
+      }
+
+      return true;
+    });
+  }, [users, activeFilter, searchQuery]);
+
+
+  /* ---------------- HELPERS ---------------- */
+  const getSubscriptionBadge = (status) => {
+    switch (status) {
+      case "active":
+        return "bg-green-100 text-green-700";
+      case "expired":
+        return "bg-red-100 text-red-700";
       default:
         return "bg-gray-100 text-gray-600";
     }
   };
 
-
-  const openUserProfile = (userId: number) => {
+  const openUserProfile = (userId) => {
     navigate(`/users/${userId}`);
   };
 
   const exportToExcel = () => {
-    const exportData = users.map(user => ({
-      'Name': user.name,
-      'Email': user.email,
-      'Phone': user.phone,
-      'Subscription': user.subscription,
-      'Status': user.status,
-      'Join Date': user.joinDate
+    const exportData = filteredUsers.map((user) => ({
+      Name: user.name,
+      Email: user.email,
+      Phone: user.phone,
+      Subscription: user.subscriptionInfo?.planName || "None",
+      Status: user.status,
+      "Join Date": user.joinDate?.split("T")[0],
     }));
 
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.json_to_sheet(exportData);
+    XLSX.utils.book_append_sheet(wb, ws, "Users");
 
-    const colWidths = [
-      { wch: 20 }, // Name
-      { wch: 30 }, // Email
-      { wch: 15 }, // Phone
-      { wch: 15 }, // Subscription
-      { wch: 10 }, // Status
-      { wch: 12 }  // Join Date
-    ];
-    ws['!cols'] = colWidths;
-
-    XLSX.utils.book_append_sheet(wb, ws, 'Users');
-
-    const currentDate = new Date().toISOString().split('T')[0];
-    const filename = `users_export_${currentDate}.xlsx`;
-
-    XLSX.writeFile(wb, filename);
+    XLSX.writeFile(
+      wb,
+      `users_${new Date().toISOString().split("T")[0]}.xlsx`
+    );
   };
 
-  const handleDeleteUser = (userId: string) => {
+  const handleDeleteUser = (userId) => {
     setDeleteUserId(userId);
     setIsDeleteDialogOpen(true);
   };
 
   const confirmDeleteUser = () => {
-    if (deleteUserId) {
-      dispatch(deleteUser(deleteUserId));
-      setDeleteUserId(null);
-      setIsDeleteDialogOpen(false);
-    }
-  };
-
-  const cancelDeleteUser = () => {
-    setDeleteUserId(null);
+    dispatch(deleteUser(deleteUserId));
     setIsDeleteDialogOpen(false);
   };
 
-
   const toggleUserStatus = (user) => {
-    if (!user?._id) return;
-
-    const newStatus = user.status === "active" ? "inactive" : "active";
-
     dispatch(
       updateUser({
         userId: user._id,
-        userData: { status: newStatus },
+        userData: {
+          status: user.status === "active" ? "inactive" : "active",
+        },
       })
     );
-    // Refresh users with current pagination settings
-    dispatch(fetchUsers({ page: currentPage, limit: 10, search: searchQuery }));
   };
-
-  const getSubscriptionLabel = (subscription) => {
-    if (!subscription || subscription === "none") return "No Subscription";
-    return subscription;
-  };
-
-
 
   if (loading && users.length === 0) {
     return <PageLoader text="Loading users..." />;
-}
+  }
 
-
-
-
+  /* ---------------- UI ---------------- */
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="page-header">
+      {/* HEADER */}
+      <div className="flex justify-between items-center">
+        <div>
           <h1 className="page-title">User Management</h1>
           <p className="page-subtitle">Manage and monitor platform users</p>
         </div>
-        <Button variant="outline" className="gap-2" onClick={exportToExcel}>
-          <Download className="w-4 h-4" />
+        <Button variant="outline" onClick={exportToExcel}>
+          <Download className="w-4 h-4 mr-2" />
           Export Users
         </Button>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-4">
+      {/* SEARCH & FILTER */}
+      <div className="flex flex-wrap gap-4">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Search by name, email, or phone..."
+            className="pl-10"
+            placeholder="Search by name, email, phone..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
           />
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
+
+        <div className="flex gap-2 flex-wrap">
           {filters.map((filter) => (
             <button
               key={filter}
-              onClick={() => handleFilterChange(filter)}
+              onClick={() => setActiveFilter(filter)}
               className={cn(
                 "filter-button",
                 activeFilter === filter && "filter-button-active"
@@ -212,130 +207,102 @@ export default function Users() {
         </div>
       </div>
 
-      <div className="bg-card rounded-lg border border-border overflow-hidden animate-fade-in">
-        <div className="overflow-x-auto">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Phone</th>
-                <th>Subscription</th>
-                <th>Status</th>
-                <th>Join Date</th>
-                <th className="w-12"></th>
+      {/* TABLE */}
+      <div className="border rounded-lg overflow-x-auto">
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Phone</th>
+              <th>Subscription</th>
+              <th>Status</th>
+              <th>Join Date</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredUsers.map((user) => (
+              <tr key={user._id}>
+                <td className="font-medium">{user.name}</td>
+                <td>{user.email}</td>
+                <td>{user.phone}</td>
+                <td>
+                  <span
+                    className={cn(
+                      "px-2 py-1 rounded-full text-xs",
+                      getSubscriptionBadge(user.subscriptionInfo?.status)
+                    )}
+                  >
+                    {user.subscriptionInfo?.planName || "No Subscription"}
+                  </span>
+                </td>
+                <td>
+                  <span
+                    className={cn(
+                      "status-badge",
+                      user.status === "active"
+                        ? "status-active"
+                        : "status-inactive"
+                    )}
+                  >
+                    {user.status}
+                  </span>
+                </td>
+                <td>{user.joinDate?.split("T")[0]}</td>
+                <td>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button size="icon" variant="ghost">
+                        <MoreHorizontal />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onClick={() => openUserProfile(user._id)}
+                      >
+                        <Eye className="w-4 h-4 mr-2" />
+                        View Profile
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => handleDeleteUser(user._id)}
+                      >
+                        <Trash className="w-4 h-4 mr-2" />
+                        Delete
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => toggleUserStatus(user)}
+                      >
+                        <UserX className="w-4 h-4 mr-2" />
+                        {user.status === "active"
+                          ? "Deactivate"
+                          : "Activate"}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {users.map((user) => (
-                <tr key={user._id} className="cursor-pointer">
-                  <td className="font-medium">{user.name}</td>
-                  <td className="text-muted-foreground">{user.email}</td>
-                  <td className="text-muted-foreground">{user.phone}</td>
-                  <td>
-                    <span
-                      className={cn(
-                        "status-badge px-2 py-1 rounded-full text-xs font-medium",
-                        getSubscriptionBadge(user.subscription)
-                      )}
-                    >
-                      {getSubscriptionLabel(user.subscription)}
-                    </span>
-                  </td>
-                  <td>
-                    <span className={cn("status-badge", user.status === "active" ? "status-active" : "status-inactive")}>
-                      {user.status}
-                    </span>
-                  </td>
-                  <td className="text-muted-foreground">{user.joinDate}</td>
-                  <td onClick={(e) => e.stopPropagation()}>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <MoreHorizontal className="w-4 h-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => openUserProfile(user._id)}>
-                          <Eye className="w-4 h-4 mr-2" />
-                          View Profile
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleDeleteUser(user._id)}>
-                          <Trash className="w-4 h-4 mr-2" />
-                          Delete User
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => toggleUserStatus(user)}
-                          className={user.status === "active" ? "text-destructive" : "text-emerald-600"}
-                        >
-                          <UserX className="w-4 h-4 mr-2" />
-                          {user.status === "active" ? "Deactivate User" : "Activate User"}
-                        </DropdownMenuItem>
-
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="flex items-center justify-between px-4 py-3 border-t border-border">
-          <p className="text-sm text-muted-foreground">
-            Showing <span className="font-medium">{(pagination?.page || 1) * (pagination?.limit || 10) - (pagination?.limit || 10) + 1 || 1}-{Math.min((pagination?.page || 1) * (pagination?.limit || 10), pagination?.total || 0)}</span> of{" "}
-            <span className="font-medium">{pagination?.total || 0}</span> users
-          </p>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={(pagination?.page || 1) === 1}
-              onClick={() => setCurrentPage((pagination?.page || 1) - 1)}
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </Button>
-            {Array.from({ length: pagination?.totalPages || 1 }, (_, i) => i + 1).slice(
-              Math.max(0, (pagination?.page || 1) - 3),
-              Math.min(pagination?.totalPages || 1, (pagination?.page || 1) + 2)
-            ).map((page) => (
-              <Button
-                key={page}
-                variant={(pagination?.page || 1) === page ? "outline" : "ghost"}
-                size="sm"
-                className="min-w-[32px]"
-                onClick={() => setCurrentPage(page)}
-              >
-                {page}
-              </Button>
             ))}
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={(pagination?.page || 1) === (pagination?.totalPages || 1)}
-              onClick={() => setCurrentPage((pagination?.page || 1) + 1)}
-            >
-              <ChevronRight className="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
+          </tbody>
+        </table>
       </div>
 
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+      {/* DELETE DIALOG */}
+      <AlertDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogTitle>Delete user?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the user and remove all associated data.
+              This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={cancelDeleteUser}>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={confirmDeleteUser}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Delete User
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteUser}>
+              Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

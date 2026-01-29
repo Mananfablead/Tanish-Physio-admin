@@ -41,11 +41,14 @@ export default function UpdateService() {
         about: "", // New field
         price: "",
         duration: "",
+        sessions: "",
+        validity: "",
         category: "Therapy",
         status: "active" as "active" | "inactive",
         features: [] as string[],
         prerequisites: [] as string[],
         benefits: [] as string[],
+
     });
 
     const [durationError, setDurationError] = useState("");
@@ -79,6 +82,8 @@ export default function UpdateService() {
                 about: service.about || "", // New field
                 price: (service.price || service.price === 0) ? service.price.toString() : "",
                 duration: service.duration || "",
+                sessions: (service.sessions || service.sessions === 0) ? service.sessions.toString() : "",
+                validity: (service.validity || service.validity === 0) ? service.validity.toString() : "",
                 category: service.category || "Therapy",
                 status: (service.status === 'active' || service.status === 'inactive')
                     ? service.status as "active" | "inactive"
@@ -228,6 +233,8 @@ export default function UpdateService() {
         formData.append("about", serviceForm.about.trim());
         formData.append("price", serviceForm.price);
         formData.append("duration", serviceForm.duration);
+        formData.append("sessions", serviceForm.sessions);
+        formData.append("validity", serviceForm.validity);
         formData.append("category", serviceForm.category);
         formData.append("status", serviceForm.status);
 
@@ -339,7 +346,7 @@ export default function UpdateService() {
                         rows={4}
                     />
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <Input
                             type="number"
                             placeholder="Price"
@@ -363,6 +370,24 @@ export default function UpdateService() {
                                 <p className="text-sm text-red-500 mt-1">{durationError}</p>
                             )}
                         </div>
+
+                        <Input
+                            type="number"
+                            placeholder="Sessions"
+                            value={serviceForm.sessions}
+                            onChange={(e) =>
+                                setServiceForm({ ...serviceForm, sessions: e.target.value })
+                            }
+                        />
+
+                        <Input
+                            type="number"
+                            placeholder="Validity (days)"
+                            value={serviceForm.validity}
+                            onChange={(e) =>
+                                setServiceForm({ ...serviceForm, validity: e.target.value })
+                            }
+                        />
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">

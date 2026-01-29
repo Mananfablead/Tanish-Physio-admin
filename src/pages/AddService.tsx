@@ -37,11 +37,14 @@ export default function AddService() {
         about: "", // New field
         price: "",
         duration: "",
+        sessions: "",
+        validity: "",
         category: "Therapy",
         status: "active" as "active" | "inactive",
         features: [""] as string[],
         prerequisites: [""] as string[],
         benefits: [""] as string[],
+
     });
 
     const [durationError, setDurationError] = useState("");
@@ -146,6 +149,8 @@ const handleAddService = async () => {
     formData.append("about", serviceForm.about.trim());
     formData.append("price", serviceForm.price);
     formData.append("duration", serviceForm.duration);
+    formData.append("sessions", serviceForm.sessions);
+    formData.append("validity", serviceForm.validity);
     formData.append("category", serviceForm.category);
     formData.append("status", serviceForm.status);
 
@@ -245,7 +250,7 @@ const handleAddService = async () => {
                         rows={4}
                     />
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <Input
                             type="number"
                             placeholder="Price"
@@ -269,6 +274,24 @@ const handleAddService = async () => {
                                 <p className="text-sm text-red-500 mt-1">{durationError}</p>
                             )}
                         </div>
+
+                        <Input
+                            type="number"
+                            placeholder="Sessions"
+                            value={serviceForm.sessions}
+                            onChange={(e) =>
+                                setServiceForm({ ...serviceForm, sessions: e.target.value })
+                            }
+                        />
+
+                        <Input
+                            type="number"
+                            placeholder="Validity (days)"
+                            value={serviceForm.validity}
+                            onChange={(e) =>
+                                setServiceForm({ ...serviceForm, validity: e.target.value })
+                            }
+                        />
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">

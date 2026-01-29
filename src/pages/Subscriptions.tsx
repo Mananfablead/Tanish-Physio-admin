@@ -119,10 +119,11 @@ export default function Subscriptions() {
 
   console.log("filteredSubscriptions", filteredSubscriptions);
   // Calculate stats from actual plans
-  const totalSubscribers = plans.reduce(
-    (acc: number, plan: SubscriptionPlan) => acc + (plan.subscribers || 0),
-    0
-  );
+ const totalSubscribers =
+  userSubscriptions?.filter(
+    (sub) => sub.status?.toLowerCase() === "active"
+  ).length || 0;
+
   const totalRevenue = plans.reduce(
     (acc: number, plan: SubscriptionPlan) => acc + plan.price,
     0
