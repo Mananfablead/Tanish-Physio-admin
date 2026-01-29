@@ -26,6 +26,7 @@ const VideoCall = ({
   onEndCall,
   sessionId, // Add sessionId prop for API calls
   connected: externalConnected = false, // Add connected prop from parent
+  user, // Add user prop to get user info
 }) => {
   const { socket, connected, error, emit, on, setError } = useSocket(
     roomId,
@@ -75,6 +76,8 @@ const VideoCall = ({
   const [newMessage, setNewMessage] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [typingUsers, setTypingUsers] = useState([]);
+  const [therapistInfo, setTherapistInfo] = useState({ name: "", specialty: "" });
+  const [userInfo, setUserInfo] = useState({ name: "", initials: "" });
 
   // Initialize media when socket connects
   useEffect(() => {
@@ -527,7 +530,7 @@ const VideoCall = ({
             <Users className="h-12 w-12" />
           </div>
           <h2 className="text-2xl font-bold mb-2">Incoming Session</h2>
-          <p className="text-slate-500 mb-6">New monitoring session detected</p>
+          <p className="text-slate-500 mb-6">{therapistInfo.name} is ready to connect</p>
           <div className="flex justify-center gap-4">
             <Button
               variant="destructive"
@@ -565,7 +568,11 @@ const VideoCall = ({
               <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-[10px] font-bold uppercase tracking-wider px-2 py-0">Admin Monitoring</Badge>
               <span className="text-slate-500 text-xs font-medium">• Live Session</span>
             </div>
-            <h1 className="text-white font-semibold tracking-tight">Session Monitoring</h1>
+            <h1 className="text-white font-semibold tracking-tight">{therapistInfo.name} Session</h1>
+            <p className="text-slate-500 text-xs mt-1">Session ID: {sessionId}</p>
+            <p className="text-slate-500 text-xs">
+              {userInfo.name} monitoring {therapistInfo.name}
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -580,7 +587,7 @@ const VideoCall = ({
             }}
           >
             <Users className="h-4 w-4 mr-2" />
-            <span className="hidden md:inline">Participants</span>
+            <span className="hidden md:inline">Participants ({participants.length})</span>
           </Button>
           <Button
             variant="ghost"
@@ -607,12 +614,12 @@ const VideoCall = ({
             <div className="w-40 h-40 bg-slate-900 rounded-[2.5rem] mx-auto mb-6 flex items-center justify-center border border-slate-800 shadow-2xl relative overflow-hidden">
               <img 
                 src="https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=300&h=300&fit=crop&crop=face" 
-                alt="Participant" 
+                alt={therapistInfo.name} 
                 className="w-full h-full object-cover opacity-60" 
               />
             </div>
-            <h2 className="text-2xl font-semibold text-white tracking-tight mb-2">Primary Participant</h2>
-            <p className="text-slate-500 font-medium">Monitoring Active Session</p>
+            <h2 className="text-2xl font-semibold text-white tracking-tight mb-2">{therapistInfo.name}</h2>
+            <p className="text-slate-500 font-medium">{therapistInfo.specialty}</p>
           </div>
         </div>
 
@@ -627,19 +634,15 @@ const VideoCall = ({
               {participants.map((participant, index) => (
                 <div key={`${participant.userId}-${participant.socketId}`} className="flex items-center gap-4">
                   <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-300 font-semibold text-sm">
-                    {participant.isTherapist ? "T" : "P"}
+                    {participant.name?.charAt(0)?.toUpperCase() || participant.userId?.charAt(0)?.toUpperCase() || 'U'}
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center justify-between">
                       <p className="text-white font-medium text-sm">
-                        {participant.isSelf
-                          ? "You (Admin)"
-                          : participant.isTherapist
-                          ? "Therapist"
-                          : `Patient ${index + 1}`}
+                        {participant.isTherapist ? therapistInfo.name : userInfo.name}
                       </p>
                       <Badge className="bg-slate-800 text-slate-400 border-none text-[8px] h-4">
-                        {participant.isSelf ? "You" : participant.isTherapist ? "Staff" : "User"}
+                        {participant.isTherapist ? "Staff" : "You"}
                       </Badge>
                     </div>
                     <p className="text-slate-500 text-xs">
@@ -670,6 +673,32 @@ const VideoCall = ({
                   </div>
                 </div>
               ))}
+              {/* Add static entries if no participants yet */}
+              {participants.length === 0 && (
+                <>
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-300 font-semibold text-sm">
+                      {therapistInfo.name?.charAt(0)?.toUpperCase() || 'T'}
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <p className="text-white font-medium text-sm">{therapistInfo.name}</p>
+                        <Badge className="bg-slate-800 text-slate-400 border-none text-[8px] h-4">Staff</Badge>
+                      </div>
+                      <p className="text-slate-500 text-xs">Active</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-300 font-semibold text-sm">
+                      {userInfo.initials}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-white font-medium text-sm">{userInfo.name}</p>
+                      <p className="text-slate-500 text-xs">You</p>
+                    </div>
+                  </div>
+                </>
+              )}
               
               {/* Admin Tools */}
               {userRole === "admin" && (
