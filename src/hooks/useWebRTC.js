@@ -23,6 +23,9 @@ const useWebRTC = (roomId, socket, userRole = 'admin') => {
 
     // Initialize local media
     const initLocalMedia = async () => {
+        if (!socket) {
+            throw new Error('Socket not connected');
+        }
         try {
             // First try to get both video and audio
             const stream = await navigator.mediaDevices.getUserMedia({
