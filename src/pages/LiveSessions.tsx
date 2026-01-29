@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from "react-router-dom";
 import { 
   Video, 
   Clock, 
@@ -28,6 +29,7 @@ import { fetchSessions, createSession, updateSession, deleteSession, rescheduleS
 import { useDispatch, useSelector } from 'react-redux';
 
 const LiveSessions = () => {
+  const navigate = useNavigate();
   const dispatch: any = useDispatch();
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState('all');
@@ -122,11 +124,13 @@ const LiveSessions = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">{activeTab === 'upcoming' ? 'Upcoming Sessions' : 'Live Sessions'}</h1>
+          <h1 className="text-2xl font-bold tracking-tight">
+            {activeTab === "upcoming" ? "Upcoming Sessions" : "Live Sessions"}
+          </h1>
           <p className="text-muted-foreground mt-1">
-            {activeTab === 'upcoming' 
-              ? 'View and manage upcoming sessions'
-              : 'View and join live sessions or sessions starting within 24 hours'}
+            {activeTab === "upcoming"
+              ? "View and manage upcoming sessions"
+              : "View and join live sessions or sessions starting within 24 hours"}
           </p>
         </div>
       </div>
@@ -135,10 +139,12 @@ const LiveSessions = () => {
       <div className="border-b border-border">
         <nav className="-mb-px flex space-x-8">
           <button
-            onClick={() => setActiveTab('upcoming')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'upcoming' 
-              ? 'border-primary text-primary' 
-              : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'}`}
+            onClick={() => setActiveTab("upcoming")}
+            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              activeTab === "upcoming"
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
+            }`}
           >
             Upcoming
             <span className="ml-1.5 px-1.5 py-0.5 text-xs bg-info/20 text-info rounded-full">
@@ -146,10 +152,12 @@ const LiveSessions = () => {
             </span>
           </button>
           <button
-            onClick={() => setActiveTab('live')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'live' 
-              ? 'border-primary text-primary' 
-              : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'}`}
+            onClick={() => setActiveTab("live")}
+            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              activeTab === "live"
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
+            }`}
           >
             Live
             <span className="ml-1.5 px-1.5 py-0.5 text-xs bg-success/20 text-success rounded-full">
@@ -167,8 +175,12 @@ const LiveSessions = () => {
               <Video className="w-5 h-5 text-success" />
             </div>
             <div>
-              <p className="text-2xl font-semibold">{activeTab === 'upcoming' ? upcomingTabCount : liveTabCount}</p>
-              <p className="text-sm text-muted-foreground">{activeTab === 'upcoming' ? 'Upcoming' : 'Currently Live'}</p>
+              <p className="text-2xl font-semibold">
+                {activeTab === "upcoming" ? upcomingTabCount : liveTabCount}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {activeTab === "upcoming" ? "Upcoming" : "Currently Live"}
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -180,13 +192,21 @@ const LiveSessions = () => {
             </div>
             <div>
               <p className="text-2xl font-semibold">
-                {allSessions.filter((session: any) => {
-                  const sessionDateTime = new Date(`${session.date} ${session.time}`);
-                  const now = new Date();
-                  const timeDiff = sessionDateTime.getTime() - now.getTime();
-                  const hoursDiff = timeDiff / (1000 * 60 * 60);
-                  return hoursDiff <= 24 && hoursDiff >= 0 && session.status === 'scheduled';
-                }).length}
+                {
+                  allSessions.filter((session: any) => {
+                    const sessionDateTime = new Date(
+                      `${session.date} ${session.time}`
+                    );
+                    const now = new Date();
+                    const timeDiff = sessionDateTime.getTime() - now.getTime();
+                    const hoursDiff = timeDiff / (1000 * 60 * 60);
+                    return (
+                      hoursDiff <= 24 &&
+                      hoursDiff >= 0 &&
+                      session.status === "scheduled"
+                    );
+                  }).length
+                }
               </p>
               <p className="text-sm text-muted-foreground">Starting in 24h</p>
             </div>
@@ -199,7 +219,9 @@ const LiveSessions = () => {
               <Play className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <p className="text-2xl font-semibold">{activeTab === 'upcoming' ? upcomingTabCount : liveTabCount}</p>
+              <p className="text-2xl font-semibold">
+                {activeTab === "upcoming" ? upcomingTabCount : liveTabCount}
+              </p>
               <p className="text-sm text-muted-foreground">Available to Join</p>
             </div>
           </CardContent>
@@ -243,96 +265,116 @@ const LiveSessions = () => {
             <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
               <Video className="w-8 h-8 text-muted-foreground" />
             </div>
-            <h3 className="text-lg font-semibold mb-1">No {activeTab === 'upcoming' ? 'upcoming' : 'live'} sessions available</h3>
-            <p className="text-muted-foreground">No {activeTab === 'upcoming' ? 'scheduled' : 'live'} sessions found. {activeTab === 'upcoming' ? 'All upcoming sessions will appear here.' : 'Only showing currently live sessions.'}</p>
+            <h3 className="text-lg font-semibold mb-1">
+              No {activeTab === "upcoming" ? "upcoming" : "live"} sessions
+              available
+            </h3>
+            <p className="text-muted-foreground">
+              No {activeTab === "upcoming" ? "scheduled" : "live"} sessions
+              found.{" "}
+              {activeTab === "upcoming"
+                ? "All upcoming sessions will appear here."
+                : "Only showing currently live sessions."}
+            </p>
           </CardContent>
         </Card>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {filteredSessions.filter((session: any) => {
-            if (!searchQuery) return true;
-            const query = searchQuery.toLowerCase();
-            
-            // Search in user name, therapist name, date, time, or type
-            return (
-              session.userId?.name?.toLowerCase().includes(query) ||
-              session.therapistId?.name?.toLowerCase().includes(query) ||
-              session.date?.toLowerCase().includes(query) ||
-              session.time?.toLowerCase().includes(query) ||
-              session.type?.toLowerCase().includes(query)
-            );
-          }).map((session: any) => (
-            <Card 
-              key={session._id} 
-              className="shadow-sm rounded-xl border border-border overflow-hidden hover:shadow-md transition-shadow"
-            >
-              <CardHeader className="pb-3">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      {session.userId?.name || 'N/A'}
-                      <Badge 
-                        variant="secondary" 
-                        className={session.status !== 'live' 
-                          ? 'bg-blue-100 text-blue-800 border-blue-200' 
-                          : 'bg-green-100 text-green-800 border-green-200'}
-                      >
-                        {session.status !== 'live' ? 'SCHEDULED' : 'LIVE NOW'}
-                      </Badge>
-                    </CardTitle>
-                    <p className="text-sm text-muted-foreground mt-1">{session.therapistId?.name || 'N/A'}</p>
-                  </div>
-                  <Badge variant="outline">{session.type}</Badge>
-                </div>
-              </CardHeader>
+          {filteredSessions
+            .filter((session: any) => {
+              if (!searchQuery) return true;
+              const query = searchQuery.toLowerCase();
 
-              <CardContent className="px-6 pb-6">
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Calendar className="w-4 h-4" />
-                      <span>{session.date}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Clock className="w-4 h-4" />
-                      <span>{session.time}</span>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2 pt-2">
-                    {session.status === 'live' ? (
-                      <>
-                        <Button 
-                          className="flex-1"
-                          onClick={() => window.open(`/video-call/${session._id}`, '_blank', 'width=1200,height=800')}
+              // Search in user name, therapist name, date, time, or type
+              return (
+                session.userId?.name?.toLowerCase().includes(query) ||
+                session.therapistId?.name?.toLowerCase().includes(query) ||
+                session.date?.toLowerCase().includes(query) ||
+                session.time?.toLowerCase().includes(query) ||
+                session.type?.toLowerCase().includes(query)
+              );
+            })
+            .map((session: any) => (
+              <Card
+                key={session._id}
+                className="shadow-sm rounded-xl border border-border overflow-hidden hover:shadow-md transition-shadow"
+              >
+                <CardHeader className="pb-3">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        {session.userId?.name || "N/A"}
+                        <Badge
+                          variant="secondary"
+                          className={
+                            session.status !== "live"
+                              ? "bg-blue-100 text-blue-800 border-blue-200"
+                              : "bg-green-100 text-green-800 border-green-200"
+                          }
                         >
-                          <Video className="w-4 h-4 mr-2" />
-                          Join Session
-                        </Button>
-                        <Button 
-                          variant="outline"
-                          size="icon"
-                          onClick={() => navigator.clipboard.writeText(`${window.location.origin}/video-call/${session._id}`)}
-                        >
-                          <Copy className="w-4 h-4" />
-                        </Button>
-                      </>
-                    ) : (
-                      <Button 
-                        className="flex-1"
-                        variant="secondary"
-                        disabled
-                      >
-                        <Clock className="w-4 h-4 mr-2" />
-                        Starts in {calculateTimeUntilSession(session.date, session.time)}
-                      </Button>
-                    )}
+                          {session.status !== "live" ? "SCHEDULED" : "LIVE NOW"}
+                        </Badge>
+                      </CardTitle>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {session.therapistId?.name || "N/A"}
+                      </p>
+                    </div>
+                    <Badge variant="outline">{session.type}</Badge>
                   </div>
+                </CardHeader>
 
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                <CardContent className="px-6 pb-6">
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Calendar className="w-4 h-4" />
+                        <span>{session.date}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Clock className="w-4 h-4" />
+                        <span>{session.time}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2 pt-2">
+                      {session.status === "live" ? (
+                        <>
+                          <Button
+                            className="flex-1"
+                            onClick={() => {
+                              navigate(`/video-call/${session._id}`);
+                            }}
+                          >
+                            <Video className="w-4 h-4 mr-2" />
+                            Join Session
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() =>
+                              navigator.clipboard.writeText(
+                                `${window.location.origin}/video-call/${session._id}`
+                              )
+                            }
+                          >
+                            <Copy className="w-4 h-4" />
+                          </Button>
+                        </>
+                      ) : (
+                        <Button className="flex-1" variant="secondary" disabled>
+                          <Clock className="w-4 h-4 mr-2" />
+                          Starts in{" "}
+                          {calculateTimeUntilSession(
+                            session.date,
+                            session.time
+                          )}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
         </div>
       )}
     </div>

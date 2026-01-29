@@ -22,6 +22,7 @@ const useWebRTC = (roomId, socket, isTherapist = false) => {
     // Initialize local media
     const initLocalMedia = async () => {
         try {
+            // First try to get both video and audio
             const stream = await navigator.mediaDevices.getUserMedia({
                 video: true,
                 audio: true
@@ -35,7 +36,40 @@ const useWebRTC = (roomId, socket, isTherapist = false) => {
             return stream;
         } catch (error) {
             console.error('Error accessing media devices:', error);
-            throw error;
+
+            // If both video and audio failed, try audio only
+            if (error.name === 'NotFoundError' || error.name === 'OverconstrainedError' || error.name === 'NotAllowedError') {
+                try {
+                    console.log('Trying audio only mode...');
+                    const audioOnlyStream = await navigator.mediaDevices.getUserMedia({
+                        audio: true,
+                        video: false
+                    });
+
+                    setLocalStream(audioOnlyStream);
+                    if (localVideoRef.current) {
+                        localVideoRef.current.srcObject = audioOnlyStream;
+                    }
+
+                    return audioOnlyStream;
+                } catch (audioError) {
+                    console.error('Audio only also failed:', audioError);
+
+                    // If audio only also fails, try to create a dummy stream
+                    try {
+                        console.log('Creating dummy stream as fallback...');
+                        const dummyStream = new MediaStream();
+                        setLocalStream(dummyStream);
+                        return dummyStream;
+                    } catch (dummyError) {
+                        console.error('All media access attempts failed:', dummyError);
+                        throw error; // Throw original error
+                    }
+                }
+            } else {
+            // For other types of errors, throw the original error
+                throw error;
+            }
         }
     };
 
@@ -126,10 +160,12 @@ const useWebRTC = (roomId, socket, isTherapist = false) => {
             const audioTrack = localStream.getAudioTracks()[0];
             if (audioTrack) {
                 audioTrack.enabled = !audioTrack.enabled;
-                socket.emit('audio-toggle', {
-                    roomId,
-                    muted: !audioTrack.enabled
-                });
+                if (socket) {
+                    socket.emit('audio-toggle', {
+                        roomId,
+                        muted: !audioTrack.enabled
+                    });
+                }
                 return audioTrack.enabled;
             }
         }
@@ -142,10 +178,12 @@ const useWebRTC = (roomId, socket, isTherapist = false) => {
             const videoTrack = localStream.getVideoTracks()[0];
             if (videoTrack) {
                 videoTrack.enabled = !videoTrack.enabled;
-                socket.emit('video-toggle', {
-                    roomId,
-                    videoEnabled: !videoTrack.enabled
-                });
+                if (socket) {
+                    socket.emit('video-toggle', {
+                        roomId,
+                        videoEnabled: !videoTrack.enabled
+                    });
+                }
                 return videoTrack.enabled;
             }
         }
@@ -164,10 +202,12 @@ const useWebRTC = (roomId, socket, isTherapist = false) => {
             const cameraTrack = await navigator.mediaDevices.getUserMedia({ video: true });
             localStream.addTrack(cameraTrack.getVideoTracks()[0]);
 
-            socket.emit('screen-share-toggle', {
-                roomId,
-                sharing: false
-            });
+            if (socket) {
+                socket.emit('screen-share-toggle', {
+                    roomId,
+                    sharing: false
+                });
+            }
         } else {
             // Start screen sharing
             try {
@@ -189,10 +229,12 @@ const useWebRTC = (roomId, socket, isTherapist = false) => {
                     localVideoRef.current.srcObject = localStream;
                 }
 
-                socket.emit('screen-share-toggle', {
-                    roomId,
-                    sharing: true
-                });
+                if (socket) {
+                    socket.emit('screen-share-toggle', {
+                        roomId,
+                        sharing: true
+                    });
+                }
             } catch (error) {
                 console.error('Error sharing screen:', error);
             }
@@ -201,7 +243,7 @@ const useWebRTC = (roomId, socket, isTherapist = false) => {
 
     // Mute a specific user (therapist only)
     const muteUser = (userId) => {
-        if (isTherapist) {
+        if (isTherapist && socket) {
             socket.emit('mute-user', {
                 roomId,
                 userIdToMute: userId,
@@ -212,7 +254,7 @@ const useWebRTC = (roomId, socket, isTherapist = false) => {
 
     // End call (therapist only)
     const endCall = () => {
-        if (isTherapist) {
+        if (isTherapist && socket) {
             socket.emit('end-call', {
                 roomId,
                 roomType: roomId.startsWith('group') ? 'group' : 'session'
@@ -222,7 +264,7 @@ const useWebRTC = (roomId, socket, isTherapist = false) => {
 
     // Start call (therapist only)
     const startCall = () => {
-        if (isTherapist) {
+        if (isTherapist && socket) {
             socket.emit('call-start', {
                 roomId,
                 roomType: roomId.startsWith('group') ? 'group' : 'session'
@@ -233,18 +275,22 @@ const useWebRTC = (roomId, socket, isTherapist = false) => {
 
     // Accept call
     const acceptCall = () => {
-        socket.emit('call-accept', {
-            roomId,
-            roomType: roomId.startsWith('group') ? 'group' : 'session'
-        });
+        if (socket) {
+            socket.emit('call-accept', {
+                roomId,
+                roomType: roomId.startsWith('group') ? 'group' : 'session'
+            });
+        }
     };
 
     // Reject call
     const rejectCall = () => {
-        socket.emit('call-reject', {
-            roomId,
-            roomType: roomId.startsWith('group') ? 'group' : 'session'
-        });
+        if (socket) {
+            socket.emit('call-reject', {
+                roomId,
+                roomType: roomId.startsWith('group') ? 'group' : 'session'
+            });
+        }
     };
 
     // Cleanup on unmount
@@ -257,8 +303,17 @@ const useWebRTC = (roomId, socket, isTherapist = false) => {
             Object.values(peerRefs.current).forEach(peer => {
                 if (peer) peer.destroy();
             });
+
+            // Clean up socket listeners if socket exists
+            if (socket) {
+                try {
+                    socket.removeAllListeners();
+                } catch (err) {
+                    console.error('Error removing socket listeners:', err);
+                }
+            }
         };
-    }, []);
+    }, [socket]);
 
     return {
         localStream,

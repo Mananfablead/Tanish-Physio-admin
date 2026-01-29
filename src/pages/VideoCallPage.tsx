@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { VideoCall } from '@/components/ui/VideoCall';
+import VideoCall from "@/components/VideoCall/VideoCall";
 import { mockSessions } from '@/lib/session-data';
 
 export default function VideoCallPage() {
@@ -8,6 +8,7 @@ export default function VideoCallPage() {
   console.log("session _id", id)
   const navigate = useNavigate();
   const [sessionData, setSessionData] = useState<{ user: string; therapist: string } | null>(null);
+  const [connected, setConnected] = useState(false);
 
   // In a real app, this would fetch from an API
   useEffect(() => {
@@ -33,27 +34,18 @@ export default function VideoCallPage() {
       window.close();
     } else {
       // If it's the main window, navigate back to sessions
-      navigate('/sessions');
+      navigate("/sessions");
     }
   };
-console.log("sessionData------>>",sessionData)
-  if (!sessionData) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-gray-900 text-white">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p>Loading video call...</p>
-        </div>
-      </div>
-    );
-  }
-
+ 
   return (
-    <VideoCall 
-      roomId={id || ''} 
+    <VideoCall
+      roomId={id || ""}
       roomType="session"
       isTherapist={true}
       onEndCall={handleEndCall}
+      sessionId={id || ""}
+      connected={connected}
     />
   );
 }

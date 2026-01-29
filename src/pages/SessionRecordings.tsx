@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from "react-router-dom";
 import { 
   Play, 
   Pause, 
@@ -29,6 +30,7 @@ import { mockSessions } from '@/lib/session-data';
 import { useParams } from 'react-router-dom';
 
 const SessionRecordings = () => {
+  const navigate = useNavigate();
   const { userId } = useParams<{ userId: string }>();
   // Decode the userId from URL format to display format
   const decodedUserId = userId ? userId.replace(/-/g, ' ').toLowerCase() : null;

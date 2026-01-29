@@ -320,20 +320,22 @@ export default function Sessions() {
                     const user = session.userId;
                     const therapist = session.therapistId;
                     return (
-                      <div 
-                        key={session._id} 
+                      <div
+                        key={session._id}
                         className="bg-card rounded-lg border border-border overflow-hidden shadow-sm hover:shadow-md transition-shadow"
                       >
                         <div className="p-6">
                           <div className="flex justify-between items-start mb-4">
                             <div>
                               <h3 className="text-lg font-semibold flex items-center gap-2">
-                                {user?.name || 'N/A'}
+                                {user?.name || "N/A"}
                                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                   LIVE NOW
                                 </span>
                               </h3>
-                              <p className="text-sm text-muted-foreground">{therapist?.name || 'N/A'}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {therapist?.name || "N/A"}
+                              </p>
                             </div>
                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-muted">
                               {session.type}
@@ -354,24 +356,22 @@ export default function Sessions() {
                           </div>
 
                           <div className="flex gap-3">
-                            <Button 
+                            <Button
                               className="flex-1"
                               onClick={() =>
-                                window.open(
-                                  `/video-call/${session._id}`,
-                                  "_blank",
-                                  "width=1200,height=800"
-                                )
+                                navigate(`/video-call/${session._id}`)
                               }
                             >
                               <Video className="w-4 h-4 mr-2" />
                               Join Live Session
                             </Button>
-                            <Button 
+                            <Button
                               variant="outline"
                               size="icon"
                               onClick={() => {
-                                navigator.clipboard.writeText(`${window.location.origin}/video-call/${session._id}`);
+                                navigator.clipboard.writeText(
+                                  `${window.location.origin}/video-call/${session._id}`
+                                );
                               }}
                             >
                               <Copy className="w-4 h-4" />
@@ -407,11 +407,16 @@ export default function Sessions() {
                       const user = session.userId;
                       console.log("booking", session)
                       return (
-                        <tr key={session._id} className="hover:bg-muted/40 transition">
+                        <tr
+                          key={session._id}
+                          className="hover:bg-muted/40 transition"
+                        >
                           {/* SERVICE / BOOKING */}
                           <td className="px-4 py-3">
                             <div className="space-y-0.5">
-                              <p className="font-medium">{booking?.serviceName || "N/A"}</p>
+                              <p className="font-medium">
+                                {booking?.serviceName || "N/A"}
+                              </p>
                               <p className="text-xs text-muted-foreground">
                                 Booking ID: {booking?._id?.slice(0, 8) || "N/A"}
                               </p>
@@ -425,14 +430,15 @@ export default function Sessions() {
                                 <User className="h-4 w-4 text-blue-600" />
                               </div>
                               <div>
-                                <p className="font-medium">{user?.name || "N/A"}</p>
+                                <p className="font-medium">
+                                  {user?.name || "N/A"}
+                                </p>
                                 <p className="text-xs text-muted-foreground">
                                   {user?.email || ""}
                                 </p>
                               </div>
                             </div>
                           </td>
-
 
                           {/* DATE & TIME */}
                           <td className="px-4 py-3">
@@ -445,7 +451,6 @@ export default function Sessions() {
                                 <Clock className="h-4 w-4" />
                                 <span>{session.time}</span>
                               </div>
-
                             </div>
                           </td>
 
@@ -458,7 +463,7 @@ export default function Sessions() {
 
                           {/* STATUS */}
                           <td className="px-4 py-3">
-                            {session.status === 'pending' ? (
+                            {session.status === "pending" ? (
                               <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800 border border-yellow-300">
                                 <UserCog className="w-3 h-3 mr-1" />
                                 Pending Review
@@ -468,14 +473,19 @@ export default function Sessions() {
                                 value={session.status}
                                 onValueChange={async (value) => {
                                   try {
-                                    await dispatch(updateSessionStatus({
-                                      id: session._id,
-                                      status: value,
-                                      notes: `Status updated to ${value}`
-                                    }));
+                                    await dispatch(
+                                      updateSessionStatus({
+                                        id: session._id,
+                                        status: value,
+                                        notes: `Status updated to ${value}`,
+                                      })
+                                    );
                                     dispatch(fetchSessions());
                                   } catch (error) {
-                                    console.error("Failed to update session status:", error);
+                                    console.error(
+                                      "Failed to update session status:",
+                                      error
+                                    );
                                   }
                                 }}
                               >
@@ -483,10 +493,16 @@ export default function Sessions() {
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="scheduled">Scheduled</SelectItem>
+                                  <SelectItem value="scheduled">
+                                    Scheduled
+                                  </SelectItem>
                                   <SelectItem value="live">Live</SelectItem>
-                                  <SelectItem value="completed">Completed</SelectItem>
-                                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                                  <SelectItem value="completed">
+                                    Completed
+                                  </SelectItem>
+                                  <SelectItem value="cancelled">
+                                    Cancelled
+                                  </SelectItem>
                                 </SelectContent>
                               </Select>
                             )}
@@ -496,7 +512,11 @@ export default function Sessions() {
                           <td className="px-4 py-3 text-right">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                >
                                   <MoreHorizontal className="h-4 w-4" />
                                 </Button>
                               </DropdownMenuTrigger>
@@ -509,10 +529,15 @@ export default function Sessions() {
                                       className="text-success"
                                       onClick={async () => {
                                         try {
-                                          await dispatch(acceptSession(session._id));
+                                          await dispatch(
+                                            acceptSession(session._id)
+                                          );
                                           dispatch(fetchSessions());
                                         } catch (error) {
-                                          console.error("Failed to accept session:", error);
+                                          console.error(
+                                            "Failed to accept session:",
+                                            error
+                                          );
                                         }
                                       }}
                                     >
@@ -524,10 +549,15 @@ export default function Sessions() {
                                       className="text-destructive"
                                       onClick={async () => {
                                         try {
-                                          await dispatch(rejectSession(session._id));
+                                          await dispatch(
+                                            rejectSession(session._id)
+                                          );
                                           dispatch(fetchSessions());
                                         } catch (error) {
-                                          console.error("Failed to reject session:", error);
+                                          console.error(
+                                            "Failed to reject session:",
+                                            error
+                                          );
                                         }
                                       }}
                                     >
@@ -538,59 +568,63 @@ export default function Sessions() {
                                 )}
 
                                 {/* SCHEDULED/CANCELLED SESSIONS (non-pending) */}
-                                {(activeTab === "scheduled" || activeTab === "all") && session.status !== "pending" && (
-                                  <>
-                                    <DropdownMenuItem
-                                      onClick={() => {
-                                        setSelectedSession(session);
-                                        setIsRescheduleModalOpen(true);
-                                      }}
-                                    >
-                                      <RefreshCw className="h-4 w-4 mr-2" />
-                                      Reschedule
-                                    </DropdownMenuItem>
+                                {(activeTab === "scheduled" ||
+                                  activeTab === "all") &&
+                                  session.status !== "pending" && (
+                                    <>
+                                      <DropdownMenuItem
+                                        onClick={() => {
+                                          setSelectedSession(session);
+                                          setIsRescheduleModalOpen(true);
+                                        }}
+                                      >
+                                        <RefreshCw className="h-4 w-4 mr-2" />
+                                        Reschedule
+                                      </DropdownMenuItem>
 
-                                    <DropdownMenuItem
-                                      className="text-destructive"
-                                      onClick={async () => {
-                                        try {
-                                          await dispatch(updateSessionStatus({
-                                            id: session._id,
-                                            status: "cancelled",
-                                            notes: "Session cancelled by admin"
-                                          }));
-                                          dispatch(fetchSessions());
-                                        } catch (error) {
-                                          console.error("Failed to cancel session:", error);
-                                        }
-                                      }}
-                                    >
-                                      <X className="h-4 w-4 mr-2" />
-                                      Cancel Session
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                      className="text-destructive"
-                                      onClick={() => {
-                                        setSelectedSession(session);
-                                        setIsCancelModalOpen(true);
-                                      }}
-                                    >
-                                      <X className="h-4 w-4 mr-2" />
-                                      Delete Session
-                                    </DropdownMenuItem>
-                                  </>
-                                )}
+                                      <DropdownMenuItem
+                                        className="text-destructive"
+                                        onClick={async () => {
+                                          try {
+                                            await dispatch(
+                                              updateSessionStatus({
+                                                id: session._id,
+                                                status: "cancelled",
+                                                notes:
+                                                  "Session cancelled by admin",
+                                              })
+                                            );
+                                            dispatch(fetchSessions());
+                                          } catch (error) {
+                                            console.error(
+                                              "Failed to cancel session:",
+                                              error
+                                            );
+                                          }
+                                        }}
+                                      >
+                                        <X className="h-4 w-4 mr-2" />
+                                        Cancel Session
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem
+                                        className="text-destructive"
+                                        onClick={() => {
+                                          setSelectedSession(session);
+                                          setIsCancelModalOpen(true);
+                                        }}
+                                      >
+                                        <X className="h-4 w-4 mr-2" />
+                                        Delete Session
+                                      </DropdownMenuItem>
+                                    </>
+                                  )}
 
                                 {/* LIVE */}
                                 {activeTab === "live" && (
                                   <DropdownMenuItem
-                                    onClick={() => {
-                                      window.open(
-                                        `/video-call/${session._id}`,
-                                        "_blank",
-                                        "width=1200,height=800"
-                                      );
-                                    }}
+                                    onClick={() =>
+                                      navigate(`/video-call/${session._id}`)
+                                    }
                                   >
                                     <Video className="h-4 w-4 mr-2" />
                                     Join Session
@@ -601,7 +635,9 @@ export default function Sessions() {
                                 {activeTab === "completed" && (
                                   <DropdownMenuItem
                                     onClick={() =>
-                                      navigate(`/session-recordings/${session._id}`)
+                                      navigate(
+                                        `/session-recordings/${session._id}`
+                                      )
                                     }
                                   >
                                     <Eye className="h-4 w-4 mr-2" />
