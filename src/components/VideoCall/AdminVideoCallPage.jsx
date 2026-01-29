@@ -70,10 +70,10 @@ const AdminVideoCallPage = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gray-900">
+      <div className="flex items-center justify-center h-screen bg-black">
         <div className="text-center text-white">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
-          <p>Initializing video call...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500 mx-auto mb-4"></div>
+          <p className="text-slate-300">Initializing monitoring session...</p>
         </div>
       </div>
     );
@@ -81,17 +81,19 @@ const AdminVideoCallPage = () => {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gray-900">
-        <div className="text-center text-white max-w-md">
-          <div className="text-red-500 text-6xl mb-4">⚠️</div>
-          <h2 className="text-2xl font-bold mb-2">Error</h2>
-          <p className="text-gray-400 mb-6">{error}</p>
-          <button
+      <div className="flex items-center justify-center h-screen bg-black">
+        <div className="text-center text-white max-w-md p-6">
+          <div className="w-16 h-16 bg-rose-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-rose-500/30">
+            <X className="h-8 w-8 text-rose-500" />
+          </div>
+          <h2 className="text-2xl font-bold mb-2 text-white">Access Error</h2>
+          <p className="text-slate-400 mb-6">{error}</p>
+          <Button
             onClick={() => navigate("/admin/dashboard")}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+            className="bg-slate-800 hover:bg-slate-700 text-white font-medium py-2 px-6 rounded-xl transition-colors border border-slate-700"
           >
-            Back to Dashboard
-          </button>
+            Return to Dashboard
+          </Button>
         </div>
       </div>
     );
@@ -99,52 +101,66 @@ const AdminVideoCallPage = () => {
 
   if (!token) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gray-900">
-        <div className="text-center text-white">
-          <div className="text-red-500 text-6xl mb-4">❌</div>
-          <h2 className="text-2xl font-bold mb-2">Call Not Available</h2>
-          <p className="text-gray-400">Unable to join this video call.</p>
+      <div className="flex items-center justify-center h-screen bg-black">
+        <div className="text-center text-white p-6">
+          <div className="w-16 h-16 bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-slate-700">
+            <Video className="h-8 w-8 text-slate-500" />
+          </div>
+          <h2 className="text-2xl font-bold mb-2 text-white">Session Unavailable</h2>
+          <p className="text-slate-500">Unable to establish monitoring connection.</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="h-screen bg-gray-900">
-      {/* Admin Call Header */}
-      <div className="bg-gray-800 border-b border-gray-700 p-4">
-        <div className="flex items-center justify-between">
+    <div className="h-screen bg-black flex flex-col">
+      {/* Admin Session Header */}
+      <div className="flex items-center justify-between px-8 py-4 bg-slate-900 border-b border-slate-800">
+        <div className="flex items-center gap-6">
+          <div className="w-12 h-12 rounded-2xl bg-slate-800 flex items-center justify-center border border-slate-700">
+            <Video className="h-5 w-5 text-slate-300" />
+          </div>
           <div>
-            <h1 className="text-xl font-bold text-white">Admin Video Call</h1>
-            <p className="text-gray-400 text-sm">Session ID: {sessionId}</p>
+            <div className="flex items-center gap-2 mb-0.5">
+              <Badge variant="outline" className="bg-indigo-500/10 text-indigo-400 border-indigo-500/20 text-[10px] font-bold uppercase tracking-wider px-2 py-0">Admin Monitoring</Badge>
+              <span className="text-slate-500 text-xs font-medium">• Live Session</span>
+            </div>
+            <h1 className="text-white font-semibold tracking-tight">Session Monitoring</h1>
+            <p className="text-slate-500 text-xs mt-1">Session ID: {sessionId}</p>
             {callDetails && (
-              <p className="text-gray-400 text-sm">
-                {callDetails.session.user?.name} with{" "}
-                {callDetails.session.therapist?.name}
+              <p className="text-slate-500 text-xs">
+                {callDetails.session.user?.name} with {callDetails.session.therapist?.name}
               </p>
             )}
           </div>
-          <div className="flex gap-2">
-            <button
-              onClick={() => navigate("/admin/call-monitoring")}
-              className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm"
-            >
-              Call Monitoring
-            </button>
-            <button
-              onClick={() => navigate("/admin/dashboard")}
-              className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm"
-            >
-              Exit Call
-            </button>
-          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <Button
+            variant="secondary"
+            size="sm"
+            className="bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-xl px-4"
+            onClick={() => navigate("/admin/call-monitoring")}
+          >
+            <Users className="h-4 w-4 mr-2" />
+            Monitoring Dashboard
+          </Button>
+          <Button
+            variant="destructive"
+            size="sm"
+            className="bg-rose-500 hover:bg-rose-600 rounded-xl px-4 shadow-lg shadow-rose-500/20"
+            onClick={() => navigate("/admin/dashboard")}
+          >
+            <X className="h-4 w-4 mr-2" />
+            Exit Monitoring
+          </Button>
         </div>
       </div>
 
       <VideoCall
         roomId={sessionId}
         roomType="session"
-        isTherapist={user.role === "admin" || user.role === "therapist"}
+        userRole={user.role}
         onEndCall={handleEndCall}
         sessionId={sessionId}
       />

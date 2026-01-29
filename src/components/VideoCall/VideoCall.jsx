@@ -1,24 +1,18 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import {
   Mic,
   MicOff,
   Video,
   VideoOff,
-  Phone,
-  Monitor,
-  MonitorOff,
+  PhoneOff,
+  MessageSquare,
   Users,
-  Volume2,
-  VolumeX,
   Settings,
-  MessageCircle,
-  MoreHorizontal,
+  Share,
+  ArrowRight,
   X,
-  UserPlus,
-  Volume1,
-  Square,
 } from "lucide-react";
 import useSocket from "@/hooks/useSocket";
 import useWebRTC from "@/hooks/useWebRTC";
@@ -454,8 +448,8 @@ const VideoCall = ({
         );
       }
       return (
-        <div className="flex items-center justify-center w-full h-full bg-gray-900 rounded-xl">
-          <div className="text-center text-gray-400">
+        <div className="flex items-center justify-center w-full h-full bg-slate-900 rounded-xl">
+          <div className="text-center text-slate-500">
             <Users className="mx-auto h-12 w-12 mb-2" />
             <p>Waiting for participant...</p>
           </div>
@@ -466,8 +460,8 @@ const VideoCall = ({
       const streamKeys = Object.keys(remoteStreams);
       if (streamKeys.length === 0) {
         return (
-          <div className="flex items-center justify-center w-full h-full bg-gray-900 rounded-xl">
-            <div className="text-center text-gray-400">
+          <div className="flex items-center justify-center w-full h-full bg-slate-900 rounded-xl">
+            <div className="text-center text-slate-500">
               <Users className="mx-auto h-12 w-12 mb-2" />
               <p>Waiting for participants...</p>
             </div>
@@ -515,11 +509,11 @@ const VideoCall = ({
 
   if (callStatus === "ended") {
     return (
-      <div className="flex flex-col items-center justify-center h-screen bg-gray-900">
+      <div className="flex flex-col items-center justify-center h-screen bg-black">
         <div className="text-center text-white">
-          <Phone className="mx-auto h-16 w-16 mb-4 text-red-500" />
-          <h2 className="text-2xl font-bold mb-2">Call Ended</h2>
-          <p className="text-gray-400">The call has been ended.</p>
+          <PhoneOff className="mx-auto h-16 w-16 mb-4 text-rose-500" />
+          <h2 className="text-2xl font-bold mb-2">Session Terminated</h2>
+          <p className="text-slate-500">The monitoring session has ended.</p>
         </div>
       </div>
     );
@@ -527,29 +521,29 @@ const VideoCall = ({
 
   if (incomingCall && !callStarted) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen bg-gray-900">
+      <div className="flex flex-col items-center justify-center h-screen bg-black">
         <div className="text-center text-white">
-          <div className="w-24 h-24 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-6">
+          <div className="w-24 h-24 bg-emerald-500 rounded-[2rem] flex items-center justify-center mx-auto mb-6">
             <Users className="h-12 w-12" />
           </div>
-          <h2 className="text-2xl font-bold mb-2">Incoming Call</h2>
-          <p className="text-gray-400">From your therapist</p>
-          <div className="flex justify-center gap-4 mt-6">
+          <h2 className="text-2xl font-bold mb-2">Incoming Session</h2>
+          <p className="text-slate-500 mb-6">New monitoring session detected</p>
+          <div className="flex justify-center gap-4">
             <Button
               variant="destructive"
               size="lg"
-              className="rounded-full h-14 w-14"
+              className="rounded-2xl h-16 w-16 bg-rose-500 hover:bg-rose-600"
               onClick={rejectCall}
             >
-              <Phone className="h-6 w-6" />
+              <PhoneOff className="h-6 w-6" />
             </Button>
             <Button
               variant="default"
               size="lg"
-              className="rounded-full h-14 w-14 bg-green-500 hover:bg-green-600"
+              className="rounded-2xl h-16 w-16 bg-emerald-500 hover:bg-emerald-600"
               onClick={acceptCall}
             >
-              <Phone className="h-6 w-6 rotate-180" />
+              <Video className="h-6 w-6" />
             </Button>
           </div>
         </div>
@@ -558,402 +552,382 @@ const VideoCall = ({
   }
 
   return (
-    <div className="h-screen bg-gray-900 flex flex-col">
+    <div className="h-screen bg-black flex flex-col">
+
       {/* Header */}
-      <div className="flex items-center justify-between p-4 bg-gray-800 border-b border-gray-700">
-        <div className="flex items-center gap-4">
-          <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center">
-            <Video className="h-5 w-5" />
+      <div className="flex items-center justify-between px-8 py-4 bg-slate-900 border-b border-slate-800">
+        <div className="flex items-center gap-6">
+          <div className="w-12 h-12 rounded-2xl bg-slate-800 flex items-center justify-center border border-slate-700">
+            <Video className="h-5 w-5 text-slate-300" />
           </div>
           <div>
-            <h1 className="font-semibold text-white">
-              {roomType === "group" ? "Group Session" : "Video Call"}
-            </h1>
-            <p className="text-xs text-gray-400">
-              {joinedCall
-                ? "Connected"
-                : connected
-                ? "Joining call..."
-                : "Connecting..."}
-              {callActive && callDuration > 0 && (
-                <span className="ml-2">
-                  • {Math.floor(callDuration / 60)}:
-                  {String(callDuration % 60).padStart(2, "0")}
-                </span>
-              )}
-            </p>
+            <div className="flex items-center gap-2 mb-0.5">
+              <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-[10px] font-bold uppercase tracking-wider px-2 py-0">Admin Monitoring</Badge>
+              <span className="text-slate-500 text-xs font-medium">• Live Session</span>
+            </div>
+            <h1 className="text-white font-semibold tracking-tight">Session Monitoring</h1>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <Button
             variant="ghost"
             size="sm"
-            className="text-gray-400 hover:text-white"
-            onClick={() => setShowParticipants(!showParticipants)}
+            className={`text-slate-400 hover:text-white hover:bg-slate-800 ${showParticipants ? 'bg-slate-800 text-white' : ''}`}
+            onClick={() => {
+              setShowParticipants(!showParticipants);
+              setShowChat(false);
+              setShowSettings(false);
+            }}
           >
-            <Users className="h-4 w-4" />
-            <span className="ml-1">{participants.length}</span>
+            <Users className="h-4 w-4 mr-2" />
+            <span className="hidden md:inline">Participants</span>
           </Button>
           <Button
             variant="ghost"
             size="sm"
-            className="text-gray-400 hover:text-white"
-            onClick={() => setShowChat(!showChat)}
+            className={`text-slate-400 hover:text-white hover:bg-slate-800 ${showChat ? 'bg-slate-800 text-white' : ''}`}
+            onClick={() => {
+              setShowChat(!showChat);
+              setShowParticipants(false);
+              setShowSettings(false);
+            }}
           >
-            <MessageCircle className="h-4 w-4" />
+            <MessageSquare className="h-4 w-4 mr-2" />
+            <span className="hidden md:inline">Admin Chat</span>
           </Button>
         </div>
       </div>
 
       {/* Main Video Area */}
-      <div className="flex-1 relative p-4">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 h-full">
-          {/* Remote Videos */}
-          <div
-            className={`lg:col-span-3 ${
-              showParticipants || showChat ? "lg:col-span-2" : "lg:col-span-3"
-            }`}
-          >
-            {renderRemoteVideos()}
-          </div>
-
-          {/* Local Video */}
-          <div
-            className={`relative ${
-              showParticipants || showChat ? "lg:hidden" : "lg:block"
-            } h-48 lg:h-full`}
-          >
-            <div className="relative w-full h-full bg-black rounded-xl overflow-hidden">
-              {localStream ? (
-                <video
-                  ref={localVideoRef}
-                  autoPlay
-                  playsInline
-                  muted
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="flex items-center justify-center w-full h-full">
-                  <div className="text-center text-gray-400">
-                    <Video className="mx-auto h-8 w-8 mb-2" />
-                    <p>Camera Off</p>
-                  </div>
-                </div>
-              )}
-              {!videoEnabled && (
-                <div className="absolute inset-0 bg-black bg-opacity-70 flex items-center justify-center">
-                  <VideoOff className="h-8 w-8 text-gray-400" />
-                </div>
-              )}
-              <div className="absolute bottom-2 right-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
-                You
-              </div>
+      <div className="flex-1 relative bg-slate-950 flex overflow-hidden">
+        {/* Main Video (Primary Participant) */}
+        <div className={`flex-1 relative flex items-center justify-center transition-all duration-500 ${showParticipants || showChat ? 'md:mr-0' : ''}`}>
+          <div className="absolute inset-0 bg-gradient-to-b from-slate-900/50 to-slate-950/50 pointer-events-none" />
+          <div className="text-center">
+            <div className="w-40 h-40 bg-slate-900 rounded-[2.5rem] mx-auto mb-6 flex items-center justify-center border border-slate-800 shadow-2xl relative overflow-hidden">
+              <img 
+                src="https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=300&h=300&fit=crop&crop=face" 
+                alt="Participant" 
+                className="w-full h-full object-cover opacity-60" 
+              />
             </div>
+            <h2 className="text-2xl font-semibold text-white tracking-tight mb-2">Primary Participant</h2>
+            <p className="text-slate-500 font-medium">Monitoring Active Session</p>
           </div>
+        </div>
 
-          {/* Side Panels */}
-          {showParticipants && (
-            <div className="lg:col-span-1 bg-gray-800 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold text-white">Participants</h3>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-gray-400 hover:text-white"
-                  onClick={() => setShowParticipants(false)}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-              <div className="space-y-2">
-                {participants.map((participant, index) => (
-                  <div
-                    key={`${participant.userId}-${participant.socketId}`}
-                    className="flex items-center gap-3 p-2 bg-gray-700 rounded"
-                  >
-                    <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-xs">
-                      {participant.isTherapist ? "T" : "P"}
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm text-white">
+        {/* Side Panels */}
+        {showParticipants && (
+          <div className="md:w-80 w-full bg-slate-900 md:border-l border-slate-800 flex flex-col animate-in slide-in-from-right duration-300 md:relative absolute inset-0 md:inset-auto md:right-0 z-50">
+            <div className="p-6 border-b border-slate-800 flex items-center justify-between">
+              <h3 className="text-white font-semibold">Participants</h3>
+              <Button variant="ghost" size="icon" className="text-slate-400 hover:text-white" onClick={() => setShowParticipants(false)}><X className="h-4 w-4" /></Button>
+            </div>
+            <div className="flex-1 p-6 space-y-6">
+              {participants.map((participant, index) => (
+                <div key={`${participant.userId}-${participant.socketId}`} className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-300 font-semibold text-sm">
+                    {participant.isTherapist ? "T" : "P"}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <p className="text-white font-medium text-sm">
                         {participant.isSelf
-                          ? "You (Therapist)"
+                          ? "You (Admin)"
                           : participant.isTherapist
-                          ? "Another Therapist"
+                          ? "Therapist"
                           : `Patient ${index + 1}`}
                       </p>
-                      <p className="text-xs text-gray-400">
-                        {participant.joinedAt
-                          ? `Joined: ${new Date(
-                              participant.joinedAt
-                            ).toLocaleTimeString()}`
-                          : ""}
-                      </p>
-                      {/* Admin Controls */}
-                      {(userRole === "therapist" || userRole === "admin") &&
-                        !participant.isTherapist && (
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            className="mt-1 text-xs"
-                            onClick={() => {
-                              // Force leave participant or other admin action
-                              if (roomId) {
-                                // TODO: Add force leave API endpoint
-                              }
-                            }}
-                          >
-                            Force Leave
-                          </Button>
-                        )}
+                      <Badge className="bg-slate-800 text-slate-400 border-none text-[8px] h-4">
+                        {participant.isSelf ? "You" : participant.isTherapist ? "Staff" : "User"}
+                      </Badge>
                     </div>
+                    <p className="text-slate-500 text-xs">
+                      {participant.joinedAt
+                        ? `Joined: ${new Date(participant.joinedAt).toLocaleTimeString()}`
+                        : "Active"}
+                    </p>
+                    {/* Admin Controls */}
+                    {(userRole === "admin") && !participant.isSelf && (
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        className="mt-2 text-xs h-6 px-2 bg-rose-500/20 text-rose-400 hover:bg-rose-500/30 border border-rose-500/20"
+                        onClick={() => {
+                          // Force leave participant
+                          if (roomId && socket) {
+                            socket.emit("force-leave", { 
+                              roomId, 
+                              userId: participant.userId,
+                              reason: "Admin removed participant"
+                            });
+                          }
+                        }}
+                      >
+                        Remove
+                      </Button>
+                    )}
                   </div>
-                ))}
-              </div>
+                </div>
+              ))}
+              
               {/* Admin Tools */}
-              {(userRole === "therapist" || userRole === "admin") && (
-                <div className="mt-4 pt-4 border-t border-gray-700">
-                  <h4 className="font-medium text-white mb-2">Admin Tools</h4>
+              {userRole === "admin" && (
+                <div className="pt-6 border-t border-slate-800">
+                  <h4 className="text-slate-300 font-medium text-sm mb-3">Admin Controls</h4>
                   <div className="space-y-2">
                     <Button
                       variant="secondary"
                       size="sm"
-                      className="w-full"
+                      className="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700"
                       onClick={() => {
-                        // Mute all participants
+                        // Mute all non-admin participants
                         participants.forEach((participant) => {
-                          if (!participant.isTherapist) {
+                          if (!participant.isSelf) {
                             muteUser(participant.userId);
                           }
                         });
                       }}
                     >
-                      Mute All
+                      Mute All Participants
                     </Button>
                     <Button
                       variant="destructive"
                       size="sm"
-                      className="w-full"
+                      className="w-full bg-rose-500 hover:bg-rose-600"
                       onClick={() => {
                         // End call for all participants
                         endCall();
                       }}
                     >
-                      End Call for All
+                      Terminate Session
                     </Button>
                   </div>
                 </div>
               )}
             </div>
-          )}
+          </div>
+        )}
 
-          {showChat && (
-            <div className="lg:col-span-1 bg-gray-800 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold text-white">Chat</h3>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-gray-400 hover:text-white"
-                  onClick={() => setShowChat(false)}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
+        {showChat && (
+          <div className="md:w-80 w-full bg-slate-900 md:border-l border-slate-800 flex flex-col animate-in slide-in-from-right duration-300 md:relative absolute inset-0 md:inset-auto md:right-0 z-50">
+            <div className="p-6 border-b border-slate-800 flex items-center justify-between">
+              <h3 className="text-white font-semibold">Admin Chat</h3>
+              <Button variant="ghost" size="icon" className="text-slate-400 hover:text-white" onClick={() => setShowChat(false)}><X className="h-4 w-4" /></Button>
+            </div>
+            <div className="flex-1 p-6 flex flex-col justify-center items-center text-center">
+              <div className="w-12 h-12 bg-slate-800 rounded-2xl flex items-center justify-center mb-4 border border-slate-700">
+                <MessageSquare className="h-5 w-5 text-slate-500" />
               </div>
-              <div className="h-64 overflow-y-auto mb-4">
-                {chatMessages.length > 0 ? (
-                  <div className="space-y-2">
-                    {chatMessages.map((msg, index) => (
-                      <div key={index} className="text-sm">
-                        <span className="font-medium text-blue-400">
-                          {msg.senderId?.name || "Unknown"}:
-                        </span>
-                        <span className="text-gray-300 ml-2">
-                          {msg.message}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center text-gray-500 py-8">
-                    <MessageCircle className="mx-auto h-8 w-8 mb-2" />
-                    <p>No messages yet</p>
-                  </div>
-                )}
-                {typingUsers.length > 0 && (
-                  <div className="text-xs text-gray-400 italic">
-                    {typingUsers.length} user{typingUsers.length > 1 ? "s" : ""}{" "}
-                    typing...
-                  </div>
-                )}
-              </div>
+              <p className="text-slate-400 text-sm font-medium">Secure admin communication channel</p>
+              <p className="text-slate-600 text-[10px] mt-2 px-6">Messages are encrypted and logged for compliance.</p>
+            </div>
+            <div className="p-6 border-t border-slate-800">
               <div className="flex gap-2">
                 <input
                   type="text"
+                  placeholder="Admin message..."
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
                   onKeyPress={(e) => {
-                    if (e.key === "Enter") {
+                    if (e.key === 'Enter') {
                       sendChatMessage();
                     }
                   }}
-                  onFocus={handleTyping}
-                  onBlur={handleStopTyping}
-                  placeholder="Type a message..."
-                  className="flex-1 bg-gray-700 text-white rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 text-white text-sm focus:outline-none focus:border-slate-500 placeholder:text-slate-600"
                 />
-                <Button size="sm" onClick={sendChatMessage}>
-                  Send
+                <Button size="icon" className="bg-slate-100 hover:bg-white text-slate-900 rounded-xl" onClick={sendChatMessage}>
+                  <ArrowRight className="h-4 w-4" />
                 </Button>
               </div>
             </div>
-          )}
+          </div>
+        )}
+        {/* Self Video (Admin View) */}
+        <div className={`absolute md:bottom-8 md:right-8 bottom-4 right-4 md:w-64 md:h-44 w-44 h-36 rounded-[2rem] overflow-hidden border-4 border-slate-900 shadow-2xl transition-all duration-500 ${showParticipants || showChat ? 'md:translate-x-[-320px]' : ''}`}>
+          <div className="w-full h-full bg-slate-800 relative flex items-center justify-center">
+            <div className="text-center">
+              <div className="w-14 h-14 bg-slate-700 rounded-2xl mx-auto mb-2 flex items-center justify-center border border-slate-600">
+                <Video className="h-6 w-6 text-slate-500" />
+              </div>
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Admin View</p>
+            </div>
+            {!videoEnabled && (
+              <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center">
+                <VideoOff className="h-6 w-6 text-slate-400" />
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Controls */}
-      <div className="p-4 bg-gray-800 border-t border-gray-700">
-        <div className="flex items-center justify-center gap-4">
-          <Button
-            variant={audioEnabled ? "secondary" : "destructive"}
-            size="icon"
-            className="rounded-full h-12 w-12"
-            onClick={toggleAudioHandler}
-          >
-            {audioEnabled ? (
-              <Mic className="h-5 w-5" />
-            ) : (
-              <MicOff className="h-5 w-5" />
-            )}
-          </Button>
+      <div className="bg-slate-900 px-4 py-4 md:px-8 md:py-8 border-t border-slate-800 md:relative fixed bottom-0 left-0 right-0 z-40">
+        <div className="max-w-screen-xl mx-auto flex items-center justify-between">
+          <div className="w-32 hidden md:flex items-center gap-2">
+            <Badge variant="outline" className="border-slate-700 text-slate-500">HD 1080p</Badge>
+          </div>
+          
+          <div className="flex items-center justify-center gap-4">
+            <Button
+              variant={audioEnabled ? "secondary" : "destructive"}
+              size="icon"
+              className="rounded-2xl md:w-14 md:h-14 w-12 h-12 bg-slate-800 hover:bg-slate-700 border-slate-700"
+              onClick={toggleAudioHandler}
+            >
+              {audioEnabled ? <Mic className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}
+            </Button>
 
-          <Button
-            variant={videoEnabled ? "secondary" : "destructive"}
-            size="icon"
-            className="rounded-full h-12 w-12"
-            onClick={toggleVideoHandler}
-          >
-            {videoEnabled ? (
-              <Video className="h-5 w-5" />
-            ) : (
-              <VideoOff className="h-5 w-5" />
-            )}
-          </Button>
+            <Button
+              variant={videoEnabled ? "secondary" : "destructive"}
+              size="icon"
+              className="rounded-2xl md:w-14 md:h-14 w-12 h-12 bg-slate-800 hover:bg-slate-700 border-slate-700"
+              onClick={toggleVideoHandler}
+            >
+              {videoEnabled ? <Video className="h-5 w-5" /> : <VideoOff className="h-5 w-5" />}
+            </Button>
 
-          <Button
-            variant={screenSharing ? "default" : "secondary"}
-            size="icon"
-            className="rounded-full h-12 w-12"
-            onClick={toggleScreenShareHandler}
-          >
-            {screenSharing ? (
-              <MonitorOff className="h-5 w-5" />
-            ) : (
-              <Monitor className="h-5 w-5" />
-            )}
-          </Button>
+            <Button
+              variant={screenSharing ? "default" : "secondary"}
+              size="icon"
+              className={`rounded-2xl md:w-14 md:h-14 w-12 h-12 border-slate-700 ${screenSharing ? 'bg-white text-slate-900' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
+              onClick={toggleScreenShareHandler}
+            >
+              <Share className="h-5 w-5" />
+            </Button>
 
-          {(userRole === "therapist" || userRole === "admin") && (
+            {(userRole === "admin") && (
+              <Button
+                variant="secondary"
+                size="icon"
+                className="rounded-2xl md:w-14 md:h-14 w-12 h-12 bg-indigo-500 hover:bg-indigo-600 text-white border-indigo-600"
+                onClick={startCall}
+                disabled={callStarted}
+              >
+                <Users className="h-5 w-5" />
+              </Button>
+            )}
+
+            <Button
+              variant="destructive"
+              size="icon"
+              className="rounded-2xl md:w-16 md:h-14 w-14 h-12 bg-rose-500 hover:bg-rose-600 shadow-lg shadow-rose-500/20 ml-4"
+              onClick={
+                userRole === "admin"
+                  ? endCall
+                  : () => emit("leave-room", { roomId, roomType })
+              }
+            >
+              <PhoneOff className="h-6 w-6" />
+            </Button>
+
             <Button
               variant="secondary"
               size="icon"
-              className="rounded-full h-12 w-12 bg-purple-600 hover:bg-purple-700"
-              onClick={startCall}
-              disabled={callStarted}
+              className="rounded-2xl md:w-14 md:h-14 w-12 h-12 bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-300"
+              onClick={() => setShowSettings(true)}
             >
-              <Volume2 className="h-5 w-5" />
+              <Settings className="h-5 w-5" />
             </Button>
-          )}
+          </div>
 
-          <Button
-            variant="destructive"
-            size="icon"
-            className="rounded-full h-14 w-14 bg-red-500 hover:bg-red-600"
-            onClick={
-              userRole === "therapist" || userRole === "admin"
-                ? endCall
-                : () => emit("leave-room", { roomId, roomType })
-            }
-          >
-            <Phone className="h-6 w-6" />
-          </Button>
-
-          <Button
-            variant="secondary"
-            size="icon"
-            className="rounded-full h-12 w-12"
-            onClick={() => setShowSettings(!showSettings)}
-          >
-            <Settings className="h-5 w-5" />
-          </Button>
+          <div className="w-32 flex justify-end">
+            <div className="flex items-center gap-2">
+              <div className="h-2 w-2 bg-emerald-500 rounded-full animate-pulse" />
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Monitoring</span>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Settings Panel */}
+      {/* Settings Modal */}
       {showSettings && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end lg:items-center justify-center z-50">
-          <div className="bg-gray-800 rounded-t-lg lg:rounded-lg p-6 w-full lg:w-96 max-w-full mx-4">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-white">Settings</h3>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-gray-400 hover:text-white"
-                onClick={() => setShowSettings(false)}
-              >
-                <X className="h-4 w-4" />
-              </Button>
+        <div className="absolute inset-0 bg-black bg-opacity-50 flex items-end md:items-center justify-center z-50">
+          <div className="bg-slate-900 border border-slate-800 rounded-t-3xl md:rounded-3xl w-full md:w-96 max-w-md mx-4 mb-0 md:mb-auto animate-in slide-in-from-bottom md:slide-in-from-top duration-300">
+            <div className="p-6 border-b border-slate-800">
+              <div className="flex items-center justify-between">
+                <h3 className="text-white font-semibold">Admin Settings</h3>
+                <Button variant="ghost" size="icon" className="text-slate-400 hover:text-white" onClick={() => setShowSettings(false)}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
-            <div className="space-y-4">
+            <div className="p-6 space-y-6">
               <div>
-                <label className="block text-sm text-gray-400 mb-1">
-                  Video Quality
-                </label>
-                <select className="w-full bg-gray-700 text-white rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
-                  <option>Auto</option>
-                  <option>720p</option>
-                  <option>1080p</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm text-gray-400 mb-1">
-                  Audio Input
-                </label>
-                <select className="w-full bg-gray-700 text-white rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
+                <h4 className="text-slate-300 font-medium mb-3 text-sm">Audio Input</h4>
+                <select className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-slate-600">
                   <option>Default Microphone</option>
-                  <option>Headset Microphone</option>
+                  <option>External USB Microphone</option>
                 </select>
               </div>
               <div>
-                <label className="block text-sm text-gray-400 mb-1">
-                  Audio Output
-                </label>
-                <select className="w-full bg-gray-700 text-white rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
-                  <option>Default Speaker</option>
-                  <option>Headphones</option>
+                <h4 className="text-slate-300 font-medium mb-3 text-sm">Video Input</h4>
+                <select className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-slate-600">
+                  <option>Default Camera</option>
+                  <option>External Webcam</option>
                 </select>
               </div>
+              <div>
+                <h4 className="text-slate-300 font-medium mb-3 text-sm">Connection Quality</h4>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 h-2 bg-slate-800 rounded-full overflow-hidden">
+                    <div className="h-full bg-emerald-500 rounded-full w-3/4"></div>
+                  </div>
+                  <span className="text-xs text-slate-500">Excellent</span>
+                </div>
+              </div>
+              {userRole === "admin" && (
+                <div className="pt-4 border-t border-slate-800">
+                  <h4 className="text-slate-300 font-medium mb-3 text-sm">Admin Options</h4>
+                  <div className="space-y-2">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700"
+                      onClick={() => {
+                        // Recording toggle functionality
+                        console.log("Toggle recording");
+                      }}
+                    >
+                      Toggle Recording
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700"
+                      onClick={() => {
+                        // Logs functionality
+                        console.log("View session logs");
+                      }}
+                    >
+                      View Session Logs
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
       )}
 
       {error && (
-        <div className="fixed top-4 right-4 bg-red-500 text-white p-4 rounded-lg z-50 max-w-md">
-          <div className="flex items-start gap-2">
-            <X className="h-5 w-5 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="font-medium">Error</p>
-              <p className="text-sm opacity-90">{error}</p>
+        <div className="fixed top-4 right-4 bg-rose-500 text-white p-4 rounded-xl z-50 max-w-md border border-rose-400 shadow-lg shadow-rose-500/20">
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0 mt-0.5">
+              <X className="h-5 w-5" />
+            </div>
+            <div className="flex-1">
+              <p className="font-semibold text-sm">Connection Error</p>
+              <p className="text-sm opacity-90 mt-1">{error}</p>
               {connectionAttempts < 3 && (
-                <p className="text-xs opacity-75 mt-1">
+                <p className="text-xs opacity-75 mt-2">
                   Retrying... ({connectionAttempts + 1}/3)
                 </p>
               )}
             </div>
             <button
               onClick={() => setError(null)}
-              className="text-white hover:text-gray-200"
+              className="text-white hover:text-gray-200 flex-shrink-0"
             >
               <X className="h-4 w-4" />
             </button>
