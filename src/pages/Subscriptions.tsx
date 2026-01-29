@@ -70,6 +70,7 @@ interface SubscriptionPlan {
   status?: string;
   active?: boolean;
   sessions?: number;
+  validity?: number;
   period?: string;
   duration?: string;
   autoRenew?: boolean;
@@ -102,6 +103,8 @@ export default function Subscriptions() {
     features: [""], // Array of features
     duration: "",
     autoRenew: true,
+    sessions: 0,
+    validity: 0,
   });
 
   useEffect(() => {
@@ -111,18 +114,18 @@ export default function Subscriptions() {
 
   const filteredSubscriptions = Array.isArray(userSubscriptions)
     ? userSubscriptions.filter(
-        (sub) =>
-          sub.userId?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          sub.userId?.email?.toLowerCase().includes(searchQuery.toLowerCase())
-      )
+      (sub) =>
+        sub.userId?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        sub.userId?.email?.toLowerCase().includes(searchQuery.toLowerCase())
+    )
     : [];
 
   console.log("filteredSubscriptions", filteredSubscriptions);
   // Calculate stats from actual plans
- const totalSubscribers =
-  userSubscriptions?.filter(
-    (sub) => sub.status?.toLowerCase() === "active"
-  ).length || 0;
+  const totalSubscribers =
+    userSubscriptions?.filter(
+      (sub) => sub.status?.toLowerCase() === "active"
+    ).length || 0;
 
   const totalRevenue = plans.reduce(
     (acc: number, plan: SubscriptionPlan) => acc + plan.price,
@@ -141,6 +144,8 @@ export default function Subscriptions() {
         duration: selectedPlan.duration || selectedPlan.period || "",
         autoRenew:
           selectedPlan.autoRenew !== undefined ? selectedPlan.autoRenew : true,
+        sessions: selectedPlan.sessions || 0,
+        validity: selectedPlan.validity || 0,
       });
     } else if (!isEditPlanOpen) {
       // Reset form when modal is closed
@@ -251,6 +256,8 @@ export default function Subscriptions() {
       features: [""],
       duration: "",
       autoRenew: true,
+      sessions: 0,
+      validity: 0,
     });
     setSelectedPlan(null);
   };
@@ -557,10 +564,10 @@ export default function Subscriptions() {
                         <td className="text-muted-foreground">
                           {sub.planId === "monthly"
                             ? new Date(
-                                new Date(sub.startDate).setDate(
-                                  new Date(sub.startDate).getDate() + 30
-                                )
-                              ).toLocaleDateString()
+                              new Date(sub.startDate).setDate(
+                                new Date(sub.startDate).getDate() + 30
+                              )
+                            ).toLocaleDateString()
                             : "—"}
                         </td>
 
@@ -692,6 +699,33 @@ export default function Subscriptions() {
               </div>
             </div>
 
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="sessions">Number of Sessions</Label>
+                <Input
+                  id="sessions"
+                  name="sessions"
+                  type="number"
+                  placeholder="10"
+                  value={planForm.sessions || ''}
+                  onChange={handleInputChange}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="validity">Validity Period (Days)</Label>
+                <Input
+                  id="validity"
+                  name="validity"
+                  type="number"
+                  placeholder="30"
+                  value={planForm.validity || ''}
+                  onChange={handleInputChange}
+                  className="mt-1"
+                />
+              </div>
+            </div>
+
             <div>
               <Label htmlFor="description">Description</Label>
               <textarea
@@ -743,22 +777,7 @@ export default function Subscriptions() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between">
-              <div>
-                <Label>Auto-Renew</Label>
-                <p className="text-xs text-muted-foreground">
-                  Automatically renew at end of period
-                </p>
-              </div>
-              <Switch
-                id="autoRenew"
-                name="autoRenew"
-                checked={planForm.autoRenew}
-                onCheckedChange={(checked) =>
-                  setPlanForm((prev) => ({ ...prev, autoRenew: checked }))
-                }
-              />
-            </div>
+
 
             <div className="flex items-center justify-between">
               <div>
