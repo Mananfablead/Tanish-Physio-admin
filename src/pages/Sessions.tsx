@@ -46,7 +46,7 @@ export default function Sessions() {
     // First filter by tab status
     let includeInTab = false;
     switch (activeTab) {
-    
+
       case "all":
         includeInTab = true; // Show all sessions regardless of status
         break;
@@ -119,31 +119,31 @@ export default function Sessions() {
   // State for rescheduling
   const [rescheduleDate, setRescheduleDate] = useState("");
   const [rescheduleTime, setRescheduleTime] = useState("");
-  
+
   // Missing state variables
   const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false);
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [selectedSession, setSelectedSession] = useState<any>(null);
   const [isCreateSessionModalOpen, setIsCreateSessionModalOpen] = useState(false);
-  
+
   // Calendar state variables
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'day' | 'week' | 'month'>('month');
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   const selectedDay = availability?.find(
-  (item) => item.date === rescheduleDate
-);
+    (item) => item.date === rescheduleDate
+  );
 
-const timeSlots = selectedDay?.timeSlots || [];
+  const timeSlots = selectedDay?.timeSlots || [];
 
-const formatTime = (time) => {
-  const [hour, minute] = time.split(":");
-  const h = Number(hour);
-  const ampm = h >= 12 ? "PM" : "AM";
-  const formattedHour = h % 12 || 12;
-  return `${formattedHour}:${minute} ${ampm}`;
-};
+  const formatTime = (time) => {
+    const [hour, minute] = time.split(":");
+    const h = Number(hour);
+    const ampm = h >= 12 ? "PM" : "AM";
+    const formattedHour = h % 12 || 12;
+    return `${formattedHour}:${minute} ${ampm}`;
+  };
 
   // Get today's date for highlighting
   const today = new Date();
@@ -228,7 +228,7 @@ const formatTime = (time) => {
       if (existingAvailability) {
         // Load existing availability data from time slots
         const allSlots = existingAvailability.timeSlots || [];
-        
+
         if (allSlots.length > 0) {
           // Use first slot start time and last slot end time as defaults
           setRescheduleDate(date);
@@ -240,19 +240,19 @@ const formatTime = (time) => {
         setRescheduleDate(date);
       }
     }
-    
+
     // If we're in reschedule mode, we should set the date and potentially auto-open time selection
     if (isRescheduleModalOpen && date) {
       setRescheduleDate(date);
     }
   };
-  
+
   const handleTimeSlotClick = (date: string, timeSlot: any) => {
     if (timeSlot.status === 'available') {
       setSelectedDate(date);
       setRescheduleDate(date);
       setRescheduleTime(timeSlot.start);
-      
+
       // If the reschedule modal is open, update the time selection there too
       if (isRescheduleModalOpen) {
         setRescheduleDate(date);
@@ -315,13 +315,13 @@ const formatTime = (time) => {
         <div className="page-header">
           <h1 className="page-title">{activeTab === 'live' ? 'Live Sessions' : activeTab === 'pending' ? 'Pending Sessions' : activeTab === 'all' ? 'All Sessions' : 'Session Management'}</h1>
           <p className="page-subtitle">
-            {activeTab === 'live' 
-              ? 'View and join live sessions' 
+            {activeTab === 'live'
+              ? 'View and join live sessions'
               : activeTab === 'pending'
-              ? 'Review and approve pending session requests'
-              : activeTab === 'all'
-              ? 'Monitor and manage all platform sessions'
-              : 'Monitor and manage all platform sessions'}
+                ? 'Review and approve pending session requests'
+                : activeTab === 'all'
+                  ? 'Monitor and manage all platform sessions'
+                  : 'Monitor and manage all platform sessions'}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -416,7 +416,7 @@ const formatTime = (time) => {
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
-          
+
           <TabsTrigger value="all">
             All
             <span className="ml-1.5 px-1.5 py-0.5 text-xs bg-primary/20 text-primary rounded-full">
@@ -452,11 +452,11 @@ const formatTime = (time) => {
           <div className="relative max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder={activeTab === 'live' 
-                ? 'Search by user, therapist, date, time, or type...' 
+              placeholder={activeTab === 'live'
+                ? 'Search by user, therapist, date, time, or type...'
                 : activeTab === 'pending'
-                ? 'Search by booking, user, therapist, date, or status...'
-                : 'Search by booking, user, therapist, date, or status...'}
+                  ? 'Search by booking, user, therapist, date, or status...'
+                  : 'Search by booking, user, therapist, date, or status...'}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"
@@ -561,7 +561,7 @@ const formatTime = (time) => {
                       <th>Type</th>
                       <th>Status</th>
                       <th>Actions</th>
-                     
+
                     </tr>
                   </thead>
                   <tbody>
@@ -902,79 +902,88 @@ const formatTime = (time) => {
         open={isRescheduleModalOpen}
         onOpenChange={setIsRescheduleModalOpen}
       >
-        <DialogContent className="max-w-4xl">
-          <DialogHeader>
-            <DialogTitle>Reschedule Session</DialogTitle>
-            <DialogDescription>
+        <DialogContent
+          className="
+      w-full max-w-4xl
+      max-h-[95vh]
+      flex flex-col
+      overflow-hidden
+    "
+        >
+          {/* ================= HEADER ================= */}
+          <DialogHeader className="px-4 sm:px-6 pt-4">
+            <DialogTitle className="text-lg sm:text-xl">
+              Reschedule Session
+            </DialogTitle>
+            <DialogDescription className="text-sm">
               Select a new date and time for this session.
             </DialogDescription>
           </DialogHeader>
 
-          {selectedSession && (
-            <div className="space-y-4 mt-4">
-              <div className="p-3 rounded-lg bg-muted/50">
-                <p className="text-sm">
-                  <span className="text-muted-foreground">Booking ID:</span>{" "}
-                  <span className="font-medium">
-                    {selectedSession.bookingId?._id}
-                  </span>
-                </p>
-                <p className="text-sm">
-                  <span className="text-muted-foreground">Current:</span>{" "}
-                  <span className="font-medium">
-                    {selectedSession.date} at {selectedSession.time}
-                  </span>
-                </p>
-              </div>
+          {/* ================= BODY (SCROLLABLE) ================= */}
+          <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 space-y-4">
+            {selectedSession && (
+              <>
+                {/* CURRENT SESSION INFO */}
+                <div className="p-3 rounded-lg bg-muted/50">
 
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium">New Date</label>
-                    <Input
-                      type="date"
-                      className="mt-1"
-                      value={rescheduleDate}
-                      onChange={(e) => setRescheduleDate(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">New Time</label>
-                    <Select value={rescheduleTime} onValueChange={setRescheduleTime}>
-                      <SelectTrigger className="mt-1">
-                        <SelectValue placeholder="Select time" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {timeSlots.length > 0 ? (
-                          timeSlots.map((slot) => (
-                            <SelectItem
-                              key={slot._id}
-                              value={slot.start}
-                              disabled={slot.status === "booked"}
-                            >
-                              {formatTime(slot.start)} - {formatTime(slot.end)}
-                              {slot.status === "booked" && " (Booked)"}
-                            </SelectItem>
-                          ))
-                        ) : (
-                          <div className="px-3 py-2 text-sm text-muted-foreground">
-                            No slots available
-                          </div>
-                        )}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  <p className="text-sm">
+                    <span className="text-muted-foreground">Current:</span>{" "}
+                    <span className="font-medium">
+                      {selectedSession.date} at {selectedSession.time}
+                    </span>
+                  </p>
                 </div>
-                
-                {/* Calendar and Time Slots Side by Side */}
+
+                {/* DATE + TIME INPUT */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* <div>
+              <label className="text-sm font-medium">New Date</label>
+              <Input
+                type="date"
+                className="mt-1"
+                value={rescheduleDate}
+                onChange={(e) => setRescheduleDate(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium">New Time</label>
+              <Select value={rescheduleTime} onValueChange={setRescheduleTime}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Select time" />
+                </SelectTrigger>
+                <SelectContent>
+                  {timeSlots.length > 0 ? (
+                    timeSlots.map((slot) => (
+                      <SelectItem
+                        key={slot._id}
+                        value={slot.start}
+                        disabled={slot.status === "booked"}
+                      >
+                        {formatTime(slot.start)} - {formatTime(slot.end)}
+                        {slot.status === "booked" && " (Booked)"}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <div className="px-3 py-2 text-sm text-muted-foreground">
+                      No slots available
+                    </div>
+                  )}
+                </SelectContent>
+              </Select>
+            </div> */}
+                </div>
+
+                {/* CALENDAR + TIME SLOTS */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Calendar for date selection */}
-                  <div className="border rounded-lg p-4 bg-muted/20">
+                  {/* ================= CALENDAR ================= */}
+                  <div className="border rounded-lg p-3 bg-muted/20">
                     <div className="flex justify-between items-center mb-3">
-                      <h4 className="font-medium">Select Date from Calendar</h4>
+                      <h4 className="font-medium text-sm">Select Date</h4>
                       <div className="flex gap-1">
-                        <button 
-                          className="h-7 w-7 rounded-md border border-input bg-background p-1 hover:bg-accent hover:text-accent-foreground"
+                        <button
+                          className="h-7 w-7 rounded-md border bg-background flex items-center justify-center"
                           onClick={() => {
                             if (currentMonth === 0) {
                               setCurrentMonth(11);
@@ -986,11 +995,16 @@ const formatTime = (time) => {
                         >
                           <ChevronLeft className="h-4 w-4" />
                         </button>
+
                         <span className="text-sm font-medium px-2">
-                          {new Date(currentYear, currentMonth).toLocaleString('default', { month: 'short', year: 'numeric' })}
+                          {new Date(currentYear, currentMonth).toLocaleString(
+                            "default",
+                            { month: "short", year: "numeric" }
+                          )}
                         </span>
-                        <button 
-                          className="h-7 w-7 rounded-md border border-input bg-background p-1 hover:bg-accent hover:text-accent-foreground"
+
+                        <button
+                          className="h-7 w-7 rounded-md border bg-background flex items-center justify-center"
                           onClick={() => {
                             if (currentMonth === 11) {
                               setCurrentMonth(0);
@@ -1004,167 +1018,144 @@ const formatTime = (time) => {
                         </button>
                       </div>
                     </div>
-                    
-                    <div className="grid grid-cols-7 gap-1">
-                      {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((day) => (
-                        <div key={day} className="text-center text-xs font-medium text-muted-foreground p-1">
-                          {day}
+
+                    {/* Week Days */}
+                    <div className="grid grid-cols-7 text-xs text-muted-foreground mb-2">
+                      {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((d) => (
+                        <div key={d} className="text-center">
+                          {d}
                         </div>
                       ))}
-                      
-                      {calendarWeeks.flat().map((day, index) => {
-                        const isCurrentDay = day && isToday(day.date);
-                        const isCurrentSelected = day && day.date === rescheduleDate;
-                        const isPastDate = (date) => {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return new Date(date) < today;
-};
-const getDateStatus = (date) => {
-  const dayAvailability = availability.find(item => item.date === date);
+                    </div>
 
-  if (!dayAvailability || !dayAvailability.timeSlots?.length) {
-    return "unavailable";
-  }
+                    {/* Dates */}
+                    <div className="grid grid-cols-7 gap-1">
+                      {calendarWeeks.flat().map((day, i) => {
+                        if (!day) return <div key={i} />;
 
-  const hasAvailable = dayAvailability.timeSlots.some(
-    slot => slot.status === "available"
-  );
+                        const isPast =
+                          new Date(day.date) <
+                          new Date(new Date().setHours(0, 0, 0, 0));
 
-  return hasAvailable ? "available" : "booked";
-};
-const getStatusColor = (status) => {
-  switch (status) {
-    case "available":
-      return "bg-green-100 text-green-700 hover:bg-green-200";
-    case "booked":
-      return "bg-red-100 text-red-600";
-    default:
-      return "bg-muted text-muted-foreground";
-  }
-};
+                        const dayAvailability = availability.find(
+                          (a) => a.date === day.date
+                        );
 
-                     return day ? (
-  <button
-    key={index}
-    disabled={isPastDate(day.date)}
-    className={`h-9 w-9 text-xs rounded-full flex items-center justify-center transition-colors
-      ${
-        isPastDate(day.date)
-          ? "opacity-50 cursor-not-allowed bg-muted text-muted-foreground"
-          : getStatusColor(getDateStatus(day.date))
-      }
-      ${isCurrentDay ? "ring-2 ring-primary ring-offset-1" : ""}
-      ${isCurrentSelected ? "ring-2 ring-primary ring-offset-1 bg-primary text-white" : ""}
-    `}
-    onClick={() => {
-      setSelectedDate(day.date);
-      setRescheduleDate(day.date);
+                        const hasAvailable =
+                          dayAvailability?.timeSlots
 
-      const dayAvailability = availability.find(
-        item => item.date === day.date
-      );
+                        const statusColor = isPast
+                          ? "bg-muted text-muted-foreground"
+                          : hasAvailable
+                            ? "bg-green-100 text-green-700"
+                            : "";
 
-      if (dayAvailability) {
-        const firstAvailableSlot = dayAvailability.timeSlots.find(
-          slot => slot.status === "available"
-        );
+                        return (
+                          <button
+                            key={i}
+                            disabled={isPast}
+                            onClick={() => {
+                              setRescheduleDate(day.date);
 
-        if (firstAvailableSlot) {
-          handleTimeSlotClick(day.date, firstAvailableSlot);
-        }
-      }
-    }}
-  >
-    {day.day}
-  </button>
-) : (
-  <div key={index} className="h-9" />
-);
-
+                              if (hasAvailable) {
+                                const firstSlot =
+                                  dayAvailability.timeSlots.find(
+                                    (s) => s.status === "available"
+                                  );
+                                if (firstSlot) {
+                                  handleTimeSlotClick(day.date, firstSlot);
+                                }
+                              }
+                            }}
+                            className={`
+                        h-8 w-8 rounded-full text-xs flex items-center justify-center
+                        ${statusColor}
+                        ${rescheduleDate === day.date 
+                                ? "ring-2 ring-primary bg-primary text-white"
+                                : ""
+                              }
+                        ${isPast ? "opacity-50 cursor-not-allowed" : ""}
+                      `}
+                          >
+                            {day.day}
+                          </button>
+                        );
                       })}
                     </div>
                   </div>
-                  
-                  {/* Time Slots for selected date */}
-                  <div className="border rounded-lg px-4 bg-muted/20">
-                    <h4 className="font-medium mb-3 px-2">Available Time Slots</h4>
-                    {rescheduleDate ? (
-                      (() => {
-                        const dayAvailability = availability.find(item => item.date === rescheduleDate);
-                        if (dayAvailability && dayAvailability.timeSlots && dayAvailability.timeSlots.length > 0) {
-                          return (
-                            <div className="space-y-2 max-h-60 overflow-y-auto p-2">
-                              {dayAvailability.timeSlots.map((slot, index) => (
-                                <button
-                                  key={index}
-                                  className={`w-full text-left p-2 border rounded-lg transition-colors ${slot.status === 'available' 
-                                    ? 'hover:bg-green-50 cursor-pointer' 
-                                    : slot.status === 'booked' 
-                                      ? 'hover:bg-red-50 opacity-50' 
-                                      : 'hover:bg-gray-50'} ${rescheduleTime === slot.start ? 'ring-2 ring-primary bg-primary/10' : ''}`}
-                                  onClick={() => {
-                                    if (slot.status === 'available') {
-                                      handleTimeSlotClick(rescheduleDate, slot);
-                                    }
-                                  }}
-                                  disabled={slot.status !== 'available'}
-                                >
-                                  <div className="flex items-center justify-between">
-                                    <span className="font-medium">{formatTime(slot.start)} - {formatTime(slot.end)}</span>
-                                    <Badge
-                                      variant="secondary"
-                                      className={`px-3 py-1 ${slot.status === 'available' ? 'bg-green-100 text-green-800' :
-                                          slot.status === 'booked' ? 'bg-red-100 text-red-800' :
-                                            'bg-gray-100 text-gray-800'
-                                        }`}
-                                    >
-                                      {slot.status}
-                                    </Badge>
-                                  </div>
-                                </button>
-                              ))}
-                            </div>
-                          );
-                        }
-                        return <p className="text-muted-foreground text-sm">No time slots available for selected date</p>;
-                      })()
-                    ) : (
-                      <p className="text-muted-foreground text-sm">Select a date to see available time slots</p>
-                    )}
+
+                  {/* ================= TIME SLOTS ================= */}
+                  <div className="border rounded-lg bg-muted/20">
+                    <h4 className="font-medium text-sm px-3 pt-3 mb-2">
+                      Available Time Slots
+                    </h4>
+
+                    <div className="max-h-48 md:max-h-64 overflow-y-auto px-3 pb-3 space-y-2">
+                      {rescheduleDate ? (
+                        availability
+                          .find((a) => a.date === rescheduleDate)
+                          ?.timeSlots?.map((slot, i) => (
+                            <button
+                              key={i}
+                              disabled={slot.status !== "available"}
+                              onClick={() =>
+                                slot.status === "available" &&
+                                handleTimeSlotClick(rescheduleDate, slot)
+                              }
+                              className={`
+                          w-full text-left p-2 border rounded-lg text-sm
+                          ${slot.status === "available"
+                                  ? "hover:bg-green-50 border-green-200"
+                                  : "opacity-50 border-gray-200"
+                                }
+                          ${rescheduleTime === slot.start
+                                  ? "ring-2 ring-primary bg-primary/10"
+                                  : ""
+                                }
+                        `}
+                            >
+                              {formatTime(slot.start)} -{" "}
+                              {formatTime(slot.end)}
+                            </button>
+                          ))
+                      ) : (
+                        <p className="text-sm text-muted-foreground">
+                          Select a date to see slots
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            </div>
-          )}
+              </>
+            )}
+          </div>
 
-          <DialogFooter className="mt-4">
+          {/* ================= FOOTER (FIXED) ================= */}
+          <DialogFooter className="px-4 sm:px-6 py-4 border-t">
             <Button
               variant="outline"
               onClick={() => setIsRescheduleModalOpen(false)}
             >
               Cancel
             </Button>
+
             <Button
+              disabled={!rescheduleDate || !rescheduleTime}
               onClick={async () => {
-                try {
-                  await dispatch(
-                    rescheduleSession({
-                      id: selectedSession._id,
-                      sessionData: {
-                        date: rescheduleDate,
-                        time: rescheduleTime,
-                        status: "scheduled",
-                      },
-                    })
-                  );
-                  setIsRescheduleModalOpen(false);
-                  setRescheduleDate("");
-                  setRescheduleTime("");
-                  dispatch(fetchSessions());
-                } catch (error) {
-                  console.error("Failed to reschedule session:", error);
-                }
+                await dispatch(
+                  rescheduleSession({
+                    id: selectedSession._id,
+                    sessionData: {
+                      date: rescheduleDate,
+                      time: rescheduleTime,
+                      status: "scheduled",
+                    },
+                  })
+                );
+                setIsRescheduleModalOpen(false);
+                setRescheduleDate("");
+                setRescheduleTime("");
+                dispatch(fetchSessions());
               }}
             >
               Reschedule Session

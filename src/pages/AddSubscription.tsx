@@ -16,11 +16,19 @@ const planOptions = [
   { label: "Monthly", value: "monthly", months: 1 },
   { label: "Quarterly", value: "quarterly", months: 3 },
   { label: "Yearly", value: "yearly", months: 12 },
+  { label: "Lifetime", value: "lifetime", months: 999 }, // Representing lifetime as 999 months
 ];
 
 const durationOptions = [
+  { label: "Daily", value: "daily" },
+  { label: "Weekly", value: "weekly" },
   { label: "Monthly", value: "monthly" },
+  { label: "Quarterly", value: "quarterly" },
   { label: "Yearly", value: "yearly" },
+  { label: "Lifetime", value: "lifetime" },
+  { label: "Custom", value: "custom" },
+  { label: "Unlimited", value: "unlimited" },
+  { label: "One-time", value: "onetime" },
 ];
 
 /* ---------------- COMPONENT ---------------- */
@@ -202,15 +210,7 @@ export default function AddSubscription() {
             </select>
           </div>
 
-          <div>
-            <Label>Description</Label>
-            <textarea
-              name="description"
-              value={planForm.description}
-              onChange={handleChange}
-              className="w-full mt-1 p-2 border rounded min-h-[80px]"
-            />
-          </div>
+         
 
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -225,30 +225,66 @@ export default function AddSubscription() {
                   }))
                 }
                 placeholder="0 = Unlimited"
+                min="0"
               />
+              <p className="text-xs text-muted-foreground mt-1">
+                Enter 0 for unlimited sessions
+              </p>
             </div>
             <div>
-              <Label>Session Duration (min)</Label>
-              <select
-                className="w-full mt-1 p-2 border rounded"
-                value={planForm.sessionDuration}
+              <Label>Validity Period (Days)</Label>
+              <Input
+                type="number"
+                name="validityInMonths"
+                value={planForm.validityInMonths}
                 onChange={(e) =>
                   setPlanForm((p) => ({
                     ...p,
-                    sessionDuration: Number(e.target.value),
+                    validityInMonths: Number(e.target.value),
                   }))
                 }
-              >
-                <option value={30}>30</option>
-                <option value={45}>45</option>
-                <option value={60}>60</option>
-              </select>
+                placeholder="Number of days"
+                min="1"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                How long the subscription is valid
+              </p>
             </div>
+          </div>
+          <div>
+            <Label>Session Duration (min)</Label>
+            <select
+              className="w-full mt-1 p-2 border rounded"
+              value={planForm.sessionDuration}
+              onChange={(e) =>
+                setPlanForm((p) => ({
+                  ...p,
+                  sessionDuration: Number(e.target.value),
+                }))
+              }
+            >
+              <option value={15}>15 min</option>
+              <option value={30}>30 min</option>
+              <option value={45}>45 min</option>
+              <option value={60}>60 min</option>
+              <option value={75}>75 min</option>
+              <option value={90}>90 min</option>
+              <option value={120}>120 min</option>
+            </select>
           </div>
         </div>
 
         {/* RIGHT COLUMN */}
         <div className="border rounded-lg p-6 space-y-4 bg-card">
+           <div>
+            <Label>Description</Label>
+            <textarea
+              name="description"
+              value={planForm.description}
+              onChange={handleChange}
+              className="w-full mt-1 p-2 border rounded min-h-[80px]"
+            />
+          </div>
           {/* FEATURES */}
           <div>
             <div className="flex justify-between mb-2">
