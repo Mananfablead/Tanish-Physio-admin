@@ -434,10 +434,10 @@ export default function Subscriptions() {
                   </div>
                   <span
                     className={cn(
-                      "status-badge",
+                      "px-2 py-1 rounded-full text-xs font-medium",
                       plan.status === "active"
-                        ? "status-active"
-                        : "status-inactive"
+                        ? "bg-green-100 text-green-800"
+                        : "bg-red-100 text-red-800"
                     )}
                   >
                     {plan.status === "active" ? "Active" : "Inactive"}
@@ -451,6 +451,14 @@ export default function Subscriptions() {
                       ? `${plan.features.length} features`
                       : "Basic plan"}
                   </p>
+                  {plan.sessions !== undefined && plan.sessions > 0 && (
+                    <div className="mt-2">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">Sessions:</span>
+                        <span className="font-medium">{plan.sessions} total</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-2 text-sm mb-4">
@@ -463,6 +471,14 @@ export default function Subscriptions() {
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Subscribers</span>
                     <span className="font-medium">{plan.subscribers || 0}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Sessions</span>
+                    <span className="font-medium">{plan.sessions || 'Unlimited'}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Duration</span>
+                    <span className="font-medium">{plan.duration || 'N/A'}</span>
                   </div>
                 </div>
 
@@ -529,9 +545,10 @@ export default function Subscriptions() {
                     <th>Plan</th>
                     <th>Start Date</th>
                     <th>End Date</th>
-                    <th>Sessions Used</th>
+                    <th>Subscription Sessions</th>
+                    <th>Service Sessions</th>
                     <th>Status</th>
-                    <th>Actions</th>
+                    {/* <th>Actions</th> */}
                   </tr>
                 </thead>
                 <tbody>
@@ -571,17 +588,59 @@ export default function Subscriptions() {
                             : "—"}
                         </td>
 
-                        {/* SESSIONS */}
-                        <td>—</td>
+                        {/* SUBSCRIPTION SESSIONS */}
+                        <td>
+                          {sub.availableSessions ? (
+                            <div className="text-center">
+                              <span className="font-medium">
+                                {sub.availableSessions.used}/{sub.availableSessions.total}
+                              </span>
+                              <p className="text-xs text-muted-foreground">
+                                {sub.availableSessions.remaining} left
+                              </p>
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </td>
+                        
+                        {/* SERVICE SESSIONS */}
+                        <td>
+                          {sub.purchasedServices && sub.purchasedServices.length > 0 ? (
+                            <div className="space-y-2 max-w-xs">
+                              {sub.purchasedServices.map((service: any, index: number) => (
+                                <div key={index} className="text-center p-2 bg-muted/30 rounded">
+                                  <p className="text-xs font-medium truncate" title={service.serviceName || service.service?.name}>
+                                    {service.serviceName || service.service?.name || 'Unnamed Service'}
+                                  </p>
+                                  {service.serviceSessionInfo ? (
+                                    <div>
+                                      <span className="text-xs font-medium">
+                                        {service.serviceSessionInfo.used}/{service.serviceSessionInfo.total}
+                                      </span>
+                                      <p className="text-xs text-muted-foreground">
+                                        {service.serviceSessionInfo.remaining} left
+                                      </p>
+                                    </div>
+                                  ) : (
+                                    <span className="text-xs text-muted-foreground">No session info</span>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground">No services</span>
+                          )}
+                        </td>
 
                         {/* STATUS */}
                         <td>
                           <span
                             className={cn(
-                              "status-badge",
+                              "px-2 py-1 rounded-full text-xs font-medium",
                               sub.status === "active"
-                                ? "status-active"
-                                : "status-inactive"
+                                ? "bg-green-100 text-green-800"
+                                : "bg-red-100 text-red-800"
                             )}
                           >
                             {sub.status}
@@ -589,7 +648,7 @@ export default function Subscriptions() {
                         </td>
 
                         {/* ACTIONS */}
-                        <td>
+                        {/* <td>
                           <div className="flex items-center gap-2">
                             {sub.status === "active" ? (
                               <>
@@ -610,7 +669,7 @@ export default function Subscriptions() {
                               </Button>
                             )}
                           </div>
-                        </td>
+                        </td> */}
                       </tr>
                     );
                   })}
