@@ -523,10 +523,21 @@ const VideoCall = ({
   if (callStatus === "ended") {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-black">
-        <div className="text-center text-white">
+        <div className="text-center text-white max-w-md p-6">
           <PhoneOff className="mx-auto h-16 w-16 mb-4 text-rose-500" />
           <h2 className="text-2xl font-bold mb-2">Session Terminated</h2>
-          <p className="text-slate-500">The monitoring session has ended.</p>
+          <p className="text-slate-500 mb-6">
+            The monitoring session has ended.
+          </p>
+          <div className="flex gap-4 justify-center">
+            <Button
+              variant="default"
+              className="bg-slate-800 hover:bg-slate-900 rounded-lg"
+              onClick={() => (window.location.href = "/sessions")}
+            >
+              Back to Dashboard
+            </Button>
+          </div>
         </div>
       </div>
     );
