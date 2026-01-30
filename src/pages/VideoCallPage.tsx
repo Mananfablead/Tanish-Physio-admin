@@ -80,13 +80,12 @@ export default function VideoCallPage() {
       navigate("/sessions");
     }
   };
-
+ 
   return (
     <ClinicMonitoring
       roomId={id || ""}
       roomType="session"
       userRole="admin"
-      isTherapist={false} // Admin is not a therapist
       onEndCall={handleEndCall}
       sessionId={id || ""}
       connected={connected}

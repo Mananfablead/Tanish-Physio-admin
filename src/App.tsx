@@ -28,6 +28,8 @@ import Reports from "./pages/Reports";
 import Profile from "./pages/Profile";
 import StaffSessions from "./pages/StaffSessions";
 import Services from "./pages/Services";
+import GroupSessionsPage from "./pages/GroupSessionsPage";
+import GroupVideoCallPage from "./pages/GroupVideoCallPage";
 import ServiceDetails from "./pages/ServiceDetails";
 import AddService from "./pages/AddService";
 import UpdateService from "./pages/UpdateService";
@@ -47,7 +49,6 @@ import { useEffect } from "react";
 const queryClient = new QueryClient();
 
 const App = () => (
-
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
@@ -218,8 +219,6 @@ const App = () => (
             }
           />
 
-        
-
           <Route
             path="/payments"
             element={
@@ -380,6 +379,28 @@ const App = () => (
                 <AdminPage>
                   <Testimonials />
                 </AdminPage>
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Group Sessions */}
+          <Route
+            path="/group-sessions"
+            element={
+              <ProtectedRoute>
+                <AdminPage>
+                  <GroupSessionsPage />
+                </AdminPage>
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Group Video Call (Protected but no layout) */}
+          <Route
+            path="/group-video-call/:id"
+            element={
+              <ProtectedRoute>
+                <GroupVideoCallPage />
               </ProtectedRoute>
             }
           />
