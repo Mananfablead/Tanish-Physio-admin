@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import ClinicMonitoring from "@/components/VideoCall/ClinicMonitoring";
 import { mockSessions } from "@/lib/session-data";
 import { adminVideoCallApi } from "@/lib/videoCallApi";
 import { useAuthRedux } from "@/hooks/useAuthRedux";
+import ClinicMonitoring from "../components/VideoCall/ClinicMonitoring";
+
 
 export default function VideoCallPage() {
   const { id } = useParams<{ id: string }>();

@@ -75,6 +75,7 @@ interface SubscriptionPlan {
   duration?: string;
   autoRenew?: boolean;
   subscribers?: number;
+  subscriberCount?: number;
 }
 
 export default function Subscriptions() {
@@ -417,7 +418,7 @@ export default function Subscriptions() {
 
         {/* Plans Tab */}
         <TabsContent value="plans" className="mt-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {plans.map((plan) => (
               <div
                 className={cn(
@@ -462,15 +463,15 @@ export default function Subscriptions() {
                 </div>
 
                 <div className="space-y-2 text-sm mb-4">
-                  <div className="flex items-center justify-between">
+                  {/* <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Auto-renew</span>
                     <span className="text-success">
                       {plan.autoRenew ? "Yes" : "No"}
                     </span>
-                  </div>
+                  </div> */}
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Subscribers</span>
-                    <span className="font-medium">{plan.subscribers || 0}</span>
+                    <span className="font-medium">{plan.subscriberCount || 0}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Sessions</span>

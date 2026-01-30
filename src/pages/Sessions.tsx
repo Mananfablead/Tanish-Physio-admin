@@ -735,7 +735,7 @@ export default function Sessions() {
                                   activeTab === "all") &&
                                   session.status !== "pending" && (
                                     <>
-                                      <DropdownMenuItem
+                                      {/* <DropdownMenuItem
                                         onClick={() => {
                                           setSelectedSession(session);
                                           setIsRescheduleModalOpen(true);
@@ -743,7 +743,7 @@ export default function Sessions() {
                                       >
                                         <RefreshCw className="h-4 w-4 mr-2" />
                                         Reschedule
-                                      </DropdownMenuItem>
+                                      </DropdownMenuItem> */}
 
                                       <DropdownMenuItem
                                         className="text-destructive"

@@ -97,9 +97,10 @@ export default function Services() {
                 <thead>
                   <tr>
                     <th>Service</th>
-                    <th>Description</th>
+                    {/* <th>Description</th> */}
                     <th>Price</th>
                     <th>Duration</th>
+                    <th>Purchases</th>
                     <th>Sessions</th>
                     <th>Validity</th>
                     <th>Status</th>
@@ -136,13 +137,10 @@ export default function Services() {
                           </div>
                         </div>
                       </td>
-                      <td className="max-w-xs">
-                        <p className="text-sm text-muted-foreground truncate" title={service.description}>
-                          {service.description}
-                        </p>
-                      </td>
+                     
                       <td>&#8377;{service.price}</td>
                       <td>{service.duration}</td>
+                      <td>{service.purchaseCount}</td>
                       <td>{service.sessions}</td>
                       <td>{service.validity} days</td>
                       <td>

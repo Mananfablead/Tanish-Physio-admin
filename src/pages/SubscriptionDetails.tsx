@@ -161,7 +161,7 @@ export default function SubscriptionDetails() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Subscribers</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{plan.subscribers || 0}</div>
+            <div className="text-2xl font-bold">{plan.subscriberCount || plan.subscribers || 0}</div>
             <p className="text-xs text-muted-foreground">Active users</p>
           </CardContent>
         </Card>
