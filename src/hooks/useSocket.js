@@ -54,20 +54,55 @@ const useSocket = (roomId, roomType) => {
                 setConnected(true);
                 setError(null);
 
-                // Join the room
-                try {
+                // Check if this is a monitoring reconnection
+                const monitoringState = sessionStorage.getItem('monitoringReconnect');
+                if (monitoringState) {
+                    try {
+                        const { roomId: storedRoomId, roomType: storedRoomType } = JSON.parse(monitoringState);
+                        console.log('Restoring monitoring connection for room:', storedRoomId);
+
+                        // Join the room as monitor/admin with restored state
+                        newSocket.emit('join-room', {
+                            [storedRoomType === 'group' ? 'groupSessionId' : 'sessionId']: storedRoomId,
+                            userType: 'monitor',
+                            isReconnect: true
+                        });
+
+                        // Clear the stored state
+                        sessionStorage.removeItem('monitoringReconnect');
+                    } catch (err) {
+                        console.error('Error restoring monitoring state:', err);
+                        // Fall back to normal join
+                        newSocket.emit('join-room', {
+                            [roomType === 'group' ? 'groupSessionId' : 'sessionId']: roomId,
+                            userType: 'monitor'
+                        });
+                    }
+                } else {
+                    // Normal join
                     newSocket.emit('join-room', {
-                        [roomType === 'group' ? 'groupSessionId' : 'sessionId']: roomId
+                        [roomType === 'group' ? 'groupSessionId' : 'sessionId']: roomId,
+                        userType: 'monitor'
                     });
-                } catch (err) {
-                    console.error('Error joining room:', err);
-                    setError(err.message);
                 }
             });
 
             newSocket.on('disconnect', (reason) => {
                 console.log('Disconnected from video call server:', reason);
                 setConnected(false);
+
+                // Check if this is a page refresh - if so, we want to preserve monitoring
+                const isPageRefresh = reason === 'transport close' || reason === 'ping timeout';
+                if (isPageRefresh) {
+                    console.log('Page refresh detected, will attempt to reconnect as monitor');
+                    // Store monitoring state to restore after reconnection
+                    sessionStorage.setItem('monitoringReconnect', JSON.stringify({
+                        roomId,
+                        roomType,
+                        timestamp: Date.now()
+                    }));
+                    // The reconnection will happen automatically due to reconnection options
+                }
             });
 
             newSocket.on('connect_error', (err) => {
@@ -89,9 +124,12 @@ const useSocket = (roomId, roomType) => {
 
             setSocket(newSocket);
 
-            // Cleanup on unmount
+            // Cleanup on unmount - but preserve call on page refresh
             return () => {
-                if (newSocket) {
+                // Check if this is a page refresh/unload vs component unmount
+                const isPageUnload = typeof window !== 'undefined' && (window.performance?.navigation?.type === 1 || window.event?.type === 'beforeunload');
+
+                if (newSocket && !isPageUnload) {
                     try {
                         newSocket.emit('leave-room', {
                             roomId,
@@ -106,6 +144,7 @@ const useSocket = (roomId, roomType) => {
                         console.error('Error closing socket:', err);
                     }
                 }
+                // If it's a page refresh, keep the connection alive
             };
         } catch (err) {
             console.error('Error initializing socket:', err);

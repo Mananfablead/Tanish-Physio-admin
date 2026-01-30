@@ -17,6 +17,27 @@ const useWebRTC = (roomId, socket, userRole = 'admin') => {
     const [userIdentity, setUserIdentity] = useState(null);
     const [initialized, setInitialized] = useState(false);
 
+    // Prevent cleanup on page refresh
+    useEffect(() => {
+        const handleBeforeUnload = (e) => {
+            // Store call state in sessionStorage to preserve it
+            if (callActive) {
+                sessionStorage.setItem('callState', JSON.stringify({
+                    roomId,
+                    callActive: true,
+                    callStarted: callStarted,
+                    timestamp: Date.now()
+                }));
+            }
+        };
+
+        window.addEventListener('beforeunload', handleBeforeUnload);
+
+        return () => {
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+        };
+    }, [roomId, callActive, callStarted]);
+
     const peerRefs = useRef({});
     const localVideoRef = useRef(null);
     const remoteVideoRefs = useRef({});
@@ -274,10 +295,19 @@ const useWebRTC = (roomId, socket, userRole = 'admin') => {
     // End call (therapist only)
     const endCall = () => {
         if ((userRole === 'therapist' || userRole === 'admin') && socket) {
+            console.log('Admin ending call for room:', roomId);
             socket.emit('end-call', {
                 roomId,
                 roomType: roomId.startsWith('group') ? 'group' : 'session'
             });
+
+            // Also trigger local call ending for immediate UI update
+            if (typeof setCallActive === 'function') {
+                setCallActive(false);
+            }
+            if (typeof setCallStatus === 'function') {
+                setCallStatus('ended');
+            }
         }
     };
 
@@ -398,27 +428,38 @@ const useWebRTC = (roomId, socket, userRole = 'admin') => {
         };
     }, [socket, userRole, setParticipants]);
 
-    // Cleanup on unmount
+    // Cleanup on unmount - but preserve call on page refresh
     useEffect(() => {
         return () => {
-            if (localStream) {
-                localStream.getTracks().forEach(track => track.stop());
-            }
+            // Check if this is a page refresh/unload vs component unmount
+            const isPageUnload = typeof window !== 'undefined' && (window.performance?.navigation?.type === 1 || window.event?.type === 'beforeunload');
 
-            Object.values(peerRefs.current).forEach(peer => {
-                if (peer) peer.destroy();
-            });
-
-            // Clean up socket listeners if socket exists
-            if (socket) {
-                try {
-                    socket.removeAllListeners();
-                } catch (err) {
-                    console.error('Error removing socket listeners:', err);
+            if (!isPageUnload) {
+            // Only clean up if it's a normal component unmount, not page refresh
+                if (localStream) {
+                    localStream.getTracks().forEach(track => track.stop());
                 }
+
+                Object.values(peerRefs.current).forEach(peer => {
+                    if (peer) peer.destroy();
+                });
+
+                // Clean up socket listeners if socket exists
+                if (socket) {
+                    try {
+                        socket.removeAllListeners();
+                    } catch (err) {
+                        console.error('Error removing socket listeners:', err);
+                    }
+                }
+            } else {
+                // For page refresh, we want to preserve patient connections
+                console.log('Page refresh detected - preserving patient connections');
+                // Don't stop tracks or destroy peers - let them continue
+                // The admin will reconnect and resume monitoring
             }
         };
-    }, [socket]);
+    }, [socket, localStream]);
 
     return {
         localStream,

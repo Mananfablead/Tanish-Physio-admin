@@ -308,24 +308,57 @@ const VideoCall = ({
       setIncomingCall(false);
     };
 
-    // Handle call ended
+    // Handle call ended - Asymmetric termination logic
     const callEndedListener = (data) => {
       console.log("Call ended by:", data.endedBy);
-      // Only end admin session if admin themselves ended the call
-      if (data.endedBy === socket.id) {
-        setCallStatus("ended");
-        setCallActive(false);
-        setCallStartTime(null);
-        setIncomingCall(false);
-        setCallDuration(0);
-        if (onEndCall) onEndCall();
+      console.log("Current socket ID:", socket.id);
+      console.log("User role:", userRole);
+      console.log("Initiator role:", data.initiatorRole);
+
+      // Check if this is an admin-initiated termination
+      const isAdminTermination =
+        data.initiatorRole === "admin" || data.initiatorRole === "therapist";
+
+      if (userRole === "admin" || userRole === "therapist") {
+        // Admin/Therapist perspective
+        if (isAdminTermination) {
+          // Admin ended the call - this should end the monitoring session
+          console.log("Admin-initiated termination: Ending monitoring session");
+          setCallStatus("ended");
+          setCallActive(false);
+          setCallStartTime(null);
+          setIncomingCall(false);
+          setCallDuration(0);
+          if (onEndCall) onEndCall();
+        } else {
+          // Client/patient ended the call - admin should stay in monitoring mode
+          console.log(
+            "Client-initiated termination: Keeping admin in monitoring mode"
+          );
+          // Remove the participant who left
+          setParticipants((prev) =>
+            prev.filter((p) => p.socketId !== data.endedBy)
+          );
+          // Keep admin session active for monitoring
+          console.log("Patient left, admin monitoring continues");
+        }
       } else {
-        // If someone else ended the call, just remove them from participants
-        setParticipants((prev) =>
-          prev.filter((p) => p.socketId !== data.endedBy)
-        );
-        // Keep admin session active
-        console.log("Participant left, admin session continues");
+        // Regular user perspective
+        if (data.endedBy === socket.id) {
+          // User themselves ended the call
+          setCallStatus("ended");
+          setCallActive(false);
+          setCallStartTime(null);
+          setIncomingCall(false);
+          setCallDuration(0);
+          if (onEndCall) onEndCall();
+        } else {
+          // Someone else ended the call, just remove them from participants
+          setParticipants((prev) =>
+            prev.filter((p) => p.socketId !== data.endedBy)
+          );
+          console.log("Participant left, user session continues");
+        }
       }
     };
 
