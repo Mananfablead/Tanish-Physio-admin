@@ -587,17 +587,9 @@ const VideoCall = ({
                 • Live Session
               </span>
             </div>
-<<<<<<< HEAD
-            <h1 className="text-white font-semibold tracking-tight">{therapistInfo.name} Session</h1>
-            <p className="text-slate-500 text-xs mt-1">Session ID: {sessionId}</p>
-            <p className="text-slate-500 text-xs">
-              {userInfo.name} monitoring {therapistInfo.name}
-            </p>
-=======
             <h1 className="text-white font-semibold tracking-tight">
               Session Monitoring
             </h1>
->>>>>>> 028fe05f4447466a124211e01a1ae2437b6566c9
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -645,16 +637,6 @@ const VideoCall = ({
           <div className="absolute inset-0 bg-gradient-to-b from-slate-900/50 to-slate-950/50 pointer-events-none" />
           <div className="text-center">
             <div className="w-40 h-40 bg-slate-900 rounded-[2.5rem] mx-auto mb-6 flex items-center justify-center border border-slate-800 shadow-2xl relative overflow-hidden">
-<<<<<<< HEAD
-              <img 
-                src="https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=300&h=300&fit=crop&crop=face" 
-                alt={therapistInfo.name} 
-                className="w-full h-full object-cover opacity-60" 
-              />
-            </div>
-            <h2 className="text-2xl font-semibold text-white tracking-tight mb-2">{therapistInfo.name}</h2>
-            <p className="text-slate-500 font-medium">{therapistInfo.specialty}</p>
-=======
               <img
                 src="https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=300&h=300&fit=crop&crop=face"
                 alt="Participant"
@@ -667,7 +649,6 @@ const VideoCall = ({
             <p className="text-slate-500 font-medium">
               Monitoring Active Session
             </p>
->>>>>>> 028fe05f4447466a124211e01a1ae2437b6566c9
           </div>
         </div>
 
@@ -700,15 +681,11 @@ const VideoCall = ({
                         {participant.isTherapist ? therapistInfo.name : userInfo.name}
                       </p>
                       <Badge className="bg-slate-800 text-slate-400 border-none text-[8px] h-4">
-<<<<<<< HEAD
-                        {participant.isTherapist ? "Staff" : "You"}
-=======
                         {participant.isSelf
                           ? "You"
                           : participant.isTherapist
                           ? "Staff"
                           : "User"}
->>>>>>> 028fe05f4447466a124211e01a1ae2437b6566c9
                       </Badge>
                     </div>
                     <p className="text-slate-500 text-xs">
@@ -741,37 +718,6 @@ const VideoCall = ({
                   </div>
                 </div>
               ))}
-<<<<<<< HEAD
-              {/* Add static entries if no participants yet */}
-              {participants.length === 0 && (
-                <>
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-300 font-semibold text-sm">
-                      {therapistInfo.name?.charAt(0)?.toUpperCase() || 'T'}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between">
-                        <p className="text-white font-medium text-sm">{therapistInfo.name}</p>
-                        <Badge className="bg-slate-800 text-slate-400 border-none text-[8px] h-4">Staff</Badge>
-                      </div>
-                      <p className="text-slate-500 text-xs">Active</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-300 font-semibold text-sm">
-                      {userInfo.initials}
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-white font-medium text-sm">{userInfo.name}</p>
-                      <p className="text-slate-500 text-xs">You</p>
-                    </div>
-                  </div>
-                </>
-              )}
-              
-=======
-
->>>>>>> 028fe05f4447466a124211e01a1ae2437b6566c9
               {/* Admin Tools */}
               {userRole === "admin" && (
                 <div className="pt-6 border-t border-slate-800">
