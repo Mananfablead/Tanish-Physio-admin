@@ -23,16 +23,20 @@ const VideoCall = ({
   roomId,
   roomType = "session",
   userRole = "admin",
-  isTherapist = false, // Add isTherapist prop
+  isTherapist = false,
   onEndCall,
-  sessionId, // Add sessionId prop for API calls
-  connected: externalConnected = false, // Add connected prop from parent
-  user, // Add user prop to get user info
+  sessionId,
+  connected: externalConnected = false,
+  user,
+  sessionDetails,
 }) => {
   const { socket, connected, error, emit, on, setError } = useSocket(
     roomId,
     roomType
   );
+
+  // Set user role based on props or default to admin
+  const effectiveUserRole = userRole || "admin";
 
   // Track joined call status separately from socket connection
   const [joinedCall, setJoinedCall] = useState(false);
@@ -68,7 +72,7 @@ const VideoCall = ({
   const [showParticipants, setShowParticipants] = useState(false);
   const [showChat, setShowChat] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [callStatus, setCallStatus] = useState("connecting"); // connecting, connected, ringing, missed, ended
+  const [callStatus, setCallStatus] = useState("connecting");
   const [incomingCall, setIncomingCall] = useState(false);
   const [callStartTime, setCallStartTime] = useState(null);
   const [callDuration, setCallDuration] = useState(0);
@@ -77,8 +81,27 @@ const VideoCall = ({
   const [newMessage, setNewMessage] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [typingUsers, setTypingUsers] = useState([]);
-  const [therapistInfo, setTherapistInfo] = useState({ name: "", specialty: "" });
+  const [therapistInfo, setTherapistInfo] = useState({
+    name: "",
+    specialty: "",
+  });
   const [userInfo, setUserInfo] = useState({ name: "", initials: "" });
+
+  // Update user info when user prop changes
+  useEffect(() => {
+    if (user) {
+      setUserInfo({
+        name: user.name || user.firstName + " " + user.lastName || "Admin",
+        initials:
+          (user.name
+            ? user.name.charAt(0)
+            : user.firstName
+            ? user.firstName.charAt(0)
+            : "A") +
+          (user.lastName ? user.lastName.charAt(0) : "").toUpperCase(),
+      });
+    }
+  }, [user]);
 
   // Initialize media when socket connects
   useEffect(() => {
@@ -123,6 +146,35 @@ const VideoCall = ({
       loadChatMessages();
     }
   }, [sessionId]);
+
+  // Initialize participants from session details if available
+  useEffect(() => {
+    if (
+      sessionDetails &&
+      sessionDetails.participants &&
+      sessionDetails.participants.length > 0
+    ) {
+      // Map session participants to the format expected by the component
+      const mappedParticipants = sessionDetails.participants.map(
+        (participant) => ({
+          userId: participant.userId,
+          name: participant.name,
+          email: participant.email,
+          role: participant.role,
+          isSelf: participant.isSelf,
+          isTherapist:
+            participant.isTherapist || participant.role === "therapist",
+          joinedAt: new Date().toISOString(), // Set current time as joinedAt
+        })
+      );
+
+      setParticipants(mappedParticipants);
+      console.log(
+        "Admin: Participants initialized from session details:",
+        mappedParticipants
+      );
+    }
+  }, [sessionDetails]);
 
   const loadChatMessages = async () => {
     try {
@@ -186,14 +238,42 @@ const VideoCall = ({
 
     const handleParticipantJoined = (data) => {
       console.log("Participant joined (admin):", data);
-      // Update participants list
-      setParticipants((prev) => {
-        const exists = prev.some(
-          (p) => p.userId === data.userId && p.socketId === data.socketId
+
+      // Validate that this participant belongs to the session
+      let isValidParticipant = false;
+      let enhancedData = { ...data, isSelf: data.socketId === socket.id };
+
+      // Check if participant exists in session details
+      if (sessionDetails && sessionDetails.participants) {
+        const matchingParticipant = sessionDetails.participants.find(
+          (p) => p.userId === data.userId
         );
-        if (exists) return prev;
-        return [...prev, { ...data, isSelf: data.socketId === socket.id }];
-      });
+
+        if (matchingParticipant) {
+          isValidParticipant = true;
+          enhancedData.name = matchingParticipant.name;
+          enhancedData.role = matchingParticipant.role;
+          enhancedData.isSelf = matchingParticipant.isSelf;
+          enhancedData.isTherapist = matchingParticipant.isTherapist;
+          console.log("Valid participant joined (admin):", enhancedData.name);
+        }
+      }
+
+      // Only add valid participants to the list
+      if (isValidParticipant) {
+        setParticipants((prev) => {
+          const exists = prev.some(
+            (p) => p.userId === data.userId && p.socketId === data.socketId
+          );
+          if (exists) return prev;
+          return [...prev, enhancedData];
+        });
+      } else {
+        console.log(
+          "⚠️ Invalid participant attempt blocked (admin):",
+          data.userId
+        );
+      }
     };
 
     const cleanupError = on("error", handleError);
@@ -231,6 +311,21 @@ const VideoCall = ({
     const offerListener = (data) => {
       if (data.senderId !== socket.id) {
         handleOffer(data.offer, data.senderId);
+      }
+    };
+
+    // Handle force-leave event from admin
+    const forceLeaveListener = (data) => {
+      console.log("Force leave event received:", data);
+      if (data.userId === socket.id) {
+        console.log("You have been removed from the session by admin");
+        // End call locally
+        setCallStatus("ended");
+        setCallActive(false);
+        setCallStartTime(null);
+        setIncomingCall(false);
+        setCallDuration(0);
+        if (onEndCall) onEndCall();
       }
     };
 
@@ -424,6 +519,7 @@ const VideoCall = ({
     cleanupFunctions.push(on("new-message", chatMessageListener));
     cleanupFunctions.push(on("typing", typingListener));
     cleanupFunctions.push(on("stop-typing", stopTypingListener));
+    cleanupFunctions.push(on("force-leave", forceLeaveListener));
 
     // Cleanup listeners
     return () => {
@@ -587,7 +683,9 @@ const VideoCall = ({
             <Users className="h-12 w-12" />
           </div>
           <h2 className="text-2xl font-bold mb-2">Incoming Session</h2>
-          <p className="text-slate-500 mb-6">{therapistInfo.name} is ready to connect</p>
+          <p className="text-slate-500 mb-6">
+            {therapistInfo.name} is ready to connect
+          </p>
           <div className="flex justify-center gap-4">
             <Button
               variant="destructive"
@@ -631,10 +729,14 @@ const VideoCall = ({
                 • Live Session
               </span>
             </div>
-            <h1 className="text-white font-semibold tracking-tight">{therapistInfo.name} Session</h1>
-            <p className="text-slate-500 text-xs mt-1">Session ID: {sessionId}</p>
+            <h1 className="text-white font-semibold tracking-tight">
+              Clinic Remote Monitoring Session
+            </h1>
+            <p className="text-slate-500 text-xs mt-1">
+              Session ID: {sessionId}
+            </p>
             <p className="text-slate-500 text-xs">
-              {userInfo.name} monitoring {therapistInfo.name}
+              {userInfo.name || user?.name || "Admin"} monitoring clinic session
             </p>
           </div>
         </div>
@@ -652,7 +754,9 @@ const VideoCall = ({
             }}
           >
             <Users className="h-4 w-4 mr-2" />
-            <span className="hidden md:inline">Participants ({participants.length})</span>
+            <span className="hidden md:inline">
+              Participants ({participants.length})
+            </span>
           </Button>
           <Button
             variant="ghost"
@@ -683,14 +787,18 @@ const VideoCall = ({
           <div className="absolute inset-0 bg-gradient-to-b from-slate-900/50 to-slate-950/50 pointer-events-none" />
           <div className="text-center">
             <div className="w-40 h-40 bg-slate-900 rounded-[2.5rem] mx-auto mb-6 flex items-center justify-center border border-slate-800 shadow-2xl relative overflow-hidden">
-              <img 
-                src="https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=300&h=300&fit=crop&crop=face" 
-                alt={therapistInfo.name} 
-                className="w-full h-full object-cover opacity-60" 
+              <img
+                src="https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=300&h=300&fit=crop&crop=face"
+                alt="Clinic Monitoring"
+                className="w-full h-full object-cover opacity-60"
               />
             </div>
-            <h2 className="text-2xl font-semibold text-white tracking-tight mb-2">{therapistInfo.name}</h2>
-            <p className="text-slate-500 font-medium">{therapistInfo.specialty}</p>
+            <h2 className="text-2xl font-semibold text-white tracking-tight mb-2">
+              Clinic Monitoring
+            </h2>
+            <p className="text-slate-500 font-medium">
+              Remote Physiotherapy Session
+            </p>
           </div>
         </div>
 
@@ -711,27 +819,46 @@ const VideoCall = ({
             <div className="flex-1 p-6 space-y-6">
               {participants.map((participant, index) => (
                 <div
-                  key={`${participant.userId}-${participant.socketId}`}
+                  key={`${participant.userId || "unknown"}-${
+                    participant.socketId || "unknown"
+                  }`}
                   className="flex items-center gap-4"
                 >
                   <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-300 font-semibold text-sm">
-                    {participant.name?.charAt(0)?.toUpperCase() || participant.userId?.charAt(0)?.toUpperCase() || 'U'}
+                    {participant.name?.charAt(0)?.toUpperCase() || "U"}
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center justify-between">
                       <p className="text-white font-medium text-sm">
-                        {participant.isTherapist ? therapistInfo.name : userInfo.name}
+                        {participant.name ||
+                          participant.displayName ||
+                          (participant.firstName && participant.lastName
+                            ? `${participant.firstName} ${participant.lastName}`
+                            : participant.firstName || participant.lastName) ||
+                          `User ${
+                            participant.userId?.substring(0, 5) || "Unknown"
+                          }`}
                       </p>
-                      <Badge className="bg-slate-800 text-slate-400 border-none text-[8px] h-4">
-                        {participant.isTherapist ? "Staff" : "You"}
-                      </Badge>
+                      {participant.isSelf ? (
+                        <Badge className="bg-slate-800 text-slate-400 border-none text-[8px] h-4">
+                          You
+                        </Badge>
+                      ) : (
+                        <Badge className="bg-slate-800 text-slate-400 border-none text-[8px] h-4">
+                          {participant.role === "admin"
+                            ? "Admin"
+                            : participant.role === "therapist"
+                            ? "Staff"
+                            : "Patient"}
+                        </Badge>
+                      )}
                     </div>
                     <p className="text-slate-500 text-xs">
                       {participant.joinedAt
                         ? `Joined: ${new Date(
                             participant.joinedAt
                           ).toLocaleTimeString()}`
-                        : "Active"}
+                        : ""}
                     </p>
                     {/* Admin Controls */}
                     {userRole === "admin" && !participant.isSelf && (
@@ -761,12 +888,16 @@ const VideoCall = ({
                 <>
                   <div className="flex items-center gap-4">
                     <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-300 font-semibold text-sm">
-                      {therapistInfo.name?.charAt(0)?.toUpperCase() || 'T'}
+                      {therapistInfo.name?.charAt(0)?.toUpperCase() || "T"}
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center justify-between">
-                        <p className="text-white font-medium text-sm">{therapistInfo.name}</p>
-                        <Badge className="bg-slate-800 text-slate-400 border-none text-[8px] h-4">Staff</Badge>
+                        <p className="text-white font-medium text-sm">
+                          {therapistInfo.name}
+                        </p>
+                        <Badge className="bg-slate-800 text-slate-400 border-none text-[8px] h-4">
+                          Staff
+                        </Badge>
                       </div>
                       <p className="text-slate-500 text-xs">Active</p>
                     </div>
@@ -776,13 +907,15 @@ const VideoCall = ({
                       {userInfo.initials}
                     </div>
                     <div className="flex-1">
-                      <p className="text-white font-medium text-sm">{userInfo.name}</p>
+                      <p className="text-white font-medium text-sm">
+                        {userInfo.name}
+                      </p>
                       <p className="text-slate-500 text-xs">You</p>
                     </div>
                   </div>
                 </>
               )}
-              
+
               {/* Admin Tools */}
               {userRole === "admin" && (
                 <div className="pt-6 border-t border-slate-800">
@@ -1045,7 +1178,7 @@ const VideoCall = ({
                   <div className="flex-1 h-2 bg-slate-800 rounded-full overflow-hidden">
                     <div className="h-full bg-emerald-500 rounded-full w-3/4"></div>
                   </div>
-                  <span className="text-xs text-slate-500">Excellent</span>
+                  <span className="text-xs text-slate-500">Good</span>
                 </div>
               </div>
               {userRole === "admin" && (

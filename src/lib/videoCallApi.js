@@ -3,7 +3,7 @@ import axios from 'axios';
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
 
 const apiClient = axios.create({
-    baseURL: `${API_BASE_URL}/video-calls`,
+    baseURL: `${API_BASE_URL}/video-call`,
     headers: {
         'Content-Type': 'application/json',
     },
@@ -52,6 +52,22 @@ export const adminVideoCallApi = {
         const response = await apiClient.post('/mute-participant', {
             sessionId,
             userId,
+        });
+        return response.data;
+    },
+
+    // Get participants for a session
+    getSessionParticipants: async (sessionId) => {
+        const response = await apiClient.get(`/session/${sessionId}/participants`);
+        return response.data;
+    },
+
+    // Generate join link for admin monitoring
+    generateJoinLink: async (sessionId, userId, role) => {
+        const response = await apiClient.post('/generate-join-link', {
+            sessionId,
+            userId,
+            role,
         });
         return response.data;
     },
