@@ -3,8 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { mockSessions } from "@/lib/session-data";
 import { adminVideoCallApi } from "@/lib/videoCallApi";
 import { useAuthRedux } from "@/hooks/useAuthRedux";
-import ClinicMonitoring from "../components/VideoCall/ClinicMonitoring";
-
+import VideoCall from "@/components/VideoCall/VideoCall";
 
 export default function VideoCallPage() {
   const { id } = useParams<{ id: string }>();
@@ -81,9 +80,9 @@ export default function VideoCallPage() {
       navigate("/sessions");
     }
   };
- 
+
   return (
-    <ClinicMonitoring
+    <VideoCall
       roomId={id || ""}
       roomType="session"
       userRole="admin"

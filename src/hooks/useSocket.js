@@ -87,14 +87,45 @@ const useSocket = (roomId, roomType) => {
                 }
             });
 
+            // Add WebRTC signaling event handlers
+            newSocket.on('offer', (data) => {
+                console.log('=== ADMIN RECEIVED OFFER ===');
+                console.log('Offer data:', data);
+                console.log('Socket ID:', newSocket.id);
+                console.log('Sender ID:', data.senderId);
+
+                // Emit event for WebRTC hook to handle
+                newSocket.emit('webrtc-offer-received', data);
+            });
+
+            newSocket.on('answer', (data) => {
+                console.log('=== ADMIN RECEIVED ANSWER ===');
+                console.log('Answer data:', data);
+                console.log('Socket ID:', newSocket.id);
+                console.log('Sender ID:', data.senderId);
+
+                // Emit event for WebRTC hook to handle
+                newSocket.emit('webrtc-answer-received', data);
+            });
+
+            newSocket.on('ice-candidate', (data) => {
+                console.log('=== ADMIN RECEIVED ICE CANDIDATE ===');
+                console.log('ICE candidate data:', data);
+                console.log('Socket ID:', newSocket.id);
+                console.log('Sender ID:', data.senderId);
+
+                // Emit event for WebRTC hook to handle
+                newSocket.emit('webrtc-ice-candidate-received', data);
+            });
+
             newSocket.on('disconnect', (reason) => {
-                console.log('Disconnected from video call server:', reason);
+                console.log('❌ Disconnected from video call server:', reason);
                 setConnected(false);
 
                 // Check if this is a page refresh - if so, we want to preserve monitoring
                 const isPageRefresh = reason === 'transport close' || reason === 'ping timeout';
                 if (isPageRefresh) {
-                    console.log('Page refresh detected, will attempt to reconnect as monitor');
+                    console.log('🔄 Page refresh detected, will attempt to reconnect as monitor');
                     // Store monitoring state to restore after reconnection
                     sessionStorage.setItem('monitoringReconnect', JSON.stringify({
                         roomId,
@@ -102,24 +133,50 @@ const useSocket = (roomId, roomType) => {
                         timestamp: Date.now()
                     }));
                     // The reconnection will happen automatically due to reconnection options
+                } else if (reason === 'io server disconnect') {
+                    // Handle server-initiated disconnection
+                    console.log('🔄 Server disconnected, attempting reconnection...');
+                    setTimeout(() => {
+                        if (newSocket) {
+                            newSocket.connect();
+                        }
+                    }, 3000);
                 }
             });
 
             newSocket.on('connect_error', (err) => {
-                console.error('Connection error:', err);
+                console.error('❌ Connection error:', err);
                 setError(err.message);
 
                 // Handle authentication errors specifically
                 if (err.message && err.message.includes('Authentication')) {
-                    console.log('Authentication failed, token might be invalid');
+                    console.log('🔒 Authentication failed, token might be invalid');
                     // Don't retry immediately for auth errors
                     return;
                 }
+
+                // Retry connection for network errors
+                console.log('🔄 Retrying connection in 3 seconds...');
+                setTimeout(() => {
+                    if (newSocket && !newSocket.connected) {
+                        newSocket.connect();
+                    }
+                }, 3000);
             });
 
             newSocket.on('error', (err) => {
-                console.error('Socket error:', err);
-                setError(err.message);
+                console.error('❌ Socket error:', err);
+
+                // Handle specific session not active error
+                if (err.message && err.message.includes('Session is not active at this time')) {
+                    console.log('⚠️ Session is not active - blocking admin entry');
+                    setError('⏰ Session Not Active\n\nThis monitoring session is not currently active.');
+                } else if (err.message && err.message.includes('Unauthorized to join this session')) {
+                    console.log('⚠️ Unauthorized admin access attempt');
+                    setError('🔒 Access Denied\n\nYou are not authorized to monitor this session.');
+                } else {
+                    setError(err.message);
+                }
             });
 
             setSocket(newSocket);

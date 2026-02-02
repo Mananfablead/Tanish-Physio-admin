@@ -68,6 +68,94 @@ const VideoCall = ({
 
   const [audioEnabled, setAudioEnabled] = useState(true);
   const [videoEnabled, setVideoEnabled] = useState(true);
+
+  // Effect to update video elements when streams change
+  useEffect(() => {
+    console.log("=== ADMIN VIDEO STREAM UPDATE EFFECT ===");
+    console.log("Local stream:", !!localStream);
+    console.log("Remote streams count:", Object.keys(remoteStreams).length);
+    console.log("Remote streams keys:", Object.keys(remoteStreams));
+
+    // Update local video when localStream changes
+    if (localVideoRef.current && localStream) {
+      try {
+        if (localVideoRef.current.srcObject !== localStream) {
+          localVideoRef.current.srcObject = localStream;
+          console.log("✅ Admin local video element updated");
+
+          // Ensure local video plays
+          localVideoRef.current.muted = true;
+          localVideoRef.current.autoplay = true;
+          localVideoRef.current.playsInline = true;
+        }
+      } catch (err) {
+        console.error("❌ Error setting admin local video srcObject:", err);
+      }
+    }
+
+    // Update remote videos when remoteStreams change
+    Object.entries(remoteStreams).forEach(([userId, stream]) => {
+      if (remoteVideoRefs.current[userId] && stream) {
+        try {
+          const videoElement = remoteVideoRefs.current[userId];
+          if (videoElement.srcObject !== stream) {
+            videoElement.srcObject = stream;
+            console.log(
+              `✅ Admin remote video element updated for user: ${userId}`
+            );
+
+            // Ensure remote video plays
+            videoElement.muted = true;
+            videoElement.autoplay = true;
+            videoElement.playsInline = true;
+
+            // Play the video
+            const playPromise = videoElement.play();
+            if (playPromise !== undefined) {
+              playPromise
+                .then(() => {
+                  console.log(
+                    `✅ Admin remote video playing for user: ${userId}`
+                  );
+                })
+                .catch((error) => {
+                  console.warn(
+                    `⚠️ Admin remote video autoplay failed for ${userId}:`,
+                    error
+                  );
+                  // Try to play muted
+                  videoElement.muted = true;
+                  videoElement.play().catch((err) => {
+                    console.error(
+                      `❌ Admin remote video play failed for ${userId}:`,
+                      err
+                    );
+                  });
+                });
+            }
+          }
+        } catch (err) {
+          console.error(
+            `❌ Error setting admin remote video srcObject for ${userId}:`,
+            err
+          );
+        }
+      } else {
+       }
+    });
+  }, [localStream, remoteStreams, remoteVideoRefs, localVideoRef]);
+
+  // Additional effect to ensure video element gets stream when it becomes available
+  useEffect(() => {
+    if (localStream && localVideoRef.current) {
+      try {
+        localVideoRef.current.srcObject = localStream;
+        console.log("✅ Admin local video stream assigned via useEffect");
+      } catch (err) {
+        console.error("❌ Error assigning local stream to video element:", err);
+      }
+    }
+  }, [localStream]);
   const [screenSharing, setScreenSharing] = useState(false);
   const [showParticipants, setShowParticipants] = useState(false);
   const [showChat, setShowChat] = useState(false);
@@ -86,6 +174,7 @@ const VideoCall = ({
     specialty: "",
   });
   const [userInfo, setUserInfo] = useState({ name: "", initials: "" });
+  const [isInitializingMedia, setIsInitializingMedia] = useState(false);
 
   // Update user info when user prop changes
   useEffect(() => {
@@ -103,26 +192,155 @@ const VideoCall = ({
     }
   }, [user]);
 
-  // Initialize media when socket connects
+  // Handle socket connection and joined call events
   useEffect(() => {
-    console.log("Admin: Socket connected status:", connected);
-    console.log("Admin: Joined call status:", joinedCall);
-    console.log("Admin: Local stream status:", !!localStream);
+    if (!socket) return;
 
-    if (socket && connected && !localStream) {
-      console.log("Admin: Initializing local media...");
+    const handleError = (data) => {
+      console.error("Admin video call error:", data);
+      setError(data.message || "An error occurred during the video call");
+    };
+
+    const handleJoinedCall = (data) => {
+      console.log("=== ADMIN SUCCESSFULLY JOINED CALL ===");
+      console.log("Join data:", data);
+      setJoinedCall(true);
+      setCallStatus("connected");
+      setError(null); // Clear any previous errors
+      console.log("✅ Admin joined call successfully");
+    };
+
+    const handleParticipantJoined = (data) => {
+      console.log("=== ADMIN PARTICIPANT JOINED EVENT ===");
+      console.log("Participant data:", data);
+      console.log("Session details available:", !!sessionDetails);
+
+      // Validate that this participant belongs to the session
+      let isValidParticipant = false;
+      let enhancedData = { ...data, isSelf: data.socketId === socket.id };
+
+      // Check if participant exists in session details
+      if (sessionDetails && sessionDetails.participants) {
+        const matchingParticipant = sessionDetails.participants.find(
+          (p) => p.userId === data.userId
+        );
+
+        if (matchingParticipant) {
+          isValidParticipant = true;
+          enhancedData.name = matchingParticipant.name;
+          enhancedData.role = matchingParticipant.role;
+          enhancedData.isSelf = matchingParticipant.isSelf;
+          enhancedData.isTherapist = matchingParticipant.isTherapist;
+          console.log(
+            "✅ Valid participant joined (admin):",
+            enhancedData.name
+          );
+        }
+      } else {
+        // If no session details, allow participants but validate basic data
+        if (data.userId && data.socketId) {
+          isValidParticipant = true;
+          console.log(
+            "⚠️ No session details - allowing participant (admin):",
+            data.userId
+          );
+        }
+      }
+
+      // Only add valid participants to the list (avoid duplicates)
+      if (isValidParticipant) {
+        setParticipants((prev) => {
+          // Check if participant already exists
+          const exists = prev.some(
+            (p) => p.userId === data.userId && p.socketId === data.socketId
+          );
+          if (exists) {
+            console.log(
+              "⚠️ Participant already exists (admin), skipping:",
+              data.userId
+            );
+            return prev;
+          }
+          console.log("✅ Adding new participant (admin):", enhancedData);
+          return [...prev, enhancedData];
+        });
+      } else {
+        console.log(
+          "❌ Invalid participant attempt blocked (admin):",
+          data.userId
+        );
+      }
+    };
+
+    // Set up socket event listeners
+    const cleanupError = on("error", handleError);
+    const cleanupJoined = on("joined-call", handleJoinedCall);
+    const cleanupParticipant = on(
+      "participant-joined",
+      handleParticipantJoined
+    );
+
+    return () => {
+      if (cleanupError) cleanupError();
+      if (cleanupJoined) cleanupJoined();
+      if (cleanupParticipant) cleanupParticipant();
+    };
+  }, [socket, on, sessionDetails, setParticipants]);
+
+  // Initialize media when properly connected and joined
+  useEffect(() => {
+    console.log("=== ADMIN MEDIA INITIALIZATION CHECK ===");
+    console.log("Socket available:", !!socket);
+    console.log("Socket connected:", connected);
+    console.log("External connected:", externalConnected);
+    console.log("Joined call status:", joinedCall);
+    console.log("Local stream status:", !!localStream);
+    console.log(
+      "Can initialize:",
+      socket && (externalConnected || connected) && joinedCall && !localStream
+    );
+
+    // Only initialize media after successfully joining the call
+    if (
+      socket &&
+      (externalConnected || connected) &&
+      joinedCall &&
+      !localStream
+    ) {
+      console.log("Admin: Initializing local media after joining call...");
+      setIsInitializingMedia(true);
+      setError(null); // Clear any previous errors
+
       initLocalMedia()
         .then(() => {
-          console.log("Admin: Local media initialized successfully");
+          console.log("✅ Admin: Local media initialized successfully");
+          setIsInitializingMedia(false);
         })
         .catch((err) => {
-          console.error("Admin: Error initializing media:", err);
+          console.error("❌ Admin: Error initializing media:", err);
+          setIsInitializingMedia(false);
           setError(
-            "Failed to access camera and microphone. Please check permissions."
+            err.message ||
+              "Failed to access camera and microphone. Please check permissions and refresh the page."
           );
         });
+    } else if (!socket) {
+      console.log("⚠️ Admin: Socket not available yet");
+    } else if (!(externalConnected || connected)) {
+      console.log("⚠️ Admin: Not connected to socket");
+    } else if (!joinedCall) {
+      console.log("⚠️ Admin: Not joined call yet");
+    } else if (localStream) {
+      console.log("✅ Admin: Local stream already available");
     }
-  }, [socket, connected, joinedCall, localStream, initLocalMedia]);
+  }, [
+    socket,
+    externalConnected,
+    connected,
+    joinedCall,
+    localStream,
+    initLocalMedia,
+  ]);
 
   // Timer for call duration
   useEffect(() => {
@@ -226,7 +444,21 @@ const VideoCall = ({
     const handleError = (data) => {
       console.error("Socket error:", data);
       setError(data.message || "Connection error occurred");
-      setCallStatus("ended");
+
+      // Handle specific session not active error
+      if (
+        data.message &&
+        data.message.includes("Session is not active at this time")
+      ) {
+        setCallStatus("ended");
+        setCallActive(false);
+        setCallStartTime(null);
+        setIncomingCall(false);
+        setCallDuration(0);
+        if (onEndCall) onEndCall();
+      } else {
+        setCallStatus("ended");
+      }
     };
 
     const handleJoinedCall = (data) => {
@@ -237,7 +469,9 @@ const VideoCall = ({
     };
 
     const handleParticipantJoined = (data) => {
-      console.log("Participant joined (admin):", data);
+      console.log("=== ADMIN PARTICIPANT JOINED EVENT ===");
+      console.log("Participant data:", data);
+      console.log("Session details available:", !!sessionDetails);
 
       // Validate that this participant belongs to the session
       let isValidParticipant = false;
@@ -255,7 +489,19 @@ const VideoCall = ({
           enhancedData.role = matchingParticipant.role;
           enhancedData.isSelf = matchingParticipant.isSelf;
           enhancedData.isTherapist = matchingParticipant.isTherapist;
-          console.log("Valid participant joined (admin):", enhancedData.name);
+          console.log(
+            "✅ Valid participant joined (admin):",
+            enhancedData.name
+          );
+        }
+      } else {
+        // If no session details, allow participants but validate basic data
+        if (data.userId && data.socketId) {
+          isValidParticipant = true;
+          console.log(
+            "⚠️ No session details - allowing participant (admin):",
+            data.userId
+          );
         }
       }
 
@@ -265,12 +511,19 @@ const VideoCall = ({
           const exists = prev.some(
             (p) => p.userId === data.userId && p.socketId === data.socketId
           );
-          if (exists) return prev;
+          if (exists) {
+            console.log(
+              "⚠️ Participant already exists (admin), skipping:",
+              data.userId
+            );
+            return prev;
+          }
+          console.log("✅ Adding new participant (admin):", enhancedData);
           return [...prev, enhancedData];
         });
       } else {
         console.log(
-          "⚠️ Invalid participant attempt blocked (admin):",
+          "❌ Invalid participant attempt blocked (admin):",
           data.userId
         );
       }
@@ -288,7 +541,7 @@ const VideoCall = ({
       if (cleanupJoined) cleanupJoined();
       if (cleanupParticipant) cleanupParticipant();
     };
-  }, [socket, on]);
+  }, [socket, on, onEndCall]);
 
   // Retry connection if it fails
   useEffect(() => {
@@ -309,8 +562,53 @@ const VideoCall = ({
 
     // Handle incoming offer
     const offerListener = (data) => {
+      console.log("ADMIN: Offer received:", data);
+      console.log("ADMIN: My socket ID:", socket.id);
+      console.log("ADMIN: Sender ID:", data.senderId);
+
+      // Only handle offers from other participants (not ourselves)
       if (data.senderId !== socket.id) {
+        console.log("ADMIN: Processing offer from:", data.senderId);
         handleOffer(data.offer, data.senderId);
+      } else {
+        console.log("ADMIN: Ignoring own offer");
+      }
+    };
+
+    // Handle WebRTC signaling events (new)
+    const webRTCOfferListener = (data) => {
+      console.log("ADMIN: WebRTC Offer received:", data);
+      console.log("ADMIN: My socket ID:", socket.id);
+      console.log("ADMIN: Sender ID:", data.senderId);
+
+      if (data.senderId !== socket.id) {
+        console.log("ADMIN: Processing WebRTC offer from:", data.senderId);
+        handleOffer(data.offer, data.senderId);
+      }
+    };
+
+    const webRTCAnswerListener = (data) => {
+      console.log("ADMIN: WebRTC Answer received:", data);
+      console.log("ADMIN: My socket ID:", socket.id);
+      console.log("ADMIN: Sender ID:", data.senderId);
+
+      if (data.senderId !== socket.id) {
+        console.log("ADMIN: Processing WebRTC answer from:", data.senderId);
+        handleAnswer(data.answer, data.senderId);
+      }
+    };
+
+    const webRTCIceCandidateListener = (data) => {
+      console.log("ADMIN: WebRTC ICE Candidate received:", data);
+      console.log("ADMIN: My socket ID:", socket.id);
+      console.log("ADMIN: Sender ID:", data.senderId);
+
+      if (data.senderId !== socket.id) {
+        console.log(
+          "ADMIN: Processing WebRTC ICE candidate from:",
+          data.senderId
+        );
+        handleIceCandidate(data.candidate, data.senderId);
       }
     };
 
@@ -331,8 +629,16 @@ const VideoCall = ({
 
     // Handle incoming answer
     const answerListener = (data) => {
+      console.log("ADMIN: Answer received:", data);
+      console.log("ADMIN: My socket ID:", socket.id);
+      console.log("ADMIN: Sender ID:", data.senderId);
+
+      // Only handle answers from other participants (not ourselves)
       if (data.senderId !== socket.id) {
+        console.log("ADMIN: Processing answer from:", data.senderId);
         handleAnswer(data.answer, data.senderId);
+      } else {
+        console.log("ADMIN: Ignoring own answer");
       }
     };
 
@@ -506,6 +812,12 @@ const VideoCall = ({
     cleanupFunctions.push(on("offer", offerListener));
     cleanupFunctions.push(on("answer", answerListener));
     cleanupFunctions.push(on("ice-candidate", iceCandidateListener));
+    // Add WebRTC signaling listeners
+    cleanupFunctions.push(on("webrtc-offer-received", webRTCOfferListener));
+    cleanupFunctions.push(on("webrtc-answer-received", webRTCAnswerListener));
+    cleanupFunctions.push(
+      on("webrtc-ice-candidate-received", webRTCIceCandidateListener)
+    );
     cleanupFunctions.push(on("participant-joined", participantJoinedListener));
     cleanupFunctions.push(on("participant-left", participantLeftListener));
     cleanupFunctions.push(on("call-started", callStartedListener));
@@ -528,6 +840,12 @@ const VideoCall = ({
           cleanup();
         }
       });
+      // Remove WebRTC signaling listeners
+      if (socket) {
+        socket.off("webrtc-offer-received", webRTCOfferListener);
+        socket.off("webrtc-answer-received", webRTCAnswerListener);
+        socket.off("webrtc-ice-candidate-received", webRTCIceCandidateListener);
+      }
     };
   }, [
     socket,
@@ -575,81 +893,163 @@ const VideoCall = ({
     }
   };
 
-  // Render remote videos based on room type
+  // Render remote videos based on room type - Enhanced for Clinic Monitoring
   const renderRemoteVideos = () => {
-    if (roomType === "session") {
-      // 1-on-1 call - single remote video
-      const userId = Object.keys(remoteStreams)[0];
-      if (userId) {
-        return (
-          <div className="relative w-full h-full bg-black rounded-xl overflow-hidden">
-            <video
-              ref={(el) => (remoteVideoRefs.current[userId] = el)}
-              autoPlay
-              playsInline
-              className="w-full h-full object-cover"
-            />
-          </div>
-        );
-      }
+    const streamKeys = Object.keys(remoteStreams);
+    
+    // No participants connected
+    if (streamKeys.length === 0) {
       return (
-        <div className="flex items-center justify-center w-full h-full bg-slate-900 rounded-xl">
-          <div className="text-center text-slate-500">
-            <Users className="mx-auto h-12 w-12 mb-2" />
-            <p>Waiting for participant...</p>
+        <div className="flex flex-col items-center justify-center w-full h-full bg-slate-900 rounded-xl">
+          <div className="text-center text-slate-500 mb-4">
+            <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Users className="h-8 w-8" />
+            </div>
+            <h3 className="text-lg font-medium text-slate-300 mb-1">Waiting for Participants</h3>
+            <p className="text-sm">Remote session will begin when participants join</p>
+          </div>
+          <div className="flex items-center gap-2 text-xs text-slate-500">
+            <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+            <span>Monitoring Active</span>
           </div>
         </div>
       );
-    } else {
-      // Group call - grid of videos
-      const streamKeys = Object.keys(remoteStreams);
-      if (streamKeys.length === 0) {
-        return (
-          <div className="flex items-center justify-center w-full h-full bg-slate-900 rounded-xl">
-            <div className="text-center text-slate-500">
-              <Users className="mx-auto h-12 w-12 mb-2" />
-              <p>Waiting for participants...</p>
+    }
+
+    // Single participant (1-on-1 session)
+    if (streamKeys.length === 1) {
+      const userId = streamKeys[0];
+      const stream = remoteStreams[userId];
+      const participant = participants.find(p => p.userId === userId) || {};
+      
+      return (
+        <div className="relative w-full h-full bg-black rounded-xl overflow-hidden">
+          <video
+            ref={(el) => {
+              if (el) {
+                remoteVideoRefs.current[userId] = el;
+                if (stream) {
+                  try {
+                    if (el.srcObject !== stream) {
+                      el.srcObject = stream;
+                      console.log(`✅ Clinic monitoring: Remote video assigned for ${participant.name || 'Participant'}`);
+
+                      // Ensure video plays properly
+                      el.muted = true;
+                      el.autoplay = true;
+                      el.playsInline = true;
+
+                      // Play the video
+                      const playPromise = el.play();
+                      if (playPromise !== undefined) {
+                        playPromise
+                          .then(() => {
+                            console.log(`✅ Clinic monitoring: Remote video playing for ${participant.name || 'Participant'}`);
+                          })
+                          .catch((error) => {
+                            console.warn(`⚠️ Clinic monitoring: Video autoplay failed for ${participant.name || 'Participant'}:`, error);
+                            // Try to play muted
+                            el.muted = true;
+                            el.play().catch((err) => {
+                              console.error(`❌ Clinic monitoring: Video play failed for ${participant.name || 'Participant'}:`, err);
+                            });
+                          });
+                      }
+                    }
+                  } catch (err) {
+                    console.error(`❌ Clinic monitoring: Error assigning video for ${participant.name || 'Participant'}:`, err);
+                  }
+                }
+              }
+            }}
+            autoPlay
+            playsInline
+            className="w-full h-full object-cover"
+            muted
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent pointer-events-none"></div>
+          <div className="absolute bottom-4 left-4 bg-black/70 backdrop-blur-sm rounded-lg p-3">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 bg-emerald-500 rounded-full animate-pulse"></div>
+              <div>
+                <p className="text-white font-medium text-sm">
+                  {participant.name || 'Participant'}
+                </p>
+                <p className="text-slate-300 text-xs">
+                  {participant.role === 'therapist' ? 'Therapist' : 'Patient'}
+                </p>
+              </div>
             </div>
           </div>
-        );
-      }
-
-      if (streamKeys.length === 1) {
-        // Single participant
-        return (
-          <div className="relative w-full h-full bg-black rounded-xl overflow-hidden">
-            <video
-              ref={(el) => (remoteVideoRefs.current[streamKeys[0]] = el)}
-              autoPlay
-              playsInline
-              className="w-full h-full object-cover"
-            />
-          </div>
-        );
-      } else {
-        // Multiple participants - grid layout
-        return (
-          <div className="grid grid-cols-2 grid-rows-2 gap-2 w-full h-full">
-            {streamKeys.map((userId, index) => (
-              <div
-                key={userId}
-                className="relative bg-black rounded-lg overflow-hidden"
-              >
-                <video
-                  ref={(el) => (remoteVideoRefs.current[userId] = el)}
-                  autoPlay
-                  playsInline
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute bottom-2 left-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
-                  Participant {index + 1}
-                </div>
-              </div>
-            ))}
-          </div>
-        );
-      }
+        </div>
+      );
     }
+
+    // Multiple participants (group session) - Grid layout
+    return (
+      <div className="grid grid-cols-2 gap-3 w-full h-full p-3">
+        {streamKeys.map((userId, index) => {
+          const stream = remoteStreams[userId];
+          const participant = participants.find(p => p.userId === userId) || {};
+          
+          return (
+            <div
+              key={userId}
+              className="relative bg-black rounded-xl overflow-hidden border border-slate-700"
+            >
+              <video
+                ref={(el) => {
+                  if (el) {
+                    remoteVideoRefs.current[userId] = el;
+                    if (stream) {
+                      try {
+                        if (el.srcObject !== stream) {
+                          el.srcObject = stream;
+                          console.log(`✅ Clinic monitoring: Group video assigned for participant ${index + 1}`);
+                          
+                          // Ensure video plays
+                          el.muted = true;
+                          el.autoplay = true;
+                          el.playsInline = true;
+                          
+                          const playPromise = el.play();
+                          if (playPromise !== undefined) {
+                            playPromise.catch((error) => {
+                              console.warn(`⚠️ Clinic monitoring: Group video autoplay issue for participant ${index + 1}:`, error);
+                              el.muted = true;
+                              el.play().catch(err => {
+                                console.error(`❌ Clinic monitoring: Group video play failed:`, err);
+                              });
+                            });
+                          }
+                        }
+                      } catch (err) {
+                        console.error(`❌ Clinic monitoring: Error with group video ${index + 1}:`, err);
+                      }
+                    }
+                  }
+                }}
+                autoPlay
+                playsInline
+                className="w-full h-full object-cover"
+                muted
+              />
+              <div className="absolute top-2 left-2 bg-black/70 backdrop-blur-sm rounded-lg px-2 py-1">
+                <p className="text-white text-xs font-medium">
+                  {participant.name || `Participant ${index + 1}`}
+                </p>
+                <p className="text-slate-300 text-[10px]">
+                  {participant.role === 'therapist' ? 'Therapist' : 'Patient'}
+                </p>
+              </div>
+              <div className="absolute bottom-2 right-2">
+                <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
   };
 
   if (callStatus === "ended") {
@@ -730,7 +1130,7 @@ const VideoCall = ({
               </span>
             </div>
             <h1 className="text-white font-semibold tracking-tight">
-              Clinic Remote Monitoring Session
+              Remote Physiotherapy Monitoring
             </h1>
             <p className="text-slate-500 text-xs mt-1">
               Session ID: {sessionId}
@@ -778,27 +1178,50 @@ const VideoCall = ({
 
       {/* Main Video Area */}
       <div className="flex-1 relative bg-slate-950 flex overflow-hidden">
-        {/* Main Video (Primary Participant) */}
+        {/* Main Video Area - Remote Stream Display */}
         <div
-          className={`flex-1 relative flex items-center justify-center transition-all duration-500 ${
+          className={`flex-1 relative transition-all duration-500 ${
             showParticipants || showChat ? "md:mr-0" : ""
           }`}
         >
-          <div className="absolute inset-0 bg-gradient-to-b from-slate-900/50 to-slate-950/50 pointer-events-none" />
-          <div className="text-center">
-            <div className="w-40 h-40 bg-slate-900 rounded-[2.5rem] mx-auto mb-6 flex items-center justify-center border border-slate-800 shadow-2xl relative overflow-hidden">
-              <img
-                src="https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=300&h=300&fit=crop&crop=face"
-                alt="Clinic Monitoring"
-                className="w-full h-full object-cover opacity-60"
-              />
+          {/* Remote Video Stream */}
+          <div className="w-full h-full relative bg-black rounded-xl overflow-hidden">
+            {renderRemoteVideos()}
+            
+            {/* Overlay Information */}
+            <div className="absolute top-4 left-4 right-4 flex justify-between items-start z-10">
+              <div className="bg-black/50 backdrop-blur-sm rounded-lg p-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="w-3 h-3 bg-emerald-500 rounded-full animate-pulse"></div>
+                  <span className="text-white text-sm font-medium">LIVE</span>
+                </div>
+                <p className="text-slate-200 text-xs">Remote Physiotherapy Session</p>
+              </div>
+              
+              <div className="bg-black/50 backdrop-blur-sm rounded-lg p-2">
+                <div className="flex items-center gap-2 text-white text-sm">
+                  <Users className="w-4 h-4" />
+                  <span>{participants.length} participant{participants.length !== 1 ? 's' : ''}</span>
+                </div>
+              </div>
             </div>
-            <h2 className="text-2xl font-semibold text-white tracking-tight mb-2">
-              Clinic Monitoring
-            </h2>
-            <p className="text-slate-500 font-medium">
-              Remote Physiotherapy Session
-            </p>
+            
+            {/* Connection Status */}
+            <div className="absolute bottom-4 left-4 bg-black/50 backdrop-blur-sm rounded-lg p-2">
+              <div className="flex items-center gap-2 text-xs text-slate-300">
+                {connected ? (
+                  <>
+                    <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
+                    <span>Connected</span>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-2 h-2 bg-rose-500 rounded-full"></div>
+                    <span>Disconnected</span>
+                  </>
+                )}
+              </div>
+            </div>
           </div>
         </div>
 
@@ -1012,27 +1435,59 @@ const VideoCall = ({
             </div>
           </div>
         )}
+        {/* Media Initialization Loading Overlay */}
+        {isInitializingMedia && (
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm z-40 flex items-center justify-center">
+            <div className="text-center text-white">
+              <div className="w-16 h-16 border-4 border-slate-700 border-t-emerald-500 rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-lg font-medium">
+                Initializing camera and microphone...
+              </p>
+              <p className="text-slate-400 text-sm mt-2">
+                This may take a few seconds
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Self Video (Admin View) */}
         <div
           className={`absolute md:bottom-8 md:right-8 bottom-4 right-4 md:w-64 md:h-44 w-44 h-36 rounded-[2rem] overflow-hidden border-4 border-slate-900 shadow-2xl transition-all duration-500 ${
             showParticipants || showChat ? "md:translate-x-[-320px]" : ""
           }`}
         >
-          <div className="w-full h-full bg-slate-800 relative flex items-center justify-center">
-            <div className="text-center">
-              <div className="w-14 h-14 bg-slate-700 rounded-2xl mx-auto mb-2 flex items-center justify-center border border-slate-600">
-                <Video className="h-6 w-6 text-slate-500" />
-              </div>
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                Admin View
-              </p>
-            </div>
-            {!videoEnabled && (
-              <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center">
-                <VideoOff className="h-6 w-6 text-slate-400" />
-              </div>
-            )}
+          <video
+            ref={(el) => {
+              if (el) {
+                localVideoRef.current = el;
+                if (localStream) {
+                  try {
+                    el.srcObject = localStream;
+                    console.log(
+                      "✅ Admin local video ref and srcObject assigned"
+                    );
+                  } catch (err) {
+                    console.error(
+                      "❌ Error assigning admin local video srcObject:",
+                      err
+                    );
+                  }
+                }
+              }
+            }}
+            autoPlay
+            playsInline
+            muted
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute bottom-2 left-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
+            Admin View
           </div>
+          {!videoEnabled && (
+            <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center">
+              <VideoOff className="h-6 w-6 text-slate-400" />
+            </div>
+          )}
         </div>
       </div>
 
@@ -1224,13 +1679,44 @@ const VideoCall = ({
               <X className="h-5 w-5" />
             </div>
             <div className="flex-1">
-              <p className="font-semibold text-sm">Connection Error</p>
+              <p className="font-semibold text-sm">Media Error</p>
               <p className="text-sm opacity-90 mt-1">{error}</p>
-              {connectionAttempts < 3 && (
-                <p className="text-xs opacity-75 mt-2">
-                  Retrying... ({connectionAttempts + 1}/3)
-                </p>
-              )}
+              <div className="flex gap-2 mt-3">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="bg-white/20 hover:bg-white/30 text-white text-xs h-7 px-2"
+                  onClick={() => {
+                    setError(null);
+                    initLocalMedia()
+                      .then(() => {
+                        console.log(
+                          "Admin: Local media re-initialized successfully"
+                        );
+                      })
+                      .catch((err) => {
+                        console.error(
+                          "Admin: Error re-initializing media:",
+                          err
+                        );
+                        setError(
+                          err.message ||
+                            "Failed to access camera and microphone. Please check permissions and refresh the page."
+                        );
+                      });
+                  }}
+                >
+                  Retry
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="bg-white/20 hover:bg-white/30 text-white text-xs h-7 px-2"
+                  onClick={() => window.location.reload()}
+                >
+                  Refresh Page
+                </Button>
+              </div>
             </div>
             <button
               onClick={() => setError(null)}
