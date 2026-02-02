@@ -91,104 +91,124 @@ export default function Services() {
         </div>
 
         {!loading && (
-          <div className="bg-card rounded-lg border border-border overflow-hidden animate-fade-in">
-            <div className="overflow-x-auto">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Service</th>
-                    {/* <th>Description</th> */}
-                    <th>Price</th>
-                    <th>Duration</th>
-                    <th>Purchases</th>
-                    <th>Sessions</th>
-                    <th>Validity</th>
-                    <th>Status</th>
-                    <th className="w-12">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredServices.map((service) => (
-                    <tr key={service._id || service.id} className={cn("cursor-pointer", (service.status === "inactive" || service.status === false) ? "opacity-70" : "")} onClick={() => navigate(`/services/${service._id || service.id}`)}>
-                      <td>
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-md bg-muted flex items-center justify-center overflow-hidden">
-                            {(service.images && service.images.length > 0) ? (
-                              <img
-                                src={service.images[0]}
-                                alt={service.name}
-                                className="w-full h-full object-cover"
-                              />
-                            ) : service.image ? (
-                              <img
-                                src={service.image}
-                                alt={service.name}
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              <ImageIcon className="w-5 h-5 text-muted-foreground" />
-                            )}
-                          </div>
-                          <div>
-                            <span className="font-medium">{service.name}</span>
-                            {(service.status === "inactive" || service.status === false) && (
-                              <span className="ml-2 text-xs text-muted-foreground">(Inactive)</span>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-                     
-                      <td>&#8377;{service.price}</td>
-                      <td>{service.duration}</td>
-                      <td>{service.purchaseCount}</td>
-                      <td>{service.sessions}</td>
-                      <td>{service.validity} days</td>
-                      <td>
-                        <span className={cn("status-badge", (service.status === "active" || service.status === true) ? "status-active" : "status-inactive")}>
-                          {service.status === true ? 'active' : service.status === false ? 'inactive' : service.status}
-                        </span>
-                      </td>
-                      <td>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                              <MoreHorizontal className="w-4 h-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={(e) => {
-                              e.stopPropagation();
-                              navigate(`/services/${service._id || service.id}/edit`);
-                            }}>
-                              <Edit className="w-4 h-4 mr-2" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              className="text-destructive"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedService(service);
-                                setIsDeleteServiceOpen(true);
-                              }}
-                            >
-                              <Trash2 className="w-4 h-4 mr-2" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </td>
+          filteredServices.length > 0 ? (
+            <div className="bg-card rounded-lg border border-border overflow-hidden animate-fade-in">
+              <div className="overflow-x-auto">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Service</th>
+                      {/* <th>Description</th> */}
+                      <th>Price</th>
+                      <th>Duration</th>
+                      <th>Purchases</th>
+                      <th>Sessions</th>
+                      <th>Validity</th>
+                      <th>Status</th>
+                      <th className="w-12">Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {filteredServices.map((service) => (
+                      <tr key={service._id || service.id} className={cn("cursor-pointer", (service.status === "inactive" || service.status === false) ? "opacity-70" : "")} onClick={() => navigate(`/services/${service._id || service.id}`)}>
+                        <td>
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-md bg-muted flex items-center justify-center overflow-hidden">
+                              {(service.images && service.images.length > 0) ? (
+                                <img
+                                  src={service.images[0]}
+                                  alt={service.name}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : service.image ? (
+                                <img
+                                  src={service.image}
+                                  alt={service.name}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <ImageIcon className="w-5 h-5 text-muted-foreground" />
+                              )}
+                            </div>
+                            <div>
+                              <span className="font-medium">{service.name}</span>
+                              {(service.status === "inactive" || service.status === false) && (
+                                <span className="ml-2 text-xs text-muted-foreground">(Inactive)</span>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                       
+                        <td>&#8377;{service.price}</td>
+                        <td>{service.duration}</td>
+                        <td>{service.purchaseCount}</td>
+                        <td>{service.sessions}</td>
+                        <td>{service.validity} days</td>
+                        <td>
+                          <span className={cn("status-badge", (service.status === "active" || service.status === true) ? "status-active" : "status-inactive")}>
+                            {service.status === true ? 'active' : service.status === false ? 'inactive' : service.status}
+                          </span>
+                        </td>
+                        <td>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <MoreHorizontal className="w-4 h-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/services/${service._id || service.id}/edit`);
+                              }}>
+                                <Edit className="w-4 h-4 mr-2" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                className="text-destructive"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedService(service);
+                                  setIsDeleteServiceOpen(true);
+                                }}
+                              >
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
 
-            <div className="flex items-center justify-between px-4 py-3 border-t border-border">
-              <p className="text-sm text-muted-foreground">
-                Showing <span className="font-medium">{filteredServices.length}</span> services
-              </p>
+              <div className="flex items-center justify-between px-4 py-3 border-t border-border">
+                <p className="text-sm text-muted-foreground">
+                  Showing <span className="font-medium">{filteredServices.length}</span> services
+                </p>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="border rounded-lg p-12 text-center">
+              <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+                <ImageIcon className="w-8 h-8 text-muted-foreground" />
+              </div>
+              <h3 className="text-lg font-medium mb-2">No Services Found</h3>
+              <p className="text-muted-foreground">
+                {searchQuery
+                  ? "No services match your search criteria."
+                  : "Get started by adding your first service."}
+              </p>
+              {!searchQuery && (
+                <Button className="mt-4" onClick={() => navigate("/add-service")}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Service
+                </Button>
+              )}
+            </div>
+          )
         )}
       </div>
 

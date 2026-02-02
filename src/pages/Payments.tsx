@@ -264,95 +264,111 @@ export default function Payments() {
       </div>
 
       {/* Payments Table */}
-      <div className="bg-card rounded-lg border border-border overflow-hidden animate-fade-in">
-        <div className="overflow-x-auto">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Transaction ID</th>
-                <th>User</th>
-                <th>Plan</th>
-                <th>Amount</th>
-                <th>Method</th>
-                <th>Date</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredPayments.map((payment: Payment) => (
-                <tr key={payment._id}>
-                  <td className="font-mono text-sm">{payment._id}</td>
-                  <td>
-                    <div>
-                      <p className="font-medium">{payment.userId?.name}</p>
-                      <p className="text-sm text-muted-foreground">{payment.userId?.email}</p>
-                    </div>
-                  </td>
-                  <td>{payment.bookingId?.serviceName}</td>
-                  <td className="font-semibold">₹{payment.amount}</td>
-                  <td className="text-muted-foreground">{payment.method || payment.currency}</td>
-                  <td className="text-muted-foreground">{new Date(payment.createdAt).toLocaleDateString()}</td>
-                  <td>
-                    <span className={cn("status-badge inline-flex items-center gap-1", getStatusBadge(payment.status as PaymentStatus))}>
-                      {getStatusIcon(payment.status as PaymentStatus)}
-                      {payment.status}
-                    </span>
-                  </td>
-                  <td>
-                    <div className="flex items-center gap-1">
-                      <Button variant="ghost" size="sm">
-                        <Eye className="w-4 h-4" />
-                      </Button>
-                      {payment.status === "captured" && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedPayment(payment);
-                            setIsRefundModalOpen(true);
-                          }}
-                        >
-                          <RotateCcw className="w-4 h-4" />
-                        </Button>
-                      )}
-                      {payment.status === "disputed" && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedPayment(payment);
-                            setIsDisputeModalOpen(true);
-                          }}
-                        >
-                          Resolve
-                        </Button>
-                      )}
-                    </div>
-                  </td>
+      {filteredPayments.length > 0 ? (
+        <div className="bg-card rounded-lg border border-border overflow-hidden animate-fade-in">
+          <div className="overflow-x-auto">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Transaction ID</th>
+                  <th>User</th>
+                  <th>Plan</th>
+                  <th>Amount</th>
+                  <th>Method</th>
+                  <th>Date</th>
+                  <th>Status</th>
+                  <th>Actions</th>
                 </tr>
-              ))}
+              </thead>
+              <tbody>
+                {filteredPayments.map((payment: Payment) => (
+                  <tr key={payment._id}>
+                    <td className="font-mono text-sm">{payment._id}</td>
+                    <td>
+                      <div>
+                        <p className="font-medium">{payment.userId?.name}</p>
+                        <p className="text-sm text-muted-foreground">{payment.userId?.email}</p>
+                      </div>
+                    </td>
+                    <td>{payment.bookingId?.serviceName}</td>
+                    <td className="font-semibold">₹{payment.amount}</td>
+                    <td className="text-muted-foreground">{payment.method || payment.currency}</td>
+                    <td className="text-muted-foreground">{new Date(payment.createdAt).toLocaleDateString()}</td>
+                    <td>
+                      <span className={cn("status-badge inline-flex items-center gap-1", getStatusBadge(payment.status as PaymentStatus))}>
+                        {getStatusIcon(payment.status as PaymentStatus)}
+                        {payment.status}
+                      </span>
+                    </td>
+                    <td>
+                      <div className="flex items-center gap-1">
+                        <Button variant="ghost" size="sm">
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                        {payment.status === "captured" && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedPayment(payment);
+                              setIsRefundModalOpen(true);
+                            }}
+                          >
+                            <RotateCcw className="w-4 h-4" />
+                          </Button>
+                        )}
+                        {payment.status === "disputed" && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedPayment(payment);
+                              setIsDisputeModalOpen(true);
+                            }}
+                          >
+                            Resolve
+                          </Button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
 
-            </tbody>
-          </table>
-        </div>
+              </tbody>
+            </table>
+          </div>
 
-        <div className="flex items-center justify-between px-4 py-3 border-t border-border">
-          <p className="text-sm text-muted-foreground">
-            Showing <span className="font-medium">{filteredPayments.length}</span> of{" "}
-            <span className="font-medium">{payments?.length || 0}</span> transactions
-          </p>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" disabled>
-              <ChevronLeft className="w-4 h-4" />
-            </Button>
-            <Button variant="outline" size="sm" className="min-w-[32px]">1</Button>
-            <Button variant="outline" size="sm">
-              <ChevronRight className="w-4 h-4" />
-            </Button>
+          <div className="flex items-center justify-between px-4 py-3 border-t border-border">
+            <p className="text-sm text-muted-foreground">
+              Showing <span className="font-medium">{filteredPayments.length}</span> of{" "}
+              <span className="font-medium">{payments?.length || 0}</span> transactions
+            </p>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" disabled>
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+              <Button variant="outline" size="sm" className="min-w-[32px]">1</Button>
+              <Button variant="outline" size="sm">
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
         </div>
-      </div>
+      ) : (
+        <div className="border rounded-lg p-12 text-center">
+          <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+            <DollarSign className="w-8 h-8 text-muted-foreground" />
+          </div>
+          <h3 className="text-lg font-medium mb-2">No Payments Found</h3>
+          <p className="text-muted-foreground">
+            {searchQuery
+              ? "No payments match your search criteria."
+              : activeFilter !== "All"
+                ? `No ${activeFilter} payments found.`
+                : "No payment transactions found in the system."}
+          </p>
+        </div>
+      )}
 
       {/* Refund Modal */}
       <Dialog open={isRefundModalOpen} onOpenChange={setIsRefundModalOpen}>

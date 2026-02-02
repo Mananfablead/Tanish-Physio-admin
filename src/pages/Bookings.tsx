@@ -202,7 +202,7 @@ export default function Bookings() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button
+          {/* <Button
             variant="outline"
             onClick={() => {
               setIsModalOpen(true);
@@ -219,7 +219,7 @@ export default function Bookings() {
           >
             <Plus className="w-4 h-4 mr-2" />
             Create Booking
-          </Button>
+          </Button> */}
         </div>
       </div>
       {/* Stats */}{" "}
@@ -302,78 +302,108 @@ export default function Bookings() {
           className="pl-10"
         />
       </div>
-      {/* Table */}
-      <div className="bg-card rounded-lg border overflow-hidden">
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Service</th>
-              <th>Client</th>
-              {/* <th>Therapist</th> */}
-              <th>Date & Time</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredBookings.map((booking) => (
-              <tr key={booking.id}>
-                <td>{booking.serviceName}</td>
-                <td>{booking.clientName}</td>
-                {/* <td>{booking.therapistName}</td> */}
-                <td>
-                  {booking.date} <Clock className="inline w-4 h-4 ml-2" />{" "}
-                  {booking.time}
-                </td>
-                <td>
-
-                  <span
-                    className={cn(
-                      "status-badge",
-                      getStatusBadge(booking.status)
-                    )}
-                  >
-                    {booking.status}
-                  </span>
-
-                </td>
-                <td>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button size="icon" variant="ghost">
-                        <MoreHorizontal className="w-4 h-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-44">
-                      {/* EDIT BOOKING */}
-                      <DropdownMenuItem
-                        onClick={() => prepareEditBooking(booking)}
-                        className="cursor-pointer"
-                      >
-                        <Edit className="w-4 h-4 mr-2 text-slate-600" />
-                        Edit Booking
-                      </DropdownMenuItem>
-
-                      {/* STATUS UPDATE */}
-                      <DropdownMenuItem
-                        onClick={() => {
-                          setSelectedBooking(booking);
-                          setIsStatusDialogOpen(true);
-                        }}
-                        className="cursor-pointer"
-                      >
-                        <Activity className="w-4 h-4 mr-2" />
-                        Update Status
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-
-                  </DropdownMenu>
-                </td>
+      {/* Table or Empty State */}
+      {filteredBookings.length > 0 ? (
+        <div className="bg-card rounded-lg border overflow-hidden">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Service</th>
+                <th>Client</th>
+                {/* <th>Therapist</th> */}
+                <th>Date & Time</th>
+                <th>Status</th>
+                <th>Expiration</th>
+                <th>Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {filteredBookings.map((booking) => (
+                <tr key={booking.id}>
+                  <td>{booking.serviceName}</td>
+                  <td>{booking.clientName}</td>
+                  {/* <td>{booking.therapistName}</td> */}
+                  <td>
+                    {booking.date} <Clock className="inline w-4 h-4 ml-2" />{" "}
+                    {booking.time}
+                  </td>
+                  <td>
+
+                    <span
+                      className={cn(
+                        "status-badge",
+                        getStatusBadge(booking.status)
+                      )}
+                    >
+                      {booking.status}
+                    </span>
+
+                  </td>
+                  <td>
+                    {booking.isServiceExpired ? (
+                      <span className="px-2 py-1 rounded-full text-xs font-semibold text-red-600 bg-red-100">
+                        Expired
+                      </span>
+                    ) : booking.serviceExpiryDate ? (
+                      <span className="px-2 py-1 rounded-full text-xs font-semibold text-green-600 bg-green-100">
+                        {new Date(booking.serviceExpiryDate).toLocaleDateString()}
+                      </span>
+                    ) : (
+                      <span className="px-2 py-1 rounded-full text-xs font-semibold text-blue-600 bg-blue-100">
+                        Unlimited
+                      </span>
+                    )}
+                  </td>
+                  <td>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button size="icon" variant="ghost">
+                          <MoreHorizontal className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-44">
+                        {/* EDIT BOOKING */}
+                        <DropdownMenuItem
+                          onClick={() => prepareEditBooking(booking)}
+                          className="cursor-pointer"
+                        >
+                          <Edit className="w-4 h-4 mr-2 text-slate-600" />
+                          Edit Booking
+                        </DropdownMenuItem>
+
+                        {/* STATUS UPDATE */}
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setSelectedBooking(booking);
+                            setIsStatusDialogOpen(true);
+                          }}
+                          className="cursor-pointer"
+                        >
+                          <Activity className="w-4 h-4 mr-2" />
+                          Update Status
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+
+                    </DropdownMenu>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="border rounded-lg p-12 text-center">
+          <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+            <Calendar className="w-8 h-8 text-muted-foreground" />
+          </div>
+          <h3 className="text-lg font-medium mb-2">No Bookings Found</h3>
+          <p className="text-muted-foreground">
+            {searchQuery
+              ? "No bookings match your search criteria."
+              : "There are no bookings in the system yet."}
+          </p>
+        </div>
+      )}
       {/* EDIT/CREATE BOOKING MODAL */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent className="max-w-2xl">

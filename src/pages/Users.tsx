@@ -38,8 +38,8 @@ const filters = ["All", "Active Subscription", "Expired", "No Subscription"];
 export default function Users() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { list: users, loading, pagination } = useSelector(
-    (state) => state.users
+  const { list: users = [], loading, pagination } = useSelector(
+    (state: any) => state.users
   );
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -207,85 +207,99 @@ export default function Users() {
         </div>
       </div>
 
-      {/* TABLE */}
-      <div className="border rounded-lg overflow-x-auto">
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Email</th>
-              <th>Phone</th>
-              <th>Subscription</th>
-              <th>Status</th>
-              <th>Join Date</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredUsers.map((user) => (
-              <tr key={user._id}>
-                <td className="font-medium">{user.name}</td>
-                <td>{user.email}</td>
-                <td>{user.phone}</td>
-                <td>
-                  <span
-                    className={cn(
-                      "px-2 py-1 rounded-full text-xs",
-                      getSubscriptionBadge(user.subscriptionInfo?.status)
-                    )}
-                  >
-                    {user.subscriptionInfo?.planName || "No Subscription"}
-                  </span>
-                </td>
-                <td>
-                  <span
-                    className={cn(
-                      "status-badge",
-                      user.status === "active"
-                        ? "status-active"
-                        : "status-inactive"
-                    )}
-                  >
-                    {user.status}
-                  </span>
-                </td>
-                <td>{user.joinDate?.split("T")[0]}</td>
-                <td>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button size="icon" variant="ghost">
-                        <MoreHorizontal />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem
-                        onClick={() => openUserProfile(user._id)}
-                      >
-                        <Eye className="w-4 h-4 mr-2" />
-                        View Profile
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => handleDeleteUser(user._id)}
-                      >
-                        <Trash className="w-4 h-4 mr-2" />
-                        Delete
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => toggleUserStatus(user)}
-                      >
-                        <UserX className="w-4 h-4 mr-2" />
-                        {user.status === "active"
-                          ? "Deactivate"
-                          : "Activate"}
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </td>
+      {/* TABLE OR EMPTY STATE */}
+      {filteredUsers.length > 0 ? (
+        <div className="border rounded-lg overflow-x-auto">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Subscription</th>
+                <th>Status</th>
+                <th>Join Date</th>
+                <th></th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {filteredUsers.map((user) => (
+                <tr key={user._id}>
+                  <td className="font-medium">{user.name}</td>
+                  <td>{user.email}</td>
+                  <td>{user.phone}</td>
+                  <td>
+                    <span
+                      className={cn(
+                        "px-2 py-1 rounded-full text-xs",
+                        getSubscriptionBadge(user.subscriptionInfo?.status)
+                      )}
+                    >
+                      {user.subscriptionInfo?.planName || "No Subscription"}
+                    </span>
+                  </td>
+                  <td>
+                    <span
+                      className={cn(
+                        "status-badge",
+                        user.status === "active"
+                          ? "status-active"
+                          : "status-inactive"
+                      )}
+                    >
+                      {user.status}
+                    </span>
+                  </td>
+                  <td>{user.joinDate?.split("T")[0]}</td>
+                  <td>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button size="icon" variant="ghost">
+                          <MoreHorizontal />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={() => openUserProfile(user._id)}
+                        >
+                          <Eye className="w-4 h-4 mr-2" />
+                          View Profile
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleDeleteUser(user._id)}
+                        >
+                          <Trash className="w-4 h-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => toggleUserStatus(user)}
+                        >
+                          <UserX className="w-4 h-4 mr-2" />
+                          {user.status === "active"
+                            ? "Deactivate"
+                            : "Activate"}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="border rounded-lg p-12 text-center">
+          <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+            <UserX className="w-8 h-8 text-muted-foreground" />
+          </div>
+          <h3 className="text-lg font-medium mb-2">No Users Found</h3>
+          <p className="text-muted-foreground">
+            {searchQuery || activeFilter !== "All"
+              ? "No users match your current search or filter criteria."
+              : "There are no users in the system yet."}
+          </p>
+        </div>
+      )}
 
       {/* DELETE DIALOG */}
       <AlertDialog
