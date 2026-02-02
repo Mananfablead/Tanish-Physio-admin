@@ -26,39 +26,79 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
-import { mockSessions } from '@/lib/session-data';
+import { adminVideoCallApi } from "@/lib/videoCallApi";
 import { useParams } from 'react-router-dom';
 
 const SessionRecordings = () => {
   const navigate = useNavigate();
   const { userId } = useParams<{ userId: string }>();
   // Decode the userId from URL format to display format
-  const decodedUserId = userId ? userId.replace(/-/g, ' ').toLowerCase() : null;
-  const [selectedUser, setSelectedUser] = useState<string>(decodedUserId || 'all');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterType, setFilterType] = useState('all');
+  const decodedUserId = userId ? userId.replace(/-/g, " ").toLowerCase() : ""; // Change from null to empty string
+  const [selectedUser, setSelectedUser] = useState<string>(
+    decodedUserId || "all"
+  );
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterType, setFilterType] = useState("all");
   const [selectedRecording, setSelectedRecording] = useState<any>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [recordings, setRecordings] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [allRecordings, setAllRecordings] = useState<any[]>([]);
 
-  // Mock recording data based on completed sessions
-  const allRecordings = mockSessions.completed.map((session: any) => ({
-    id: session.id,
-    user: session.user,
-    therapist: session.therapist,
-    date: session.date,
-    time: session.time,
-    duration: session.duration,
-    type: session.type,
-    recordingUrl: `https://example.com/recording/${session.id}`,
-    thumbnail: `https://picsum.photos/seed/${session.id}/400/225`,
-    status: 'available',
-    fileSize: `${(Math.random() * 50 + 10).toFixed(1)} MB`,
-    format: 'MP4',
-    quality: 'HD'
-  }));
+  // Fetch recordings from API
+  useEffect(() => {
+    const fetchRecordings = async () => {
+      try {
+        setLoading(true);
+        const response = await adminVideoCallApi.getAllRecordings();
+        const recordingsData = response.recordings || [];
 
-  const [recordings, setRecordings] = useState(allRecordings);
+        // Transform the data to match the component's expected format
+        const transformedRecordings = recordingsData.map((recording: any) => ({
+          id: recording._id,
+          user:
+            recording.participants?.find((p: any) => p.role === "patient")
+              ?.userId?.name || "Unknown User",
+          therapist:
+            recording.participants?.find((p: any) => p.role === "therapist")
+              ?.userId?.name || "Unknown Therapist",
+          date: recording.callStartedAt
+            ? new Date(recording.callStartedAt).toLocaleDateString()
+            : "Unknown Date",
+          time: recording.callStartedAt
+            ? new Date(recording.callStartedAt).toLocaleTimeString()
+            : "Unknown Time",
+          duration: recording.recordingDuration
+            ? `${Math.floor(recording.recordingDuration / 60)} min`
+            : "Unknown",
+          type: recording.type === "one-on-one" ? "1-on-1" : "Group",
+          recordingUrl: recording.recordingUrl
+            ? `${import.meta.env.VITE_API_BASE_URL}${recording.recordingUrl}`
+            : "#",
+          thumbnail: `https://picsum.photos/seed/${recording._id}/400/225`,
+          status: recording.recordingStatus || "available",
+          fileSize: recording.recordingSize
+            ? `${(recording.recordingSize / (1024 * 1024)).toFixed(1)} MB`
+            : "Unknown",
+          format: recording.recordingFormat?.toUpperCase() || "WEBM",
+          quality: "HD",
+          originalData: recording,
+        }));
+
+        setAllRecordings(transformedRecordings);
+        setRecordings(transformedRecordings);
+      } catch (err) {
+        console.error("Error fetching recordings:", err);
+        setError("Failed to load recordings");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchRecordings();
+  }, []);
 
   // Filter recordings based on selected user and search query
   useEffect(() => {
@@ -139,6 +179,47 @@ const SessionRecordings = () => {
     const minutes = parseInt(duration.split(' ')[0]);
     return `${minutes} min`;
   };
+
+  if (loading) {
+    return (
+      <div className="space-y-6 pb-12">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">
+              Session Recordings
+            </h1>
+            <p className="text-muted-foreground mt-1">Loading recordings...</p>
+          </div>
+        </div>
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6 pb-12">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">
+              Session Recordings
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              Error loading recordings
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center text-destructive">
+            <FileVideo className="h-12 w-12 mx-auto mb-2" />
+            <p>{error}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 pb-12">

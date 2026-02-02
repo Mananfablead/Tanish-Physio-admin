@@ -64,6 +64,10 @@ const VideoCall = ({
     setCallActive,
     setParticipants,
     setCallLogId,
+    isRecording,
+    recordingStatus,
+    startRecording,
+    stopRecording,
   } = useWebRTC(roomId, socket, userRole);
 
   const [audioEnabled, setAudioEnabled] = useState(true);
@@ -141,7 +145,7 @@ const VideoCall = ({
           );
         }
       } else {
-       }
+      }
     });
   }, [localStream, remoteStreams, remoteVideoRefs, localVideoRef]);
 
@@ -896,7 +900,7 @@ const VideoCall = ({
   // Render remote videos based on room type - Enhanced for Clinic Monitoring
   const renderRemoteVideos = () => {
     const streamKeys = Object.keys(remoteStreams);
-    
+
     // No participants connected
     if (streamKeys.length === 0) {
       return (
@@ -905,8 +909,12 @@ const VideoCall = ({
             <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
               <Users className="h-8 w-8" />
             </div>
-            <h3 className="text-lg font-medium text-slate-300 mb-1">Waiting for Participants</h3>
-            <p className="text-sm">Remote session will begin when participants join</p>
+            <h3 className="text-lg font-medium text-slate-300 mb-1">
+              Waiting for Participants
+            </h3>
+            <p className="text-sm">
+              Remote session will begin when participants join
+            </p>
           </div>
           <div className="flex items-center gap-2 text-xs text-slate-500">
             <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
@@ -920,8 +928,8 @@ const VideoCall = ({
     if (streamKeys.length === 1) {
       const userId = streamKeys[0];
       const stream = remoteStreams[userId];
-      const participant = participants.find(p => p.userId === userId) || {};
-      
+      const participant = participants.find((p) => p.userId === userId) || {};
+
       return (
         <div className="relative w-full h-full bg-black rounded-xl overflow-hidden">
           <video
@@ -932,7 +940,11 @@ const VideoCall = ({
                   try {
                     if (el.srcObject !== stream) {
                       el.srcObject = stream;
-                      console.log(`✅ Clinic monitoring: Remote video assigned for ${participant.name || 'Participant'}`);
+                      console.log(
+                        `✅ Clinic monitoring: Remote video assigned for ${
+                          participant.name || "Participant"
+                        }`
+                      );
 
                       // Ensure video plays properly
                       el.muted = true;
@@ -944,20 +956,39 @@ const VideoCall = ({
                       if (playPromise !== undefined) {
                         playPromise
                           .then(() => {
-                            console.log(`✅ Clinic monitoring: Remote video playing for ${participant.name || 'Participant'}`);
+                            console.log(
+                              `✅ Clinic monitoring: Remote video playing for ${
+                                participant.name || "Participant"
+                              }`
+                            );
                           })
                           .catch((error) => {
-                            console.warn(`⚠️ Clinic monitoring: Video autoplay failed for ${participant.name || 'Participant'}:`, error);
+                            console.warn(
+                              `⚠️ Clinic monitoring: Video autoplay failed for ${
+                                participant.name || "Participant"
+                              }:`,
+                              error
+                            );
                             // Try to play muted
                             el.muted = true;
                             el.play().catch((err) => {
-                              console.error(`❌ Clinic monitoring: Video play failed for ${participant.name || 'Participant'}:`, err);
+                              console.error(
+                                `❌ Clinic monitoring: Video play failed for ${
+                                  participant.name || "Participant"
+                                }:`,
+                                err
+                              );
                             });
                           });
                       }
                     }
                   } catch (err) {
-                    console.error(`❌ Clinic monitoring: Error assigning video for ${participant.name || 'Participant'}:`, err);
+                    console.error(
+                      `❌ Clinic monitoring: Error assigning video for ${
+                        participant.name || "Participant"
+                      }:`,
+                      err
+                    );
                   }
                 }
               }
@@ -973,10 +1004,10 @@ const VideoCall = ({
               <div className="w-3 h-3 bg-emerald-500 rounded-full animate-pulse"></div>
               <div>
                 <p className="text-white font-medium text-sm">
-                  {participant.name || 'Participant'}
+                  {participant.name || "Participant"}
                 </p>
                 <p className="text-slate-300 text-xs">
-                  {participant.role === 'therapist' ? 'Therapist' : 'Patient'}
+                  {participant.role === "therapist" ? "Therapist" : "Patient"}
                 </p>
               </div>
             </div>
@@ -990,8 +1021,9 @@ const VideoCall = ({
       <div className="grid grid-cols-2 gap-3 w-full h-full p-3">
         {streamKeys.map((userId, index) => {
           const stream = remoteStreams[userId];
-          const participant = participants.find(p => p.userId === userId) || {};
-          
+          const participant =
+            participants.find((p) => p.userId === userId) || {};
+
           return (
             <div
               key={userId}
@@ -1005,26 +1037,43 @@ const VideoCall = ({
                       try {
                         if (el.srcObject !== stream) {
                           el.srcObject = stream;
-                          console.log(`✅ Clinic monitoring: Group video assigned for participant ${index + 1}`);
-                          
+                          console.log(
+                            `✅ Clinic monitoring: Group video assigned for participant ${
+                              index + 1
+                            }`
+                          );
+
                           // Ensure video plays
                           el.muted = true;
                           el.autoplay = true;
                           el.playsInline = true;
-                          
+
                           const playPromise = el.play();
                           if (playPromise !== undefined) {
                             playPromise.catch((error) => {
-                              console.warn(`⚠️ Clinic monitoring: Group video autoplay issue for participant ${index + 1}:`, error);
+                              console.warn(
+                                `⚠️ Clinic monitoring: Group video autoplay issue for participant ${
+                                  index + 1
+                                }:`,
+                                error
+                              );
                               el.muted = true;
-                              el.play().catch(err => {
-                                console.error(`❌ Clinic monitoring: Group video play failed:`, err);
+                              el.play().catch((err) => {
+                                console.error(
+                                  `❌ Clinic monitoring: Group video play failed:`,
+                                  err
+                                );
                               });
                             });
                           }
                         }
                       } catch (err) {
-                        console.error(`❌ Clinic monitoring: Error with group video ${index + 1}:`, err);
+                        console.error(
+                          `❌ Clinic monitoring: Error with group video ${
+                            index + 1
+                          }:`,
+                          err
+                        );
                       }
                     }
                   }
@@ -1039,7 +1088,7 @@ const VideoCall = ({
                   {participant.name || `Participant ${index + 1}`}
                 </p>
                 <p className="text-slate-300 text-[10px]">
-                  {participant.role === 'therapist' ? 'Therapist' : 'Patient'}
+                  {participant.role === "therapist" ? "Therapist" : "Patient"}
                 </p>
               </div>
               <div className="absolute bottom-2 right-2">
@@ -1187,7 +1236,7 @@ const VideoCall = ({
           {/* Remote Video Stream */}
           <div className="w-full h-full relative bg-black rounded-xl overflow-hidden">
             {renderRemoteVideos()}
-            
+
             {/* Overlay Information */}
             <div className="absolute top-4 left-4 right-4 flex justify-between items-start z-10">
               <div className="bg-black/50 backdrop-blur-sm rounded-lg p-3">
@@ -1195,17 +1244,22 @@ const VideoCall = ({
                   <div className="w-3 h-3 bg-emerald-500 rounded-full animate-pulse"></div>
                   <span className="text-white text-sm font-medium">LIVE</span>
                 </div>
-                <p className="text-slate-200 text-xs">Remote Physiotherapy Session</p>
+                <p className="text-slate-200 text-xs">
+                  Remote Physiotherapy Session
+                </p>
               </div>
-              
+
               <div className="bg-black/50 backdrop-blur-sm rounded-lg p-2">
                 <div className="flex items-center gap-2 text-white text-sm">
                   <Users className="w-4 h-4" />
-                  <span>{participants.length} participant{participants.length !== 1 ? 's' : ''}</span>
+                  <span>
+                    {participants.length} participant
+                    {participants.length !== 1 ? "s" : ""}
+                  </span>
                 </div>
               </div>
             </div>
-            
+
             {/* Connection Status */}
             <div className="absolute bottom-4 left-4 bg-black/50 backdrop-blur-sm rounded-lg p-2">
               <div className="flex items-center gap-2 text-xs text-slate-300">
@@ -1552,6 +1606,41 @@ const VideoCall = ({
                 disabled={callStarted}
               >
                 <Users className="h-5 w-5" />
+              </Button>
+            )}
+
+            {/* Recording Button - Only for admins */}
+            {(userRole === "admin" || isTherapist) && (
+              <Button
+                variant={isRecording ? "destructive" : "secondary"}
+                size="icon"
+                className={`rounded-2xl md:w-14 md:h-14 w-12 h-12 border-slate-700 ${
+                  isRecording
+                    ? "bg-red-500 text-white animate-pulse"
+                    : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                }`}
+                onClick={isRecording ? stopRecording : startRecording}
+                disabled={!connected || recordingStatus === "starting"}
+                title={isRecording ? "Stop Recording" : "Start Recording"}
+              >
+                {recordingStatus === "starting" ? (
+                  <div className="h-5 w-5">
+                    <div className="animate-spin rounded-full h-full w-full border-b-2 border-white"></div>
+                  </div>
+                ) : (
+                  <>
+                    <div
+                      className={`h-2 w-2 mr-1 ${
+                        isRecording ? "bg-white" : "bg-red-500"
+                      }`}
+                    />
+                    {isRecording ? (
+                      <span className="text-xs">REC</span>
+                    ) : (
+                      <span className="text-xs">REC</span>
+                    )}
+                  </>
+                )}
               </Button>
             )}
 
