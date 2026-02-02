@@ -21,14 +21,15 @@ import { fetchBookings } from "@/features/bookings/bookingSlice";
 import {
   getAllAvailability,
 } from '@/features/availability/availabilitySlice';
-type SessionStatus = "scheduled" | "live" | "completed" | "cancelled" | "no-show";
+import { toast } from "@/hooks/use-toast";
+type SessionStatus = "pending" | "scheduled" | "live" | "completed" | "cancelled";
 
 export default function Sessions() {
   const navigate = useNavigate();
   const dispatch: any = useDispatch();
   const { list: bookings, loading: bookingsLoading, error: bookingsError } = useSelector((state: any) => state.bookings);
   const { availability, loading: isLoading, error: availabilityError } = useSelector((state: any) => state.availability);
-  console.log("object", availability)
+  // console.log("object", availability)
 
   const { list: allSessions = [], loading, error } = useSelector((state: any) => state.sessions);
   const [searchQuery, setSearchQuery] = useState("");
@@ -40,6 +41,8 @@ export default function Sessions() {
   const completedCount = (allSessions || []).filter((session: any) => session.status === "completed").length;
   const cancelledCount = (allSessions || []).filter((session: any) => session.status === "cancelled").length;
   const pendingCount = (allSessions || []).filter((session: any) => session.status === "pending").length;
+  // Note: "missed" and "no-show" statuses are automatically set by the backend
+  // They should not be manually set by admins
 
   // Filter sessions based on active tab and search query
   const filteredSessions = allSessions.filter((session: any) => {
@@ -65,6 +68,7 @@ export default function Sessions() {
       case "cancelled":
         includeInTab = session.status === "cancelled";
         break;
+      // Note: "missed" case removed - automatically set by backend
       default:
         includeInTab = true;
     }
@@ -261,26 +265,7 @@ export default function Sessions() {
     }
   };
 
-  const isToday = (dateStr: string) => dateStr === todayStr;
-  const isSelected = (dateStr: string) => dateStr === selectedDate;
 
-  const getStatusColor = (status: number) => {
-    switch (status) {
-      case 0: return 'bg-green-50 border-green-200 hover:bg-green-100 hover:border-green-300'; // Available
-      case 1: return 'bg-blue-50 border-blue-200 hover:bg-blue-100 hover:border-blue-300';   // Booked
-      case 2: return 'bg-red-50 border-red-200 hover:bg-red-100 hover:border-red-300';     // Holiday/Not available
-      default: return 'bg-gray-50 border-gray-200 hover:bg-gray-100 hover:border-gray-300';
-    }
-  };
-
-  const getStatusText = (status: number) => {
-    switch (status) {
-      case 0: return 'Available';
-      case 1: return 'Booked';
-      case 2: return 'Holiday';
-      default: return '';
-    }
-  };
 
   const handleCreateSession = async () => {
     try {
@@ -308,6 +293,172 @@ export default function Sessions() {
     }
   };
 
+  const handleRejectSession = async (sessionId: string) => {
+    try {
+      await dispatch(rejectSession(sessionId));
+      dispatch(fetchSessions());
+    } catch (error) {
+      console.error("Failed to reject session:", error);
+      toast({
+        title: "Error",
+        description: "Failed to reject session",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleAcceptSession = async (sessionId: string) => {
+    try {
+      await dispatch(acceptSession(sessionId));
+      dispatch(fetchSessions());
+    } catch (error) {
+      console.error("Failed to accept session:", error);
+      toast({
+        title: "Error",
+        description: "Failed to accept session",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Helper function to extract error message
+  const getErrorMessage = (error: any): string => {
+    if (typeof error?.payload === 'object' && error?.payload !== null) {
+      // Check for the specific success/message structure from our API
+      if (error.payload.success === false && error.payload.message) {
+        return error.payload.message;
+      }
+      // Fallback to other possible locations in payload
+      if (typeof error.payload === 'string') {
+        return error.payload;
+      }
+      return
+      error?.payload?.message ||
+        error?.payload?.error ||
+        error?.payload?.data?.message ||
+        error?.payload?.data?.error ||
+        "Something went wrong";
+    }
+
+    // Fallback to other possible locations
+    return
+    error?.error ||
+      error?.message ||
+      error?.data?.message ||
+      error?.data?.error ||
+      "Something went wrong";
+  };
+
+  const handleUpdateSessionStatus = async (sessionId: string, status: string) => {
+    try {
+      await dispatch(
+        updateSessionStatus({
+          id: sessionId,
+          status: status,
+          notes: `Status updated to ${status}`,
+        })
+      ).unwrap();
+
+      toast({
+        title: "Success",
+        description: "Session status updated successfully",
+        variant: "default",
+      });
+      dispatch(fetchSessions());
+    } catch (error: any) {
+
+
+      toast({
+        title: "Error",
+        description: error,
+        variant: "destructive",
+      });
+
+      // Still fetch sessions to ensure UI is up to date
+      dispatch(fetchSessions());
+    }
+  };
+
+  const handleCancelSession = async (sessionId: string) => {
+    try {
+      await dispatch(
+        updateSessionStatus({
+          id: sessionId,
+          status: "cancelled",
+          notes: "Session cancelled by admin",
+        })
+      ).unwrap();
+
+      toast({
+        title: "Success",
+        description: "Session cancelled successfully",
+        variant: "default",
+      });
+      dispatch(fetchSessions());
+    } catch (error: any) {
+
+      toast({
+        title: "Error",
+        description: error,
+        variant: "destructive",
+      });
+
+      // Still fetch sessions to ensure UI is up to date
+      dispatch(fetchSessions());
+    }
+  };
+
+  const handleDeleteSession = async (sessionId: string) => {
+    try {
+      await dispatch(deleteSessionById(sessionId)).unwrap();
+
+      toast({
+        title: "Success",
+        description: "Session deleted successfully",
+        variant: "default",
+      });
+      dispatch(fetchSessions());
+    } catch (error: any) {
+      // Extract error message from different possible sources
+      let errorMessage = "Failed to delete session";
+
+      if (error?.message) {
+        errorMessage = error.message;
+      } else if (error?.payload) {
+        errorMessage = error.payload;
+      } else if (error?.data?.message) {
+        errorMessage = error.data.message;
+      }
+
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+
+      // Still fetch sessions to ensure UI is up to date
+      dispatch(fetchSessions());
+    }
+  };
+
+  const statusStyles: Record<string, string> = {
+    pending:
+      "bg-yellow-100 text-yellow-800 border border-yellow-300",
+    scheduled:
+      "bg-blue-100 text-blue-800 border border-blue-300",
+    live:
+      "bg-green-100 text-green-800 border border-green-300",
+    completed:
+      "bg-green-100 text-green-800 border border-green-300",
+    cancelled:
+      "bg-red-100 text-red-800 border border-red-300",
+  };
+
+  const isEditableStatus = (status: string) =>
+    status === "scheduled" || status === "live";
+
+
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -325,10 +476,7 @@ export default function Sessions() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          {/* <Button onClick={() => setIsCreateSessionModalOpen(true)}>
-            <Plus className="w-4 h-4 mr-2" />
-            Create Session
-          </Button> */}
+
           {activeTab !== 'live' && activeTab !== 'upcoming' && (
             <Select defaultValue="today">
               <SelectTrigger className="w-[140px]">
@@ -445,6 +593,7 @@ export default function Sessions() {
           </TabsTrigger>
           <TabsTrigger value="completed">Completed</TabsTrigger>
           <TabsTrigger value="cancelled">Cancelled</TabsTrigger>
+          {/* Missed status is automatically set by backend */}
         </TabsList>
 
         {/* Search */}
@@ -568,7 +717,7 @@ export default function Sessions() {
                     {filteredSessions.map((session: any) => {
                       const booking = session.bookingId;
                       const user = session.userId;
-                      console.log("booking", session)
+                      // console.log("booking", session)
                       return (
                         <tr
                           key={session._id}
@@ -626,50 +775,46 @@ export default function Sessions() {
 
                           {/* STATUS */}
                           <td className="px-4 py-3">
-                            {session.status === "pending" ? (
-                              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800 border border-yellow-300">
-                                <UserCog className="w-3 h-3 mr-1" />
-                                Pending Review
-                              </span>
-                            ) : (
+                            {isEditableStatus(session.status) ? (
                               <Select
                                 value={session.status}
                                 onValueChange={async (value) => {
-                                  try {
-                                    await dispatch(
-                                      updateSessionStatus({
-                                        id: session._id,
-                                        status: value,
-                                        notes: `Status updated to ${value}`,
-                                      })
-                                    );
-                                    dispatch(fetchSessions());
-                                  } catch (error) {
-                                    console.error(
-                                      "Failed to update session status:",
-                                      error
-                                    );
-                                  }
+                                  await handleUpdateSessionStatus(session._id, value);
                                 }}
                               >
-                                <SelectTrigger className="w-[120px]">
+                                <SelectTrigger
+                                  className={`w-[130px] rounded-full text-xs font-semibold ${statusStyles[session.status]
+                                    }`}
+                                >
                                   <SelectValue />
                                 </SelectTrigger>
+
                                 <SelectContent>
-                                  <SelectItem value="scheduled">
-                                    Scheduled
-                                  </SelectItem>
+                                  <SelectItem value="scheduled">Scheduled</SelectItem>
                                   <SelectItem value="live">Live</SelectItem>
-                                  <SelectItem value="completed">
-                                    Completed
-                                  </SelectItem>
-                                  <SelectItem value="cancelled">
-                                    Cancelled
-                                  </SelectItem>
+                                  <SelectItem value="completed">Completed</SelectItem>
+                                  <SelectItem value="cancelled">Cancelled</SelectItem>
                                 </SelectContent>
                               </Select>
+                            ) : (
+                              <span
+                                className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${statusStyles[session.status]
+                                  }`}
+                              >
+                                {session.status === "pending" ? (
+                                  <>
+                                    <UserCog className="w-3 h-3 mr-1" />
+                                    Pending Review
+                                  </>
+                                ) : (
+                                  <>
+                                    {session.status.charAt(0).toUpperCase() + session.status.slice(1)}
+                                  </>
+                                )}
+                              </span>
                             )}
                           </td>
+
 
                           {/* ACTIONS */}
                           <td className="px-4 py-3 text-right">
@@ -691,17 +836,7 @@ export default function Sessions() {
                                     <DropdownMenuItem
                                       className="text-success"
                                       onClick={async () => {
-                                        try {
-                                          await dispatch(
-                                            acceptSession(session._id)
-                                          );
-                                          dispatch(fetchSessions());
-                                        } catch (error) {
-                                          console.error(
-                                            "Failed to accept session:",
-                                            error
-                                          );
-                                        }
+                                        await handleAcceptSession(session._id);
                                       }}
                                     >
                                       <UserCog className="h-4 w-4 mr-2" />
@@ -711,17 +846,7 @@ export default function Sessions() {
                                     <DropdownMenuItem
                                       className="text-destructive"
                                       onClick={async () => {
-                                        try {
-                                          await dispatch(
-                                            rejectSession(session._id)
-                                          );
-                                          dispatch(fetchSessions());
-                                        } catch (error) {
-                                          console.error(
-                                            "Failed to reject session:",
-                                            error
-                                          );
-                                        }
+                                        await handleRejectSession(session._id);
                                       }}
                                     >
                                       <X className="h-4 w-4 mr-2" />
@@ -747,34 +872,14 @@ export default function Sessions() {
 
                                       <DropdownMenuItem
                                         className="text-destructive"
-                                        onClick={async () => {
-                                          try {
-                                            await dispatch(
-                                              updateSessionStatus({
-                                                id: session._id,
-                                                status: "cancelled",
-                                                notes:
-                                                  "Session cancelled by admin",
-                                              })
-                                            );
-                                            dispatch(fetchSessions());
-                                          } catch (error) {
-                                            console.error(
-                                              "Failed to cancel session:",
-                                              error
-                                            );
-                                          }
-                                        }}
+                                        onClick={() => handleCancelSession(session._id)}
                                       >
                                         <X className="h-4 w-4 mr-2" />
                                         Cancel Session
                                       </DropdownMenuItem>
                                       <DropdownMenuItem
                                         className="text-destructive"
-                                        onClick={() => {
-                                          setSelectedSession(session);
-                                          setIsCancelModalOpen(true);
-                                        }}
+                                        onClick={() => handleDeleteSession(session._id)}
                                       >
                                         <X className="h-4 w-4 mr-2" />
                                         Delete Session
@@ -1070,7 +1175,7 @@ export default function Sessions() {
                             className={`
                         h-8 w-8 rounded-full text-xs flex items-center justify-center
                         ${statusColor}
-                        ${rescheduleDate === day.date 
+                        ${rescheduleDate === day.date
                                 ? "ring-2 ring-primary bg-primary text-white"
                                 : ""
                               }

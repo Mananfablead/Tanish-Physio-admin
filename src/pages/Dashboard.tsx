@@ -106,7 +106,7 @@ export default function Dashboard() {
           <p className="page-subtitle">Welcome back! Here's your platform overview.</p>
         </div>
         <div className="flex items-center gap-3">
-          <Select defaultValue="this-month">
+          {/* <Select defaultValue="this-month">
             <SelectTrigger className="w-[160px]">
               <SelectValue placeholder="Select period" />
             </SelectTrigger>
@@ -117,7 +117,7 @@ export default function Dashboard() {
               <SelectItem value="last-month">Last Month</SelectItem>
               <SelectItem value="custom">Custom Range</SelectItem>
             </SelectContent>
-          </Select>
+          </Select> */}
           <Button variant="outline" className="" onClick={exportToPDF}>Export Report</Button>
         </div>
       </div>
@@ -154,33 +154,36 @@ export default function Dashboard() {
       </div>
 
       {/* Secondary Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          title="Completed Today"
-          value={stats?.stats?.completedToday ? stats.stats.completedToday.toString() : '0'}
-          icon={Clock}
-          iconColor="bg-primary"
-        />
-        <StatCard
-          title="Avg. Therapist Rating"
-          value={stats?.stats?.avgRating ? stats.stats.avgRating.toString() : '0'}
-          icon={Star}
-          iconColor="bg-warning"
-        />
-        <StatCard
-          title="Conversion Rate"
-          value={`${stats?.stats?.conversionRate ? stats.stats.conversionRate : 0}%`}
-          change={{ value: 5.2, isPositive: true }}
-          icon={TrendingUp}
-          iconColor="bg-success"
-        />
-        <StatCard
-          title="Total Services"
-          value={stats?.stats?.totalServices ? stats.stats.totalServices.toString() : '0'}
-          icon={Stethoscope}
-          iconColor="bg-info"
-        />
-      </div>
+ <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+  <StatCard
+    title="Completed Today"
+    value={stats?.stats?.completedToday ? stats.stats.completedToday.toString() : '0'}
+    icon={Clock}
+    iconColor="bg-primary"
+  />
+
+  <StatCard
+    title="Pending Bookings"
+    value={stats?.stats?.pendingBookings ? stats.stats.pendingBookings.toString() : '0'}
+    icon={CreditCard}
+    iconColor="bg-warning"
+  />
+
+  <StatCard
+    title="Customer Satisfaction"
+    value={`${stats?.stats?.customerSatisfactionScore || 0}%`}
+    icon={TrendingUp}
+    iconColor="bg-success"
+  />
+
+  <StatCard
+    title="Total Services"
+    value={stats?.stats?.totalServices ? stats.stats.totalServices.toString() : '0'}
+    icon={Stethoscope}
+    iconColor="bg-info"
+  />
+</div>
+
 
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

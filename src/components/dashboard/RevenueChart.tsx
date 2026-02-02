@@ -17,8 +17,7 @@ export function RevenueChart({ revenueData = [] }: RevenueChartProps) {
         </div>
         <div className="text-right">
           <p className="text-2xl font-semibold">&#8377;{latestRevenue?.toLocaleString()}</p>
-          <p className="text-xs text-success font-medium">+12.5% this month</p>
-        </div>
+          </div>
       </div>
       
       <div className="h-[280px]">

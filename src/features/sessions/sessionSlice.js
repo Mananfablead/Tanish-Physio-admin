@@ -126,7 +126,10 @@ export const updateSessionStatus = createAsyncThunk(
       const res = await sessionAPI.updateStatus(id, { status, notes });
       return res.data.data;
     } catch (err) {
-      return rejectWithValue("Session status update failed");
+      console.log("errer",err.response.data.message)
+      // Extract error message from API response
+      const errorMessage =err.response.data.message
+      return rejectWithValue(errorMessage);
     }
   }
 );

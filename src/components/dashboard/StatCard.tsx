@@ -26,14 +26,7 @@ export function StatCard({ title, value, change, icon: Icon, iconColor = "text-p
         <div>
           <p className="text-sm text-muted-foreground font-medium">{title}</p>
           <p className="text-2xl font-semibold mt-1">{value}</p>
-          {change && (
-            <p className={cn(
-              "text-xs mt-2 font-medium",
-              change.isPositive ? "text-success" : "text-destructive"
-            )}>
-              {change.isPositive ? "+" : ""}{change.value}% from last month
-            </p>
-          )}
+         
         </div>
         <div className={cn("p-2.5 rounded-lg text-white bg-muted/50", iconColor.replace("text-", "bg-").replace(/\/\d+/, "/10"))}>
           <Icon className={cn("w-5 h-5", iconColor)} />
