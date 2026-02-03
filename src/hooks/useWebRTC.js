@@ -13,6 +13,11 @@ const useWebRTC = (roomId, socket, userRole = 'admin') => {
     const [callActive, setCallActive] = useState(false);
     const [callStarted, setCallStarted] = useState(false);
     const [callLogId, setCallLogId] = useState(null);
+
+    // Debug callLogId changes
+    useEffect(() => {
+        console.log('=== ADMIN CALL LOG ID CHANGED ===', callLogId);
+    }, [callLogId]);
     const [participants, setParticipants] = useState([]);
     const [userIdentity, setUserIdentity] = useState(null);
     const [initialized, setInitialized] = useState(false);
@@ -20,6 +25,34 @@ const useWebRTC = (roomId, socket, userRole = 'admin') => {
     const [recordingStatus, setRecordingStatus] = useState('stopped'); // 'stopped', 'starting', 'recording'
     const [recorder, setRecorder] = useState(null);
     const [recordedChunks, setRecordedChunks] = useState([]);
+    const [recordingTime, setRecordingTime] = useState(0); // in seconds
+    const recordingTimerRef = useRef(null);
+
+    // Define handleCallStarted as useCallback to avoid dependency issues
+    const handleCallStarted = useCallback((data) => {
+        console.log('=== ADMIN CALL STARTED HANDLER ===');
+        console.log('Received data:', data);
+        console.log('callLogId in data:', data.callLogId);
+
+        // Set call as active when call starts
+        setCallActive(true);
+        console.log('ADMIN: Call marked as active');
+
+        if (data.callLogId) {
+            setCallLogId(data.callLogId);
+            console.log('ADMIN: CallLogId set to:', data.callLogId);
+        } else {
+            console.warn('ADMIN: No callLogId received in call-started event');
+        }
+    }, [setCallLogId, setCallActive]);
+
+    // Handle call ended event
+    const handleCallEnded = useCallback(() => {
+        console.log('=== ADMIN CALL ENDED HANDLER ===');
+        setCallActive(false);
+        setCallLogId(null);
+        console.log('ADMIN: Call marked as inactive and callLogId cleared');
+    }, [setCallActive, setCallLogId]);
 
     // Prevent cleanup on page refresh
     useEffect(() => {
@@ -634,15 +667,44 @@ const useWebRTC = (roomId, socket, userRole = 'admin') => {
     };
 
     // Start call (therapist only)
-    const startCall = () => {
+    const startCall = useCallback(async () => {
         if ((userRole === 'therapist' || userRole === 'admin') && socket) {
+            const callType = roomId.startsWith('group') ? 'group' : 'session';
+
+            try {
+                // Create call log first
+                const { adminVideoCallApi } = await import('../lib/videoCallApi');
+                // Determine if this is a group session based on roomId
+                const isGroupSession = roomId.startsWith('group') || roomId.includes('group');
+                const callLogResponse = await adminVideoCallApi.createCallLog(
+                    isGroupSession ? undefined : roomId, // sessionId (for 1-on-1 sessions)
+                    isGroupSession ? roomId : undefined, // groupSessionId (for group sessions)
+                    isGroupSession ? 'group' : 'one-on-one', // type
+                    []
+                );
+
+                if (callLogResponse.callLog) {
+                    setCallLogId(callLogResponse.callLog._id);
+                    console.log('ADMIN: Call log created:', callLogResponse.callLog._id);
+                } else {
+                    console.warn('ADMIN: Call log response did not contain callLog:', callLogResponse);
+                }
+            } catch (error) {
+                console.error('ADMIN: Error creating call log:', error);
+                console.error('ADMIN: Error details:', error.response?.data || error.message);
+            }
+
             socket.emit('call-start', {
                 roomId,
-                roomType: roomId.startsWith('group') ? 'group' : 'session'
+                roomType: callType
             });
+
+            // Set call as active when starting
+            setCallActive(true);
             setCallStarted(true);
+            console.log('ADMIN: Call started and marked as active');
         }
-    };
+    }, [userRole, socket, roomId, setCallLogId, setCallActive, setCallStarted]);
 
     // Accept call
     const acceptCall = () => {
@@ -819,6 +881,9 @@ const useWebRTC = (roomId, socket, userRole = 'admin') => {
         socket.on('participant-joined', handleParticipantJoined);
         socket.on('participant-left', handleParticipantLeft);
         socket.on('joined-call', handleJoinedCall);
+        socket.on('call-started', handleCallStarted);
+        socket.on('call-ended', handleCallEnded);
+        socket.on('group-call-ended', handleCallEnded);
 
         // Cleanup
         return () => {
@@ -828,8 +893,11 @@ const useWebRTC = (roomId, socket, userRole = 'admin') => {
             socket.off('participant-joined', handleParticipantJoined);
             socket.off('participant-left', handleParticipantLeft);
             socket.off('joined-call', handleJoinedCall);
+            socket.off('call-started', handleCallStarted);
+            socket.off('call-ended', handleCallEnded);
+            socket.off('group-call-ended', handleCallEnded);
         };
-    }, [socket, userRole, setParticipants, handleOffer, handleAnswer, handleIceCandidate, initLocalMedia, createPeer, localStream]);
+    }, [socket, userRole, setParticipants, handleOffer, handleAnswer, handleIceCandidate, initLocalMedia, createPeer, localStream, handleCallEnded]);
 
     // Cleanup on unmount - but preserve call on page refresh
     useEffect(() => {
@@ -871,6 +939,19 @@ const useWebRTC = (roomId, socket, userRole = 'admin') => {
             return false;
         }
 
+        // Validate callLogId before starting recording
+        console.log('🎙️ Pre-recording check - callLogId:', callLogId);
+        if (!callLogId) {
+            console.error('❌ Cannot start recording - callLogId is null!');
+            return false;
+        }
+
+        // Prevent starting recording if already recording
+        if (isRecording) {
+            console.warn('⚠️ Recording already in progress, ignoring start request');
+            return false;
+        }
+
         try {
             setRecordingStatus('starting');
 
@@ -904,13 +985,49 @@ const useWebRTC = (roomId, socket, userRole = 'admin') => {
                 }
             };
 
+            // Flag to prevent multiple uploads
+            let uploadInProgress = false;
+
             mediaRecorder.onstop = async () => {
+                // Prevent multiple uploads
+                if (uploadInProgress) {
+                    console.warn('⚠️ Upload already in progress, skipping duplicate upload');
+                    return;
+                }
+                uploadInProgress = true;
+
                 console.log('Recording stopped, processing chunks...');
 
                 const blob = new Blob(chunks, { type: 'video/webm' });
 
                 // Upload recording to server
                 try {
+                    console.log('📤 Uploading recording with callLogId:', callLogId);
+
+                    // Validate callLogId before any operations
+                    if (!callLogId) {
+                        console.error('❌ callLogId is null! Cannot proceed with upload.');
+                        throw new Error('callLogId is required for recording upload');
+                    }
+
+                    // Verify the CallLog exists in database (optional check)
+                    try {
+                        const verifyResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}/video-call/${callLogId}`, {
+                            method: 'GET',
+                            headers: {
+                                'Authorization': `Bearer ${localStorage.getItem('token')}`
+                            }
+                        });
+
+                        if (!verifyResponse.ok) {
+                            console.warn('⚠️ CallLog not found in database, but proceeding with upload...');
+                        } else {
+                            console.log('✅ Verified CallLog exists in database');
+                        }
+                    } catch (verifyError) {
+                        console.warn('⚠️ Could not verify CallLog existence:', verifyError.message);
+                    }
+
                     const formData = new FormData();
                     formData.append('recording', blob, `recording-${roomId}-${Date.now()}.webm`);
                     formData.append('callLogId', callLogId);
@@ -932,8 +1049,19 @@ const useWebRTC = (roomId, socket, userRole = 'admin') => {
                     }
                 } catch (uploadError) {
                     console.error('Error uploading recording:', uploadError);
+                } finally {
+                    uploadInProgress = false;
                 }
             };
+
+            // Start recording timer
+            setRecordingTime(0);
+            if (recordingTimerRef.current) {
+                clearInterval(recordingTimerRef.current);
+            }
+            recordingTimerRef.current = setInterval(() => {
+                setRecordingTime(prev => prev + 1);
+            }, 1000);
 
             mediaRecorder.start();
             setRecorder(mediaRecorder);
@@ -947,7 +1075,7 @@ const useWebRTC = (roomId, socket, userRole = 'admin') => {
             setRecordingStatus('stopped');
             return false;
         }
-    }, [localStream, remoteStreams, roomId, callLogId]);
+    }, [localStream, remoteStreams, roomId, callLogId, isRecording]);
 
     // Stop recording function
     const stopRecording = useCallback(() => {
@@ -955,6 +1083,12 @@ const useWebRTC = (roomId, socket, userRole = 'admin') => {
             recorder.stop();
             setIsRecording(false);
             setRecordingStatus('stopped');
+
+            // Stop recording timer
+            if (recordingTimerRef.current) {
+                clearInterval(recordingTimerRef.current);
+                recordingTimerRef.current = null;
+            }
 
             // Clean up the mixed stream tracks
             if (recorder.stream) {
@@ -967,6 +1101,15 @@ const useWebRTC = (roomId, socket, userRole = 'admin') => {
         }
         return false;
     }, [recorder]);
+
+    // Cleanup recording timer on unmount
+    useEffect(() => {
+        return () => {
+            if (recordingTimerRef.current) {
+                clearInterval(recordingTimerRef.current);
+            }
+        };
+    }, []);
 
     return {
         localStream,
@@ -995,6 +1138,7 @@ const useWebRTC = (roomId, socket, userRole = 'admin') => {
         // Recording functions
         isRecording,
         recordingStatus,
+        recordingTime,
         startRecording,
         stopRecording
     };

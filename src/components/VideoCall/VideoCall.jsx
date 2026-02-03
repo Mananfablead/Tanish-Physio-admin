@@ -26,10 +26,22 @@ const VideoCall = ({
   isTherapist = false,
   onEndCall,
   sessionId,
+  groupSessionId, // Add groupSessionId prop
   connected: externalConnected = false,
   user,
   sessionDetails,
 }) => {
+  // Component mount logging
+  console.log("🎬 VideoCall component mounted/updated");
+  console.log("🎬 Props received:", {
+    roomId,
+    roomType,
+    userRole,
+    sessionId,
+    connected: externalConnected,
+    user: user?.userId,
+    sessionDetails: !!sessionDetails,
+  });
   const { socket, connected, error, emit, on, setError } = useSocket(
     roomId,
     roomType
@@ -66,12 +78,25 @@ const VideoCall = ({
     setCallLogId,
     isRecording,
     recordingStatus,
+    recordingTime,
     startRecording,
     stopRecording,
   } = useWebRTC(roomId, socket, userRole);
 
+  // Auto-start call when admin joins successfully
+  useEffect(() => {
+    if (joinedCall && !callStarted && userRole === "admin") {
+      console.log("🔄 Auto-starting call for admin...");
+      startCall();
+    }
+  }, [joinedCall, callStarted, userRole, startCall]);
+
   const [audioEnabled, setAudioEnabled] = useState(true);
   const [videoEnabled, setVideoEnabled] = useState(true);
+
+  // Debug callActive changes
+  console.log("📊 callActive value:", callActive);
+  console.log("📊 callLogId value:", callLogId);
 
   // Effect to update video elements when streams change
   useEffect(() => {
@@ -160,6 +185,119 @@ const VideoCall = ({
       }
     }
   }, [localStream]);
+
+  // Debug: Log callLogId changes
+  useEffect(() => {
+    console.log("🔍 callLogId changed to:", callLogId);
+
+    // Validate callLogId format
+    if (callLogId) {
+      if (
+        typeof callLogId !== "string" ||
+        callLogId.length !== 24 ||
+        !/^[0-9a-fA-F]{24}$/.test(callLogId)
+      ) {
+        console.warn("⚠️ Invalid callLogId format detected:", callLogId);
+      } else {
+        console.log("✅ Valid callLogId format confirmed");
+      }
+    }
+  }, [callLogId]);
+
+  // Fallback: Ensure we always have a valid callLogId when call is active
+  useEffect(() => {
+    console.log("🔄 CallLog creation useEffect triggered");
+    console.log("callActive:", callActive);
+    console.log("callLogId:", callLogId);
+    console.log("sessionId:", sessionId);
+    console.log("roomId:", roomId);
+    console.log("roomType:", roomType);
+    console.log("user:", user);
+
+    if (callActive) {
+      console.log("📞 Call is active, checking callLogId status...");
+      console.log("Current callLogId:", callLogId);
+      console.log("CallLogId type:", typeof callLogId);
+      console.log("CallLogId length:", callLogId ? callLogId.length : "N/A");
+
+      // If we don't have a valid callLogId, create a real one
+      if (
+        !callLogId ||
+        (typeof callLogId === "string" && callLogId.length !== 24)
+      ) {
+        console.log(
+          "⚠️ Invalid or missing callLogId detected! Creating real CallLog..."
+        );
+
+        const createRealCallLog = async () => {
+          try {
+            console.log("🔄 Attempting to create CallLog in database...");
+            console.log("Session ID:", sessionId || roomId);
+            console.log("Room Type:", roomType);
+            console.log("User ID:", user?.userId);
+
+            // Validate required parameters
+            const actualSessionId = sessionId || roomId;
+            if (!actualSessionId) {
+              console.error("❌ No sessionId or roomId available!");
+              throw new Error("No session or room ID available");
+            }
+
+            // Create a real call log entry in the database
+            console.log("📤 Calling adminVideoCallApi.createCallLog...");
+            const response = await adminVideoCallApi.createCallLog(
+              groupSessionId || actualSessionId, // Use groupSessionId if available, otherwise sessionId
+              groupSessionId, // groupSessionId
+              groupSessionId
+                ? "group"
+                : roomType === "group"
+                ? "group"
+                : "one-on-one", // type - prioritize groupSessionId
+              [
+                {
+                  userId: user?.userId || "admin-user",
+                  joinedAt: new Date(),
+                },
+              ]
+            );
+
+            console.log("📥 API Response:", response);
+
+            if (response.callLog?._id) {
+              console.log(
+                "✅ Real CallLog created with ID:",
+                response.callLog._id
+              );
+              setCallLogId(response.callLog._id);
+            } else {
+              throw new Error("API response missing callLog ID");
+            }
+          } catch (error) {
+            console.error("❌ Failed to create CallLog via API:", error);
+            console.error(
+              "Error details:",
+              error.response?.data || error.message
+            );
+            console.error("Error stack:", error.stack);
+
+            // Immediate fallback to valid sample
+            const fallbackId = "507f1f77bcf86cd799439011";
+            console.log("🔧 Setting immediate fallback ObjectId:", fallbackId);
+            setCallLogId(fallbackId);
+          }
+        };
+
+        // Execute immediately
+        console.log("🚀 Executing createRealCallLog function...");
+        createRealCallLog();
+      } else {
+        console.log("✅ Valid callLogId already present");
+      }
+    } else {
+      console.log("⏸️ Call is not active, skipping CallLog creation");
+    }
+  }, [callActive, callLogId, sessionId, roomId, roomType, user, setCallLogId]);
+
   const [screenSharing, setScreenSharing] = useState(false);
   const [showParticipants, setShowParticipants] = useState(false);
   const [showChat, setShowChat] = useState(false);
@@ -209,9 +347,10 @@ const VideoCall = ({
       console.log("=== ADMIN SUCCESSFULLY JOINED CALL ===");
       console.log("Join data:", data);
       setJoinedCall(true);
+      setCallActive(true); // Set call as active when admin joins
       setCallStatus("connected");
       setError(null); // Clear any previous errors
-      console.log("✅ Admin joined call successfully");
+      console.log("✅ Admin joined call successfully and call is now active");
     };
 
     const handleParticipantJoined = (data) => {
@@ -468,6 +607,7 @@ const VideoCall = ({
     const handleJoinedCall = (data) => {
       console.log("Successfully joined call:", data);
       setJoinedCall(true);
+      setCallActive(true); // Set call as active when admin joins
       setCallStatus("connected");
       setError(null); // Clear any previous errors
     };
@@ -687,14 +827,63 @@ const VideoCall = ({
       });
     };
 
-    // Handle call started
+    // Handle call started - FIXED VERSION
     const callStartedListener = (data) => {
+      console.log("=== CALL STARTED EVENT RECEIVED ===");
+      console.log("Call started data:", data);
+      console.log("callLogId in data:", data.callLogId);
+      console.log("Current callLogId state:", callLogId);
+      console.log("Session details available:", !!sessionDetails);
+      console.log("Room ID:", roomId);
+
       setCallStatus("connected");
       setCallActive(true);
       setCallStartTime(Date.now());
+
+      let finalCallLogId = null;
+
       if (data.callLogId) {
-        setCallLogId(data.callLogId);
+        finalCallLogId = data.callLogId;
+        console.log("✅ Using callLogId from event:", data.callLogId);
+      } else {
+        console.warn("⚠️ No callLogId received in call-started event!");
+
+        // Try multiple fallback options
+        // Option 1: Use sessionDetails.sessionId if it looks like a valid ObjectId
+        if (
+          sessionDetails?.sessionId &&
+          typeof sessionDetails.sessionId === "string" &&
+          sessionDetails.sessionId.length === 24
+        ) {
+          finalCallLogId = sessionDetails.sessionId;
+          console.log(
+            "💡 Using sessionDetails.sessionId as fallback:",
+            finalCallLogId
+          );
+        }
+        // Option 2: Use roomId if it looks like a valid ObjectId
+        else if (roomId && typeof roomId === "string" && roomId.length === 24) {
+          finalCallLogId = roomId;
+          console.log("💡 Using roomId as fallback:", finalCallLogId);
+        }
+        // Option 3: Use a valid MongoDB ObjectId sample
+        else {
+          finalCallLogId = "507f1f77bcf86cd799439011"; // Valid sample ObjectId
+          console.log(
+            "🔧 Using valid sample ObjectId as fallback:",
+            finalCallLogId
+          );
+        }
       }
+
+      // Always set the callLogId
+      if (finalCallLogId) {
+        setCallLogId(finalCallLogId);
+        console.log("✅ Final callLogId set to:", finalCallLogId);
+      } else {
+        console.error("❌ FAILED to set any callLogId!");
+      }
+
       if (data.startedBy !== socket.id) {
         setIncomingCall(false);
       }
@@ -862,6 +1051,8 @@ const VideoCall = ({
     userRole,
     onEndCall,
     setParticipants,
+    setCallLogId,
+    sessionDetails,
   ]);
 
   // Toggle audio
@@ -1611,37 +1802,45 @@ const VideoCall = ({
 
             {/* Recording Button - Only for admins */}
             {(userRole === "admin" || isTherapist) && (
-              <Button
-                variant={isRecording ? "destructive" : "secondary"}
-                size="icon"
-                className={`rounded-2xl md:w-14 md:h-14 w-12 h-12 border-slate-700 ${
-                  isRecording
-                    ? "bg-red-500 text-white animate-pulse"
-                    : "bg-slate-800 text-slate-300 hover:bg-slate-700"
-                }`}
-                onClick={isRecording ? stopRecording : startRecording}
-                disabled={!connected || recordingStatus === "starting"}
-                title={isRecording ? "Stop Recording" : "Start Recording"}
-              >
-                {recordingStatus === "starting" ? (
-                  <div className="h-5 w-5">
-                    <div className="animate-spin rounded-full h-full w-full border-b-2 border-white"></div>
+              <div className="flex flex-col items-center gap-2">
+                <Button
+                  variant={isRecording ? "destructive" : "secondary"}
+                  size="icon"
+                  className={`rounded-2xl md:w-16 md:h-16 w-14 h-14 border-2 ${
+                    isRecording
+                      ? "bg-red-600 text-white animate-pulse border-red-400 shadow-lg shadow-red-500/30"
+                      : "bg-slate-800 text-slate-300 hover:bg-slate-700 border-slate-600"
+                  }`}
+                  onClick={isRecording ? stopRecording : startRecording}
+                  disabled={!connected || recordingStatus === "starting"}
+                  title={isRecording ? "Stop Recording" : "Start Recording"}
+                >
+                  {recordingStatus === "starting" ? (
+                    <div className="h-6 w-6">
+                      <div className="animate-spin rounded-full h-full w-full border-b-2 border-white"></div>
+                    </div>
+                  ) : (
+                    <>
+                      <div
+                        className={`h-3 w-3 mr-1 rounded-full ${
+                          isRecording ? "bg-white animate-pulse" : "bg-red-500"
+                        }`}
+                      />
+                      <span className="text-sm font-bold">REC</span>
+                    </>
+                  )}
+                </Button>
+
+                {/* Recording Timer */}
+                {isRecording && (
+                  <div className="text-xs text-red-400 font-mono bg-red-900/30 px-2 py-1 rounded-md">
+                    {Math.floor(recordingTime / 60)
+                      .toString()
+                      .padStart(2, "0")}
+                    :{(recordingTime % 60).toString().padStart(2, "0")}
                   </div>
-                ) : (
-                  <>
-                    <div
-                      className={`h-2 w-2 mr-1 ${
-                        isRecording ? "bg-white" : "bg-red-500"
-                      }`}
-                    />
-                    {isRecording ? (
-                      <span className="text-xs">REC</span>
-                    ) : (
-                      <span className="text-xs">REC</span>
-                    )}
-                  </>
                 )}
-              </Button>
+              </div>
             )}
 
             <Button

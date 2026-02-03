@@ -53,9 +53,19 @@ export default function VideoCallPage() {
           console.log("Admin session participants:", participantsResponse);
           if (participantsResponse.success) {
             // Add participants data to sessionDetails
-            setSessionDetails({
+            const sessionInfo = {
               participants: participantsResponse.data.participants,
-            });
+              type: participantsResponse.data.type || "1-on-1", // Add type info
+            };
+            setSessionDetails(sessionInfo);
+
+            // Log group session detection
+            if (sessionInfo.type === "Group" || id?.includes("group")) {
+              console.log("🎯 Group session detected:", {
+                id,
+                type: sessionInfo.type,
+              });
+            }
           }
         } catch (participantsErr) {
           console.warn(
@@ -88,6 +98,11 @@ export default function VideoCallPage() {
       userRole="admin"
       onEndCall={handleEndCall}
       sessionId={id || ""}
+      groupSessionId={
+        id?.includes("group") || sessionDetails?.type === "Group"
+          ? id
+          : undefined
+      } // Simple group detection
       connected={connected}
       sessionDetails={sessionDetails}
       user={user}
