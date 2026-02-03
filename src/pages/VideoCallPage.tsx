@@ -46,24 +46,8 @@ export default function VideoCallPage() {
           console.error("Error generating admin join token:", tokenErr);
         }
 
-        // Fetch session participants
-        try {
-          const participantsResponse =
-            await adminVideoCallApi.getSessionParticipants(id);
-          console.log("Admin session participants:", participantsResponse);
-          if (participantsResponse.success) {
-            // Add participants data to sessionDetails
-            setSessionDetails({
-              participants: participantsResponse.data.participants,
-            });
-          }
-        } catch (participantsErr) {
-          console.warn(
-            "Could not fetch session participants:",
-            participantsErr
-          );
-          // Continue anyway
-        }
+        // Participants will be populated through peer connections, not API calls
+        console.log("Admin participants will be populated through peer connections");
       }
     };
 

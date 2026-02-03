@@ -152,7 +152,7 @@ const GroupVideoCall = ({
           ...prev,
           {
             userId: data.userId,
-            name: data.name || `Participant ${data.userId.slice(0, 5)}`,
+            name: data.name || (data.firstName && data.lastName ? `${data.firstName} ${data.lastName}` : `Participant ${data.userId.slice(0, 5)}`),
             role: data.role || "participant",
             isSelf: data.userId === user?._id,
             joinedAt: new Date().toISOString(),

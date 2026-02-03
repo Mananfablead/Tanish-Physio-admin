@@ -20,6 +20,8 @@ const useWebRTC = (roomId, socket, userRole = 'admin') => {
     const [recordingStatus, setRecordingStatus] = useState('stopped'); // 'stopped', 'starting', 'recording'
     const [recorder, setRecorder] = useState(null);
     const [recordedChunks, setRecordedChunks] = useState([]);
+    const [isInitializing, setIsInitializing] = useState(false);
+    const [initError, setInitError] = useState(null);
 
     // Prevent cleanup on page refresh
     useEffect(() => {
@@ -55,10 +57,25 @@ const useWebRTC = (roomId, socket, userRole = 'admin') => {
 
     // Initialize local media with timeout and retry logic
     const initLocalMedia = async (retryCount = 0) => {
+        // Prevent multiple simultaneous initialization attempts
+        if (isInitializing) {
+            console.log('⚠️ Media initialization already in progress, skipping...');
+            return localStream;
+        }
+
+        // If we already have an initialization error, don't retry automatically
+        if (initError && retryCount === 0) {
+            console.log('⚠️ Previous initialization failed, not retrying automatically');
+            throw new Error(initError);
+        }
+
         if (!socket) {
             throw new Error('Socket not connected');
         }
 
+        setIsInitializing(true);
+        setInitError(null);
+        
         const maxRetries = 3;
         const timeoutMs = 10000; // 10 seconds timeout
 
@@ -90,16 +107,23 @@ const useWebRTC = (roomId, socket, userRole = 'admin') => {
 
             updateLocalStream(stream);
             console.log('✅ Media initialized successfully');
+            setIsInitializing(false);
             return stream;
 
         } catch (error) {
             console.error('Error accessing media devices:', error);
+            setIsInitializing(false);
+            setInitError(error.message || 'Failed to initialize media');
 
             // Handle specific error types
             if (error.name === 'NotAllowedError') {
-                throw new Error('Camera and microphone access denied. Please enable permissions in browser settings and refresh the page.');
+                const errorMsg = 'Camera and microphone access denied. Please enable permissions in browser settings and refresh the page.';
+                setInitError(errorMsg);
+                throw new Error(errorMsg);
             } else if (error.name === 'NotFoundError') {
-                throw new Error('No camera or microphone found. Please connect devices and try again.');
+                const errorMsg = 'No camera or microphone found. Please connect devices and try again.';
+                setInitError(errorMsg);
+                throw new Error(errorMsg);
             } else if (error.name === 'OverconstrainedError') {
                 // Try with basic constraints
                 if (retryCount < maxRetries) {
@@ -107,7 +131,9 @@ const useWebRTC = (roomId, socket, userRole = 'admin') => {
                     await new Promise(resolve => setTimeout(resolve, 1000));
                     return initLocalMedia(retryCount + 1);
                 }
-                throw new Error('Device constraints not supported. Please check your camera/microphone specifications.');
+                const errorMsg = 'Device constraints not supported. Please check your camera/microphone specifications.';
+                setInitError(errorMsg);
+                throw new Error(errorMsg);
             } else if (error.message.includes('took too long')) {
                 // Timeout error - try again with audio only
                 if (retryCount < maxRetries) {
@@ -122,12 +148,16 @@ const useWebRTC = (roomId, socket, userRole = 'admin') => {
                         return audioOnlyStream;
                     } catch (audioError) {
                         console.error('Audio-only also failed:', audioError);
-                        throw new Error('Please check your camera and microphone permissions, then refresh the page.');
+                        const errorMsg = 'Please check your camera and microphone permissions, then refresh the page.';
+                        setInitError(errorMsg);
+                        throw new Error(errorMsg);
                     }
                 }
                 throw error;
             } else if (error.name === 'NotReadableError') {
-                throw new Error('Camera/microphone is being used by another application. Please close other apps and try again.');
+                const errorMsg = 'Camera/microphone is being used by another application. Please close other apps and try again.';
+                setInitError(errorMsg);
+                throw new Error(errorMsg);
             } else {
                 // For other errors, try audio-only as fallback
                 if (retryCount < maxRetries) {
@@ -142,7 +172,9 @@ const useWebRTC = (roomId, socket, userRole = 'admin') => {
                         return audioOnlyStream;
                     } catch (audioError) {
                         console.error('Audio only also failed:', audioError);
-                        throw new Error('Please check your camera and microphone permissions, then refresh the page.');
+                        const errorMsg = 'Please check your camera and microphone permissions, then refresh the page.';
+                        setInitError(errorMsg);
+                        throw new Error(errorMsg);
                     }
                 }
                 throw error;
@@ -702,31 +734,41 @@ const useWebRTC = (roomId, socket, userRole = 'admin') => {
 
         const handleParticipantJoined = (data) => {
             console.log('ADMIN: Participant joined:', data);
-            console.log('ADMIN: Participant role data:', data.role, data.isTherapist);
+            
+            // Create standardized participant data (matching backend structure)
+            const newParticipant = {
+                socketId: data.socketId,
+                userId: data.userId,
+                name: data.name && data.name !== 'Clinician' && data.name !== 'User Unknown' ? data.name : 
+                      (data.firstName && data.lastName ? `${data.firstName} ${data.lastName}` : null) ||
+                      data.displayName || data.email || `User ${data.userId?.substring(0, 5) || data.socketId?.substring(0, 5) || "Unknown"}`,
+                firstName: data.firstName,
+                lastName: data.lastName,
+                displayName: data.displayName,
+                role: data.role,
+                email: data.email,
+                isTherapist: data.isTherapist,
+                isUser: data.isUser,
+                joinedAt: data.joinedAt || new Date().toISOString(),
+                isSelf: data.socketId === socket.id
+            };
+
+            console.log('ADMIN: Standardized participant data:', newParticipant);
+            
             setParticipants(prev => {
-                // Avoid duplicates by checking both userId and socketId
-                const exists = prev.some(p =>
-                    p.userId === data.userId && p.socketId === data.socketId
-                );
+                // Avoid duplicates by checking socketId (primary identity)
+                const exists = prev.some(p => p.socketId === newParticipant.socketId);
                 if (exists) {
                     console.log('ADMIN: Participant already exists, skipping');
                     return prev;
                 }
-                const newParticipant = {
-                    userId: data.userId,
-                    socketId: data.socketId,
-                    role: data.role || (data.isTherapist ? 'therapist' : (data.isUser ? 'patient' : userRole)),
-                    isTherapist: data.isTherapist || (data.role === 'therapist' || data.role === 'admin'),
-                    isUser: data.isUser || (data.role === 'patient'),
-                    joinedAt: new Date(),
-                    isSelf: data.socketId === socket.id
-                };
+                
                 console.log('ADMIN: Adding new participant:', newParticipant);
                 return [...prev, newParticipant];
             });
 
             // If the participant is a client/patient, create offer
-            if (data.role === 'patient' || !data.role || (data.isUser || data.role === 'client' || data.isUser === true)) {
+            if (data.role === 'patient' || !data.role || data.isUser) {
                 console.log('ADMIN: Patient joined, creating offer');
                 setTimeout(async () => {
                     // Use the ref to get the current localStream value
@@ -797,9 +839,15 @@ const useWebRTC = (roomId, socket, userRole = 'admin') => {
                     const selfParticipant = {
                         userId: socket.user?.userId,
                         socketId: socket.id,
+                        name: socket.user?.name || (socket.user?.firstName && socket.user?.lastName ? 
+                            `${socket.user.firstName} ${socket.user.lastName}` : null) || 
+                            socket.user?.displayName || `You (${userRole})`,
                         role: userRole,
                         isTherapist: userRole === 'therapist' || userRole === 'admin',
                         isUser: userRole === 'patient',
+                        firstName: socket.user?.firstName,
+                        lastName: socket.user?.lastName,
+                        displayName: socket.user?.displayName,
                         joinedAt: new Date(),
                         isSelf: true
                     };
@@ -996,7 +1044,12 @@ const useWebRTC = (roomId, socket, userRole = 'admin') => {
         isRecording,
         recordingStatus,
         startRecording,
-        stopRecording
+        stopRecording,
+        // Initialization state
+        isInitializing,
+        initError,
+        setIsInitializing,
+        setInitError
     };
 };
 

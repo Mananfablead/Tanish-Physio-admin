@@ -30,10 +30,11 @@ const VideoCall = ({
   user,
   sessionDetails,
 }) => {
-  const { socket, connected, error, emit, on, setError } = useSocket(
+  const { socket, connected, error: socketError, emit, on, setError: setSocketError } = useSocket(
     roomId,
     roomType
   );
+  const [localError, setLocalError] = useState(null);
 
   // Set user role based on props or default to admin
   const effectiveUserRole = userRole || "admin";
@@ -68,6 +69,10 @@ const VideoCall = ({
     recordingStatus,
     startRecording,
     stopRecording,
+    isInitializing,
+    initError,
+    setIsInitializing,
+    setInitError,
   } = useWebRTC(roomId, socket, userRole);
 
   const [audioEnabled, setAudioEnabled] = useState(true);
@@ -173,12 +178,22 @@ const VideoCall = ({
   const [newMessage, setNewMessage] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [typingUsers, setTypingUsers] = useState([]);
+  const chatContainerRef = React.useRef(null);
   const [therapistInfo, setTherapistInfo] = useState({
     name: "",
     specialty: "",
   });
   const [userInfo, setUserInfo] = useState({ name: "", initials: "" });
   const [isInitializingMedia, setIsInitializingMedia] = useState(false);
+  const [hasAttemptedInit, setHasAttemptedInit] = useState(false);
+  // Reset initialization state for retry attempts
+  const resetInitialization = useCallback(() => {
+    setLocalError(null);
+    setInitError(null);
+    setHasAttemptedInit(false);
+    setIsInitializing(false);
+    setIsInitializingMedia(false);
+  }, [setInitError, setLocalError]);
 
   // Update user info when user prop changes
   useEffect(() => {
@@ -202,7 +217,7 @@ const VideoCall = ({
 
     const handleError = (data) => {
       console.error("Admin video call error:", data);
-      setError(data.message || "An error occurred during the video call");
+      setSocketError(data.message || "An error occurred during the video call");
     };
 
     const handleJoinedCall = (data) => {
@@ -210,7 +225,7 @@ const VideoCall = ({
       console.log("Join data:", data);
       setJoinedCall(true);
       setCallStatus("connected");
-      setError(null); // Clear any previous errors
+      setSocketError(null); // Clear any previous errors
       console.log("✅ Admin joined call successfully");
     };
 
@@ -219,36 +234,32 @@ const VideoCall = ({
       console.log("Participant data:", data);
       console.log("Session details available:", !!sessionDetails);
 
-      // Validate that this participant belongs to the session
-      let isValidParticipant = false;
+      // Participants are validated through peer connections, not API calls
+      // Allow all participants who successfully connect via WebRTC
+      let isValidParticipant = true;
       let enhancedData = { ...data, isSelf: data.socketId === socket.id };
+      
+      console.log("✅ Admin participant joined via peer connection:", data.userId);
 
-      // Check if participant exists in session details
-      if (sessionDetails && sessionDetails.participants) {
-        const matchingParticipant = sessionDetails.participants.find(
-          (p) => p.userId === data.userId
-        );
-
-        if (matchingParticipant) {
-          isValidParticipant = true;
-          enhancedData.name = matchingParticipant.name;
-          enhancedData.role = matchingParticipant.role;
-          enhancedData.isSelf = matchingParticipant.isSelf;
-          enhancedData.isTherapist = matchingParticipant.isTherapist;
-          console.log(
-            "✅ Valid participant joined (admin):",
-            enhancedData.name
-          );
+      // If the participant doesn't have a name, try to get it from socket data
+      if (!enhancedData.name) {
+        // Try to get name from the user prop if this is the current user
+        if (enhancedData.isSelf && user) {
+          enhancedData.name =
+            user.name ||
+            (user.firstName && user.lastName
+              ? user.firstName + " " + user.lastName
+              : "You");
+        } else {
+          // For other participants, use name from socket data
+          enhancedData.name = 
+            data.name || 
+            (data.firstName && data.lastName 
+              ? data.firstName + " " + data.lastName
+              : `Participant ${data.userId?.substring(0, 5) || data.socketId?.substring(0, 5) || "Unknown"}`);
         }
-      } else {
-        // If no session details, allow participants but validate basic data
-        if (data.userId && data.socketId) {
-          isValidParticipant = true;
-          console.log(
-            "⚠️ No session details - allowing participant (admin):",
-            data.userId
-          );
-        }
+        
+        console.log("Admin participant name assigned:", enhancedData.name);
       }
 
       // Only add valid participants to the list (avoid duplicates)
@@ -309,11 +320,15 @@ const VideoCall = ({
       socket &&
       (externalConnected || connected) &&
       joinedCall &&
-      !localStream
+      !localStream &&
+      !isInitializingMedia &&
+      !isInitializing &&
+      !hasAttemptedInit &&
+      !initError
     ) {
       console.log("Admin: Initializing local media after joining call...");
       setIsInitializingMedia(true);
-      setError(null); // Clear any previous errors
+      setLocalError(null); // Clear any previous errors
 
       initLocalMedia()
         .then(() => {
@@ -323,7 +338,7 @@ const VideoCall = ({
         .catch((err) => {
           console.error("❌ Admin: Error initializing media:", err);
           setIsInitializingMedia(false);
-          setError(
+          setLocalError(
             err.message ||
               "Failed to access camera and microphone. Please check permissions and refresh the page."
           );
@@ -362,41 +377,28 @@ const VideoCall = ({
     };
   }, [callActive, callStartTime]);
 
-  // Load chat messages
+  // Load chat messages and join chat room
   useEffect(() => {
-    if (sessionId) {
+    if (sessionId && socket && (externalConnected || connected)) {
+      // Join the chat room
+      socket.emit('join-room', {
+        sessionId: sessionId
+      });
+      
+      // Load existing messages
       loadChatMessages();
     }
-  }, [sessionId]);
+  }, [sessionId, socket, externalConnected, connected]);
 
-  // Initialize participants from session details if available
+  // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
-    if (
-      sessionDetails &&
-      sessionDetails.participants &&
-      sessionDetails.participants.length > 0
-    ) {
-      // Map session participants to the format expected by the component
-      const mappedParticipants = sessionDetails.participants.map(
-        (participant) => ({
-          userId: participant.userId,
-          name: participant.name,
-          email: participant.email,
-          role: participant.role,
-          isSelf: participant.isSelf,
-          isTherapist:
-            participant.isTherapist || participant.role === "therapist",
-          joinedAt: new Date().toISOString(), // Set current time as joinedAt
-        })
-      );
-
-      setParticipants(mappedParticipants);
-      console.log(
-        "Admin: Participants initialized from session details:",
-        mappedParticipants
-      );
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
-  }, [sessionDetails]);
+  }, [chatMessages, showChat]);
+
+  // Participants are now populated through peer connections
+  console.log("Admin: Participants will be populated through peer connections");
 
   const loadChatMessages = async () => {
     try {
@@ -413,9 +415,29 @@ const VideoCall = ({
     if (!newMessage.trim() || !sessionId) return;
 
     try {
+      const senderName = userInfo.name || user?.name || "Admin";
+      const messageData = {
+        content: newMessage.trim(),
+        senderId: socket?.id,
+        senderName: senderName,
+        timestamp: new Date().toISOString()
+      };
+      
+      // Send message via API
       await adminChatApi.sendMessage(sessionId, newMessage.trim());
+      
+      // Add to local chat messages immediately for better UX
+      setChatMessages(prev => [...prev, messageData]);
       setNewMessage("");
-      await loadChatMessages(); // Refresh messages
+      
+      // Also broadcast via socket if available
+      if (socket) {
+        socket.emit("send-message", {
+          roomId,
+          roomType,
+          message: messageData
+        });
+      }
     } catch (error) {
       console.error("Error sending message:", error);
     }
@@ -447,7 +469,7 @@ const VideoCall = ({
 
     const handleError = (data) => {
       console.error("Socket error:", data);
-      setError(data.message || "Connection error occurred");
+      setSocketError(data.message || "Connection error occurred");
 
       // Handle specific session not active error
       if (
@@ -469,7 +491,7 @@ const VideoCall = ({
       console.log("Successfully joined call:", data);
       setJoinedCall(true);
       setCallStatus("connected");
-      setError(null); // Clear any previous errors
+      setSocketError(null); // Clear any previous errors
     };
 
     const handleParticipantJoined = (data) => {
@@ -549,16 +571,16 @@ const VideoCall = ({
 
   // Retry connection if it fails
   useEffect(() => {
-    if (error && connectionAttempts < 3) {
+    if (socketError && connectionAttempts < 3) {
       const timer = setTimeout(() => {
         setConnectionAttempts((prev) => prev + 1);
-        setError(null);
+        setSocketError(null);
         // The socket will automatically reconnect
       }, 3000);
 
       return () => clearTimeout(timer);
     }
-  }, [error, connectionAttempts]);
+  }, [socketError, connectionAttempts]);
 
   // Set up socket listeners
   useEffect(() => {
@@ -790,9 +812,46 @@ const VideoCall = ({
       }
     };
 
-    // Handle chat message
+    // Handle chat message (from API)
     const chatMessageListener = (data) => {
-      setChatMessages((prev) => [...prev, data.message]);
+      console.log("Admin received chat message:", data);
+      
+      // Determine sender name - use provided name or fallback
+      const senderName = data.senderName || 
+                        data.message?.senderName || 
+                        (data.senderId === socket?.id ? (userInfo.name || user?.name || "Admin") : "Participant");
+      
+      // Add the received message to chat messages
+      setChatMessages((prev) => [
+        ...prev,
+        {
+          ...data.message,
+          senderId: data.senderId || data.message.senderId,
+          senderName: senderName,
+          content: data.message.content || data.message.message || data.message.text,
+          timestamp: data.message.timestamp || data.message.createdAt || new Date().toISOString()
+        }
+      ]);
+    };
+
+    // Handle real-time message broadcast
+    const messageReceivedListener = (data) => {
+      console.log("Admin received real-time message:", data);
+      
+      // Determine sender name - use provided name or fallback
+      const senderName = data.senderName || 
+                        data.message?.senderName || 
+                        (data.senderId === socket?.id ? (userInfo.name || user?.name || "Admin") : "Participant");
+      
+      setChatMessages((prev) => [
+        ...prev,
+        {
+          content: data.message.content || data.message.message || data.message.text || data.content,
+          senderId: data.senderId || data.message?.senderId || socket?.id,
+          senderName: senderName,
+          timestamp: data.timestamp || data.message?.timestamp || data.createdAt || new Date().toISOString()
+        }
+      ]);
     };
 
     // Handle typing indicator
@@ -833,6 +892,7 @@ const VideoCall = ({
     cleanupFunctions.push(on("screen-share-toggle", screenShareToggleListener));
     cleanupFunctions.push(on("user-muted", userMutedListener));
     cleanupFunctions.push(on("new-message", chatMessageListener));
+    cleanupFunctions.push(on("message-received", messageReceivedListener));
     cleanupFunctions.push(on("typing", typingListener));
     cleanupFunctions.push(on("stop-typing", stopTypingListener));
     cleanupFunctions.push(on("force-leave", forceLeaveListener));
@@ -871,7 +931,7 @@ const VideoCall = ({
       setAudioEnabled(enabled);
     } catch (error) {
       console.error("Error toggling audio:", error);
-      setError("Failed to toggle audio");
+      setSocketError("Failed to toggle audio");
     }
   };
 
@@ -882,7 +942,7 @@ const VideoCall = ({
       setVideoEnabled(enabled);
     } catch (error) {
       console.error("Error toggling video:", error);
-      setError("Failed to toggle video");
+      setSocketError("Failed to toggle video");
     }
   };
 
@@ -893,7 +953,7 @@ const VideoCall = ({
       setScreenSharing(!screenSharing);
     } catch (error) {
       console.error("Error toggling screen share:", error);
-      setError("Failed to toggle screen sharing");
+      setSocketError("Failed to toggle screen sharing");
     }
   };
 
@@ -1308,10 +1368,10 @@ const VideoCall = ({
                     <div className="flex items-center justify-between">
                       <p className="text-white font-medium text-sm">
                         {participant.name ||
-                          participant.displayName ||
                           (participant.firstName && participant.lastName
                             ? `${participant.firstName} ${participant.lastName}`
-                            : participant.firstName || participant.lastName) ||
+                            : null) ||
+                          participant.displayName ||
                           `User ${
                             participant.userId?.substring(0, 5) || "Unknown"
                           }`}
@@ -1453,18 +1513,77 @@ const VideoCall = ({
                 <X className="h-4 w-4" />
               </Button>
             </div>
-            <div className="flex-1 p-6 flex flex-col justify-center items-center text-center">
-              <div className="w-12 h-12 bg-slate-800 rounded-2xl flex items-center justify-center mb-4 border border-slate-700">
-                <MessageSquare className="h-5 w-5 text-slate-500" />
-              </div>
-              <p className="text-slate-400 text-sm font-medium">
-                Secure admin communication channel
-              </p>
-              <p className="text-slate-600 text-[10px] mt-2 px-6">
-                Messages are encrypted and logged for compliance.
-              </p>
+            
+            {/* Chat Messages Display */}
+            <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4">
+              {chatMessages.length === 0 ? (
+                <div className="flex flex-col justify-center items-center text-center h-full py-8">
+                  <div className="w-12 h-12 bg-slate-800 rounded-2xl flex items-center justify-center mb-4 border border-slate-700">
+                    <MessageSquare className="h-5 w-5 text-slate-500" />
+                  </div>
+                  <p className="text-slate-400 text-sm font-medium">
+                    Secure admin communication channel
+                  </p>
+                  <p className="text-slate-600 text-[10px] mt-2 px-6">
+                    Messages are encrypted and logged for compliance.
+                  </p>
+                </div>
+              ) : (
+                chatMessages.map((message, index) => (
+                  <div
+                    key={index}
+                    className={`flex ${message.senderId === socket?.id ? 'justify-end' : 'justify-start'}`}
+                  >
+                    <div
+                      className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm ${
+                        message.senderId === socket?.id
+                          ? 'bg-emerald-500 text-white rounded-br-md'
+                          : 'bg-slate-800 text-slate-100 rounded-bl-md border border-slate-700'
+                      }`}
+                    >
+                      <p className="text-[10px] font-semibold mb-1 opacity-80">
+                        {message.senderId === socket?.id 
+                          ? (userInfo.name || user?.name || "Admin")
+                          : (message.senderName || 'Participant')}
+                      </p>
+                      <p>{message.content || message.message}</p>
+                      <p
+                        className={`text-[10px] mt-1 ${
+                          message.senderId === socket?.id
+                            ? 'text-emerald-100 opacity-80'
+                            : 'text-slate-400'
+                        }`}
+                      >
+                        {new Date(message.timestamp || message.createdAt).toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              )}
+              
+              {/* Typing indicators */}
+              {typingUsers.length > 0 && (
+                <div className="flex justify-start">
+                  <div className="bg-slate-800 text-slate-400 rounded-2xl rounded-bl-md px-4 py-3 text-sm border border-slate-700">
+                    <div className="flex items-center gap-1">
+                      <div className="flex gap-1">
+                        <div className="w-2 h-2 bg-slate-500 rounded-full animate-bounce"></div>
+                        <div className="w-2 h-2 bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                        <div className="w-2 h-2 bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+                      </div>
+                      <span className="ml-2 text-xs">
+                        {typingUsers.length === 1 ? 'Someone is typing...' : `${typingUsers.length} people typing...`}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
-            <div className="p-6 border-t border-slate-800">
+            
+            <div className="p-4 border-t border-slate-800">
               <div className="flex gap-2">
                 <input
                   type="text"
@@ -1476,12 +1595,15 @@ const VideoCall = ({
                       sendChatMessage();
                     }
                   }}
+                  onFocus={handleTyping}
+                  onBlur={handleStopTyping}
                   className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 text-white text-sm focus:outline-none focus:border-slate-500 placeholder:text-slate-600"
                 />
                 <Button
                   size="icon"
                   className="bg-slate-100 hover:bg-white text-slate-900 rounded-xl"
                   onClick={sendChatMessage}
+                  disabled={!newMessage.trim()}
                 >
                   <ArrowRight className="h-4 w-4" />
                 </Button>
@@ -1597,7 +1719,7 @@ const VideoCall = ({
               <Share className="h-5 w-5" />
             </Button>
 
-            {userRole === "admin" && (
+            {/* {userRole === "admin" && (
               <Button
                 variant="secondary"
                 size="icon"
@@ -1607,7 +1729,7 @@ const VideoCall = ({
               >
                 <Users className="h-5 w-5" />
               </Button>
-            )}
+            )} */}
 
             {/* Recording Button - Only for admins */}
             {(userRole === "admin" || isTherapist) && (
@@ -1657,14 +1779,14 @@ const VideoCall = ({
               <PhoneOff className="h-6 w-6" />
             </Button>
 
-            <Button
+            {/* <Button
               variant="secondary"
               size="icon"
               className="rounded-2xl md:w-14 md:h-14 w-12 h-12 bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-300"
               onClick={() => setShowSettings(true)}
             >
               <Settings className="h-5 w-5" />
-            </Button>
+            </Button> */}
           </div>
 
           <div className="w-32 flex justify-end">
@@ -1761,7 +1883,7 @@ const VideoCall = ({
         </div>
       )}
 
-      {error && (
+      {localError && (
         <div className="fixed top-4 right-4 bg-rose-500 text-white p-4 rounded-xl z-50 max-w-md border border-rose-400 shadow-lg shadow-rose-500/20">
           <div className="flex items-start gap-3">
             <div className="flex-shrink-0 mt-0.5">
@@ -1769,14 +1891,15 @@ const VideoCall = ({
             </div>
             <div className="flex-1">
               <p className="font-semibold text-sm">Media Error</p>
-              <p className="text-sm opacity-90 mt-1">{error}</p>
+              <p className="text-sm opacity-90 mt-1">{localError}</p>
               <div className="flex gap-2 mt-3">
                 <Button
                   size="sm"
                   variant="secondary"
                   className="bg-white/20 hover:bg-white/30 text-white text-xs h-7 px-2"
                   onClick={() => {
-                    setError(null);
+                    resetInitialization();
+                    
                     initLocalMedia()
                       .then(() => {
                         console.log(
@@ -1788,7 +1911,7 @@ const VideoCall = ({
                           "Admin: Error re-initializing media:",
                           err
                         );
-                        setError(
+                        setLocalError(
                           err.message ||
                             "Failed to access camera and microphone. Please check permissions and refresh the page."
                         );
@@ -1808,7 +1931,7 @@ const VideoCall = ({
               </div>
             </div>
             <button
-              onClick={() => setError(null)}
+              onClick={() => setSocketError(null)}
               className="text-white hover:text-gray-200 flex-shrink-0"
             >
               <X className="h-4 w-4" />
