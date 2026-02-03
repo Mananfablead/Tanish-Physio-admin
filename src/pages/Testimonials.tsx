@@ -57,6 +57,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
 
+
 interface Testimonial {
   _id: string;
   clientName?: string;
@@ -97,11 +98,15 @@ interface FormTestimonial {
 
 export default function Testimonials() {
   const dispatch = useDispatch();
+
+ 
   const { testimonials, stats, loading, error } = useSelector((state: any) => state.testimonials);
   const { list: allUsers, loading: usersLoading, pagination } = useSelector((state: any) => state.users);
+  console.log("allUsers", allUsers)
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
 
   const [editingTestimonial, setEditingTestimonial] =
@@ -209,7 +214,15 @@ export default function Testimonials() {
       avatar: testimonial.avatar,
       id: testimonial._id,
     });
-    setSelectedUser(null); // Clear selected user when editing
+    
+    // Find and set the selected user
+    const user = allUsers.find((u: any) => u._id === userIdString);
+    if (user) {
+      setSelectedUser(user);
+    } else {
+      setSelectedUser(null);
+    }
+    
     setUsersPage(1);
     setHasMoreUsers(true);
     setFormData({
@@ -227,10 +240,27 @@ export default function Testimonials() {
   };
 
   const handleSubmit = async () => {
+    setIsSubmitting(true);
     try {
-      // Validate required fields
-      if (!editingTestimonial && !formData.userId) {
-        alert('Please select a user from the dropdown');
+      // Validate required fields for both add and edit
+      if (!formData.userId) {
+        setIsSubmitting(false);
+        return;
+      }
+      if (!formData.clientEmail) {
+        setIsSubmitting(false);
+        return;
+      }
+      if (!formData.serviceUsed) {
+        setIsSubmitting(false);
+        return;
+      }
+      if (!formData.problem) {
+        setIsSubmitting(false);
+        return;
+      }
+      if (!formData.content) {
+        setIsSubmitting(false);
         return;
       }
       
@@ -253,6 +283,8 @@ export default function Testimonials() {
       // Still refresh in case of error to ensure UI consistency
       dispatch(fetchTestimonials({ search: searchQuery, status: statusFilter }));
       dispatch(fetchTestimonialStats());
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -510,7 +542,7 @@ export default function Testimonials() {
             <TableHeader>
               <TableRow>
                 <TableHead>Client</TableHead>
-                <TableHead>Rating</TableHead>
+               
                 <TableHead>Problem</TableHead>
                 <TableHead>Service</TableHead>
                 <TableHead>Status</TableHead>
@@ -524,7 +556,7 @@ export default function Testimonials() {
                 <TableRow key={testimonial._id}>
                   <TableCell>
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                      <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
                         {testimonial.userId?.profilePicture ? (
                           <img
                             src={testimonial.userId.profilePicture}
@@ -532,7 +564,7 @@ export default function Testimonials() {
                             className="w-10 h-10 rounded-full object-cover"
                           />
                         ) : (
-                          <User className="w-5 h-5 text-muted-foreground" />
+                          <User className="w-10 h-10 text-muted-foreground" />
                         )}
                       </div>
                       <div>
@@ -544,17 +576,18 @@ export default function Testimonials() {
                             {testimonial.userId?.email || testimonial.clientEmail}
                           </div>
                         )}
+                         {renderStars(testimonial.rating, false)}
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell>
+                  {/* <TableCell>
                     <div className="flex items-center gap-1">
                       {renderStars(testimonial.rating, false)}
                       <span className="text-sm font-medium ml-1">
                         {testimonial.rating}/5
                       </span>
                     </div>
-                  </TableCell>
+                  </TableCell> */}
                   <TableCell>
                     <span className="text-sm">{testimonial.problem || 'N/A'}</span>
                   </TableCell>
@@ -562,64 +595,39 @@ export default function Testimonials() {
                     <Badge variant="secondary">{testimonial.serviceUsed || 'N/A'}</Badge>
                   </TableCell>
                   <TableCell>
-                    <Badge className={getStatusColor(testimonial.status)}>
-                      {testimonial.status}
-                    </Badge>
+                    <Select
+                      value={testimonial.status}
+                      onValueChange={(value) => handleStatusChange(testimonial._id, value as any)}
+                    >
+                      <SelectTrigger className="w-[120px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="approved">Approved</SelectItem>
+                        <SelectItem value="rejected">Rejected</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </TableCell>
                   <TableCell>
-                    {testimonial.featured ? (
-                      <Badge className="bg-blue-100 text-blue-800">
-                        Featured
-                      </Badge>
-                    ) : (
-                      <span className="text-muted-foreground text-sm">-</span>
-                    )}
+                    <Select
+                      value={testimonial.featured ? "featured" : "not-featured"}
+                      onValueChange={(value) => handleFeatureToggle(testimonial._id)}
+                    >
+                      <SelectTrigger className="w-[120px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="featured">Featured</SelectItem>
+                        <SelectItem value="not-featured">Not Featured</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </TableCell>
                   <TableCell>
                     {testimonial.createdAt ? new Date(testimonial.createdAt).toLocaleDateString() : 'N/A'}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
-                      {testimonial.status === "pending" && (
-                        <>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() =>
-                              handleStatusChange(testimonial._id, "approved")
-                            }
-                            className="text-green-600 hover:text-green-700"
-                          >
-                            Approve
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() =>
-                              handleStatusChange(testimonial._id, "rejected")
-                            }
-                            className="text-red-600 hover:text-red-700"
-                          >
-                            Reject
-                          </Button>
-                        </>
-                      )}
-
-                      {testimonial.status === "approved" && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleFeatureToggle(testimonial._id)}
-                          className={
-                            testimonial.featured
-                              ? "text-blue-600"
-                              : "text-muted-foreground"
-                          }
-                        >
-                          {testimonial.featured ? "Unfeature" : "Feature"}
-                        </Button>
-                      )}
-
                       <Button
                         variant="ghost"
                         size="icon"
@@ -668,7 +676,7 @@ export default function Testimonials() {
                       variant="outline"
                       role="combobox"
                       aria-expanded={openUserSelector}
-                      className="w-full justify-between"
+                      className={`w-full justify-between ${!selectedUser && editingTestimonial ? "border-red-500" : ""}`}
                     >
                       {selectedUser
                         ? selectedUser.name || selectedUser.fullName || selectedUser.firstName + " " + selectedUser.lastName
@@ -714,6 +722,9 @@ export default function Testimonials() {
                     </Command>
                   </PopoverContent>
                 </Popover>
+                {!selectedUser && (
+                  <p className="text-sm text-red-500">Client name is required</p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="clientEmail">Client Email</Label>
@@ -725,7 +736,11 @@ export default function Testimonials() {
                     setFormData({ ...formData, clientEmail: e.target.value })
                   }
                   placeholder="Enter client email"
+                  className={editingTestimonial && !formData.clientEmail ? "border-red-500" : ""}
                 />
+                {!formData.clientEmail && (
+                  <p className="text-sm text-red-500">Client email is required</p>
+                )}
               </div>
             </div>
 
@@ -737,17 +752,42 @@ export default function Testimonials() {
                   <span className="ml-2 font-medium">{formData.rating}/5</span>
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="serviceUsed">Service Used *</Label>
-                <Input
-                  id="serviceUsed"
-                  value={formData.serviceUsed}
-                  onChange={(e) =>
-                    setFormData({ ...formData, serviceUsed: e.target.value })
-                  }
-                  placeholder="e.g., Sports Injury Rehabilitation"
-                />
-              </div>
+            <div className="space-y-2">
+  <Label htmlFor="serviceUsed">Service Used *</Label>
+
+  <Select
+    value={formData.serviceUsed}
+    onValueChange={(value) =>
+      setFormData({ ...formData, serviceUsed: value })
+    }
+    disabled={!allUsers?.length}
+  >
+    <SelectTrigger 
+      id="serviceUsed"
+      className={editingTestimonial && !formData.serviceUsed ? "border-red-500" : ""}
+    >
+      <SelectValue placeholder="Select a service" />
+    </SelectTrigger>
+
+    <SelectContent>
+      {Array.from(
+        new Set(
+          allUsers.flatMap((user: any) =>
+            user.servicesUsed?.map((service: any) => service.serviceName) || []
+          )
+        )
+      ).map((serviceName: string) => (
+        <SelectItem key={serviceName} value={serviceName}>
+          {serviceName}
+        </SelectItem>
+      ))}
+    </SelectContent>
+  </Select>
+  {!formData.serviceUsed && (
+    <p className="text-sm text-red-500">Service used is required</p>
+  )}
+</div>
+
             </div>
 
             <div className="space-y-2">
@@ -759,7 +799,11 @@ export default function Testimonials() {
                   setFormData({ ...formData, problem: e.target.value })
                 }
                 placeholder="Enter the problem that was treated"
+                className={editingTestimonial && !formData.problem ? "border-red-500" : ""}
               />
+              {!formData.problem && (
+                <p className="text-sm text-red-500">Problem is required</p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -791,7 +835,11 @@ export default function Testimonials() {
                 }
                 placeholder="Enter the client's testimonial..."
                 rows={4}
+                className={editingTestimonial && !formData.content ? "border-red-500" : ""}
               />
+              {!formData.content && (
+                <p className="text-sm text-red-500">Testimonial content is required</p>
+              )}
             </div>
 
             <div className="flex items-center space-x-2">
@@ -811,11 +859,18 @@ export default function Testimonials() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsModalOpen(false)}>
+            <Button variant="outline" onClick={() => setIsModalOpen(false)} disabled={isSubmitting}>
               Cancel
             </Button>
-            <Button onClick={handleSubmit}>
-              {editingTestimonial ? "Update Testimonial" : "Add Testimonial"}
+            <Button onClick={handleSubmit} disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  {editingTestimonial ? "Updating..." : "Adding..."}
+                </>
+              ) : (
+                editingTestimonial ? "Update Testimonial" : "Add Testimonial"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

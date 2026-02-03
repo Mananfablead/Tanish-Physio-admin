@@ -21,6 +21,7 @@ import {
   BookOpen,
   FileText,
   Quote,
+  AlertCircle,
 } from "lucide-react";
 import logo from "../../assets/logo.webp";
 import { cn } from "@/lib/utils";
@@ -49,6 +50,7 @@ const navItems = [
   { icon: Video, label: "Live & Upcoming", path: "/live-sessions" },
   { icon: Video, label: "Session Recordings", path: "/session-recordings" },
   { icon: CreditCard, label: "Plans & Subscriptions", path: "/subscriptions" },
+  // { icon: AlertCircle, label: "Expiration Management", path: "/expiration-management" },
   { icon: Wallet, label: "Payments", path: "/payments" },
   { icon: FileText, label: "CMS", path: "/cms" },
   { icon: Quote, label: "Testimonials", path: "/testimonials" },

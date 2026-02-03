@@ -71,6 +71,27 @@ export const adminVideoCallApi = {
         });
         return response.data;
     },
+
+    // Create call log
+    createCallLog: async (sessionId, groupSessionId, type, participants) => {
+        console.log('📤 createCallLog called with:', { sessionId, groupSessionId, type, participants });
+        console.log('📤 apiClient baseURL:', apiClient.defaults.baseURL);
+
+        try {
+            const response = await apiClient.post('/logs', {
+                sessionId,
+                groupSessionId,
+                type,
+                participants
+            });
+            console.log('📥 createCallLog response:', response.data);
+            return response.data;
+        } catch (error) {
+            console.error('❌ createCallLog error:', error);
+            console.error('❌ Error response:', error.response?.data);
+            throw error;
+        }
+    },
 };
 
 // Admin Chat API Service

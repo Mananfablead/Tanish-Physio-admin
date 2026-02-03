@@ -46,8 +46,34 @@ export default function VideoCallPage() {
           console.error("Error generating admin join token:", tokenErr);
         }
 
-        // Participants will be populated through peer connections, not API calls
-        console.log("Admin participants will be populated through peer connections");
+        // Fetch session participants
+        try {
+          const participantsResponse =
+            await adminVideoCallApi.getSessionParticipants(id);
+          console.log("Admin session participants:", participantsResponse);
+          if (participantsResponse.success) {
+            // Add participants data to sessionDetails
+            const sessionInfo = {
+              participants: participantsResponse.data.participants,
+              type: participantsResponse.data.type || "1-on-1", // Add type info
+            };
+            setSessionDetails(sessionInfo);
+
+            // Log group session detection
+            if (sessionInfo.type === "Group" || id?.includes("group")) {
+              console.log("🎯 Group session detected:", {
+                id,
+                type: sessionInfo.type,
+              });
+            }
+          }
+        } catch (participantsErr) {
+          console.warn(
+            "Could not fetch session participants:",
+            participantsErr
+          );
+          // Continue anyway
+        }
       }
     };
 
@@ -72,6 +98,11 @@ export default function VideoCallPage() {
       userRole="admin"
       onEndCall={handleEndCall}
       sessionId={id || ""}
+      groupSessionId={
+        id?.includes("group") || sessionDetails?.type === "Group"
+          ? id
+          : undefined
+      } // Simple group detection
       connected={connected}
       sessionDetails={sessionDetails}
       user={user}

@@ -13,9 +13,11 @@ import { RevenueChart } from "@/components/dashboard/RevenueChart";
 import { SessionsChart } from "@/components/dashboard/SessionsChart";
 import { UserGrowthChart } from "@/components/dashboard/UserGrowthChart";
 import { RecentActivity } from "@/components/dashboard/RecentActivity";
-import { UpcomingSessions } from "@/components/dashboard/UpcomingSessions";
-import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { UpcomingSessions } from '@/components/dashboard/UpcomingSessions';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ExpiredItemsDashboard } from '@/components/ExpiredItemsDashboard';
+import { AlertCircle } from 'lucide-react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import '../assets/style.css';
@@ -193,6 +195,37 @@ export default function Dashboard() {
 
       {/* User Growth Chart */}
       <UserGrowthChart userGrowthData={stats?.userGrowthChart || []} />
+
+      {/* Expiration Overview Section */}
+      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <AlertCircle className="h-5 w-5 text-yellow-600" />
+          <h3 className="font-bold text-yellow-800 text-lg">Expiration Overview</h3>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="bg-white p-4 rounded-lg border border-yellow-200">
+            <p className="text-sm text-slate-600">Expiring Soon (7 days)</p>
+            <p className="text-2xl font-bold text-yellow-600">0</p>
+            <p className="text-xs text-slate-500">Subscriptions & Services</p>
+          </div>
+          <div className="bg-white p-4 rounded-lg border border-yellow-200">
+            <p className="text-sm text-slate-600">Recently Expired</p>
+            <p className="text-2xl font-bold text-red-600">0</p>
+            <p className="text-xs text-slate-500">Past 30 days</p>
+          </div>
+          <div className="bg-white p-4 rounded-lg border border-yellow-200">
+            <p className="text-sm text-slate-600">Total Expired</p>
+            <p className="text-2xl font-bold text-red-600">0</p>
+            <p className="text-xs text-slate-500">All time</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Expired Items Dashboard */}
+      <div className="space-y-4">
+        <h3 className="text-xl font-bold text-slate-900">Expired Items Overview</h3>
+        <ExpiredItemsDashboard />
+      </div>
 
       {/* Activity & Sessions Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

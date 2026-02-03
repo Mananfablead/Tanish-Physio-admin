@@ -43,6 +43,7 @@ import Testimonials from "./pages/Testimonials";
 import VideoCallPage from "./pages/VideoCallPage";
 import NotFound from "./pages/NotFound";
 import ResetPassword from "./pages/ResetPassword";
+import ExpirationManagement from "./pages/ExpirationManagement";
 import { useDispatch } from "react-redux";
 import { useEffect } from "react";
 
@@ -340,11 +341,33 @@ const App = () => (
           />
 
           <Route
+            path="/expiration-management"
+            element={
+              <ProtectedRoute>
+                <AdminPage>
+                  <ExpirationManagement />
+                </AdminPage>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
             path="/courses"
             element={
               <ProtectedRoute>
                 <AdminPage>
                   <Courses />
+                </AdminPage>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/expiration-management"
+            element={
+              <ProtectedRoute>
+                <AdminPage>
+                  <ExpirationManagement />
                 </AdminPage>
               </ProtectedRoute>
             }

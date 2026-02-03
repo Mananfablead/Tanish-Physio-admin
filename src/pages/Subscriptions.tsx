@@ -419,13 +419,14 @@ export default function Subscriptions() {
         {/* Plans Tab */}
         <TabsContent value="plans" className="mt-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {plans.map((plan) => (
-              <div
-                className={cn(
-                  "bg-card rounded-lg border p-5 transition-all duration-200 animate-fade-in",
-                  "border-border hover:border-primary/30 hover:shadow-md"
-                )}
-              >
+            {plans.length > 0 ? (
+              plans.map((plan) => (
+                <div
+                  className={cn(
+                    "bg-card rounded-lg border p-5 transition-all duration-200 animate-fade-in",
+                    "border-border hover:border-primary/30 hover:shadow-md"
+                  )}
+                >
                 <div className="flex items-start justify-between mb-4">
                   <div>
                     <h3 className="font-semibold">{plan.name}</h3>
@@ -521,8 +522,23 @@ export default function Subscriptions() {
                   </Button>
                 </div>
               </div>
-            ))}
-          </div>
+            ))
+          ) : (
+            <div className="col-span-full text-center py-12">
+              <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+                <CreditCard className="w-8 h-8 text-muted-foreground" />
+              </div>
+              <h3 className="text-lg font-medium mb-2">No Subscription Plans</h3>
+              <p className="text-muted-foreground mb-4">Get started by creating your first subscription plan.</p>
+              <Button asChild>
+                <Link to="/add-subscription">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create Plan
+                </Link>
+              </Button>
+            </div>
+          )}
+        </div>
         </TabsContent>
 
         {/* User Subscriptions Tab */}
@@ -530,30 +546,32 @@ export default function Subscriptions() {
           <div className="relative max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Search by user or email..."
+              placeholder={filteredSubscriptions.length > 0 ? "Search by user or email..." : "No subscriptions available"}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"
+              disabled={filteredSubscriptions.length === 0}
             />
           </div>
 
           <div className="bg-card rounded-lg border border-border overflow-hidden animate-fade-in">
             <div className="overflow-x-auto">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>User</th>
-                    <th>Plan</th>
-                    <th>Start Date</th>
-                    <th>End Date</th>
-                    <th>Subscription Sessions</th>
-                    <th>Service Sessions</th>
-                    <th>Status</th>
-                    {/* <th>Actions</th> */}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredSubscriptions.map((sub, index) => {
+              {filteredSubscriptions.length > 0 ? (
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>User</th>
+                      <th>Plan</th>
+                      <th>Start Date</th>
+                      <th>End Date</th>
+                      <th>Subscription Sessions</th>
+                      {/* <th>Service Sessions</th> */}
+                      <th>Status</th>
+                      {/* <th>Actions</th> */}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredSubscriptions.map((sub, index) => {
                     console.log("Subscription Row:", index, sub);
 
                     return (
@@ -606,7 +624,7 @@ export default function Subscriptions() {
                         </td>
                         
                         {/* SERVICE SESSIONS */}
-                        <td>
+                        {/* <td>
                           {sub.purchasedServices && sub.purchasedServices.length > 0 ? (
                             <div className="space-y-2 max-w-xs">
                               {sub.purchasedServices.map((service: any, index: number) => (
@@ -632,7 +650,7 @@ export default function Subscriptions() {
                           ) : (
                             <span className="text-muted-foreground">No services</span>
                           )}
-                        </td>
+                        </td> */}
 
                         {/* STATUS */}
                         <td>
@@ -676,15 +694,30 @@ export default function Subscriptions() {
                   })}
                 </tbody>
               </table>
-            </div>
+            ) : (
+              <div className="text-center py-12">
+                <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+                  <Users className="w-8 h-8 text-muted-foreground" />
+                </div>
+                <h3 className="text-lg font-medium mb-2">No User Subscriptions</h3>
+                <p className="text-muted-foreground">No users have subscribed to any plans yet.</p>
+              </div>
+            )}
+          </div>
 
-            <div className="flex items-center justify-between px-4 py-3 border-t border-border">
+          <div className="flex items-center justify-between px-4 py-3 border-t border-border">
               <p className="text-sm text-muted-foreground">
-                Showing{" "}
-                <span className="font-medium">
-                  {filteredSubscriptions.length}
-                </span>{" "}
-                subscriptions
+                {filteredSubscriptions.length > 0 ? (
+                  <>
+                    Showing{" "}
+                    <span className="font-medium">
+                      {filteredSubscriptions.length}
+                    </span>{" "}
+                    subscriptions
+                  </>
+                ) : (
+                  "No subscriptions to display"
+                )}
               </p>
               <div className="flex items-center gap-2">
                 <Button variant="outline" size="sm" disabled>
