@@ -208,7 +208,7 @@ const LiveSessions = () => {
                   }).length
                 }
               </p>
-              <p className="text-sm text-muted-foreground">Starting in 2h</p>
+              <p className="text-sm text-muted-foreground">Starting in 2 hrs</p>
             </div>
           </CardContent>
         </Card>
@@ -220,7 +220,7 @@ const LiveSessions = () => {
             </div>
             <div>
               <p className="text-2xl font-semibold">
-                {activeTab === "upcoming" ? upcomingTabCount : liveTabCount}
+                {allSessions.filter((session: any) => session.status === "live").length}
               </p>
               <p className="text-sm text-muted-foreground">Available to Join</p>
             </div>
@@ -337,39 +337,89 @@ const LiveSessions = () => {
                     </div>
 
                     <div className="flex gap-2 pt-2">
-                      {session.status === "live" ? (
-                        <>
-                          <Button
-                            className="flex-1"
-                            onClick={() => {
-                              navigate(`/video-call/${session._id}`);
-                            }}
-                          >
-                            <Video className="w-4 h-4 mr-2" />
-                            Join Session
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={() =>
-                              navigator.clipboard.writeText(
-                                `${window.location.origin}/video-call/${session._id}`
-                              )
+                      {(() => {
+                        // Calculate if session time has arrived
+                        const sessionDateTime = new Date(`${session.date} ${session.time}`);
+                        const now = new Date();
+                        const isSessionTimeArrived = sessionDateTime.getTime() <= now.getTime();
+                                              
+                        if (session.status === "live") {
+                          // For live sessions, check if the actual session time has arrived
+                          if (isSessionTimeArrived) {
+                            return (
+                              <div className="flex gap-2 flex-1">
+                                <Button
+                                  className="flex-1"
+                                  onClick={() => {
+                                    navigate(`/video-call/${session._id}`);
+                                  }}
+                                >
+                                  <Video className="w-4 h-4 mr-2" />
+                                  Join Session
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  onClick={() =>
+                                    navigator.clipboard.writeText(
+                                      `${window.location.origin}/video-call/${session._id}`
+                                    )
+                                  }
+                                >
+                                  <Copy className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            );
+                          } else {
+                            // Session is marked as live but time hasn't arrived yet
+                            return (
+                              <Button className="flex-1" variant="secondary" disabled>
+                                <Clock className="w-4 h-4 mr-2" />
+                                Session Early - Starts in {calculateTimeUntilSession(session.date, session.time)}
+                              </Button>
+                            );
+                          }
+                        } else {
+                          // For non-live sessions, use timingStatus
+                          if (session.timingStatus === 'join_now') {
+                            // Check if the actual session time has arrived
+                            if (isSessionTimeArrived) {
+                              return (
+                                <Button className="flex-1" onClick={() => navigate(`/video-call/${session._id}`)}>
+                                  <Video className="w-4 h-4 mr-2" />
+                                  Join Session
+                                </Button>
+                              );
+                            } else {
+                              // Session is in join_now window but time hasn't arrived yet
+                              return (
+                                <Button className="flex-1" variant="secondary" disabled>
+                                  <Clock className="w-4 h-4 mr-2" />
+                                  Session Early - Starts in {calculateTimeUntilSession(session.date, session.time)}
+                                </Button>
+                              );
                             }
-                          >
-                            <Copy className="w-4 h-4" />
-                          </Button>
-                        </>
-                      ) : (
-                        <Button className="flex-1" variant="secondary" disabled>
-                          <Clock className="w-4 h-4 mr-2" />
-                          Starts in{" "}
-                          {calculateTimeUntilSession(
-                            session.date,
-                            session.time
-                          )}
-                        </Button>
-                      )}
+                          } else if (session.timingStatus === 'join_soon') {
+                            return (
+                              <Button className="flex-1" variant="secondary">
+                                <Clock className="w-4 h-4 mr-2" />
+                                Join Soon
+                              </Button>
+                            );
+                          } else {
+                            return (
+                              <Button className="flex-1" variant="secondary" disabled>
+                                <Clock className="w-4 h-4 mr-2" />
+                                Starts in{" "}
+                                {calculateTimeUntilSession(
+                                  session.date,
+                                  session.time
+                                )}
+                              </Button>
+                            );
+                          }
+                        }
+                      })()}
                     </div>
                   </div>
                 </CardContent>
