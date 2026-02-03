@@ -60,23 +60,35 @@ const SessionRecordings = () => {
           id: recording._id,
           user:
             recording.participants?.find((p: any) => p.role === "patient")
-              ?.userId?.name || "Unknown User",
+              ?.userId?.name ||
+            recording.participants?.find(
+              (p: any) => p.userId.role === "patient"
+            )?.userId?.name ||
+            "Unknown User",
           therapist:
-            recording.participants?.find((p: any) => p.role === "therapist")
-              ?.userId?.name || "Unknown Therapist",
-          date: recording.callStartedAt
+            recording.participants?.find(
+              (p: any) => p.role === "therapist" || p.role === "admin"
+            )?.userId?.name ||
+            recording.participants?.find(
+              (p: any) =>
+                p.userId.role === "therapist" || p.userId.role === "admin"
+            )?.userId?.name ||
+            "Unknown Therapist",
+          date: recording.sessionId?.date
+            ? new Date(recording.sessionId.date).toLocaleDateString()
+            : recording.callStartedAt
             ? new Date(recording.callStartedAt).toLocaleDateString()
             : "Unknown Date",
-          time: recording.callStartedAt
-            ? new Date(recording.callStartedAt).toLocaleTimeString()
-            : "Unknown Time",
+          time:
+            recording.sessionId?.time ||
+            (recording.callStartedAt
+              ? new Date(recording.callStartedAt).toLocaleTimeString()
+              : "Unknown Time"),
           duration: recording.recordingDuration
             ? `${Math.floor(recording.recordingDuration / 60)} min`
             : "Unknown",
           type: recording.type === "one-on-one" ? "1-on-1" : "Group",
-          recordingUrl: recording.recordingUrl
-            ? `${import.meta.env.VITE_API_BASE_URL}${recording.recordingUrl}`
-            : "#",
+          recordingUrl: recording.recordingUrl || "#",
           thumbnail: `https://picsum.photos/seed/${recording._id}/400/225`,
           status: recording.recordingStatus || "available",
           fileSize: recording.recordingSize
@@ -103,35 +115,38 @@ const SessionRecordings = () => {
   // Filter recordings based on selected user and search query
   useEffect(() => {
     let filtered = allRecordings;
-    
+
     // If userId is provided in the URL, filter by that user
     if (userId) {
-      const decodedUserId = userId.replace(/-/g, ' ').toLowerCase();
-      filtered = filtered.filter(rec => rec.user.toLowerCase() === decodedUserId);
-    } else if (selectedUser !== 'all') {
-      filtered = filtered.filter(rec => rec.user === selectedUser);
+      const decodedUserId = userId.replace(/-/g, " ").toLowerCase();
+      filtered = filtered.filter(
+        (rec) => rec.user.toLowerCase() === decodedUserId
+      );
+    } else if (selectedUser !== "all") {
+      filtered = filtered.filter((rec) => rec.user === selectedUser);
     }
-    
+
     if (searchQuery) {
-      filtered = filtered.filter(rec => 
-        rec.user.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        rec.therapist.toLowerCase().includes(searchQuery.toLowerCase())
+      filtered = filtered.filter(
+        (rec) =>
+          rec.user.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          rec.therapist.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
-    
-    if (filterType !== 'all') {
-      if (filterType === '1-on-1') {
-        filtered = filtered.filter(rec => rec.type === '1-on-1');
-      } else if (filterType === 'group') {
-        filtered = filtered.filter(rec => rec.type.includes('Group'));
+
+    if (filterType !== "all") {
+      if (filterType === "1-on-1") {
+        filtered = filtered.filter((rec) => rec.type === "1-on-1");
+      } else if (filterType === "group") {
+        filtered = filtered.filter((rec) => rec.type.includes("Group"));
       }
     }
-    
+
     setRecordings(filtered);
   }, [selectedUser, searchQuery, filterType, userId]);
 
   // Extract unique users for the filter
-  const uniqueUsers = Array.from(new Set(allRecordings.map(rec => rec.user)));
+  const uniqueUsers = Array.from(new Set(allRecordings.map((rec) => rec.user)));
 
   const handlePlayPause = (recording: any) => {
     if (selectedRecording?.id === recording.id) {
@@ -146,14 +161,14 @@ const SessionRecordings = () => {
   // Close modal when pressing escape key
   useEffect(() => {
     const handleEscKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && selectedRecording) {
+      if (e.key === "Escape" && selectedRecording) {
         setSelectedRecording(null);
         setIsPlaying(false);
       }
     };
 
-    window.addEventListener('keydown', handleEscKey);
-    return () => window.removeEventListener('keydown', handleEscKey);
+    window.addEventListener("keydown", handleEscKey);
+    return () => window.removeEventListener("keydown", handleEscKey);
   }, [selectedRecording]);
 
   // Simulate progress for the player
@@ -161,7 +176,7 @@ const SessionRecordings = () => {
     let interval: NodeJS.Timeout;
     if (isPlaying && selectedRecording) {
       interval = setInterval(() => {
-        setProgress(prev => {
+        setProgress((prev) => {
           if (prev >= 100) {
             clearInterval(interval);
             setIsPlaying(false);
@@ -176,7 +191,7 @@ const SessionRecordings = () => {
 
   const formatDuration = (duration: string) => {
     // Convert duration string like "45 min" to a number of seconds for display
-    const minutes = parseInt(duration.split(' ')[0]);
+    const minutes = parseInt(duration.split(" ")[0]);
     return `${minutes} min`;
   };
 
@@ -227,13 +242,14 @@ const SessionRecordings = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">
-            {userId ? `${decodedUserId}'s Session Recordings` : 'Session Recordings'}
+            {userId
+              ? `${decodedUserId}'s Session Recordings`
+              : "Session Recordings"}
           </h1>
           <p className="text-muted-foreground mt-1">
-            {userId 
+            {userId
               ? `View and manage all recorded therapy sessions for ${decodedUserId}`
-              : 'View and manage all recorded therapy sessions'
-            }
+              : "View and manage all recorded therapy sessions"}
           </p>
         </div>
       </div>
@@ -241,9 +257,11 @@ const SessionRecordings = () => {
       {/* Filters */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div>
-          <label className="text-sm font-medium mb-1 block">Filter by User</label>
-          <Select 
-            value={selectedUser} 
+          <label className="text-sm font-medium mb-1 block">
+            Filter by User
+          </label>
+          <Select
+            value={selectedUser}
             onValueChange={setSelectedUser}
             disabled={!!userId} // Disable when viewing a specific user's recordings
           >
@@ -253,7 +271,9 @@ const SessionRecordings = () => {
             <SelectContent>
               <SelectItem value="all">All Users</SelectItem>
               {uniqueUsers.map((user, index) => (
-                <SelectItem key={index} value={user}>{user}</SelectItem>
+                <SelectItem key={index} value={user}>
+                  {user}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -307,7 +327,9 @@ const SessionRecordings = () => {
               <Video className="w-5 h-5 text-success" />
             </div>
             <div>
-              <p className="text-2xl font-semibold">{recordings.filter(r => r.status === 'available').length}</p>
+              <p className="text-2xl font-semibold">
+                {recordings.filter((r) => r.status === "available").length}
+              </p>
               <p className="text-sm text-muted-foreground">Available</p>
             </div>
           </CardContent>
@@ -334,26 +356,28 @@ const SessionRecordings = () => {
               <FileVideo className="w-8 h-8 text-muted-foreground" />
             </div>
             <h3 className="text-lg font-semibold mb-1">No recordings found</h3>
-            <p className="text-muted-foreground">Try adjusting your filters or search query.</p>
+            <p className="text-muted-foreground">
+              Try adjusting your filters or search query.
+            </p>
           </CardContent>
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {recordings.map((recording) => (
-            <Card 
-              key={recording.id} 
+            <Card
+              key={recording.id}
               className="shadow-sm rounded-xl border border-border overflow-hidden hover:shadow-md transition-shadow"
             >
               <div className="relative">
-                <img 
-                  src={recording.thumbnail} 
-                  alt={`Recording ${recording.id}`} 
+                <img
+                  src={recording.thumbnail}
+                  alt={`Recording ${recording.id}`}
                   className="w-full h-40 object-cover"
                 />
                 <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                  <Button 
-                    size="icon" 
-                    variant="secondary" 
+                  <Button
+                    size="icon"
+                    variant="secondary"
                     className="h-12 w-12 rounded-full"
                     onClick={() => handlePlayPause(recording)}
                   >
@@ -371,7 +395,9 @@ const SessionRecordings = () => {
 
               <CardHeader className="pb-3">
                 <div className="flex justify-between items-start">
-                  <CardTitle className="text-lg line-clamp-1">{recording.user}</CardTitle>
+                  <CardTitle className="text-lg line-clamp-1">
+                    {recording.user}
+                  </CardTitle>
                   <Badge variant="secondary">{recording.type}</Badge>
                 </div>
               </CardHeader>
@@ -411,17 +437,19 @@ const SessionRecordings = () => {
                   )}
 
                   <div className="flex gap-2 pt-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
+                    <Button
+                      variant="outline"
+                      size="sm"
                       className="flex-1"
-                      onClick={() => window.open(recording.recordingUrl, '_blank')}
+                      onClick={() =>
+                        window.open(recording.recordingUrl, "_blank")
+                      }
                     >
                       <Play className="w-4 h-4 mr-2" />
                       Play
                     </Button>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       size="sm"
                       onClick={() => {
                         // In a real app, this would download the recording
@@ -440,7 +468,7 @@ const SessionRecordings = () => {
 
       {/* Player Modal */}
       {selectedRecording && (
-        <div 
+        <div
           className="fixed inset-0 bg-transparent flex items-center justify-center z-50 p-4"
           onClick={(e) => {
             if (e.target === e.currentTarget) {
@@ -451,9 +479,11 @@ const SessionRecordings = () => {
         >
           <div className="bg-card rounded-xl border border-border w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
             <div className="p-4 border-b border-border flex justify-between items-center">
-              <h3 className="text-lg font-semibold">{selectedRecording.user} - Session Recording</h3>
-              <Button 
-                variant="outline" 
+              <h3 className="text-lg font-semibold">
+                {selectedRecording.user} - Session Recording
+              </h3>
+              <Button
+                variant="outline"
                 size="sm"
                 onClick={() => {
                   setSelectedRecording(null);
@@ -466,109 +496,18 @@ const SessionRecordings = () => {
             <div className="overflow-y-auto flex-1">
               <div className="p-6">
                 <div className="relative aspect-video bg-muted rounded-lg overflow-hidden mb-4">
-                  <img 
-                    src={selectedRecording.thumbnail} 
-                    alt="Recording thumbnail" 
-                    className="w-full h-full object-cover"
+                  <video
+                    src={selectedRecording.originalData.recordingUrl}
+                    controls
+                    autoPlay
+                    className="w-full h-full object-contain bg-black"
+                    ref={(el) => {
+                      if (el) {
+                        el.onplay = () => setIsPlaying(true);
+                        el.onpause = () => setIsPlaying(false);
+                      }
+                    }}
                   />
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <Button 
-                      size="icon" 
-                      variant="secondary" 
-                      className="h-16 w-16 rounded-full bg-white/90 hover:bg-white"
-                      onClick={() => setIsPlaying(!isPlaying)}
-                    >
-                      {isPlaying ? (
-                        <Pause className="h-8 w-8" />
-                      ) : (
-                        <Play className="h-8 w-8 ml-1" />
-                      )}
-                    </Button>
-                  </div>
-                  <div className="absolute bottom-4 left-4 right-4">
-                    <div className="flex items-center justify-between text-white text-sm mb-1">
-                      <span>Session Recording</span>
-                      <span>{formatDuration(selectedRecording.duration)}</span>
-                    </div>
-                    <Progress value={progress} className="h-2" />
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                  <div>
-                    <h4 className="font-medium mb-2">Session Details</h4>
-                    <div className="space-y-1 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">User:</span>
-                        <span>{selectedRecording.user}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Therapist:</span>
-                        <span>{selectedRecording.therapist}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Date:</span>
-                        <span>{selectedRecording.date}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Time:</span>
-                        <span>{selectedRecording.time}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Duration:</span>
-                        <span>{formatDuration(selectedRecording.duration)}</span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <h4 className="font-medium mb-2">Recording Details</h4>
-                    <div className="space-y-1 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Quality:</span>
-                        <span>{selectedRecording.quality}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Format:</span>
-                        <span>{selectedRecording.format}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">File Size:</span>
-                        <span>{selectedRecording.fileSize}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Type:</span>
-                        <span>{selectedRecording.type}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Status:</span>
-                        <span className="text-success">Available</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="flex gap-3 mt-6">
-                  <Button 
-                    className="flex-1"
-                    onClick={() => {
-                      // In a real app, this would play the recording
-                      alert(`Playing recording ${selectedRecording.id}`);
-                    }}
-                  >
-                    <Play className="w-4 h-4 mr-2" />
-                    Play Full Recording
-                  </Button>
-                  <Button 
-                    variant="outline"
-                    onClick={() => {
-                      // In a real app, this would download the recording
-                      alert(`Downloading recording ${selectedRecording.id}`);
-                    }}
-                  >
-                    <Download className="w-4 h-4 mr-2" />
-                    Download
-                  </Button>
                 </div>
               </div>
             </div>

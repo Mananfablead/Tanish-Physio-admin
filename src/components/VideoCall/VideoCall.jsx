@@ -229,67 +229,67 @@ const VideoCall = ({
           "⚠️ Invalid or missing callLogId detected! Creating real CallLog..."
         );
 
-        const createRealCallLog = async () => {
-          try {
-            console.log("🔄 Attempting to create CallLog in database...");
-            console.log("Session ID:", sessionId || roomId);
-            console.log("Room Type:", roomType);
-            console.log("User ID:", user?.userId);
+        // const createRealCallLog = async () => {
+        //   try {
+        //     console.log("🔄 Attempting to create CallLog in database...");
+        //     console.log("Session ID:", sessionId || roomId);
+        //     console.log("Room Type:", roomType);
+        //     console.log("User ID:", user?.userId);
 
-            // Validate required parameters
-            const actualSessionId = sessionId || roomId;
-            if (!actualSessionId) {
-              console.error("❌ No sessionId or roomId available!");
-              throw new Error("No session or room ID available");
-            }
+        //     // Validate required parameters
+        //     const actualSessionId = sessionId || roomId;
+        //     if (!actualSessionId) {
+        //       console.error("❌ No sessionId or roomId available!");
+        //       throw new Error("No session or room ID available");
+        //     }
 
-            // Create a real call log entry in the database
-            console.log("📤 Calling adminVideoCallApi.createCallLog...");
-            const response = await adminVideoCallApi.createCallLog(
-              groupSessionId || actualSessionId, // Use groupSessionId if available, otherwise sessionId
-              groupSessionId, // groupSessionId
-              groupSessionId
-                ? "group"
-                : roomType === "group"
-                ? "group"
-                : "one-on-one", // type - prioritize groupSessionId
-              [
-                {
-                  userId: user?.userId || "admin-user",
-                  joinedAt: new Date(),
-                },
-              ]
-            );
+        //     // Create a real call log entry in the database
+        //     console.log("📤 Calling adminVideoCallApi.createCallLog...");
+        //     const response = await adminVideoCallApi.createCallLog(
+        //       groupSessionId || actualSessionId, // Use groupSessionId if available, otherwise sessionId
+        //       groupSessionId, // groupSessionId
+        //       groupSessionId
+        //         ? "group"
+        //         : roomType === "group"
+        //         ? "group"
+        //         : "one-on-one", // type - prioritize groupSessionId
+        //       [
+        //         {
+        //           userId: user?.userId || "admin-user",
+        //           joinedAt: new Date(),
+        //         },
+        //       ]
+        //     );
 
-            console.log("📥 API Response:", response);
+        //     console.log("📥 API Response:", response);
 
-            if (response.callLog?._id) {
-              console.log(
-                "✅ Real CallLog created with ID:",
-                response.callLog._id
-              );
-              setCallLogId(response.callLog._id);
-            } else {
-              throw new Error("API response missing callLog ID");
-            }
-          } catch (error) {
-            console.error("❌ Failed to create CallLog via API:", error);
-            console.error(
-              "Error details:",
-              error.response?.data || error.message
-            );
-            console.error("Error stack:", error.stack);
+        //     if (response.callLog?._id) {
+        //       console.log(
+        //         "✅ Real CallLog created with ID:",
+        //         response.callLog._id
+        //       );
+        //       setCallLogId(response.callLog._id);
+        //     } else {
+        //       throw new Error("API response missing callLog ID");
+        //     }
+        //   } catch (error) {
+        //     console.error("❌ Failed to create CallLog via API:", error);
+        //     console.error(
+        //       "Error details:",
+        //       error.response?.data || error.message
+        //     );
+        //     console.error("Error stack:", error.stack);
 
-            // Immediate fallback to valid sample
-            const fallbackId = "507f1f77bcf86cd799439011";
-            console.log("🔧 Setting immediate fallback ObjectId:", fallbackId);
-            setCallLogId(fallbackId);
-          }
-        };
+        //     // Immediate fallback to valid sample
+        //     const fallbackId = "507f1f77bcf86cd799439011";
+        //     console.log("🔧 Setting immediate fallback ObjectId:", fallbackId);
+        //     setCallLogId(fallbackId);
+        //   }
+        // };
 
         // Execute immediately
         console.log("🚀 Executing createRealCallLog function...");
-        createRealCallLog();
+        // createRealCallLog();
       } else {
         console.log("✅ Valid callLogId already present");
       }
