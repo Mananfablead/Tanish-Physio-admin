@@ -46,6 +46,13 @@ const VideoCall = ({
     roomType
   );
   const [localError, setLocalError] = useState(null);
+  const [socketError, setSocketErrorState] = useState(null);
+  const [connectionAttempts, setConnectionAttempts] = useState(0);
+
+  // Sync socket error with local state
+  useEffect(() => {
+    setSocketErrorState(error);
+  }, [error]);
 
   // Set user role based on props or default to admin
   const effectiveUserRole = userRole || "admin";
@@ -310,7 +317,6 @@ const VideoCall = ({
   const [incomingCall, setIncomingCall] = useState(false);
   const [callStartTime, setCallStartTime] = useState(null);
   const [callDuration, setCallDuration] = useState(0);
-  const [connectionAttempts, setConnectionAttempts] = useState(0);
   const [chatMessages, setChatMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
   const [isTyping, setIsTyping] = useState(false);
@@ -354,7 +360,9 @@ const VideoCall = ({
 
     const handleError = (data) => {
       console.error("Admin video call error:", data);
-      setSocketError(data.message || "An error occurred during the video call");
+      setSocketErrorState(
+        data.message || "An error occurred during the video call"
+      );
     };
 
     const handleJoinedCall = (data) => {
@@ -363,7 +371,7 @@ const VideoCall = ({
       setJoinedCall(true);
       setCallActive(true); // Set call as active when admin joins
       setCallStatus("connected");
-      setSocketError(null); // Clear any previous errors
+      setSocketErrorState(null); // Clear any previous errors
       console.log("✅ Admin joined call successfully");
       setError(null); // Clear any previous errors
       console.log("✅ Admin joined call successfully and call is now active");
@@ -378,8 +386,11 @@ const VideoCall = ({
       // Allow all participants who successfully connect via WebRTC
       let isValidParticipant = true;
       let enhancedData = { ...data, isSelf: data.socketId === socket.id };
-      
-      console.log("✅ Admin participant joined via peer connection:", data.userId);
+
+      console.log(
+        "✅ Admin participant joined via peer connection:",
+        data.userId
+      );
 
       // If the participant doesn't have a name, try to get it from socket data
       if (!enhancedData.name) {
@@ -392,13 +403,17 @@ const VideoCall = ({
               : "You");
         } else {
           // For other participants, use name from socket data
-          enhancedData.name = 
-            data.name || 
-            (data.firstName && data.lastName 
+          enhancedData.name =
+            data.name ||
+            (data.firstName && data.lastName
               ? data.firstName + " " + data.lastName
-              : `Participant ${data.userId?.substring(0, 5) || data.socketId?.substring(0, 5) || "Unknown"}`);
+              : `Participant ${
+                  data.userId?.substring(0, 5) ||
+                  data.socketId?.substring(0, 5) ||
+                  "Unknown"
+                }`);
         }
-        
+
         console.log("Admin participant name assigned:", enhancedData.name);
       }
 
@@ -521,10 +536,10 @@ const VideoCall = ({
   useEffect(() => {
     if (sessionId && socket && (externalConnected || connected)) {
       // Join the chat room
-      socket.emit('join-room', {
-        sessionId: sessionId
+      socket.emit("join-room", {
+        sessionId: sessionId,
       });
-      
+
       // Load existing messages
       loadChatMessages();
     }
@@ -533,7 +548,8 @@ const VideoCall = ({
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+      chatContainerRef.current.scrollTop =
+        chatContainerRef.current.scrollHeight;
     }
   }, [chatMessages, showChat]);
 
@@ -560,22 +576,22 @@ const VideoCall = ({
         content: newMessage.trim(),
         senderId: socket?.id,
         senderName: senderName,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       };
-      
+
       // Send message via API
       await adminChatApi.sendMessage(sessionId, newMessage.trim());
-      
+
       // Add to local chat messages immediately for better UX
-      setChatMessages(prev => [...prev, messageData]);
+      setChatMessages((prev) => [...prev, messageData]);
       setNewMessage("");
-      
+
       // Also broadcast via socket if available
       if (socket) {
         socket.emit("send-message", {
           roomId,
           roomType,
-          message: messageData
+          message: messageData,
         });
       }
     } catch (error) {
@@ -609,7 +625,7 @@ const VideoCall = ({
 
     const handleError = (data) => {
       console.error("Socket error:", data);
-      setSocketError(data.message || "Connection error occurred");
+      setSocketErrorState(data.message || "Connection error occurred");
 
       // Handle specific session not active error
       if (
@@ -632,7 +648,7 @@ const VideoCall = ({
       setJoinedCall(true);
       setCallActive(true); // Set call as active when admin joins
       setCallStatus("connected");
-      setSocketError(null); // Clear any previous errors
+      setSocketErrorState(null); // Clear any previous errors
     };
 
     const handleParticipantJoined = (data) => {
@@ -715,7 +731,7 @@ const VideoCall = ({
     if (socketError && connectionAttempts < 3) {
       const timer = setTimeout(() => {
         setConnectionAttempts((prev) => prev + 1);
-        setSocketError(null);
+        setSocketErrorState(null);
         // The socket will automatically reconnect
       }, 3000);
 
@@ -1005,12 +1021,15 @@ const VideoCall = ({
     // Handle chat message (from API)
     const chatMessageListener = (data) => {
       console.log("Admin received chat message:", data);
-      
+
       // Determine sender name - use provided name or fallback
-      const senderName = data.senderName || 
-                        data.message?.senderName || 
-                        (data.senderId === socket?.id ? (userInfo.name || user?.name || "Admin") : "Participant");
-      
+      const senderName =
+        data.senderName ||
+        data.message?.senderName ||
+        (data.senderId === socket?.id
+          ? userInfo.name || user?.name || "Admin"
+          : "Participant");
+
       // Add the received message to chat messages
       setChatMessages((prev) => [
         ...prev,
@@ -1018,29 +1037,44 @@ const VideoCall = ({
           ...data.message,
           senderId: data.senderId || data.message.senderId,
           senderName: senderName,
-          content: data.message.content || data.message.message || data.message.text,
-          timestamp: data.message.timestamp || data.message.createdAt || new Date().toISOString()
-        }
+          content:
+            data.message.content || data.message.message || data.message.text,
+          timestamp:
+            data.message.timestamp ||
+            data.message.createdAt ||
+            new Date().toISOString(),
+        },
       ]);
     };
 
     // Handle real-time message broadcast
     const messageReceivedListener = (data) => {
       console.log("Admin received real-time message:", data);
-      
+
       // Determine sender name - use provided name or fallback
-      const senderName = data.senderName || 
-                        data.message?.senderName || 
-                        (data.senderId === socket?.id ? (userInfo.name || user?.name || "Admin") : "Participant");
-      
+      const senderName =
+        data.senderName ||
+        data.message?.senderName ||
+        (data.senderId === socket?.id
+          ? userInfo.name || user?.name || "Admin"
+          : "Participant");
+
       setChatMessages((prev) => [
         ...prev,
         {
-          content: data.message.content || data.message.message || data.message.text || data.content,
+          content:
+            data.message.content ||
+            data.message.message ||
+            data.message.text ||
+            data.content,
           senderId: data.senderId || data.message?.senderId || socket?.id,
           senderName: senderName,
-          timestamp: data.timestamp || data.message?.timestamp || data.createdAt || new Date().toISOString()
-        }
+          timestamp:
+            data.timestamp ||
+            data.message?.timestamp ||
+            data.createdAt ||
+            new Date().toISOString(),
+        },
       ]);
     };
 
@@ -1123,7 +1157,7 @@ const VideoCall = ({
       setAudioEnabled(enabled);
     } catch (error) {
       console.error("Error toggling audio:", error);
-      setSocketError("Failed to toggle audio");
+      setSocketErrorState("Failed to toggle audio");
     }
   };
 
@@ -1134,7 +1168,7 @@ const VideoCall = ({
       setVideoEnabled(enabled);
     } catch (error) {
       console.error("Error toggling video:", error);
-      setSocketError("Failed to toggle video");
+      setSocketErrorState("Failed to toggle video");
     }
   };
 
@@ -1145,7 +1179,7 @@ const VideoCall = ({
       setScreenSharing(!screenSharing);
     } catch (error) {
       console.error("Error toggling screen share:", error);
-      setSocketError("Failed to toggle screen sharing");
+      setSocketErrorState("Failed to toggle screen sharing");
     }
   };
 
@@ -1705,9 +1739,12 @@ const VideoCall = ({
                 <X className="h-4 w-4" />
               </Button>
             </div>
-            
+
             {/* Chat Messages Display */}
-            <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4">
+            <div
+              ref={chatContainerRef}
+              className="flex-1 overflow-y-auto p-4 space-y-4"
+            >
               {chatMessages.length === 0 ? (
                 <div className="flex flex-col justify-center items-center text-center h-full py-8">
                   <div className="w-12 h-12 bg-slate-800 rounded-2xl flex items-center justify-center mb-4 border border-slate-700">
@@ -1724,38 +1761,44 @@ const VideoCall = ({
                 chatMessages.map((message, index) => (
                   <div
                     key={index}
-                    className={`flex ${message.senderId === socket?.id ? 'justify-end' : 'justify-start'}`}
+                    className={`flex ${
+                      message.senderId === socket?.id
+                        ? "justify-end"
+                        : "justify-start"
+                    }`}
                   >
                     <div
                       className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm ${
                         message.senderId === socket?.id
-                          ? 'bg-emerald-500 text-white rounded-br-md'
-                          : 'bg-slate-800 text-slate-100 rounded-bl-md border border-slate-700'
+                          ? "bg-emerald-500 text-white rounded-br-md"
+                          : "bg-slate-800 text-slate-100 rounded-bl-md border border-slate-700"
                       }`}
                     >
                       <p className="text-[10px] font-semibold mb-1 opacity-80">
-                        {message.senderId === socket?.id 
-                          ? (userInfo.name || user?.name || "Admin")
-                          : (message.senderName || 'Participant')}
+                        {message.senderId === socket?.id
+                          ? userInfo.name || user?.name || "Admin"
+                          : message.senderName || "Participant"}
                       </p>
                       <p>{message.content || message.message}</p>
                       <p
                         className={`text-[10px] mt-1 ${
                           message.senderId === socket?.id
-                            ? 'text-emerald-100 opacity-80'
-                            : 'text-slate-400'
+                            ? "text-emerald-100 opacity-80"
+                            : "text-slate-400"
                         }`}
                       >
-                        {new Date(message.timestamp || message.createdAt).toLocaleTimeString([], {
-                          hour: '2-digit',
-                          minute: '2-digit',
+                        {new Date(
+                          message.timestamp || message.createdAt
+                        ).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
                         })}
                       </p>
                     </div>
                   </div>
                 ))
               )}
-              
+
               {/* Typing indicators */}
               {typingUsers.length > 0 && (
                 <div className="flex justify-start">
@@ -1763,18 +1806,26 @@ const VideoCall = ({
                     <div className="flex items-center gap-1">
                       <div className="flex gap-1">
                         <div className="w-2 h-2 bg-slate-500 rounded-full animate-bounce"></div>
-                        <div className="w-2 h-2 bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                        <div className="w-2 h-2 bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+                        <div
+                          className="w-2 h-2 bg-slate-500 rounded-full animate-bounce"
+                          style={{ animationDelay: "0.2s" }}
+                        ></div>
+                        <div
+                          className="w-2 h-2 bg-slate-500 rounded-full animate-bounce"
+                          style={{ animationDelay: "0.4s" }}
+                        ></div>
                       </div>
                       <span className="ml-2 text-xs">
-                        {typingUsers.length === 1 ? 'Someone is typing...' : `${typingUsers.length} people typing...`}
+                        {typingUsers.length === 1
+                          ? "Someone is typing..."
+                          : `${typingUsers.length} people typing...`}
                       </span>
                     </div>
                   </div>
                 </div>
               )}
             </div>
-            
+
             <div className="p-4 border-t border-slate-800">
               <div className="flex gap-2">
                 <input
@@ -2099,7 +2150,7 @@ const VideoCall = ({
                   className="bg-white/20 hover:bg-white/30 text-white text-xs h-7 px-2"
                   onClick={() => {
                     resetInitialization();
-                    
+
                     initLocalMedia()
                       .then(() => {
                         console.log(
@@ -2131,7 +2182,7 @@ const VideoCall = ({
               </div>
             </div>
             <button
-              onClick={() => setSocketError(null)}
+              onClick={() => setSocketErrorState(null)}
               className="text-white hover:text-gray-200 flex-shrink-0"
             >
               <X className="h-4 w-4" />
