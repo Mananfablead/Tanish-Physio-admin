@@ -1268,12 +1268,22 @@ const EditHeroForm = ({ data, onSave, onCancel }) => {
 
 const EditStepForm = ({ data, onSave, onCancel, isNew }) => {
     const [formData, setFormData] = useState(data || { _id: '', title: '', description: '', icon: '', image: '' });
+    const [errors, setErrors] = useState<{ [key: string]: string }>({});
+    const [isLoading, setIsLoading] = useState(false);
 
     const handleChange = (field, value) => {
         setFormData(prev => ({
             ...prev,
             [field]: value
         }));
+        
+        // Clear error when user starts typing
+        if (errors[field]) {
+            setErrors(prev => ({
+                ...prev,
+                [field]: ''
+            }));
+        }
     };
 
     // Handle image upload
@@ -1288,7 +1298,22 @@ const EditStepForm = ({ data, onSave, onCancel, isNew }) => {
         }
     };
 
+    const validateForm = () => {
+        const newErrors: { [key: string]: string } = {};
+        
+        if (!formData.title?.trim()) {
+            newErrors.title = 'Step title is required';
+        }
+        
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
     const handleSubmit = (newItem = false) => {
+        if (!validateForm()) {
+            return;
+        }
+        setIsLoading(true);
         onSave({ ...formData, isNew: newItem });
     };
 
@@ -1311,12 +1336,13 @@ const EditStepForm = ({ data, onSave, onCancel, isNew }) => {
                 />
             </div>
             <div>
-                <Label className="text-sm">Step Title</Label>
+                <Label className="text-sm">Step Title *</Label>
                 <Input
                     value={formData.title}
                     onChange={(e) => handleChange('title', e.target.value)}
-                    className="text-sm"
+                    className={errors.title ? 'border-red-500 text-sm' : 'text-sm'}
                 />
+                {errors.title && <p className="text-red-500 text-sm mt-1">{errors.title}</p>}
             </div>
             <div>
                 <Label className="text-sm">Step Description</Label>
@@ -1367,8 +1393,17 @@ const EditStepForm = ({ data, onSave, onCancel, isNew }) => {
                 </div>
             </div>
             <DialogFooter className="flex justify-between">
-                <Button type="button" variant="outline" onClick={onCancel} className="text-sm">Cancel</Button>
-                <Button type="button" onClick={() => handleSubmit(isNew)} className="text-sm">{isNew ? 'Add Step' : 'Save Changes'}</Button>
+                <Button type="button" variant="outline" onClick={onCancel} className="text-sm" disabled={isLoading}>Cancel</Button>
+                <Button type="button" onClick={() => handleSubmit(isNew)} className="text-sm" disabled={isLoading}>
+                    {isLoading ? (
+                        <>
+                            <span className="mr-2 h-4 w-4 animate-spin">⏳</span>
+                            {isNew ? 'Adding...' : 'Saving...'}
+                        </>
+                    ) : (
+                        isNew ? 'Add Step' : 'Save Changes'
+                    )}
+                </Button>
             </DialogFooter>
         </div>
     );
