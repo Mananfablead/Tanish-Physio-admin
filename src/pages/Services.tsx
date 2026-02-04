@@ -20,6 +20,8 @@ import PageLoader from "@/components/PageLoader";
 export default function Services() {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const servicesPerPage = 10;
 
   const [isDeleteServiceOpen, setIsDeleteServiceOpen] = useState(false);
   const [selectedService, setSelectedService] = useState<any>(null);
@@ -35,11 +37,21 @@ export default function Services() {
     dispatch(fetchServices());
   }, [dispatch]);
 
+  // Reset to first page when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
+
   const filteredServices = (services || []).filter((service) =>
     service?.name?.toLowerCase().includes(searchQuery?.toLowerCase()) ||
     service?.description?.toLowerCase().includes(searchQuery?.toLowerCase()) ||
     service?.category?.toLowerCase().includes(searchQuery?.toLowerCase())
   );
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredServices.length / servicesPerPage);
+  const startIndex = (currentPage - 1) * servicesPerPage;
+  const paginatedServices = filteredServices.slice(startIndex, startIndex + servicesPerPage);
 
 
 
@@ -74,10 +86,7 @@ export default function Services() {
         </Button>
       </div>
 
-      {/* Loading Indicator */}
-
-
-      {/* Search and Table */}
+ 
       <div className="space-y-4">
         <div className="relative max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -91,7 +100,7 @@ export default function Services() {
         </div>
 
         {!loading && (
-          filteredServices.length > 0 ? (
+          paginatedServices.length > 0 ? (
             <div className="bg-card rounded-lg border border-border overflow-hidden animate-fade-in">
               <div className="overflow-x-auto">
                 <table className="data-table">
@@ -109,7 +118,7 @@ export default function Services() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredServices.map((service) => (
+                    {paginatedServices.map((service) => (
                       <tr key={service._id || service.id} className={cn("cursor-pointer", (service.status === "inactive" || service.status === false) ? "opacity-70" : "")} onClick={() => navigate(`/services/${service._id || service.id}`)}>
                         <td>
                           <div className="flex items-center gap-3">
@@ -184,10 +193,48 @@ export default function Services() {
                 </table>
               </div>
 
+              {/* PAGINATION CONTROLS */}
               <div className="flex items-center justify-between px-4 py-3 border-t border-border">
                 <p className="text-sm text-muted-foreground">
-                  Showing <span className="font-medium">{filteredServices.length}</span> services
+                  Showing <span className="font-medium">{startIndex + 1}</span> to <span className="font-medium">{Math.min(startIndex + servicesPerPage, filteredServices.length)}</span> of <span className="font-medium">{filteredServices.length}</span> services
                 </p>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                  >
+                    Previous
+                  </Button>
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      const pageNum = i + 1;
+                      return (
+                        <Button
+                          key={pageNum}
+                          variant={currentPage === pageNum ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setCurrentPage(pageNum)}
+                          className="w-10 h-10 p-0"
+                        >
+                          {pageNum}
+                        </Button>
+                      );
+                    })}
+                    {totalPages > 5 && (
+                      <span className="px-2 text-muted-foreground">...</span>
+                    )}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                  >
+                    Next
+                  </Button>
+                </div>
               </div>
             </div>
           ) : (

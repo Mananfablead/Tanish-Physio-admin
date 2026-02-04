@@ -55,7 +55,7 @@ const App = () => (
       <Toaster />
       <Sonner />
 
-      <BrowserRouter>
+     <BrowserRouter basename="/admin">
         <Routes>
           {/* ================= PUBLIC ================= */}
           <Route

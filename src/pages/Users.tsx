@@ -209,84 +209,132 @@ export default function Users() {
 
       {/* TABLE OR EMPTY STATE */}
       {filteredUsers.length > 0 ? (
-        <div className="border rounded-lg overflow-x-auto">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Phone</th>
-                <th>Subscription</th>
-                <th>Status</th>
-                <th>Join Date</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredUsers.map((user) => (
-                <tr key={user._id}>
-                  <td className="font-medium">{user.name}</td>
-                  <td>{user.email}</td>
-                  <td>{user.phone}</td>
-                  <td>
-                    <span
-                      className={cn(
-                        "px-2 py-1 rounded-full text-xs",
-                        getSubscriptionBadge(user.subscriptionInfo?.status)
-                      )}
-                    >
-                      {user.subscriptionInfo?.planName || "No Subscription"}
-                    </span>
-                  </td>
-                  <td>
-                    <span
-                      className={cn(
-                        "status-badge",
-                        user.status === "active"
-                          ? "status-active"
-                          : "status-inactive"
-                      )}
-                    >
-                      {user.status}
-                    </span>
-                  </td>
-                  <td>{user.joinDate?.split("T")[0]}</td>
-                  <td>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button size="icon" variant="ghost">
-                          <MoreHorizontal />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={() => openUserProfile(user._id)}
-                        >
-                          <Eye className="w-4 h-4 mr-2" />
-                          View Profile
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => handleDeleteUser(user._id)}
-                        >
-                          <Trash className="w-4 h-4 mr-2" />
-                          Delete
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => toggleUserStatus(user)}
-                        >
-                          <UserX className="w-4 h-4 mr-2" />
-                          {user.status === "active"
-                            ? "Deactivate"
-                            : "Activate"}
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </td>
+        <>
+          <div className="border rounded-lg overflow-x-auto">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Phone</th>
+                  <th>Subscription</th>
+                  <th>Status</th>
+                  <th>Join Date</th>
+                  <th></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {filteredUsers.map((user) => (
+                  <tr key={user._id}>
+                    <td className="font-medium">{user.name}</td>
+                    <td>{user.email}</td>
+                    <td>{user.phone}</td>
+                    <td>
+                      <span
+                        className={cn(
+                          "px-2 py-1 rounded-full text-xs",
+                          getSubscriptionBadge(user.subscriptionInfo?.status)
+                        )}
+                      >
+                        {user.subscriptionInfo?.planName || "No Subscription"}
+                      </span>
+                    </td>
+                    <td>
+                      <span
+                        className={cn(
+                          "status-badge",
+                          user.status === "active"
+                            ? "status-active"
+                            : "status-inactive"
+                        )}
+                      >
+                        {user.status}
+                      </span>
+                    </td>
+                    <td>{user.joinDate?.split("T")[0]}</td>
+                    <td>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button size="icon" variant="ghost">
+                            <MoreHorizontal />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => openUserProfile(user._id)}
+                          >
+                            <Eye className="w-4 h-4 mr-2" />
+                            View Profile
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleDeleteUser(user._id)}
+                          >
+                            <Trash className="w-4 h-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => toggleUserStatus(user)}
+                          >
+                            <UserX className="w-4 h-4 mr-2" />
+                            {user.status === "active"
+                              ? "Deactivate"
+                              : "Activate"}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* PAGINATION CONTROLS */}
+          {pagination && (
+            <div className="flex items-center justify-between mt-6">
+              <div className="text-sm text-muted-foreground">
+                Showing {(currentPage - 1) * 10 + 1} to {Math.min(currentPage * 10, pagination.total)} of {pagination.total} users
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </Button>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                    const pageNum = i + 1;
+                    return (
+                      <Button
+                        key={pageNum}
+                        variant={currentPage === pageNum ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setCurrentPage(pageNum)}
+                        className="w-10 h-10 p-0"
+                      >
+                        {pageNum}
+                      </Button>
+                    );
+                  })}
+                  {pagination.totalPages > 5 && (
+                    <span className="px-2 text-muted-foreground">...</span>
+                  )}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, pagination.totalPages))}
+                  disabled={currentPage === pagination.totalPages}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
+        </>
       ) : (
         <div className="border rounded-lg p-12 text-center">
           <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">

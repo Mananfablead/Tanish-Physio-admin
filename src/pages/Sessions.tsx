@@ -397,21 +397,23 @@ export default function Sessions() {
       if (typeof error.payload === 'string') {
         return error.payload;
       }
-      return
-      error?.payload?.message ||
+      return (
+        error?.payload?.message ||
         error?.payload?.error ||
         error?.payload?.data?.message ||
         error?.payload?.data?.error ||
-        "Something went wrong";
+        "Something went wrong"
+      );
     }
 
     // Fallback to other possible locations
-    return
-    error?.error ||
+    return (
+      error?.error ||
       error?.message ||
       error?.data?.message ||
       error?.data?.error ||
-      "Something went wrong";
+      "Something went wrong"
+    );
   };
 
   const handleUpdateSessionStatus = async (sessionId: string, status: string) => {

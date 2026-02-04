@@ -73,12 +73,19 @@ export default function Bookings() {
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
   const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false);
   const [newStatus, setNewStatus] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const bookingsPerPage = 10;
   console.log("isEditing", isEditing);
   useEffect(() => {
     dispatch(fetchBookings());
     dispatch(fetchServices());
     dispatch(fetchUsers());
   }, [dispatch]);
+
+  // Reset to first page when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
 
   // State for creating new booking
   const [newBookingForm, setNewBookingForm] = useState({
@@ -110,6 +117,11 @@ export default function Bookings() {
         .includes(searchQuery?.toLowerCase()) ||
       booking.status?.toLowerCase().includes(searchQuery?.toLowerCase())
   );
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredBookings.length / bookingsPerPage);
+  const startIndex = (currentPage - 1) * bookingsPerPage;
+  const paginatedBookings = filteredBookings.slice(startIndex, startIndex + bookingsPerPage);
 
   /* ===========================
      CREATE BOOKING
@@ -303,94 +315,140 @@ export default function Bookings() {
         />
       </div>
       {/* Table or Empty State */}
-      {filteredBookings.length > 0 ? (
-        <div className="bg-card rounded-lg border overflow-hidden">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Service</th>
-                <th>Client</th>
-                {/* <th>Therapist</th> */}
-                <th>Date & Time</th>
-                <th>Status</th>
-                <th>Expiration</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredBookings.map((booking) => (
-                <tr key={booking.id}>
-                  <td>{booking.serviceName}</td>
-                  <td>{booking.clientName}</td>
-                  {/* <td>{booking.therapistName}</td> */}
-                  <td>
-                    {booking.date} <Clock className="inline w-4 h-4 ml-2" />{" "}
-                    {booking.time}
-                  </td>
-                  <td>
-
-                    <span
-                      className={cn(
-                        "status-badge",
-                        getStatusBadge(booking.status)
-                      )}
-                    >
-                      {booking.status}
-                    </span>
-
-                  </td>
-                  <td>
-                    {booking.isServiceExpired ? (
-                      <span className="px-2 py-1 rounded-full text-xs font-semibold text-red-600 bg-red-100">
-                        Expired
-                      </span>
-                    ) : booking.serviceExpiryDate ? (
-                      <span className="px-2 py-1 rounded-full text-xs font-semibold text-green-600 bg-green-100">
-                        {new Date(booking.serviceExpiryDate).toLocaleDateString()}
-                      </span>
-                    ) : (
-                      <span className="px-2 py-1 rounded-full text-xs font-semibold text-blue-600 bg-blue-100">
-                        Unlimited
-                      </span>
-                    )}
-                  </td>
-                  <td>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button size="icon" variant="ghost">
-                          <MoreHorizontal className="w-4 h-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-44">
-                        {/* EDIT BOOKING */}
-                        <DropdownMenuItem
-                          onClick={() => prepareEditBooking(booking)}
-                          className="cursor-pointer"
-                        >
-                          <Edit className="w-4 h-4 mr-2 text-slate-600" />
-                          Edit Booking
-                        </DropdownMenuItem>
-
-                        {/* STATUS UPDATE */}
-                        <DropdownMenuItem
-                          onClick={() => {
-                            setSelectedBooking(booking);
-                            setIsStatusDialogOpen(true);
-                          }}
-                          className="cursor-pointer"
-                        >
-                          <Activity className="w-4 h-4 mr-2" />
-                          Update Status
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-
-                    </DropdownMenu>
-                  </td>
+      {paginatedBookings.length > 0 ? (
+        <>
+          <div className="bg-card rounded-lg border overflow-hidden">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Service</th>
+                  <th>Client</th>
+                  {/* <th>Therapist</th> */}
+                  <th>Date & Time</th>
+                  <th>Status</th>
+                  <th>Expiration</th>
+                  <th>Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {paginatedBookings.map((booking) => (
+                  <tr key={booking.id}>
+                    <td>{booking.serviceName}</td>
+                    <td>{booking.clientName}</td>
+                    {/* <td>{booking.therapistName}</td> */}
+                    <td>
+                      {booking.date} <Clock className="inline w-4 h-4 ml-2" />{" "}
+                      {booking.time}
+                    </td>
+                    <td>
+
+                      <span
+                        className={cn(
+                          "status-badge",
+                          getStatusBadge(booking.status)
+                        )}
+                      >
+                        {booking.status}
+                      </span>
+
+                    </td>
+                    <td>
+                      {booking.isServiceExpired ? (
+                        <span className="px-2 py-1 rounded-full text-xs font-semibold text-red-600 bg-red-100">
+                          Expired
+                        </span>
+                      ) : booking.serviceExpiryDate ? (
+                        <span className="px-2 py-1 rounded-full text-xs font-semibold text-green-600 bg-green-100">
+                          {new Date(booking.serviceExpiryDate).toLocaleDateString()}
+                        </span>
+                      ) : (
+                        <span className="px-2 py-1 rounded-full text-xs font-semibold text-blue-600 bg-blue-100">
+                          Unlimited
+                        </span>
+                      )}
+                    </td>
+                    <td>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button size="icon" variant="ghost">
+                            <MoreHorizontal className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-44">
+                          {/* EDIT BOOKING */}
+                          <DropdownMenuItem
+                            onClick={() => prepareEditBooking(booking)}
+                            className="cursor-pointer"
+                          >
+                            <Edit className="w-4 h-4 mr-2 text-slate-600" />
+                            Edit Booking
+                          </DropdownMenuItem>
+
+                          {/* STATUS UPDATE */}
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setSelectedBooking(booking);
+                              setIsStatusDialogOpen(true);
+                            }}
+                            className="cursor-pointer"
+                          >
+                            <Activity className="w-4 h-4 mr-2" />
+                            Update Status
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+
+                      </DropdownMenu>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* PAGINATION CONTROLS */}
+          <div className="flex items-center justify-between mt-6">
+            <div className="text-sm text-muted-foreground">
+              Showing <span className="font-medium">{startIndex + 1}</span> to <span className="font-medium">{Math.min(startIndex + bookingsPerPage, filteredBookings.length)}</span> of <span className="font-medium">{filteredBookings.length}</span> bookings
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+              >
+                Previous
+              </Button>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  const pageNum = i + 1;
+                  return (
+                    <Button
+                      key={pageNum}
+                      variant={currentPage === pageNum ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setCurrentPage(pageNum)}
+                      className="w-10 h-10 p-0"
+                    >
+                      {pageNum}
+                    </Button>
+                  );
+                })}
+                {totalPages > 5 && (
+                  <span className="px-2 text-muted-foreground">...</span>
+                )}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        </>
       ) : (
         <div className="border rounded-lg p-12 text-center">
           <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
