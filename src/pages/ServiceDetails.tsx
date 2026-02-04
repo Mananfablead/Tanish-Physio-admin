@@ -18,6 +18,7 @@ import {
   fetchServiceById,
   fetchServices,
 } from "@/features/services/serviceSlice";
+import PageLoader from "@/components/PageLoader";
 
 export default function ServiceDetails() {
   const { id } = useParams<{ id: string }>();
@@ -55,33 +56,10 @@ export default function ServiceDetails() {
   ======================== */
   if (loading) {
     return (
-      <div className="p-6">
-        <Card>
-          <CardContent className="p-6 text-center">
-            <p className="text-lg font-medium">Loading...</p>
-          </CardContent>
-        </Card>
-      </div>
+      <PageLoader text="Loading service details..." />
     );
   }
 
-  /* =======================
-      ERROR / NOT FOUND
-  ======================== */
-  if (!service || error) {
-    return (
-      <div className="p-6">
-        <Card>
-          <CardContent className="p-6 text-center space-y-4">
-            <p className="text-lg font-medium">Service not found</p>
-            <Button onClick={() => navigate("/services")}>
-              Back to Services
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   /* =======================
       UI
