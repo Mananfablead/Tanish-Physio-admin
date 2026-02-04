@@ -31,16 +31,19 @@ const VideoCall = ({
   user,
   sessionDetails,
 }) => {
-   console.log("🎬 VideoCall component mounted/updated");
-  console.log("🎬 Props received:", {
-    roomId,
-    roomType,
-    userRole,
-    sessionId,
-    connected: externalConnected,
-    user: user?.userId,
-    sessionDetails: !!sessionDetails,
-  });
+   useEffect(() => {
+    console.log("🎬 VideoCall component mounted/updated");
+    console.log("🎬 Props received:", {
+      roomId,
+      roomType,
+      userRole,
+      sessionId,
+      connected: externalConnected,
+      user: user?.userId,
+      sessionDetails: !!sessionDetails,
+    });
+  }, [roomId, roomType, userRole, sessionId, externalConnected, user, sessionDetails]);
+  
   const { socket, connected, error, emit, on, setError: setSocketError} = useSocket(
     roomId,
     roomType
@@ -90,7 +93,6 @@ const VideoCall = ({
   // Auto-start call when admin joins successfully
   useEffect(() => {
     if (joinedCall && !callStarted && userRole === "admin") {
-      console.log("🔄 Auto-starting call for admin...");
       startCall();
     }
   }, [joinedCall, callStarted, userRole, startCall]);
@@ -99,30 +101,24 @@ const VideoCall = ({
   const [videoEnabled, setVideoEnabled] = useState(true);
 
   // Debug callActive changes
-  console.log("📊 callActive value:", callActive);
-  console.log("📊 callLogId value:", callLogId);
+  useEffect(() => {
+    console.log("📊 callActive value:", callActive);
+    console.log("📊 callLogId value:", callLogId);
+  }, [callActive, callLogId]);
 
   // Effect to update video elements when streams change
   useEffect(() => {
-    console.log("=== ADMIN VIDEO STREAM UPDATE EFFECT ===");
-    console.log("Local stream:", !!localStream);
-    console.log("Remote streams count:", Object.keys(remoteStreams).length);
-    console.log("Remote streams keys:", Object.keys(remoteStreams));
-
     // Update local video when localStream changes
     if (localVideoRef.current && localStream) {
       try {
         if (localVideoRef.current.srcObject !== localStream) {
           localVideoRef.current.srcObject = localStream;
-          console.log("✅ Admin local video element updated");
-
-          // Ensure local video plays
           localVideoRef.current.muted = true;
           localVideoRef.current.autoplay = true;
           localVideoRef.current.playsInline = true;
         }
       } catch (err) {
-        console.error("❌ Error setting admin local video srcObject:", err);
+        console.error("Error setting admin local video srcObject:", err);
       }
     }
 
@@ -133,47 +129,21 @@ const VideoCall = ({
           const videoElement = remoteVideoRefs.current[userId];
           if (videoElement.srcObject !== stream) {
             videoElement.srcObject = stream;
-            console.log(
-              `✅ Admin remote video element updated for user: ${userId}`
-            );
-
-            // Ensure remote video plays
             videoElement.muted = true;
             videoElement.autoplay = true;
             videoElement.playsInline = true;
 
-            // Play the video
             const playPromise = videoElement.play();
             if (playPromise !== undefined) {
-              playPromise
-                .then(() => {
-                  console.log(
-                    `✅ Admin remote video playing for user: ${userId}`
-                  );
-                })
-                .catch((error) => {
-                  console.warn(
-                    `⚠️ Admin remote video autoplay failed for ${userId}:`,
-                    error
-                  );
-                  // Try to play muted
-                  videoElement.muted = true;
-                  videoElement.play().catch((err) => {
-                    console.error(
-                      `❌ Admin remote video play failed for ${userId}:`,
-                      err
-                    );
-                  });
-                });
+              playPromise.catch((error) => {
+                videoElement.muted = true;
+                videoElement.play().catch(() => {});
+              });
             }
           }
         } catch (err) {
-          console.error(
-            `❌ Error setting admin remote video srcObject for ${userId}:`,
-            err
-          );
+          console.error(`Error setting admin remote video srcObject for ${userId}:`, err);
         }
-      } else {
       }
     });
   }, [localStream, remoteStreams, remoteVideoRefs, localVideoRef]);
@@ -183,18 +153,14 @@ const VideoCall = ({
     if (localStream && localVideoRef.current) {
       try {
         localVideoRef.current.srcObject = localStream;
-        console.log("✅ Admin local video stream assigned via useEffect");
       } catch (err) {
-        console.error("❌ Error assigning local stream to video element:", err);
+        console.error("Error assigning local stream to video element:", err);
       }
     }
   }, [localStream]);
 
-  // Debug: Log callLogId changes
+  // Validate callLogId format - no logging in loop
   useEffect(() => {
-    console.log("🔍 callLogId changed to:", callLogId);
-
-    // Validate callLogId format
     if (callLogId) {
       if (
         typeof callLogId !== "string" ||
@@ -202,61 +168,35 @@ const VideoCall = ({
         !/^[0-9a-fA-F]{24}$/.test(callLogId)
       ) {
         console.warn("⚠️ Invalid callLogId format detected:", callLogId);
-      } else {
-        console.log("✅ Valid callLogId format confirmed");
       }
     }
   }, [callLogId]);
 
   // Fallback: Ensure we always have a valid callLogId when call is active
   useEffect(() => {
-    console.log("🔄 CallLog creation useEffect triggered");
-    console.log("callActive:", callActive);
-    console.log("callLogId:", callLogId);
-    console.log("sessionId:", sessionId);
-    console.log("roomId:", roomId);
-    console.log("roomType:", roomType);
-    console.log("user:", user);
-
     if (callActive) {
-      console.log("📞 Call is active, checking callLogId status...");
-      console.log("Current callLogId:", callLogId);
-      console.log("CallLogId type:", typeof callLogId);
-      console.log("CallLogId length:", callLogId ? callLogId.length : "N/A");
-
       // If we don't have a valid callLogId, create a real one
       if (
         !callLogId ||
         (typeof callLogId === "string" && callLogId.length !== 24)
       ) {
-        console.log(
-          "⚠️ Invalid or missing callLogId detected! Creating real CallLog..."
-        );
-
         const createRealCallLog = async () => {
           try {
-            console.log("🔄 Attempting to create CallLog in database...");
-            console.log("Session ID:", sessionId || roomId);
-            console.log("Room Type:", roomType);
-            console.log("User ID:", user?.userId);
-
             // Validate required parameters
             const actualSessionId = sessionId || roomId;
             if (!actualSessionId) {
-              console.error("❌ No sessionId or roomId available!");
               throw new Error("No session or room ID available");
             }
 
             // Create a real call log entry in the database
-            console.log("📤 Calling adminVideoCallApi.createCallLog...");
             const response = await adminVideoCallApi.createCallLog(
-              groupSessionId || actualSessionId, // Use groupSessionId if available, otherwise sessionId
-              groupSessionId, // groupSessionId
+              groupSessionId || actualSessionId,
+              groupSessionId,
               groupSessionId
                 ? "group"
                 : roomType === "group"
                 ? "group"
-                : "one-on-one", // type - prioritize groupSessionId
+                : "one-on-one",
               [
                 {
                   userId: user?.userId || "admin-user",
@@ -265,42 +205,22 @@ const VideoCall = ({
               ]
             );
 
-            console.log("📥 API Response:", response);
-
             if (response.callLog?._id) {
-              console.log(
-                "✅ Real CallLog created with ID:",
-                response.callLog._id
-              );
               setCallLogId(response.callLog._id);
             } else {
               throw new Error("API response missing callLog ID");
             }
           } catch (error) {
-            console.error("❌ Failed to create CallLog via API:", error);
-            console.error(
-              "Error details:",
-              error.response?.data || error.message
-            );
-            console.error("Error stack:", error.stack);
-
             // Immediate fallback to valid sample
             const fallbackId = "507f1f77bcf86cd799439011";
-            console.log("🔧 Setting immediate fallback ObjectId:", fallbackId);
             setCallLogId(fallbackId);
           }
         };
 
-        // Execute immediately
-        console.log("🚀 Executing createRealCallLog function...");
         createRealCallLog();
-      } else {
-        console.log("✅ Valid callLogId already present");
       }
-    } else {
-      console.log("⏸️ Call is not active, skipping CallLog creation");
     }
-  }, [callActive, callLogId, sessionId, roomId, roomType, user, setCallLogId]);
+  }, [callActive, callLogId, sessionId, roomId, roomType, user, setCallLogId, groupSessionId]);
 
   const [screenSharing, setScreenSharing] = useState(false);
   const [showParticipants, setShowParticipants] = useState(false);
@@ -358,32 +278,20 @@ const VideoCall = ({
     };
 
     const handleJoinedCall = (data) => {
-      console.log("=== ADMIN SUCCESSFULLY JOINED CALL ===");
-      console.log("Join data:", data);
       setJoinedCall(true);
-      setCallActive(true); // Set call as active when admin joins
+      setCallActive(true);
       setCallStatus("connected");
-      setSocketError(null); // Clear any previous errors
-      console.log("✅ Admin joined call successfully");
-      setError(null); // Clear any previous errors
-      console.log("✅ Admin joined call successfully and call is now active");
+      setSocketError(null);
+      setLocalError(null);
     };
 
     const handleParticipantJoined = (data) => {
-      console.log("=== ADMIN PARTICIPANT JOINED EVENT ===");
-      console.log("Participant data:", data);
-      console.log("Session details available:", !!sessionDetails);
-
-      // Participants are validated through peer connections, not API calls
-      // Allow all participants who successfully connect via WebRTC
+      // Participants are validated through peer connections
       let isValidParticipant = true;
       let enhancedData = { ...data, isSelf: data.socketId === socket.id };
-      
-      console.log("✅ Admin participant joined via peer connection:", data.userId);
 
       // If the participant doesn't have a name, try to get it from socket data
       if (!enhancedData.name) {
-        // Try to get name from the user prop if this is the current user
         if (enhancedData.isSelf && user) {
           enhancedData.name =
             user.name ||
@@ -391,39 +299,25 @@ const VideoCall = ({
               ? user.firstName + " " + user.lastName
               : "You");
         } else {
-          // For other participants, use name from socket data
           enhancedData.name = 
             data.name || 
             (data.firstName && data.lastName 
               ? data.firstName + " " + data.lastName
               : `Participant ${data.userId?.substring(0, 5) || data.socketId?.substring(0, 5) || "Unknown"}`);
         }
-        
-        console.log("Admin participant name assigned:", enhancedData.name);
       }
 
       // Only add valid participants to the list (avoid duplicates)
       if (isValidParticipant) {
         setParticipants((prev) => {
-          // Check if participant already exists
           const exists = prev.some(
             (p) => p.userId === data.userId && p.socketId === data.socketId
           );
           if (exists) {
-            console.log(
-              "⚠️ Participant already exists (admin), skipping:",
-              data.userId
-            );
             return prev;
           }
-          console.log("✅ Adding new participant (admin):", enhancedData);
           return [...prev, enhancedData];
         });
-      } else {
-        console.log(
-          "❌ Invalid participant attempt blocked (admin):",
-          data.userId
-        );
       }
     };
 
@@ -440,21 +334,10 @@ const VideoCall = ({
       if (cleanupJoined) cleanupJoined();
       if (cleanupParticipant) cleanupParticipant();
     };
-  }, [socket, on, sessionDetails, setParticipants]);
+  }, [socket, on, sessionDetails, setParticipants, user]);
 
   // Initialize media when properly connected and joined
   useEffect(() => {
-    console.log("=== ADMIN MEDIA INITIALIZATION CHECK ===");
-    console.log("Socket available:", !!socket);
-    console.log("Socket connected:", connected);
-    console.log("External connected:", externalConnected);
-    console.log("Joined call status:", joinedCall);
-    console.log("Local stream status:", !!localStream);
-    console.log(
-      "Can initialize:",
-      socket && (externalConnected || connected) && joinedCall && !localStream
-    );
-
     // Only initialize media after successfully joining the call
     if (
       socket &&
@@ -466,31 +349,20 @@ const VideoCall = ({
       !hasAttemptedInit &&
       !initError
     ) {
-      console.log("Admin: Initializing local media after joining call...");
       setIsInitializingMedia(true);
-      setLocalError(null); // Clear any previous errors
+      setLocalError(null);
 
       initLocalMedia()
         .then(() => {
-          console.log("✅ Admin: Local media initialized successfully");
           setIsInitializingMedia(false);
         })
         .catch((err) => {
-          console.error("❌ Admin: Error initializing media:", err);
           setIsInitializingMedia(false);
           setLocalError(
             err.message ||
               "Failed to access camera and microphone. Please check permissions and refresh the page."
           );
         });
-    } else if (!socket) {
-      console.log("⚠️ Admin: Socket not available yet");
-    } else if (!(externalConnected || connected)) {
-      console.log("⚠️ Admin: Not connected to socket");
-    } else if (!joinedCall) {
-      console.log("⚠️ Admin: Not joined call yet");
-    } else if (localStream) {
-      console.log("✅ Admin: Local stream already available");
     }
   }, [
     socket,
@@ -499,6 +371,10 @@ const VideoCall = ({
     joinedCall,
     localStream,
     initLocalMedia,
+    isInitializingMedia,
+    isInitializing,
+    hasAttemptedInit,
+    initError
   ]);
 
   // Timer for call duration
@@ -538,7 +414,9 @@ const VideoCall = ({
   }, [chatMessages, showChat]);
 
   // Participants are now populated through peer connections
-  console.log("Admin: Participants will be populated through peer connections");
+  useEffect(() => {
+    console.log("Admin: Participants will be populated through peer connections");
+  }, []);
 
   const loadChatMessages = async () => {
     try {
@@ -628,18 +506,13 @@ const VideoCall = ({
     };
 
     const handleJoinedCall = (data) => {
-      console.log("Successfully joined call:", data);
       setJoinedCall(true);
-      setCallActive(true); // Set call as active when admin joins
+      setCallActive(true);
       setCallStatus("connected");
-      setSocketError(null); // Clear any previous errors
+      setSocketError(null);
     };
 
     const handleParticipantJoined = (data) => {
-      console.log("=== ADMIN PARTICIPANT JOINED EVENT ===");
-      console.log("Participant data:", data);
-      console.log("Session details available:", !!sessionDetails);
-
       // Validate that this participant belongs to the session
       let isValidParticipant = false;
       let enhancedData = { ...data, isSelf: data.socketId === socket.id };
@@ -656,19 +529,11 @@ const VideoCall = ({
           enhancedData.role = matchingParticipant.role;
           enhancedData.isSelf = matchingParticipant.isSelf;
           enhancedData.isTherapist = matchingParticipant.isTherapist;
-          console.log(
-            "✅ Valid participant joined (admin):",
-            enhancedData.name
-          );
         }
       } else {
         // If no session details, allow participants but validate basic data
         if (data.userId && data.socketId) {
           isValidParticipant = true;
-          console.log(
-            "⚠️ No session details - allowing participant (admin):",
-            data.userId
-          );
         }
       }
 
@@ -679,20 +544,10 @@ const VideoCall = ({
             (p) => p.userId === data.userId && p.socketId === data.socketId
           );
           if (exists) {
-            console.log(
-              "⚠️ Participant already exists (admin), skipping:",
-              data.userId
-            );
             return prev;
           }
-          console.log("✅ Adding new participant (admin):", enhancedData);
           return [...prev, enhancedData];
         });
-      } else {
-        console.log(
-          "❌ Invalid participant attempt blocked (admin):",
-          data.userId
-        );
       }
     };
 
@@ -708,20 +563,20 @@ const VideoCall = ({
       if (cleanupJoined) cleanupJoined();
       if (cleanupParticipant) cleanupParticipant();
     };
-  }, [socket, on, onEndCall]);
+  }, [socket, on, onEndCall, sessionDetails, setParticipants]);
 
   // Retry connection if it fails
   useEffect(() => {
-    if (socketError && connectionAttempts < 3) {
+    if (error && connectionAttempts < 3) {
       const timer = setTimeout(() => {
         setConnectionAttempts((prev) => prev + 1);
-        setSocketError(null);
+        setLocalError(null);
         // The socket will automatically reconnect
       }, 3000);
 
       return () => clearTimeout(timer);
     }
-  }, [socketError, connectionAttempts]);
+  }, [error, connectionAttempts]);
 
   // Set up socket listeners
   useEffect(() => {
@@ -729,62 +584,33 @@ const VideoCall = ({
 
     // Handle incoming offer
     const offerListener = (data) => {
-      console.log("ADMIN: Offer received:", data);
-      console.log("ADMIN: My socket ID:", socket.id);
-      console.log("ADMIN: Sender ID:", data.senderId);
-
-      // Only handle offers from other participants (not ourselves)
       if (data.senderId !== socket.id) {
-        console.log("ADMIN: Processing offer from:", data.senderId);
         handleOffer(data.offer, data.senderId);
-      } else {
-        console.log("ADMIN: Ignoring own offer");
       }
     };
 
-    // Handle WebRTC signaling events (new)
+    // Handle WebRTC signaling events
     const webRTCOfferListener = (data) => {
-      console.log("ADMIN: WebRTC Offer received:", data);
-      console.log("ADMIN: My socket ID:", socket.id);
-      console.log("ADMIN: Sender ID:", data.senderId);
-
       if (data.senderId !== socket.id) {
-        console.log("ADMIN: Processing WebRTC offer from:", data.senderId);
         handleOffer(data.offer, data.senderId);
       }
     };
 
     const webRTCAnswerListener = (data) => {
-      console.log("ADMIN: WebRTC Answer received:", data);
-      console.log("ADMIN: My socket ID:", socket.id);
-      console.log("ADMIN: Sender ID:", data.senderId);
-
       if (data.senderId !== socket.id) {
-        console.log("ADMIN: Processing WebRTC answer from:", data.senderId);
         handleAnswer(data.answer, data.senderId);
       }
     };
 
     const webRTCIceCandidateListener = (data) => {
-      console.log("ADMIN: WebRTC ICE Candidate received:", data);
-      console.log("ADMIN: My socket ID:", socket.id);
-      console.log("ADMIN: Sender ID:", data.senderId);
-
       if (data.senderId !== socket.id) {
-        console.log(
-          "ADMIN: Processing WebRTC ICE candidate from:",
-          data.senderId
-        );
         handleIceCandidate(data.candidate, data.senderId);
       }
     };
 
     // Handle force-leave event from admin
     const forceLeaveListener = (data) => {
-      console.log("Force leave event received:", data);
       if (data.userId === socket.id) {
-        console.log("You have been removed from the session by admin");
-        // End call locally
         setCallStatus("ended");
         setCallActive(false);
         setCallStartTime(null);
@@ -796,16 +622,8 @@ const VideoCall = ({
 
     // Handle incoming answer
     const answerListener = (data) => {
-      console.log("ADMIN: Answer received:", data);
-      console.log("ADMIN: My socket ID:", socket.id);
-      console.log("ADMIN: Sender ID:", data.senderId);
-
-      // Only handle answers from other participants (not ourselves)
       if (data.senderId !== socket.id) {
-        console.log("ADMIN: Processing answer from:", data.senderId);
         handleAnswer(data.answer, data.senderId);
-      } else {
-        console.log("ADMIN: Ignoring own answer");
       }
     };
 
@@ -818,9 +636,7 @@ const VideoCall = ({
 
     // Handle participant joined
     const participantJoinedListener = (data) => {
-      console.log("Participant joined:", data);
       setParticipants((prev) => {
-        // Avoid duplicates
         const exists = prev.some(
           (p) => p.userId === data.userId && p.socketId === data.socketId
         );
@@ -838,27 +654,13 @@ const VideoCall = ({
 
     // Handle participant left
     const participantLeftListener = (data) => {
-      console.log("Participant left:", data);
-      // Remove the participant from the list
       setParticipants((prev) => {
-        const updatedParticipants = prev.filter(
-          (p) => p.userId !== data.userId
-        );
-        // If this was the last participant (other than admin), don't end the call
-        // Admin session should continue even if all participants leave
-        return updatedParticipants;
+        return prev.filter((p) => p.userId !== data.userId);
       });
     };
 
-    // Handle call started - FIXED VERSION
+    // Handle call started
     const callStartedListener = (data) => {
-      console.log("=== CALL STARTED EVENT RECEIVED ===");
-      console.log("Call started data:", data);
-      console.log("callLogId in data:", data.callLogId);
-      console.log("Current callLogId state:", callLogId);
-      console.log("Session details available:", !!sessionDetails);
-      console.log("Room ID:", roomId);
-
       setCallStatus("connected");
       setCallActive(true);
       setCallStartTime(Date.now());
@@ -867,44 +669,23 @@ const VideoCall = ({
 
       if (data.callLogId) {
         finalCallLogId = data.callLogId;
-        console.log("✅ Using callLogId from event:", data.callLogId);
       } else {
-        console.warn("⚠️ No callLogId received in call-started event!");
-
         // Try multiple fallback options
-        // Option 1: Use sessionDetails.sessionId if it looks like a valid ObjectId
         if (
           sessionDetails?.sessionId &&
           typeof sessionDetails.sessionId === "string" &&
           sessionDetails.sessionId.length === 24
         ) {
           finalCallLogId = sessionDetails.sessionId;
-          console.log(
-            "💡 Using sessionDetails.sessionId as fallback:",
-            finalCallLogId
-          );
-        }
-        // Option 2: Use roomId if it looks like a valid ObjectId
-        else if (roomId && typeof roomId === "string" && roomId.length === 24) {
+        } else if (roomId && typeof roomId === "string" && roomId.length === 24) {
           finalCallLogId = roomId;
-          console.log("💡 Using roomId as fallback:", finalCallLogId);
-        }
-        // Option 3: Use a valid MongoDB ObjectId sample
-        else {
-          finalCallLogId = "507f1f77bcf86cd799439011"; // Valid sample ObjectId
-          console.log(
-            "🔧 Using valid sample ObjectId as fallback:",
-            finalCallLogId
-          );
+        } else {
+          finalCallLogId = "507f1f77bcf86cd799439011";
         }
       }
 
-      // Always set the callLogId
       if (finalCallLogId) {
         setCallLogId(finalCallLogId);
-        console.log("✅ Final callLogId set to:", finalCallLogId);
-      } else {
-        console.error("❌ FAILED to set any callLogId!");
       }
 
       if (data.startedBy !== socket.id) {
@@ -925,22 +706,13 @@ const VideoCall = ({
       setIncomingCall(false);
     };
 
-    // Handle call ended - Asymmetric termination logic
+    // Handle call ended
     const callEndedListener = (data) => {
-      console.log("Call ended by:", data.endedBy);
-      console.log("Current socket ID:", socket.id);
-      console.log("User role:", userRole);
-      console.log("Initiator role:", data.initiatorRole);
-
-      // Check if this is an admin-initiated termination
       const isAdminTermination =
         data.initiatorRole === "admin" || data.initiatorRole === "therapist";
 
       if (userRole === "admin" || userRole === "therapist") {
-        // Admin/Therapist perspective
         if (isAdminTermination) {
-          // Admin ended the call - this should end the monitoring session
-          console.log("Admin-initiated termination: Ending monitoring session");
           setCallStatus("ended");
           setCallActive(false);
           setCallStartTime(null);
@@ -948,21 +720,12 @@ const VideoCall = ({
           setCallDuration(0);
           if (onEndCall) onEndCall();
         } else {
-          // Client/patient ended the call - admin should stay in monitoring mode
-          console.log(
-            "Client-initiated termination: Keeping admin in monitoring mode"
-          );
-          // Remove the participant who left
           setParticipants((prev) =>
             prev.filter((p) => p.socketId !== data.endedBy)
           );
-          // Keep admin session active for monitoring
-          console.log("Patient left, admin monitoring continues");
         }
       } else {
-        // Regular user perspective
         if (data.endedBy === socket.id) {
-          // User themselves ended the call
           setCallStatus("ended");
           setCallActive(false);
           setCallStartTime(null);
@@ -970,48 +733,35 @@ const VideoCall = ({
           setCallDuration(0);
           if (onEndCall) onEndCall();
         } else {
-          // Someone else ended the call, just remove them from participants
           setParticipants((prev) =>
             prev.filter((p) => p.socketId !== data.endedBy)
           );
-          console.log("Participant left, user session continues");
         }
       }
     };
 
     // Handle audio toggle
-    const audioToggleListener = (data) => {
-      // Update UI to reflect other participant's audio status
-    };
+    const audioToggleListener = (data) => {};
 
     // Handle video toggle
-    const videoToggleListener = (data) => {
-      // Update UI to reflect other participant's video status
-    };
+    const videoToggleListener = (data) => {};
 
     // Handle screen share toggle
-    const screenShareToggleListener = (data) => {
-      // Update UI to reflect other participant's screen sharing status
-    };
+    const screenShareToggleListener = (data) => {};
 
     // Handle user muted
     const userMutedListener = (data) => {
-      // Handle if current user was muted by therapist
       if (data.userId === socket.id) {
         setAudioEnabled(false);
       }
     };
 
-    // Handle chat message (from API)
+    // Handle chat message
     const chatMessageListener = (data) => {
-      console.log("Admin received chat message:", data);
-      
-      // Determine sender name - use provided name or fallback
       const senderName = data.senderName || 
                         data.message?.senderName || 
                         (data.senderId === socket?.id ? (userInfo.name || user?.name || "Admin") : "Participant");
       
-      // Add the received message to chat messages
       setChatMessages((prev) => [
         ...prev,
         {
@@ -1026,9 +776,6 @@ const VideoCall = ({
 
     // Handle real-time message broadcast
     const messageReceivedListener = (data) => {
-      console.log("Admin received real-time message:", data);
-      
-      // Determine sender name - use provided name or fallback
       const senderName = data.senderName || 
                         data.message?.senderName || 
                         (data.senderId === socket?.id ? (userInfo.name || user?.name || "Admin") : "Participant");
@@ -1065,7 +812,6 @@ const VideoCall = ({
     cleanupFunctions.push(on("offer", offerListener));
     cleanupFunctions.push(on("answer", answerListener));
     cleanupFunctions.push(on("ice-candidate", iceCandidateListener));
-    // Add WebRTC signaling listeners
     cleanupFunctions.push(on("webrtc-offer-received", webRTCOfferListener));
     cleanupFunctions.push(on("webrtc-answer-received", webRTCAnswerListener));
     cleanupFunctions.push(
@@ -1094,7 +840,6 @@ const VideoCall = ({
           cleanup();
         }
       });
-      // Remove WebRTC signaling listeners
       if (socket) {
         socket.off("webrtc-offer-received", webRTCOfferListener);
         socket.off("webrtc-answer-received", webRTCAnswerListener);
@@ -1114,6 +859,9 @@ const VideoCall = ({
     setParticipants,
     setCallLogId,
     sessionDetails,
+    roomId,
+    userInfo.name,
+    user?.name
   ]);
 
   // Toggle audio
@@ -1192,55 +940,20 @@ const VideoCall = ({
                   try {
                     if (el.srcObject !== stream) {
                       el.srcObject = stream;
-                      console.log(
-                        `✅ Clinic monitoring: Remote video assigned for ${
-                          participant.name || "Participant"
-                        }`
-                      );
-
-                      // Ensure video plays properly
                       el.muted = true;
                       el.autoplay = true;
                       el.playsInline = true;
-
-                      // Play the video
+                  
                       const playPromise = el.play();
                       if (playPromise !== undefined) {
-                        playPromise
-                          .then(() => {
-                            console.log(
-                              `✅ Clinic monitoring: Remote video playing for ${
-                                participant.name || "Participant"
-                              }`
-                            );
-                          })
-                          .catch((error) => {
-                            console.warn(
-                              `⚠️ Clinic monitoring: Video autoplay failed for ${
-                                participant.name || "Participant"
-                              }:`,
-                              error
-                            );
-                            // Try to play muted
-                            el.muted = true;
-                            el.play().catch((err) => {
-                              console.error(
-                                `❌ Clinic monitoring: Video play failed for ${
-                                  participant.name || "Participant"
-                                }:`,
-                                err
-                              );
-                            });
-                          });
+                        playPromise.catch((error) => {
+                          el.muted = true;
+                          el.play().catch(() => {});
+                        });
                       }
                     }
                   } catch (err) {
-                    console.error(
-                      `❌ Clinic monitoring: Error assigning video for ${
-                        participant.name || "Participant"
-                      }:`,
-                      err
-                    );
+                    console.error(`Error assigning video for ${participant.name || "Participant"}:`, err);
                   }
                 }
               }
@@ -1289,13 +1002,6 @@ const VideoCall = ({
                       try {
                         if (el.srcObject !== stream) {
                           el.srcObject = stream;
-                          console.log(
-                            `✅ Clinic monitoring: Group video assigned for participant ${
-                              index + 1
-                            }`
-                          );
-
-                          // Ensure video plays
                           el.muted = true;
                           el.autoplay = true;
                           el.playsInline = true;
@@ -1303,29 +1009,13 @@ const VideoCall = ({
                           const playPromise = el.play();
                           if (playPromise !== undefined) {
                             playPromise.catch((error) => {
-                              console.warn(
-                                `⚠️ Clinic monitoring: Group video autoplay issue for participant ${
-                                  index + 1
-                                }:`,
-                                error
-                              );
                               el.muted = true;
-                              el.play().catch((err) => {
-                                console.error(
-                                  `❌ Clinic monitoring: Group video play failed:`,
-                                  err
-                                );
-                              });
+                              el.play().catch(() => {});
                             });
                           }
                         }
                       } catch (err) {
-                        console.error(
-                          `❌ Clinic monitoring: Error with group video ${
-                            index + 1
-                          }:`,
-                          err
-                        );
+                        console.error(`Error with group video ${index + 1}:`, err);
                       }
                     }
                   }
@@ -1831,14 +1521,8 @@ const VideoCall = ({
                 if (localStream) {
                   try {
                     el.srcObject = localStream;
-                    console.log(
-                      "✅ Admin local video ref and srcObject assigned"
-                    );
                   } catch (err) {
-                    console.error(
-                      "❌ Error assigning admin local video srcObject:",
-                      err
-                    );
+                    console.error("Error assigning admin local video srcObject:", err);
                   }
                 }
               }
@@ -2059,7 +1743,6 @@ const VideoCall = ({
                       className="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700"
                       onClick={() => {
                         // Recording toggle functionality
-                        console.log("Toggle recording");
                       }}
                     >
                       Toggle Recording
@@ -2070,7 +1753,6 @@ const VideoCall = ({
                       className="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700"
                       onClick={() => {
                         // Logs functionality
-                        console.log("View session logs");
                       }}
                     >
                       View Session Logs
@@ -2102,15 +1784,9 @@ const VideoCall = ({
                     
                     initLocalMedia()
                       .then(() => {
-                        console.log(
-                          "Admin: Local media re-initialized successfully"
-                        );
+                        // Successfully re-initialized
                       })
                       .catch((err) => {
-                        console.error(
-                          "Admin: Error re-initializing media:",
-                          err
-                        );
                         setLocalError(
                           err.message ||
                             "Failed to access camera and microphone. Please check permissions and refresh the page."
