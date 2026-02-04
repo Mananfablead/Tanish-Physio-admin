@@ -11,24 +11,19 @@ import { Link, useNavigate } from "react-router-dom";
 /* ---------------- CONSTANTS ---------------- */
 
 const planOptions = [
-  { label: "Daily", value: "daily", months: 1 },
-  { label: "Weekly", value: "weekly", months: 1 },
+
   { label: "Monthly", value: "monthly", months: 1 },
   { label: "Quarterly", value: "quarterly", months: 3 },
   { label: "Yearly", value: "yearly", months: 12 },
-  { label: "Lifetime", value: "lifetime", months: 999 }, // Representing lifetime as 999 months
+
 ];
 
 const durationOptions = [
-  { label: "Daily", value: "daily" },
-  { label: "Weekly", value: "weekly" },
+
   { label: "Monthly", value: "monthly" },
   { label: "Quarterly", value: "quarterly" },
   { label: "Yearly", value: "yearly" },
-  { label: "Lifetime", value: "lifetime" },
-  { label: "Custom", value: "custom" },
-  { label: "Unlimited", value: "unlimited" },
-  { label: "One-time", value: "onetime" },
+
 ];
 
 /* ---------------- COMPONENT ---------------- */
@@ -42,18 +37,18 @@ export default function AddSubscription() {
     planId: "",
     name: "",
     description: "",
-    price: 0,
+    price: "",
     originalPrice: 0,
-    discountPercent: 0,
+    discountPercent: "",
     duration: "monthly",
-    validityInMonths: 1,
-    sessions: 0, // 0 = Unlimited
-    sessionDuration: 60,
+    validityInMonths: "",
+    sessions: "", // 0 = Unlimited
+    sessionDuration: "",
     features: [""],
     benefits: [""],
     services: ["Physiotherapy"],
-    maxBookingsPerDay: 1,
-    cancellationWindow: 12,
+    maxBookingsPerDay: "",
+    cancellationWindow: "",
     popular: false,
     autoRenew: true,
     status: "active",
@@ -123,9 +118,10 @@ export default function AddSubscription() {
       });
       navigate("/subscriptions");
     } else {
+      console.log("Failed to create subscription plan:", result.payload);
       toast({
         title: "Error",
-        description: result.payload?.message || "Failed to create plan",
+        description: result.payload || "Failed to create plan",
         variant: "destructive",
       });
     }
@@ -134,7 +130,7 @@ export default function AddSubscription() {
   /* ---------------- UI ---------------- */
 
   return (
-    <div className="p-6 space-y-6 max-w-6xl mx-auto">
+    <div className="p-0 space-y-6 max-w-6xl mx-auto">
       {/* HEADER */}
       <div className="flex justify-between items-center">
         <div>
@@ -210,7 +206,7 @@ export default function AddSubscription() {
             </select>
           </div>
 
-         
+
 
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -224,12 +220,12 @@ export default function AddSubscription() {
                     sessions: Number(e.target.value),
                   }))
                 }
-                placeholder="0 = Unlimited"
+                placeholder="Enter the number of sessions"
                 min="0"
               />
-              <p className="text-xs text-muted-foreground mt-1">
+              {/* <p className="text-xs text-muted-foreground mt-1">
                 Enter 0 for unlimited sessions
-              </p>
+              </p> */}
             </div>
             <div>
               <Label>Validity Period (Days)</Label>
@@ -276,7 +272,7 @@ export default function AddSubscription() {
 
         {/* RIGHT COLUMN */}
         <div className="border rounded-lg p-6 space-y-4 bg-card">
-           <div>
+          <div>
             <Label>Description</Label>
             <textarea
               name="description"
@@ -314,35 +310,6 @@ export default function AddSubscription() {
             ))}
           </div>
 
-          {/* BENEFITS */}
-          {/* <div>
-            <div className="flex justify-between mb-2">
-              <Label>Benefits</Label>
-              <Button size="sm" variant="outline" onClick={() => addArrayItem("benefits")}>
-                Add
-              </Button>
-            </div>
-            {planForm.benefits.map((b, i) => (
-              <Input
-                key={i}
-                className="mb-2"
-                value={b}
-                onChange={(e) =>
-                  updateArrayField("benefits", i, e.target.value)
-                }
-              />
-            ))}
-          </div> */}
-
-          {/* <div className="flex justify-between items-center">
-            <Label>Popular Plan</Label>
-            <Switch
-              checked={planForm.popular}
-              onCheckedChange={(v) =>
-                setPlanForm((p) => ({ ...p, popular: v }))
-              }
-            />
-          </div> */}
 
           <div className="flex justify-between items-center">
             <Label>Active</Label>
@@ -364,7 +331,7 @@ export default function AddSubscription() {
         <Button variant="outline" asChild>
           <Link to="/subscriptions">Cancel</Link>
         </Button>
-        <Button onClick={handleSave}>Create Plan</Button>
+        <Button disabled={!planForm.name || !planForm.price || !planForm.validityInMonths || !planForm.sessionDuration || !planForm.features.length || !planForm.description || !planForm.planId || !planForm.duration || !planForm.validityInMonths || !planForm.validityInMonths} onClick={handleSave}>Create Plan</Button>
       </div>
     </div>
   );
