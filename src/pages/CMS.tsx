@@ -389,8 +389,11 @@ export default function CMS() {
         } else if (modalSection === 'faq') {
             if (!updatedData._id) {
                 // Adding a new FAQ
-                dispatch(createFaq(updatedData));
+                const result = await dispatch(createFaq(updatedData));
                 // Note: The FAQ will be added to local state via useEffect when Redux state updates
+                if (createFaq.rejected.match(result)) {
+                    console.error('Failed to create FAQ:', result.error);
+                }
             } else {
                 // Updating an existing FAQ
                 // Clean up the faqData to remove problematic id fields
@@ -1038,12 +1041,22 @@ export default function CMS() {
 // Form Components
 const EditHeroForm = ({ data, onSave, onCancel }) => {
     const [formData, setFormData] = useState(data);
+    const [errors, setErrors] = useState<{ [key: string]: string }>({});
+    const [isLoading, setIsLoading] = useState(false);
 
     const handleChange = (field, value) => {
         setFormData(prev => ({
             ...prev,
             [field]: value
         }));
+        
+        // Clear error when user starts typing
+        if (errors[field]) {
+            setErrors(prev => ({
+                ...prev,
+                [field]: ''
+            }));
+        }
     };
 
     // Handle image upload
@@ -1082,7 +1095,34 @@ const EditHeroForm = ({ data, onSave, onCancel }) => {
         }));
     };
 
+    const validateForm = () => {
+        const newErrors: { [key: string]: string } = {};
+        
+        if (!formData.heading?.trim()) {
+            newErrors.heading = 'Main heading is required';
+        }
+        
+        if (!formData.subHeading?.trim()) {
+            newErrors.subHeading = 'Sub heading is required';
+        }
+        
+        if (!formData.description?.trim()) {
+            newErrors.description = 'Description is required';
+        }
+        
+        if (!formData.ctaText?.trim()) {
+            newErrors.ctaText = 'CTA button text is required';
+        }
+        
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
     const handleSubmit = () => {
+        if (!validateForm()) {
+            return;
+        }
+        setIsLoading(true);
         onSave(formData);
     };
 
@@ -1093,31 +1133,36 @@ const EditHeroForm = ({ data, onSave, onCancel }) => {
                 <Input
                     value={formData.heading}
                     onChange={(e) => handleChange('heading', e.target.value)}
-                    className="text-sm"
+                    className={errors.heading ? 'border-red-500 text-sm' : 'text-sm'}
                 />
+                {errors.heading && <p className="text-red-500 text-sm mt-1">{errors.heading}</p>}
             </div>
             <div>
                 <Label className="text-sm">Sub Heading</Label>
                 <Input
                     value={formData.subHeading}
                     onChange={(e) => handleChange('subHeading', e.target.value)}
-                    className="text-sm"
+                    className={errors.subHeading ? 'border-red-500 text-sm' : 'text-sm'}
                 />
+                {errors.subHeading && <p className="text-red-500 text-sm mt-1">{errors.subHeading}</p>}
             </div>
             <div>
                 <Label>Description</Label>
                 <Textarea
                     value={formData.description}
                     onChange={(e) => handleChange('description', e.target.value)}
+                    className={errors.description ? 'border-red-500' : ''}
                 />
+                {errors.description && <p className="text-red-500 text-sm mt-1">{errors.description}</p>}
             </div>
             <div>
                 <Label className="text-sm">Primary CTA Button Text</Label>
                 <Input
                     value={formData.ctaText}
                     onChange={(e) => handleChange('ctaText', e.target.value)}
-                    className="text-sm"
+                    className={errors.ctaText ? 'border-red-500 text-sm' : 'text-sm'}
                 />
+                {errors.ctaText && <p className="text-red-500 text-sm mt-1">{errors.ctaText}</p>}
             </div>
             {/* <div>
                 <Label>Secondary CTA Button Text</Label>
@@ -1205,8 +1250,17 @@ const EditHeroForm = ({ data, onSave, onCancel }) => {
                 </div>
             </div>
             <DialogFooter className="flex justify-between">
-                <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
-                <Button type="button" onClick={handleSubmit}>Save Changes</Button>
+                <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>Cancel</Button>
+                <Button type="button" onClick={handleSubmit} disabled={isLoading}>
+                    {isLoading ? (
+                        <>
+                            <span className="mr-2 h-4 w-4 animate-spin">⏳</span>
+                            Saving...
+                        </>
+                    ) : (
+                        'Save Changes'
+                    )}
+                </Button>
             </DialogFooter>
         </div>
     );
@@ -1697,16 +1751,45 @@ const EditWhyUsForm = ({ data, onSave, onCancel }) => {
 };
 
 const EditFaqForm = ({ data, onSave, onCancel, isNew }) => {
-    const [formData, setFormData] = useState(data || { _id: '', question: '', answer: '' });
+    const [formData, setFormData] = useState<FaqData>(data || { _id: '', question: '', answer: '' });
+    const [errors, setErrors] = useState<{ [key: string]: string }>({});
+    const [isLoading, setIsLoading] = useState(false);
 
     const handleChange = (field, value) => {
         setFormData(prev => ({
             ...prev,
             [field]: value
         }));
+        
+        // Clear error when user starts typing
+        if (errors[field]) {
+            setErrors(prev => ({
+                ...prev,
+                [field]: ''
+            }));
+        }
+    };
+
+    const validateForm = () => {
+        const newErrors: { [key: string]: string } = {};
+        
+        if (!formData.question.trim()) {
+            newErrors.question = 'Question is required';
+        }
+        
+        if (!formData.answer.trim()) {
+            newErrors.answer = 'Answer is required';
+        }
+        
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
     };
 
     const handleSubmit = (newItem = false) => {
+        if (!validateForm()) {
+            return;
+        }
+        setIsLoading(true);
         onSave({ ...formData, isNew: newItem });
     };
 
@@ -1718,7 +1801,9 @@ const EditFaqForm = ({ data, onSave, onCancel, isNew }) => {
                     value={formData.question}
                     onChange={(e) => handleChange('question', e.target.value)}
                     placeholder="FAQ Question"
+                    className={errors.question ? 'border-red-500' : ''}
                 />
+                {errors.question && <p className="text-red-500 text-sm mt-1">{errors.question}</p>}
             </div>
             <div>
                 <Label>Answer</Label>
@@ -1726,11 +1811,22 @@ const EditFaqForm = ({ data, onSave, onCancel, isNew }) => {
                     value={formData.answer}
                     onChange={(e) => handleChange('answer', e.target.value)}
                     placeholder="FAQ Answer"
+                    className={errors.answer ? 'border-red-500' : ''}
                 />
+                {errors.answer && <p className="text-red-500 text-sm mt-1">{errors.answer}</p>}
             </div>
             <DialogFooter className="flex justify-between">
-                <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
-                <Button type="button" onClick={() => handleSubmit(isNew)}>{isNew ? 'Add FAQ' : 'Save Changes'}</Button>
+                <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>Cancel</Button>
+                <Button type="button" onClick={() => handleSubmit(isNew)} disabled={isLoading}>
+                    {isLoading ? (
+                        <>
+                            <span className="mr-2 h-4 w-4 animate-spin">⏳</span>
+                            {isNew ? 'Adding...' : 'Saving...'}
+                        </>
+                    ) : (
+                        isNew ? 'Add FAQ' : 'Save Changes'
+                    )}
+                </Button>
             </DialogFooter>
         </div>
     );
