@@ -376,13 +376,13 @@ export default function Bookings() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-44">
                           {/* EDIT BOOKING */}
-                          <DropdownMenuItem
+                          {/* <DropdownMenuItem
                             onClick={() => prepareEditBooking(booking)}
                             className="cursor-pointer"
                           >
                             <Edit className="w-4 h-4 mr-2 text-slate-600" />
                             Edit Booking
-                          </DropdownMenuItem>
+                          </DropdownMenuItem> */}
 
                           {/* STATUS UPDATE */}
                           <DropdownMenuItem

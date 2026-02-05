@@ -83,12 +83,12 @@ export function ExpiredItemsDashboard() {
 
   return (
     <div className="space-y-6">
-      {error && (
+      {/* {error && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>{error}</AlertDescription>
         </Alert>
-      )}
+      )} */}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Expired Subscriptions Card */}

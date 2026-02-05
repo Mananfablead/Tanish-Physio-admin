@@ -2,6 +2,12 @@ import { useState, useEffect } from "react";
 import { useSelector, useDispatch } from 'react-redux';
 import { cn } from "@/lib/utils";
 import { fetchAllCmsData, updateHero, createStep, updateStep, deleteStep, updateConditions, updateWhyUs, createFaq, updateFaq, deleteFaq, updateTerms, updateFeaturedTherapist, updateContact, updateAbout } from '@/features/cms/cmsSlice';
+
+// Import new components
+import AboutSection from "./cms-components/AboutSection";
+import EditHeroForm from "./cms-components/forms/EditHeroForm";
+import EditStepForm from "./cms-components/forms/EditStepForm";
+import EditConditionsForm from "./cms-components/forms/EditConditionsForm";
 import {
     Tabs,
     TabsContent,
@@ -209,7 +215,7 @@ interface AboutData {
     isPublic: boolean;
 }
 
-// Import sub-components
+// Import existing components
 import ConditionsSection from "./cms-components/ConditionsSection";
 import ContactSection from "./cms-components/ContactSection";
 import TeamSection from "./cms-components/TeamSection";
@@ -257,10 +263,6 @@ export default function CMS() {
                 })),
                 conditions: {
                     ...cmsStateData.conditions,
-                    conditions: (cmsStateData.conditions?.conditions || []).map(condition => ({
-                        name: condition.title || '',
-                        image: condition.image || ''
-                    })),
                     isPublic: cmsStateData.conditions?.isPublic ?? true
                 },
                 whyUs: {
@@ -789,44 +791,10 @@ export default function CMS() {
 
                 {/* ABOUT US */}
                 <TabsContent value="about">
-                    <div className="bg-white rounded-lg shadow p-6">
-                        <div className="flex justify-between items-center mb-4">
-                            <h2 className="text-xl font-semibold">About Us Section</h2>
-                            <Button 
-                                variant="outline" 
-                                size="sm" 
-                                onClick={() => openEditModal('about', data.about)}
-                            >
-                                <Edit3 className="w-4 h-4 mr-2" />
-                                Edit About Us
-                            </Button>
-                        </div>
-                        <div className="space-y-4">
-                            <div>
-                                <h3 className="font-medium text-gray-900">Title: {data.about?.title}</h3>
-                            </div>
-                            <div>
-                                <h4 className="text-sm font-medium text-gray-700">Description:</h4>
-                                <p className="text-gray-600">{data.about?.description}</p>
-                            </div>
-                            <div>
-                                <h4 className="text-sm font-medium text-gray-700">Mission:</h4>
-                                <p className="text-gray-600">{data.about?.mission}</p>
-                            </div>
-                            <div>
-                                <h4 className="text-sm font-medium text-gray-700">Vision:</h4>
-                                <p className="text-gray-600">{data.about?.vision}</p>
-                            </div>
-                            <div>
-                                <h4 className="text-sm font-medium text-gray-700">Primary Image:</h4>
-                                <img 
-                                    src={data.about?.image || ''} 
-                                    alt="About Us" 
-                                    className="w-full h-auto rounded-lg"
-                                />
-                            </div>
-                        </div>
-                    </div>
+                    <AboutSection 
+                        data={data.about} 
+                        onEdit={openEditModal} 
+                    />
                 </TabsContent>
 
                 {/* TEAM MEMBERS */}
@@ -897,44 +865,10 @@ export default function CMS() {
                 )}
                 
                 {activeTab === "about" && (
-                    <div className="bg-white rounded-lg shadow p-6">
-                        <div className="flex justify-between items-center mb-4">
-                            <h2 className="text-xl font-semibold">About Us Section</h2>
-                            <Button 
-                                variant="outline" 
-                                size="sm" 
-                                onClick={() => openEditModal('about', data.about)}
-                            >
-                                <Edit3 className="w-4 h-4 mr-2" />
-                                Edit About Us
-                            </Button>
-                        </div>
-                        <div className="space-y-4">
-                            <div>
-                                <h3 className="font-medium text-gray-900">Title: {data.about?.title}</h3>
-                            </div>
-                            <div>
-                                <h4 className="text-sm font-medium text-gray-700">Description:</h4>
-                                <p className="text-gray-600">{data.about?.description}</p>
-                            </div>
-                            <div>
-                                <h4 className="text-sm font-medium text-gray-700">Mission:</h4>
-                                <p className="text-gray-600">{data.about?.mission}</p>
-                            </div>
-                            <div>
-                                <h4 className="text-sm font-medium text-gray-700">Vision:</h4>
-                                <p className="text-gray-600">{data.about?.vision}</p>
-                            </div>
-                            <div>
-                                <h4 className="text-sm font-medium text-gray-700">Primary Image:</h4>
-                                <img 
-                                    src={data.about?.image || ''} 
-                                    alt="About Us" 
-                                    className="w-full h-auto rounded-lg"
-                                />
-                            </div>
-                        </div>
-                    </div>
+                    <AboutSection 
+                        data={data.about} 
+                        onEdit={openEditModal} 
+                    />
                 )}
                 
                 {activeTab === "featuredTherapist" && (
@@ -1041,22 +975,12 @@ export default function CMS() {
 // Form Components
 const EditHeroForm = ({ data, onSave, onCancel }) => {
     const [formData, setFormData] = useState(data);
-    const [errors, setErrors] = useState<{ [key: string]: string }>({});
-    const [isLoading, setIsLoading] = useState(false);
 
     const handleChange = (field, value) => {
         setFormData(prev => ({
             ...prev,
             [field]: value
         }));
-        
-        // Clear error when user starts typing
-        if (errors[field]) {
-            setErrors(prev => ({
-                ...prev,
-                [field]: ''
-            }));
-        }
     };
 
     // Handle image upload
@@ -1095,34 +1019,7 @@ const EditHeroForm = ({ data, onSave, onCancel }) => {
         }));
     };
 
-    const validateForm = () => {
-        const newErrors: { [key: string]: string } = {};
-        
-        if (!formData.heading?.trim()) {
-            newErrors.heading = 'Main heading is required';
-        }
-        
-        if (!formData.subHeading?.trim()) {
-            newErrors.subHeading = 'Sub heading is required';
-        }
-        
-        if (!formData.description?.trim()) {
-            newErrors.description = 'Description is required';
-        }
-        
-        if (!formData.ctaText?.trim()) {
-            newErrors.ctaText = 'CTA button text is required';
-        }
-        
-        setErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
-    };
-
     const handleSubmit = () => {
-        if (!validateForm()) {
-            return;
-        }
-        setIsLoading(true);
         onSave(formData);
     };
 
@@ -1133,36 +1030,31 @@ const EditHeroForm = ({ data, onSave, onCancel }) => {
                 <Input
                     value={formData.heading}
                     onChange={(e) => handleChange('heading', e.target.value)}
-                    className={errors.heading ? 'border-red-500 text-sm' : 'text-sm'}
+                    className="text-sm"
                 />
-                {errors.heading && <p className="text-red-500 text-sm mt-1">{errors.heading}</p>}
             </div>
             <div>
                 <Label className="text-sm">Sub Heading</Label>
                 <Input
                     value={formData.subHeading}
                     onChange={(e) => handleChange('subHeading', e.target.value)}
-                    className={errors.subHeading ? 'border-red-500 text-sm' : 'text-sm'}
+                    className="text-sm"
                 />
-                {errors.subHeading && <p className="text-red-500 text-sm mt-1">{errors.subHeading}</p>}
             </div>
             <div>
                 <Label>Description</Label>
                 <Textarea
                     value={formData.description}
                     onChange={(e) => handleChange('description', e.target.value)}
-                    className={errors.description ? 'border-red-500' : ''}
                 />
-                {errors.description && <p className="text-red-500 text-sm mt-1">{errors.description}</p>}
             </div>
             <div>
                 <Label className="text-sm">Primary CTA Button Text</Label>
                 <Input
                     value={formData.ctaText}
                     onChange={(e) => handleChange('ctaText', e.target.value)}
-                    className={errors.ctaText ? 'border-red-500 text-sm' : 'text-sm'}
+                    className="text-sm"
                 />
-                {errors.ctaText && <p className="text-red-500 text-sm mt-1">{errors.ctaText}</p>}
             </div>
             {/* <div>
                 <Label>Secondary CTA Button Text</Label>
@@ -1250,17 +1142,8 @@ const EditHeroForm = ({ data, onSave, onCancel }) => {
                 </div>
             </div>
             <DialogFooter className="flex justify-between">
-                <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>Cancel</Button>
-                <Button type="button" onClick={handleSubmit} disabled={isLoading}>
-                    {isLoading ? (
-                        <>
-                            <span className="mr-2 h-4 w-4 animate-spin">⏳</span>
-                            Saving...
-                        </>
-                    ) : (
-                        'Save Changes'
-                    )}
-                </Button>
+                <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
+                <Button type="button" onClick={handleSubmit}>Save Changes</Button>
             </DialogFooter>
         </div>
     );
@@ -1268,12 +1151,22 @@ const EditHeroForm = ({ data, onSave, onCancel }) => {
 
 const EditStepForm = ({ data, onSave, onCancel, isNew }) => {
     const [formData, setFormData] = useState(data || { _id: '', title: '', description: '', icon: '', image: '' });
+    const [errors, setErrors] = useState<{ [key: string]: string }>({});
+    const [isLoading, setIsLoading] = useState(false);
 
     const handleChange = (field, value) => {
         setFormData(prev => ({
             ...prev,
             [field]: value
         }));
+        
+        // Clear error when user starts typing
+        if (errors[field]) {
+            setErrors(prev => ({
+                ...prev,
+                [field]: ''
+            }));
+        }
     };
 
     // Handle image upload
@@ -1288,7 +1181,22 @@ const EditStepForm = ({ data, onSave, onCancel, isNew }) => {
         }
     };
 
+    const validateForm = () => {
+        const newErrors: { [key: string]: string } = {};
+        
+        if (!formData.title?.trim()) {
+            newErrors.title = 'Step title is required';
+        }
+        
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
     const handleSubmit = (newItem = false) => {
+        if (!validateForm()) {
+            return;
+        }
+        setIsLoading(true);
         onSave({ ...formData, isNew: newItem });
     };
 
@@ -1311,12 +1219,13 @@ const EditStepForm = ({ data, onSave, onCancel, isNew }) => {
                 />
             </div>
             <div>
-                <Label className="text-sm">Step Title</Label>
+                <Label className="text-sm">Step Title *</Label>
                 <Input
                     value={formData.title}
                     onChange={(e) => handleChange('title', e.target.value)}
-                    className="text-sm"
+                    className={errors.title ? 'border-red-500 text-sm' : 'text-sm'}
                 />
+                {errors.title && <p className="text-red-500 text-sm mt-1">{errors.title}</p>}
             </div>
             <div>
                 <Label className="text-sm">Step Description</Label>
@@ -1367,8 +1276,17 @@ const EditStepForm = ({ data, onSave, onCancel, isNew }) => {
                 </div>
             </div>
             <DialogFooter className="flex justify-between">
-                <Button type="button" variant="outline" onClick={onCancel} className="text-sm">Cancel</Button>
-                <Button type="button" onClick={() => handleSubmit(isNew)} className="text-sm">{isNew ? 'Add Step' : 'Save Changes'}</Button>
+                <Button type="button" variant="outline" onClick={onCancel} className="text-sm" disabled={isLoading}>Cancel</Button>
+                <Button type="button" onClick={() => handleSubmit(isNew)} className="text-sm" disabled={isLoading}>
+                    {isLoading ? (
+                        <>
+                            <span className="mr-2 h-4 w-4 animate-spin">⏳</span>
+                            {isNew ? 'Adding...' : 'Saving...'}
+                        </>
+                    ) : (
+                        isNew ? 'Add Step' : 'Save Changes'
+                    )}
+                </Button>
             </DialogFooter>
         </div>
     );

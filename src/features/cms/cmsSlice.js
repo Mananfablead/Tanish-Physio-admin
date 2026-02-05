@@ -11,9 +11,19 @@ export const fetchAllCmsData = createAsyncThunk(
       
       // Transform conditions data to match frontend structure
       if (data.conditions) {
+        // Fix data structure if conditions array is directly in data.conditions
+        let conditionsArray = [];
+        if (Array.isArray(data.conditions.conditions)) {
+          // Data comes from individual getConditions call
+          conditionsArray = data.conditions.conditions;
+        } else if (Array.isArray(data.conditions)) {
+          // Data comes from getAllCmsData call
+          conditionsArray = data.conditions;
+        }
+        
         data.conditions = {
           ...data.conditions,
-          conditions: (data.conditions.conditions || []).map(condition => ({
+          conditions: conditionsArray.map(condition => ({
             name: condition.title || '',
             image: condition.image || ''
           }))
@@ -307,9 +317,18 @@ const cmsSlice = createSlice({
         state.loading.updateConditions = false;
         // Transform backend response to match frontend structure
         const backendData = action.payload;
+        
+        // Handle different data structures
+        let conditionsArray = [];
+        if (Array.isArray(backendData.conditions)) {
+          conditionsArray = backendData.conditions;
+        } else if (backendData.conditions && Array.isArray(backendData.conditions.conditions)) {
+          conditionsArray = backendData.conditions.conditions;
+        }
+        
         state.data.conditions = {
           ...backendData,
-          conditions: (backendData.conditions || []).map(condition => ({
+          conditions: conditionsArray.map(condition => ({
             name: condition.title || '',
             image: condition.image || ''
           }))

@@ -348,7 +348,7 @@ export default function UpdateService() {
 
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <Input
-                            type="number"
+                            type="text"
                             placeholder="Price"
                             value={serviceForm.price}
                             onChange={(e) =>
@@ -372,7 +372,8 @@ export default function UpdateService() {
                         </div>
 
                         <Input
-                            type="number"
+                            type="text"
+                         
                             placeholder="Sessions"
                             value={serviceForm.sessions}
                             onChange={(e) =>
@@ -381,7 +382,7 @@ export default function UpdateService() {
                         />
 
                         <Input
-                            type="number"
+                            type="text"
                             placeholder="Validity (days)"
                             value={serviceForm.validity}
                             onChange={(e) =>

@@ -99,7 +99,7 @@ interface FormTestimonial {
 export default function Testimonials() {
   const dispatch = useDispatch();
 
- 
+
   const { testimonials, stats, loading, error } = useSelector((state: any) => state.testimonials);
   const { list: allUsers, loading: usersLoading, pagination } = useSelector((state: any) => state.users);
   console.log("allUsers", allUsers)
@@ -164,11 +164,11 @@ export default function Testimonials() {
 
   const filteredTestimonials = testimonials.filter(testimonial => {
     const matchesSearch = (testimonial.clientName && testimonial.clientName.toLowerCase().includes(searchQuery.toLowerCase())) ||
-                         (testimonial.serviceUsed && testimonial.serviceUsed.toLowerCase().includes(searchQuery.toLowerCase())) ||
-                         (testimonial.content && testimonial.content.toLowerCase().includes(searchQuery.toLowerCase()));
-    
+      (testimonial.serviceUsed && testimonial.serviceUsed.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (testimonial.content && testimonial.content.toLowerCase().includes(searchQuery.toLowerCase()));
+
     const matchesStatus = statusFilter === "all" || testimonial.status === statusFilter;
-    
+
     return matchesSearch && matchesStatus;
   });
 
@@ -197,7 +197,7 @@ export default function Testimonials() {
 
   const handleEdit = (testimonial: Testimonial) => {
     const userIdString = testimonial.userId ? (typeof testimonial.userId === 'string' ? testimonial.userId : testimonial.userId._id) : "";
-    
+
     setEditingTestimonial({
       _id: testimonial._id,
       clientName: testimonial.clientName || '',
@@ -214,7 +214,7 @@ export default function Testimonials() {
       avatar: testimonial.avatar,
       id: testimonial._id,
     });
-    
+
     // Find and set the selected user
     const user = allUsers.find((u: any) => u._id === userIdString);
     if (user) {
@@ -222,7 +222,7 @@ export default function Testimonials() {
     } else {
       setSelectedUser(null);
     }
-    
+
     setUsersPage(1);
     setHasMoreUsers(true);
     setFormData({
@@ -263,7 +263,7 @@ export default function Testimonials() {
         setIsSubmitting(false);
         return;
       }
-      
+
       if (editingTestimonial) {
         // Update existing testimonial
         await dispatch(updateTestimonial({ id: editingTestimonial.id, data: formData })).unwrap();
@@ -271,10 +271,10 @@ export default function Testimonials() {
         // Create new testimonial
         await dispatch(createTestimonial(formData)).unwrap();
       }
-      
+
       // Close modal
       setIsModalOpen(false);
-      
+
       // Refresh testimonials to ensure the new/updated testimonial appears in the filtered list
       dispatch(fetchTestimonials({ search: searchQuery, status: statusFilter }));
       dispatch(fetchTestimonialStats());
@@ -388,9 +388,8 @@ export default function Testimonials() {
         {[...Array(5)].map((_, i) => (
           <Star
             key={i}
-            className={`w-4 h-4 ${
-              i < rating ? "text-yellow-400 fill-current" : "text-gray-300"
-            }`}
+            className={`w-4 h-4 ${i < rating ? "text-yellow-400 fill-current" : "text-gray-300"
+              }`}
             onClick={() => {
               if (interactive) {
                 setFormData({ ...formData, rating: i + 1 });
@@ -411,9 +410,9 @@ export default function Testimonials() {
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
         </div>
       )}
-      
-  
-      
+
+
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -545,7 +544,7 @@ export default function Testimonials() {
             <TableHeader>
               <TableRow>
                 <TableHead>Client</TableHead>
-               
+
                 <TableHead>Problem</TableHead>
                 <TableHead>Service</TableHead>
                 <TableHead>Status</TableHead>
@@ -579,7 +578,7 @@ export default function Testimonials() {
                             {testimonial.userId?.email || testimonial.clientEmail}
                           </div>
                         )}
-                         {renderStars(testimonial.rating, false)}
+                        {renderStars(testimonial.rating, false)}
                       </div>
                     </div>
                   </TableCell>
@@ -755,41 +754,41 @@ export default function Testimonials() {
                   <span className="ml-2 font-medium">{formData.rating}/5</span>
                 </div>
               </div>
-            <div className="space-y-2">
-  <Label htmlFor="serviceUsed">Service Used *</Label>
+              <div className="space-y-2">
+                <Label htmlFor="serviceUsed">Service Used *</Label>
 
-  <Select
-    value={formData.serviceUsed}
-    onValueChange={(value) =>
-      setFormData({ ...formData, serviceUsed: value })
-    }
-    disabled={!allUsers?.length}
-  >
-    <SelectTrigger 
-      id="serviceUsed"
-      className={editingTestimonial && !formData.serviceUsed ? "border-red-500" : ""}
-    >
-      <SelectValue placeholder="Select a service" />
-    </SelectTrigger>
+                <Select
+                  value={formData.serviceUsed}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, serviceUsed: value })
+                  }
+                  disabled={!allUsers?.length}
+                >
+                  <SelectTrigger
+                    id="serviceUsed"
+                    className={editingTestimonial && !formData.serviceUsed ? "border-red-500" : ""}
+                  >
+                    <SelectValue placeholder="Select a service" />
+                  </SelectTrigger>
 
-    <SelectContent>
-      {Array.from(
-        new Set(
-          allUsers.flatMap((user: any) =>
-            user.servicesUsed?.map((service: any) => service.serviceName) || []
-          )
-        )
-      ).map((serviceName: string) => (
-        <SelectItem key={serviceName} value={serviceName}>
-          {serviceName}
-        </SelectItem>
-      ))}
-    </SelectContent>
-  </Select>
-  {!formData.serviceUsed && (
-    <p className="text-sm text-red-500">Service used is required</p>
-  )}
-</div>
+                  <SelectContent>
+                    {Array.from(
+                      new Set(
+                        allUsers.flatMap((user: any) =>
+                          user.servicesUsed?.map((service: any) => service.serviceName) || []
+                        )
+                      )
+                    ).map((serviceName: string) => (
+                      <SelectItem key={serviceName} value={serviceName}>
+                        {serviceName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {!formData.serviceUsed && (
+                  <p className="text-sm text-red-500">Service used is required</p>
+                )}
+              </div>
 
             </div>
 
