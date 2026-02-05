@@ -106,6 +106,7 @@ const VideoCall = ({
 
   const [audioEnabled, setAudioEnabled] = useState(true);
   const [videoEnabled, setVideoEnabled] = useState(true);
+  const [participantAudioStatus, setParticipantAudioStatus] = useState({});
 
   // Debug callActive changes
   useEffect(() => {
@@ -670,6 +671,15 @@ const VideoCall = ({
         if (exists) return prev;
         return [...prev, { ...data, isSelf: data.socketId === socket.id }];
       });
+      
+      // Initialize audio status for the new participant (default to enabled)
+      if (data.userId) {
+        setParticipantAudioStatus(prev => ({
+          ...prev,
+          [data.userId]: true // Audio enabled by default
+        }));
+      }
+      
       if (
         data.isTherapist &&
         userRole !== "therapist" &&
@@ -684,6 +694,15 @@ const VideoCall = ({
       setParticipants((prev) => {
         return prev.filter((p) => p.userId !== data.userId);
       });
+      
+      // Remove audio status for the leaving participant
+      if (data.userId) {
+        setParticipantAudioStatus(prev => {
+          const newStatus = { ...prev };
+          delete newStatus[data.userId];
+          return newStatus;
+        });
+      }
     };
 
     // Handle call started
@@ -768,7 +787,18 @@ const VideoCall = ({
     };
 
     // Handle audio toggle
-    const audioToggleListener = (data) => {};
+    const audioToggleListener = (data) => {
+      // Update UI to reflect other participant's audio status
+      console.log("Audio toggle received from user:", data.userId, "muted:", data.muted);
+      
+      // Update the audio status for the specific user
+      if (data.userId) {
+        setParticipantAudioStatus(prev => ({
+          ...prev,
+          [data.userId]: !data.muted // Store whether audio is enabled (opposite of muted)
+        }));
+      }
+    };
 
     // Handle video toggle
     const videoToggleListener = (data) => {};

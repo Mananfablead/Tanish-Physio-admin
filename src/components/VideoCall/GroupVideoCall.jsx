@@ -39,6 +39,7 @@ const GroupVideoCall = ({
   const [audioEnabled, setAudioEnabled] = useState(true);
   const [videoEnabled, setVideoEnabled] = useState(true);
   const [screenSharing, setScreenSharing] = useState(false);
+  const [participantAudioStatus, setParticipantAudioStatus] = useState({});
   const [showParticipants, setShowParticipants] = useState(false);
   const [showChat, setShowChat] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -159,10 +160,27 @@ const GroupVideoCall = ({
           },
         ];
       });
+      
+      // Initialize audio status for the new participant (default to enabled)
+      if (data.userId) {
+        setParticipantAudioStatus(prev => ({
+          ...prev,
+          [data.userId]: true // Audio enabled by default
+        }));
+      }
     };
 
     const participantLeftListener = (data) => {
       setParticipants((prev) => prev.filter((p) => p.userId !== data.userId));
+      
+      // Remove audio status for the leaving participant
+      if (data.userId) {
+        setParticipantAudioStatus(prev => {
+          const newStatus = { ...prev };
+          delete newStatus[data.userId];
+          return newStatus;
+        });
+      }
     };
 
     const groupCallStartedListener = (data) => {
@@ -184,6 +202,14 @@ const GroupVideoCall = ({
             : p
         )
       );
+      
+      // Update audio status for the participant
+      if (data.userId) {
+        setParticipantAudioStatus(prev => ({
+          ...prev,
+          [data.userId]: !data.isMuted // Store whether audio is enabled (opposite of muted)
+        }));
+      }
     };
 
     const participantScreenSharingListener = (data) => {
