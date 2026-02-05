@@ -43,10 +43,16 @@ const useSocket = (roomId, roomType) => {
             // Always add auth token since we checked it exists above
             socketOptions.auth = { token: token };
 
-            const serverUrl = import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:5000';
+            // Properly extract the base URL for WebSocket connection by removing '/api' suffix
+            let serverUrl;
+            if (import.meta.env.VITE_API_BASE_URL) {
+                // Remove trailing '/api' if present to get the base URL
+                serverUrl = import.meta.env.VITE_API_BASE_URL.replace(/\/api$/, '');
+            } else {
+                // Fallback to base URL without '/api'
+                serverUrl = 'https://apitanishvideo.fableadtech.in';
+            }
             console.log('useSocket: Connecting to server:', serverUrl);
-            console.log('useSocket: Token length:', token?.length);
-
             const newSocket = io(serverUrl, socketOptions);
 
             newSocket.on('connect', () => {
