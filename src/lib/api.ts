@@ -1,9 +1,7 @@
 import axios from 'axios';
 
 // Create axios instance with base configuration
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ||
-  "https://apitanishvideo.fableadtech.in/api";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 const api = axios.create({
   baseURL: API_BASE_URL,
