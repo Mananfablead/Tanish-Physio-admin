@@ -20,9 +20,10 @@ interface HeroData {
 interface HeroSectionProps {
     data: HeroData;
     onEdit: (section: string, item: HeroData) => void;
+    loading?: boolean;
 }
 
-export default function HeroSection({ data, onEdit }: HeroSectionProps) {
+export default function HeroSection({ data, onEdit, loading = false }: HeroSectionProps) {
     return (
         <div className="bg-card rounded-2xl border border-border overflow-hidden animate-fade-in shadow-lg">
             <div className="p-4 sm:p-6 md:p-8">
@@ -30,8 +31,18 @@ export default function HeroSection({ data, onEdit }: HeroSectionProps) {
                     <h2 className="text-xl sm:text-2xl font-bold tracking-tight">Hero Section</h2>
                     <div className="flex flex-wrap items-center gap-2">
 
-                        <Button size="sm" variant="outline" onClick={() => onEdit('hero', data)}>
-                            <Edit3 className="w-4 h-4 mr-2" /> Edit
+                        <Button 
+                            size="sm" 
+                            variant="outline" 
+                            onClick={() => onEdit('hero', data)}
+                            disabled={loading}
+                        >
+                            {loading ? (
+                                <div className="w-4 h-4 mr-2 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                            ) : (
+                                <Edit3 className="w-4 h-4 mr-2" />
+                            )}
+                            {loading ? 'Saving...' : 'Edit'}
                         </Button>
                     </div>
                 </div>

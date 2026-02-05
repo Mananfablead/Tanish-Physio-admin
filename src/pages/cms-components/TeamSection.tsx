@@ -18,9 +18,10 @@ interface TeamData {
 interface TeamSectionProps {
     data: TeamData;
     onEdit: (section: string, item: TeamData) => void;
+    loading?: boolean;
 }
 
-export default function TeamSection({ data, onEdit }: TeamSectionProps) {
+export default function TeamSection({ data, onEdit, loading = false }: TeamSectionProps) {
     return (
         <div className="bg-card rounded-2xl border border-border overflow-hidden animate-fade-in shadow-lg">
             <div className="p-4 sm:p-6 md:p-8">
@@ -28,8 +29,18 @@ export default function TeamSection({ data, onEdit }: TeamSectionProps) {
                     <h2 className="text-xl sm:text-2xl font-bold tracking-tight">Team Member</h2>
                     <div className="flex flex-wrap items-center gap-2">
 
-                        <Button size="sm" variant="outline" onClick={() => onEdit('featuredTherapist', data)}>
-                            <Edit className="w-4 h-4 mr-2" /> Edit
+                        <Button 
+                            size="sm" 
+                            variant="outline" 
+                            onClick={() => onEdit('featuredTherapist', data)}
+                            disabled={loading}
+                        >
+                            {loading ? (
+                                <div className="w-4 h-4 mr-2 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                            ) : (
+                                <Edit className="w-4 h-4 mr-2" />
+                            )}
+                            {loading ? 'Saving...' : 'Edit'}
                         </Button>
                     </div>
                 </div>

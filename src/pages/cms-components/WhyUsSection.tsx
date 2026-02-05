@@ -19,9 +19,10 @@ interface WhyUsData {
 interface WhyUsSectionProps {
     data: WhyUsData;
     onEdit: (section: string, item: WhyUsData) => void;
+    loading?: boolean;
 }
 
-export default function WhyUsSection({ data, onEdit }: WhyUsSectionProps) {
+export default function WhyUsSection({ data, onEdit, loading = false }: WhyUsSectionProps) {
     return (
         <div className="bg-card rounded-2xl border border-border overflow-hidden animate-fade-in shadow-lg">
             <div className="p-4 sm:p-6 md:p-8">
@@ -29,8 +30,18 @@ export default function WhyUsSection({ data, onEdit }: WhyUsSectionProps) {
                     <h2 className="text-xl sm:text-2xl font-bold tracking-tight">Why Choose Us</h2>
                     <div className="flex flex-wrap items-center gap-2">
 
-                        <Button size="sm" variant="outline" onClick={() => onEdit('whyUs', data)}>
-                            <Edit className="w-4 h-4 mr-2" /> Edit
+                        <Button 
+                            size="sm" 
+                            variant="outline" 
+                            onClick={() => onEdit('whyUs', data)}
+                            disabled={loading}
+                        >
+                            {loading ? (
+                                <div className="w-4 h-4 mr-2 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                            ) : (
+                                <Edit className="w-4 h-4 mr-2" />
+                            )}
+                            {loading ? 'Saving...' : 'Edit'}
                         </Button>
                     </div>
                 </div>

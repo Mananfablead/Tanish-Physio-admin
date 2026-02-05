@@ -27,9 +27,10 @@ interface AboutData {
 interface AboutSectionProps {
   data: AboutData;
   onEdit: (section: string, item: any) => void;
+  loading?: boolean;
 }
 
-export default function AboutSection({ data, onEdit }: AboutSectionProps) {
+export default function AboutSection({ data, onEdit, loading = false }: AboutSectionProps) {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
   return (
@@ -81,9 +82,14 @@ export default function AboutSection({ data, onEdit }: AboutSectionProps) {
             variant="outline" 
             size="sm" 
             onClick={() => onEdit('about', data)}
+            disabled={loading}
           >
-            <Edit3 className="w-4 h-4 mr-2" />
-            Edit About Us
+            {loading ? (
+              <div className="w-4 h-4 mr-2 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <Edit3 className="w-4 h-4 mr-2" />
+            )}
+            {loading ? 'Saving...' : 'Edit About Us'}
           </Button>
         </div>
       </div>

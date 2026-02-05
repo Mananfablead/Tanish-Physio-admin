@@ -44,6 +44,7 @@ import VideoCallPage from "./pages/VideoCallPage";
 import NotFound from "./pages/NotFound";
 import ResetPassword from "./pages/ResetPassword";
 import ExpirationManagement from "./pages/ExpirationManagement";
+import BookingDetails from "./pages/BookingDetails";
 import { useDispatch } from "react-redux";
 import { useEffect } from "react";
 
@@ -302,6 +303,17 @@ const App = () => (
               <ProtectedRoute>
                 <AdminPage>
                   <ServiceDetails />
+                </AdminPage>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/bookings/:id"
+            element={
+              <ProtectedRoute>
+                <AdminPage>
+                  <BookingDetails />
                 </AdminPage>
               </ProtectedRoute>
             }

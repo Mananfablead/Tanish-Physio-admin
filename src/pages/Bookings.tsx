@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import {
   Search,
   MoreHorizontal,
@@ -12,6 +13,7 @@ import {
   Clock as ClockIcon,
   Plus,
   Activity,
+  Eye,
 } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
@@ -368,36 +370,42 @@ export default function Bookings() {
                       )}
                     </td>
                     <td>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button size="icon" variant="ghost">
-                            <MoreHorizontal className="w-4 h-4" />
+                      <div className="flex items-center gap-2">
+                        <Link to={`/bookings/${booking._id || booking.id}`}>
+                          <Button size="icon" variant="outline" className="h-8 w-8">
+                            <Eye className="w-4 h-4" />
                           </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-44">
-                          {/* EDIT BOOKING */}
-                          {/* <DropdownMenuItem
-                            onClick={() => prepareEditBooking(booking)}
-                            className="cursor-pointer"
-                          >
-                            <Edit className="w-4 h-4 mr-2 text-slate-600" />
-                            Edit Booking
-                          </DropdownMenuItem> */}
+                        </Link>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button size="icon" variant="ghost" className="h-8 w-8">
+                              <MoreHorizontal className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-44">
+                            {/* EDIT BOOKING */}
+                            {/* <DropdownMenuItem
+                              onClick={() => prepareEditBooking(booking)}
+                              className="cursor-pointer"
+                            >
+                              <Edit className="w-4 h-4 mr-2 text-slate-600" />
+                              Edit Booking
+                            </DropdownMenuItem> */}
 
-                          {/* STATUS UPDATE */}
-                          <DropdownMenuItem
-                            onClick={() => {
-                              setSelectedBooking(booking);
-                              setIsStatusDialogOpen(true);
-                            }}
-                            className="cursor-pointer"
-                          >
-                            <Activity className="w-4 h-4 mr-2" />
-                            Update Status
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-
-                      </DropdownMenu>
+                            {/* STATUS UPDATE */}
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setSelectedBooking(booking);
+                                setIsStatusDialogOpen(true);
+                              }}
+                              className="cursor-pointer"
+                            >
+                              <Activity className="w-4 h-4 mr-2" />
+                              Update Status
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </td>
                   </tr>
                 ))}

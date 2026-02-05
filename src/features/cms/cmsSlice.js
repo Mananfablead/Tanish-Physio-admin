@@ -193,6 +193,42 @@ export const updateAbout = createAsyncThunk(
   }
 );
 
+export const updateTeam = createAsyncThunk(
+  'cms/updateTeam',
+  async ({ id, teamData }, { rejectWithValue }) => {
+    try {
+      const response = await cmsAPI.updateTeam(id, teamData);
+      return response.data.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
+export const createTeam = createAsyncThunk(
+  'cms/createTeam',
+  async (teamData, { rejectWithValue }) => {
+    try {
+      const response = await cmsAPI.createTeam(teamData);
+      return response.data.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
+export const deleteTeam = createAsyncThunk(
+  'cms/deleteTeam',
+  async (id, { rejectWithValue }) => {
+    try {
+      await cmsAPI.deleteTeam(id);
+      return id;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
 const cmsSlice = createSlice({
   name: 'cms',
   initialState: {
@@ -222,6 +258,9 @@ const cmsSlice = createSlice({
       updateFeaturedTherapist: false,
       updateContact: false,
       updateAbout: false,
+      updateTeam: false,
+      createTeam: false,
+      deleteTeam: false,
     },
     error: null,
   },
@@ -451,6 +490,56 @@ const cmsSlice = createSlice({
       })
       .addCase(updateAbout.rejected, (state, action) => {
         state.loading.updateAbout = false;
+        state.error = action.payload;
+      })
+      
+      // Update team
+      .addCase(updateTeam.pending, (state) => {
+        state.loading.updateTeam = true;
+        state.error = null;
+      })
+      .addCase(updateTeam.fulfilled, (state, action) => {
+        state.loading.updateTeam = false;
+        const index = state.data.team?.findIndex(member => member._id === action.payload._id) || -1;
+        if (index !== -1 && state.data.team) {
+          state.data.team[index] = action.payload;
+        }
+      })
+      .addCase(updateTeam.rejected, (state, action) => {
+        state.loading.updateTeam = false;
+        state.error = action.payload;
+      })
+      
+      // Create team
+      .addCase(createTeam.pending, (state) => {
+        state.loading.createTeam = true;
+        state.error = null;
+      })
+      .addCase(createTeam.fulfilled, (state, action) => {
+        state.loading.createTeam = false;
+        if (!state.data.team) {
+          state.data.team = [];
+        }
+        state.data.team.push(action.payload);
+      })
+      .addCase(createTeam.rejected, (state, action) => {
+        state.loading.createTeam = false;
+        state.error = action.payload;
+      })
+      
+      // Delete team
+      .addCase(deleteTeam.pending, (state) => {
+        state.loading.deleteTeam = true;
+        state.error = null;
+      })
+      .addCase(deleteTeam.fulfilled, (state, action) => {
+        state.loading.deleteTeam = false;
+        if (state.data.team) {
+          state.data.team = state.data.team.filter(member => member._id !== action.payload);
+        }
+      })
+      .addCase(deleteTeam.rejected, (state, action) => {
+        state.loading.deleteTeam = false;
         state.error = action.payload;
       });
   },

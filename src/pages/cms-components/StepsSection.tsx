@@ -15,9 +15,14 @@ interface StepsSectionProps {
     onAdd: () => void;
     onDelete: (_id: string) => void;
     onEdit: (item: StepData) => void;
+    loading?: {
+        create?: boolean;
+        update?: boolean;
+        delete?: boolean;
+    };
 }
 
-export default function StepsSection({ data, onAdd, onDelete, onEdit }: StepsSectionProps) {
+export default function StepsSection({ data, onAdd, onDelete, onEdit, loading }: StepsSectionProps) {
     return (
         <div className="bg-card rounded-2xl border border-border overflow-hidden animate-fade-in shadow-lg">
             <div className="p-4 sm:p-6 md:p-8">
@@ -25,8 +30,18 @@ export default function StepsSection({ data, onAdd, onDelete, onEdit }: StepsSec
                     <h2 className="text-xl sm:text-2xl font-bold tracking-tight">How It Works Steps</h2>
                     <div className="flex flex-wrap items-center gap-2">
 
-                        <Button size="sm" variant="outline" onClick={onAdd}>
-                            <PlusCircle className="w-4 h-4 mr-2" /> Add Multiple Steps
+                        <Button 
+                            size="sm" 
+                            variant="outline" 
+                            onClick={onAdd}
+                            disabled={loading?.create}
+                        >
+                            {loading?.create ? (
+                                <div className="w-4 h-4 mr-2 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                            ) : (
+                                <PlusCircle className="w-4 h-4 mr-2" />
+                            )}
+                            {loading?.create ? 'Adding...' : 'Add Multiple Steps'}
                         </Button>
                     </div>
                 </div>
@@ -93,17 +108,31 @@ export default function StepsSection({ data, onAdd, onDelete, onEdit }: StepsSec
                                     </td> */}
                                     <td className="px-4 py-3">
                                         <div className="flex items-center gap-1 sm:gap-2">
-                                            <Button variant="ghost" size="sm" onClick={() => onEdit(step)} className="h-8 w-8 p-0 sm:h-9 sm:w-9">
-                                                <Edit className="w-4 h-4" />
+                                            <Button 
+                                                variant="ghost" 
+                                                size="sm" 
+                                                onClick={() => onEdit(step)} 
+                                                className="h-8 w-8 p-0 sm:h-9 sm:w-9"
+                                                disabled={loading?.update}
+                                            >
+                                                {loading?.update ? (
+                                                    <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                                                ) : (
+                                                    <Edit className="w-4 h-4" />
+                                                )}
                                             </Button>
                                             <Button
                                                 variant="ghost"
                                                 size="sm"
                                                 onClick={() => onDelete(step._id)}
-                                                disabled={data.length <= 1}
+                                                disabled={data.length <= 1 || loading?.delete}
                                                 className="h-8 w-8 p-0 sm:h-9 sm:w-9"
                                             >
-                                                <Trash2 className="w-4 h-4" />
+                                                {loading?.delete ? (
+                                                    <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                                                ) : (
+                                                    <Trash2 className="w-4 h-4" />
+                                                )}
                                             </Button>
                                         </div>
                                     </td>

@@ -5,6 +5,12 @@ import { fetchAllCmsData, updateHero, createStep, updateStep, deleteStep, update
 
 // Import new components
 import AboutSection from "./cms-components/AboutSection";
+<<<<<<< HEAD
+=======
+import EditHeroFormComponent from "./cms-components/forms/EditHeroForm";
+import EditStepFormComponent from "./cms-components/forms/EditStepForm";
+import EditConditionsFormComponent from "./cms-components/forms/EditConditionsForm";
+>>>>>>> 85626ad (change s)
 import {
     Tabs,
     TabsContent,
@@ -601,11 +607,12 @@ export default function CMS() {
                 </Badge>
             </div>
             
-            {/* {loading && (
-                <div className="flex justify-center items-center p-8">
-                    <p>Loading CMS data...</p>
+            {loading.fetchAll && (
+                <div className="flex flex-col items-center justify-center p-8 bg-card rounded-lg border">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
+                    <p className="text-muted-foreground">Loading CMS data...</p>
                 </div>
-            )} */}
+            )}
 
             {/* Stats Cards */}
             {/* <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
@@ -702,6 +709,7 @@ export default function CMS() {
                         <SelectItem value="contact">Contact</SelectItem>
                         <SelectItem value="terms">Terms and Condition</SelectItem>
                         <SelectItem value="about">About Us</SelectItem>
+                        
                     </SelectContent>
                 </Select>
             </div>
@@ -731,6 +739,7 @@ export default function CMS() {
                             features: data.hero?.features || []
                         }} 
                         onEdit={openEditModal} 
+                        loading={loading.updateHero}
                     />
                 </TabsContent>
 
@@ -741,6 +750,11 @@ export default function CMS() {
                         onAdd={addStep} 
                         onDelete={openDeleteStepDialog} 
                         onEdit={(item) => openEditModal('step', item)} 
+                        loading={{
+                            create: loading.createStep,
+                            update: loading.updateStep,
+                            delete: loading.deleteStep
+                        }}
                     />
                 </TabsContent>
 
@@ -749,6 +763,7 @@ export default function CMS() {
                     <ConditionsSection 
                         data={data.conditions} 
                         onEdit={openEditModal}
+                        loading={loading.updateConditions}
                     />
                 </TabsContent>
 
@@ -757,6 +772,7 @@ export default function CMS() {
                     <WhyUsSection 
                         data={data.whyUs} 
                         onEdit={openEditModal} 
+                        loading={loading.updateWhyUs}
                     />
                 </TabsContent>
 
@@ -767,6 +783,11 @@ export default function CMS() {
                         onAdd={addFaq} 
                         onDelete={openDeleteFaqDialog} 
                         onEdit={(item) => openEditModal('faq', item)}
+                        loading={{
+                            create: loading.createFaq,
+                            update: loading.updateFaq,
+                            delete: loading.deleteFaq
+                        }}
                     />
                 </TabsContent>
 
@@ -775,6 +796,7 @@ export default function CMS() {
                     <TermsSection 
                         data={data.terms} 
                         onEdit={openEditModal} 
+                        loading={loading.updateTerms}
                     />
                 </TabsContent>
 
@@ -783,6 +805,7 @@ export default function CMS() {
                     <ContactSection 
                         data={data.contact} 
                         onEdit={openEditModal} 
+                        loading={loading.updateContact}
                     />
                 </TabsContent>
 
@@ -791,6 +814,7 @@ export default function CMS() {
                     <AboutSection 
                         data={data.about} 
                         onEdit={openEditModal} 
+                        loading={loading.updateAbout}
                     />
                 </TabsContent>
 
@@ -812,6 +836,7 @@ export default function CMS() {
                             features: data.hero?.features || []
                         }} 
                         onEdit={openEditModal} 
+                        loading={loading.updateHero}
                     />
                 )}
                 
@@ -821,6 +846,11 @@ export default function CMS() {
                         onAdd={addStep} 
                         onDelete={openDeleteStepDialog} 
                         onEdit={(item) => openEditModal('step', item)}
+                        loading={{
+                            create: loading.createStep,
+                            update: loading.updateStep,
+                            delete: loading.deleteStep
+                        }}
                     />
                 )}
                 
@@ -828,6 +858,7 @@ export default function CMS() {
                     <ConditionsSection 
                         data={data.conditions} 
                         onEdit={openEditModal} 
+                        loading={loading.updateConditions}
                     />
                 )}
                 
@@ -896,19 +927,19 @@ export default function CMS() {
 
                     <div className="space-y-3 sm:space-y-4 py-3 sm:py-4">
                         {modalSection === 'hero' && (
-                            <EditHeroForm data={modalItem || data.hero} onSave={saveModalChanges} onCancel={closeEditModal} />
+                            <EditHeroFormComponent data={modalItem || data.hero} onSave={saveModalChanges} onCancel={closeEditModal} />
                         )}
 
                         {modalSection === 'step' && (
                             modalItem ? (
-                                <EditStepForm data={modalItem} onSave={saveModalChanges} onCancel={closeEditModal} isNew={!modalItem} />
+                                <EditStepFormComponent data={modalItem} onSave={saveModalChanges} onCancel={closeEditModal} isNew={!modalItem} />
                             ) : (
                                 <MultiStepForm onSave={saveModalChanges} onCancel={closeEditModal} />
                             )
                         )}
 
                         {modalSection === 'conditions' && (
-                            <EditConditionsForm data={modalItem || data.conditions} onSave={saveModalChanges} onCancel={closeEditModal} />
+                            <EditConditionsFormComponent data={modalItem || data.conditions} onSave={saveModalChanges} onCancel={closeEditModal} />
                         )}
 
                         {modalSection === 'whyUs' && (

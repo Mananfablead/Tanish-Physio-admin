@@ -943,8 +943,8 @@ export default function Sessions() {
                             </td>
 
                             {/* TYPE */}
-                            <td className="px-4 py-3">
-                              <span className="px-3 py-1 rounded-full text-xs font-semibold bg-muted">
+                            <td className="">
+                              <span className=" text-xs font-semibold">
                                 {session.type}
                               </span>
                             </td>

@@ -14,9 +14,14 @@ interface FaqSectionProps {
     onAdd: () => void;
     onDelete: (_id: string) => void;
     onEdit: (item: FaqData) => void;
+    loading?: {
+        create?: boolean;
+        update?: boolean;
+        delete?: boolean;
+    };
 }
 
-export default function FaqSection({ data, onAdd, onDelete, onEdit }: FaqSectionProps) {
+export default function FaqSection({ data, onAdd, onDelete, onEdit, loading }: FaqSectionProps) {
     return (
         <>
             <Card>
@@ -24,8 +29,18 @@ export default function FaqSection({ data, onAdd, onDelete, onEdit }: FaqSection
                     <h2 className="text-xl sm:text-2xl font-bold tracking-tight">Frequently Asked Questions</h2>
                     <div className="flex flex-wrap items-center gap-2">
 
-                        <Button size="sm" variant="outline" onClick={onAdd}>
-                            <PlusCircle className="w-4 h-4 mr-2" /> Add FAQ
+                        <Button 
+                            size="sm" 
+                            variant="outline" 
+                            onClick={onAdd}
+                            disabled={loading?.create}
+                        >
+                            {loading?.create ? (
+                                <div className="w-4 h-4 mr-2 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                            ) : (
+                                <PlusCircle className="w-4 h-4 mr-2" />
+                            )}
+                            {loading?.create ? 'Adding...' : 'Add FAQ'}
                         </Button>
                     </div>
                 </div>
@@ -55,17 +70,31 @@ export default function FaqSection({ data, onAdd, onDelete, onEdit }: FaqSection
                                     </td>
                                     <td className="px-4 py-3">
                                         <div className="flex items-center gap-1">
-                                            <Button variant="ghost" size="sm" onClick={() => onEdit(faq)} className="h-8 w-8 p-0 sm:h-9 sm:w-9">
-                                                <Edit className="w-4 h-4" />
+                                            <Button 
+                                                variant="ghost" 
+                                                size="sm" 
+                                                onClick={() => onEdit(faq)} 
+                                                className="h-8 w-8 p-0 sm:h-9 sm:w-9"
+                                                disabled={loading?.update}
+                                            >
+                                                {loading?.update ? (
+                                                    <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                                                ) : (
+                                                    <Edit className="w-4 h-4" />
+                                                )}
                                             </Button>
                                             <Button
                                                 variant="ghost"
                                                 size="sm"
                                                 onClick={() => onDelete(faq._id)}
-                                                disabled={data.length <= 1}
+                                                disabled={data.length <= 1 || loading?.delete}
                                                 className="h-8 w-8 p-0 sm:h-9 sm:w-9"
                                             >
-                                                <Trash2 className="w-4 h-4" />
+                                                {loading?.delete ? (
+                                                    <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                                                ) : (
+                                                    <Trash2 className="w-4 h-4" />
+                                                )}
                                             </Button>
                                         </div>
                                     </td>

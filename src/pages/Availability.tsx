@@ -1037,10 +1037,10 @@ const Availability = () => {
                             newEnd.setMinutes(newEnd.getMinutes() + 60);
                             setEndTime(newEnd.toTimeString().substring(0, 5));
                             
-                            toast({
-                              title: "Success",
-                              description: "Slot added successfully",
-                            });
+                            // toast({
+                            //   title: "Success",
+                            //   description: "Slot added successfully",
+                            // });
                           }}
                         >
                           <Plus className="w-4 h-4" />
