@@ -1301,12 +1301,22 @@ const EditConditionsForm = ({ data, onSave, onCancel }) => {
             image: condition.image || null
         })) || []
     });
+    const [errors, setErrors] = useState<{ [key: string]: string }>({});
+    const [isLoading, setIsLoading] = useState(false);
 
     const handleChange = (field, value) => {
         setFormData(prev => ({
             ...prev,
             [field]: value
         }));
+        
+        // Clear error when user starts typing
+        if (errors[field]) {
+            setErrors(prev => ({
+                ...prev,
+                [field]: ''
+            }));
+        }
     };
 
     const handleConditionChange = (index, field, value) => {
@@ -1347,7 +1357,41 @@ const EditConditionsForm = ({ data, onSave, onCancel }) => {
         }
     };
 
+    const validateForm = () => {
+        const newErrors: { [key: string]: string } = {};
+        
+        if (!formData.title?.trim()) {
+            newErrors.title = 'Section title is required';
+        }
+        
+        if (!formData.description?.trim()) {
+            newErrors.description = 'Description is required';
+        }
+        
+        // Validate that at least one condition exists with a name
+        if (!formData.conditions || formData.conditions.length === 0) {
+            newErrors.conditions = 'At least one condition is required';
+        } else {
+            const hasValidCondition = formData.conditions.some(condition => 
+                condition.name && condition.name.trim() !== ''
+            );
+            
+            if (!hasValidCondition) {
+                newErrors.conditions = 'At least one condition with a name is required';
+            }
+        }
+        
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
     const handleSubmit = () => {
+        if (!validateForm()) {
+            return;
+        }
+        
+        setIsLoading(true);
+        
         // Clean up the form data before submitting
         const cleanedData = {
             ...formData,
@@ -1364,28 +1408,32 @@ const EditConditionsForm = ({ data, onSave, onCancel }) => {
     return (
         <div className="space-y-3 sm:space-y-4">
             <div>
-                <Label>Section Title</Label>
+                <Label>Section Title *</Label>
                 <Input
                     value={formData.title}
                     onChange={(e) => handleChange('title', e.target.value)}
+                    className={errors.title ? 'border-red-500' : ''}
                 />
+                {errors.title && <p className="text-red-500 text-sm mt-1">{errors.title}</p>}
             </div>
             <div>
-                <Label className="text-sm">Short Description</Label>
+                <Label className="text-sm">Short Description *</Label>
                 <Textarea
                     rows={3}
                     value={formData.description}
                     onChange={(e) => handleChange('description', e.target.value)}
-                    className="text-sm"
+                    className={errors.description ? 'border-red-500 text-sm' : 'text-sm'}
                 />
+                {errors.description && <p className="text-red-500 text-sm mt-1">{errors.description}</p>}
             </div>
             <div>
                 <div className="flex items-center justify-between mb-2">
-                    <Label className="text-sm">Conditions Treated</Label>
+                    <Label className="text-sm">Conditions Treated *</Label>
                     <Button type="button" variant="outline" size="sm" onClick={addCondition} className="text-xs sm:text-sm">
                         <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" /> Add Condition
                     </Button>
                 </div>
+                {errors.conditions && <p className="text-red-500 text-sm mt-1 mb-2">{errors.conditions}</p>}
                 <div className="space-y-3">
                     {(formData.conditions || []).map((condition, index) => (
                         <div key={index} className="flex gap-2">
@@ -1493,8 +1541,17 @@ const EditConditionsForm = ({ data, onSave, onCancel }) => {
                 </div>
             </div> */}
             <DialogFooter className="flex justify-between">
-                <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
-                <Button type="button" onClick={handleSubmit}>Save Changes</Button>
+                <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>Cancel</Button>
+                <Button type="button" onClick={handleSubmit} disabled={isLoading}>
+                    {isLoading ? (
+                        <>
+                            <span className="mr-2 h-4 w-4 animate-spin">⏳</span>
+                            Saving...
+                        </>
+                    ) : (
+                        'Save Changes'
+                    )}
+                </Button>
             </DialogFooter>
         </div>
     );
