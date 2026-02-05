@@ -227,25 +227,7 @@ export default function AddSubscription() {
                 Enter 0 for unlimited sessions
               </p> */}
             </div>
-            <div>
-              <Label>Validity Period (Days)</Label>
-              <Input
-                type="number"
-                name="validityInMonths"
-                value={planForm.validityInMonths}
-                onChange={(e) =>
-                  setPlanForm((p) => ({
-                    ...p,
-                    validityInMonths: Number(e.target.value),
-                  }))
-                }
-                placeholder="Number of days"
-                min="1"
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                How long the subscription is valid
-              </p>
-            </div>
+            
           </div>
           <div>
             <Label>Session Duration (min)</Label>

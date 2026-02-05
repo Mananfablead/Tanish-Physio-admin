@@ -76,7 +76,7 @@ export default function ServiceDetails() {
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back
         </Button>
-        <h1 className="text-2xl font-bold">{service.name}</h1>
+        <h1 className="text-2xl font-bold">{service?.name}</h1>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -92,13 +92,13 @@ export default function ServiceDetails() {
                     {combinedImages.length > 0 ? (
                       <img
                         src={combinedImages[currentImageIndex]}
-                        alt={`${service.name} - ${currentImageIndex + 1}`}
+                        alt={`${service?.name} - ${currentImageIndex + 1}`}
                         className="w-full h-full object-cover transition-opacity duration-300"
                       />
                     ) : (
                       <img
                         src="https://via.placeholder.com/300"
-                        alt={service.name}
+                        alt={service?.name}
                         className="w-full h-full object-cover"
                       />
                     )}
@@ -125,7 +125,7 @@ export default function ServiceDetails() {
                           onClick={(e) => {
                             e.stopPropagation();
                             setCurrentImageIndex(prev => 
-                              prev === combinedImages.length - 1 ? 0 : prev + 1
+                              prev === combinedImages?.length - 1 ? 0 : prev + 1
                             );
                           }}
                           aria-label="Next image"
@@ -166,36 +166,36 @@ export default function ServiceDetails() {
                   <div className="flex gap-2 flex-wrap">
                     <Badge
                       className={
-                        service.status === "active"
+                        service?.status === "active"
                           ? "bg-success"
                           : "bg-destructive"
                       }
                     >
-                      {service.status}
+                      {service?.status}
                     </Badge>
-                    <Badge variant="outline">{service.category}</Badge>
+                    <Badge variant="outline">{service?.category}</Badge>
                   </div>
 
                   <p className="text-muted-foreground">
-                    {service.description}
+                    {service?.description}
                   </p>
 
                   <div className="flex gap-6 flex-wrap">
                     <div className="flex items-center gap-2">
                       <Wallet className="w-4 h-4" />
-                      ₹{service.price}
+                      ₹{service?.price}
                     </div>
                     <div className="flex items-center gap-2">
                       <Clock className="w-4 h-4" />
-                      {service.duration}
+                      {service?.duration}
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="font-medium">Sessions:</span>
-                      {service.sessions}
+                      {service?.sessions}
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="font-medium">Validity:</span>
-                      {service.validity} days
+                      {service?.validity} days
                     </div>
                   </div>
                 </div>
@@ -212,11 +212,11 @@ export default function ServiceDetails() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-6">
                   {/* About Section */}
-                  {service.about && (
+                  {service?.about && (
                     <div className="pb-4 border-b border-border last:border-0 last:pb-0">
                       <h4 className="font-medium text-lg mb-3">About This Service</h4>
                       <p className="text-muted-foreground whitespace-pre-line leading-relaxed">
-                        {service.about}
+                        {service?.about}
                       </p>
                     </div>
                   )}
@@ -224,13 +224,13 @@ export default function ServiceDetails() {
                   {/* Features */}
                   <Section
                     title="Features"
-                    data={service.features}
+                    data={service?.features}
                   />
                   
                   {/* Benefits */}
                   <Section
                     title="Benefits"
-                    data={service.benefits}
+                    data={service?.benefits}
                   />
                 </div>
                 
@@ -238,20 +238,20 @@ export default function ServiceDetails() {
                   {/* Videos */}
                   <Section
                     title="Videos"
-                    data={service.videos || []}
+                    data={service?.videos || []}
                     isVideo={true}
                   />
                   
                   {/* Prerequisites */}
                   <Section
                     title="Prerequisites"
-                    data={service.prerequisites}
+                    data={service?.prerequisites}
                   />
                   
                   {/* Contraindications */}
                   <Section
                     title="Contraindications"
-                    data={service.contraindications}
+                    data={service?.contraindications}
                   />
                 </div>
               </div>
@@ -267,19 +267,19 @@ export default function ServiceDetails() {
               <CardTitle>Service Info</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
-              <InfoRow label="Service ID" value={service._id} />
-              <InfoRow label="Category" value={service.category} />
-              <InfoRow label="Duration" value={service.duration} />
-              <InfoRow label="Sessions" value={service.sessions} />
-              <InfoRow label="Validity" value={`${service.validity} days`} />
-              <InfoRow label="Price" value={`₹${service.price}`} />
+              <InfoRow label="Service ID" value={service?._id} />
+              <InfoRow label="Category" value={service?.category} />
+              <InfoRow label="Duration" value={service?.duration} />
+              <InfoRow label="Sessions" value={service?.sessions} />
+              <InfoRow label="Validity" value={`${service?.validity} days`} />
+              <InfoRow label="Price" value={`₹${service?.price}`} />
               <InfoRow
                 label="Created"
-                value={new Date(service.createdAt).toLocaleDateString()}
+                value={new Date(service?.createdAt).toLocaleDateString()}
               />
               <InfoRow
                 label="Updated"
-                value={new Date(service.updatedAt).toLocaleDateString()}
+                value={new Date(service?.updatedAt).toLocaleDateString()}
               />
             </CardContent>
           </Card>
@@ -293,8 +293,8 @@ export default function ServiceDetails() {
               {(allServices || [])
                 .filter(
                   (s: any) =>
-                    s.category === service.category &&
-                    s._id !== service._id
+                    s?.category === service?.category &&
+                    s?._id !== service?._id
                 )
                 .slice(0, 3)
                 .map((item: any) => (
@@ -327,7 +327,7 @@ export default function ServiceDetails() {
             <CardContent className="space-y-2 p-4 flex flex-col">
               <Button
                 onClick={() =>
-                  navigate(`/services/${service._id}/edit`)
+                  navigate(`/services/${service?._id}/edit`)
                 }
               >
                 Edit Service
@@ -335,7 +335,7 @@ export default function ServiceDetails() {
               <Button
                 variant="outline"
                 onClick={() =>
-                  navigate(`/bookings?service=${service._id}`)
+                  navigate(`/bookings?service=${service?._id}`)
                 }
               >
                 View Bookings

@@ -106,6 +106,7 @@ const VideoCall = ({
 
   const [audioEnabled, setAudioEnabled] = useState(true);
   const [videoEnabled, setVideoEnabled] = useState(true);
+  const [participantAudioStatus, setParticipantAudioStatus] = useState({});
 
   // Debug callActive changes
   useEffect(() => {
@@ -670,6 +671,15 @@ const VideoCall = ({
         if (exists) return prev;
         return [...prev, { ...data, isSelf: data.socketId === socket.id }];
       });
+      
+      // Initialize audio status for the new participant (default to enabled)
+      if (data.userId) {
+        setParticipantAudioStatus(prev => ({
+          ...prev,
+          [data.userId]: true // Audio enabled by default
+        }));
+      }
+      
       if (
         data.isTherapist &&
         userRole !== "therapist" &&
@@ -684,6 +694,15 @@ const VideoCall = ({
       setParticipants((prev) => {
         return prev.filter((p) => p.userId !== data.userId);
       });
+      
+      // Remove audio status for the leaving participant
+      if (data.userId) {
+        setParticipantAudioStatus(prev => {
+          const newStatus = { ...prev };
+          delete newStatus[data.userId];
+          return newStatus;
+        });
+      }
     };
 
     // Handle call started
@@ -768,7 +787,18 @@ const VideoCall = ({
     };
 
     // Handle audio toggle
-    const audioToggleListener = (data) => {};
+    const audioToggleListener = (data) => {
+      // Update UI to reflect other participant's audio status
+      console.log("Audio toggle received from user:", data.userId, "muted:", data.muted);
+      
+      // Update the audio status for the specific user
+      if (data.userId) {
+        setParticipantAudioStatus(prev => ({
+          ...prev,
+          [data.userId]: !data.muted // Store whether audio is enabled (opposite of muted)
+        }));
+      }
+    };
 
     // Handle video toggle
     const videoToggleListener = (data) => {};
@@ -980,23 +1010,22 @@ const VideoCall = ({
         <div className="relative w-full h-full bg-black rounded-xl overflow-hidden">
           <video
             ref={(el) => {
-              if (el) {
+              if (el && stream) {
                 remoteVideoRefs.current[userId] = el;
-                if (stream) {
+                // Only assign srcObject if it's different to prevent blinking
+                if (el.srcObject !== stream) {
                   try {
-                    if (el.srcObject !== stream) {
-                      el.srcObject = stream;
-                      el.muted = true;
-                      el.autoplay = true;
-                      el.playsInline = true;
-                  
-                      const playPromise = el.play();
-                      if (playPromise !== undefined) {
-                        playPromise.catch((error) => {
-                          el.muted = true;
-                          el.play().catch(() => {});
-                        });
-                      }
+                    el.srcObject = stream;
+                    el.muted = true;
+                    el.autoplay = true;
+                    el.playsInline = true;
+                
+                    const playPromise = el.play();
+                    if (playPromise !== undefined) {
+                      playPromise.catch((error) => {
+                        el.muted = true;
+                        el.play().catch(() => {});
+                      });
                     }
                   } catch (err) {
                     console.error(`Error assigning video for ${participant.name || "Participant"}:`, err);
@@ -1011,7 +1040,7 @@ const VideoCall = ({
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent pointer-events-none"></div>
           <div className="absolute bottom-4 left-4 bg-black/70 backdrop-blur-sm rounded-lg p-3">
-            <div className="flex items-center gap-2">
+            {/* <div className="flex items-center gap-2">
               <div className="w-3 h-3 bg-emerald-500 rounded-full animate-pulse"></div>
               <div>
                 <p className="text-white font-medium text-sm">
@@ -1021,7 +1050,7 @@ const VideoCall = ({
                   {participant.role === "therapist" ? "Therapist" : "Patient"}
                 </p>
               </div>
-            </div>
+            </div> */}
           </div>
         </div>
       );
@@ -1042,23 +1071,22 @@ const VideoCall = ({
             >
               <video
                 ref={(el) => {
-                  if (el) {
+                  if (el && stream) {
                     remoteVideoRefs.current[userId] = el;
-                    if (stream) {
+                    // Only assign srcObject if it's different to prevent blinking
+                    if (el.srcObject !== stream) {
                       try {
-                        if (el.srcObject !== stream) {
-                          el.srcObject = stream;
-                          el.muted = true;
-                          el.autoplay = true;
-                          el.playsInline = true;
+                        el.srcObject = stream;
+                        el.muted = true;
+                        el.autoplay = true;
+                        el.playsInline = true;
 
-                          const playPromise = el.play();
-                          if (playPromise !== undefined) {
-                            playPromise.catch((error) => {
-                              el.muted = true;
-                              el.play().catch(() => {});
-                            });
-                          }
+                        const playPromise = el.play();
+                        if (playPromise !== undefined) {
+                          playPromise.catch((error) => {
+                            el.muted = true;
+                            el.play().catch(() => {});
+                          });
                         }
                       } catch (err) {
                         console.error(`Error with group video ${index + 1}:`, err);
@@ -1149,16 +1177,16 @@ const VideoCall = ({
   return (
     <div className="h-screen bg-black flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between px-8 py-4 bg-slate-900 border-b border-slate-800">
-        <div className="flex items-center gap-6">
-          <div className="w-12 h-12 rounded-2xl bg-slate-800 flex items-center justify-center border border-slate-700">
-            <Video className="h-5 w-5 text-slate-300" />
+      <div className="flex flex-col sm:flex-row items-center justify-between px-4 sm:px-8 py-4 bg-slate-900 border-b border-slate-800 gap-3 sm:gap-0">
+        <div className="flex items-center gap-3 sm:gap-6">
+          <div className="w-10 sm:w-12 h-10 sm:h-12 rounded-2xl bg-slate-800 flex items-center justify-center border border-slate-700">
+            <Video className="h-4 sm:h-5 w-4 sm:w-5 text-slate-300" />
           </div>
-          <div>
-            <div className="flex items-center gap-2 mb-0.5">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2 mb-0.5">
               <Badge
                 variant="outline"
-                className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-[10px] font-bold uppercase tracking-wider px-2 py-0"
+                className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-[8px] sm:text-[10px] font-bold uppercase tracking-wider px-2 py-0"
               >
                 Admin Monitoring
               </Badge>
@@ -1166,18 +1194,18 @@ const VideoCall = ({
                 • Live Session
               </span>
             </div>
-            <h1 className="text-white font-semibold tracking-tight">
+            <h1 className="text-white font-semibold tracking-tight text-sm sm:text-base truncate">
               Remote Physiotherapy Monitoring
             </h1>
-            <p className="text-slate-500 text-xs mt-1">
+            <p className="text-slate-500 text-xs truncate">
               Session ID: {sessionId}
             </p>
-            <p className="text-slate-500 text-xs">
+            <p className="text-slate-500 text-xs truncate">
               {userInfo.name || user?.name || "Admin"} monitoring clinic session
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <Button
             variant="ghost"
             size="sm"
@@ -1190,10 +1218,11 @@ const VideoCall = ({
               setShowSettings(false);
             }}
           >
-            <Users className="h-4 w-4 mr-2" />
-            <span className="hidden md:inline">
+            <Users className="h-4 w-4 mr-1 sm:mr-2" />
+            <span className="hidden sm:inline text-xs">
               Participants ({participants.length})
             </span>
+            <span className="sm:hidden text-xs">({participants.length})</span>
           </Button>
           <Button
             variant="ghost"
@@ -1207,8 +1236,9 @@ const VideoCall = ({
               setShowSettings(false);
             }}
           >
-            <MessageSquare className="h-4 w-4 mr-2" />
-            <span className="hidden md:inline">Admin Chat</span>
+            <MessageSquare className="h-4 w-4 mr-1 sm:mr-2" />
+            <span className="hidden sm:inline text-xs">Admin Chat</span>
+            <span className="sm:hidden text-xs">Chat</span>
           </Button>
         </div>
       </div>
@@ -1227,7 +1257,7 @@ const VideoCall = ({
 
             {/* Overlay Information */}
             <div className="absolute top-4 left-4 right-4 flex justify-between items-start z-10">
-              <div className="bg-black/50 backdrop-blur-sm rounded-lg p-3">
+              {/* <div className="bg-black/50 backdrop-blur-sm rounded-lg p-3">
                 <div className="flex items-center gap-2 mb-1">
                   <div className="w-3 h-3 bg-emerald-500 rounded-full animate-pulse"></div>
                   <span className="text-white text-sm font-medium">LIVE</span>
@@ -1235,9 +1265,9 @@ const VideoCall = ({
                 <p className="text-slate-200 text-xs">
                   Remote Physiotherapy Session
                 </p>
-              </div>
+              </div> */}
 
-              <div className="bg-black/50 backdrop-blur-sm rounded-lg p-2">
+              {/* <div className="bg-black/50 backdrop-blur-sm rounded-lg p-2">
                 <div className="flex items-center gap-2 text-white text-sm">
                   <Users className="w-4 h-4" />
                   <span>
@@ -1245,7 +1275,7 @@ const VideoCall = ({
                     {participants.length !== 1 ? "s" : ""}
                   </span>
                 </div>
-              </div>
+              </div> */}
             </div>
 
             {/* Connection Status */}
@@ -1429,9 +1459,9 @@ const VideoCall = ({
         )}
 
         {showChat && (
-          <div className="md:w-80 w-full bg-slate-900 md:border-l border-slate-800 flex flex-col animate-in slide-in-from-right duration-300 md:relative absolute inset-0 md:inset-auto md:right-0 z-50">
-            <div className="p-6 border-b border-slate-800 flex items-center justify-between">
-              <h3 className="text-white font-semibold">Admin Chat</h3>
+          <div className="md:w-80 w-full bg-slate-900 md:border-l border-slate-800 flex flex-col animate-in slide-in-from-right duration-300 md:relative absolute inset-0 md:inset-auto md:right-0 z-50 max-h-screen md:max-h-full">
+            <div className="p-4 sm:p-6 border-b border-slate-800 flex items-center justify-between">
+              <h3 className="text-white font-semibold text-base">Admin Chat</h3>
               <Button
                 variant="ghost"
                 size="icon"
@@ -1445,12 +1475,12 @@ const VideoCall = ({
             {/* Chat Messages Display */}
             <div
               ref={chatContainerRef}
-              className="flex-1 overflow-y-auto p-4 space-y-4"
+              className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3"
             >
               {chatMessages.length === 0 ? (
                 <div className="flex flex-col justify-center items-center text-center h-full py-8">
-                  <div className="w-12 h-12 bg-slate-800 rounded-2xl flex items-center justify-center mb-4 border border-slate-700">
-                    <MessageSquare className="h-5 w-5 text-slate-500" />
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-slate-800 rounded-2xl flex items-center justify-center mb-4 border border-slate-700">
+                    <MessageSquare className="h-4 sm:h-5 w-4 sm:w-5 text-slate-500" />
                   </div>
                   <p className="text-slate-400 text-sm font-medium">
                     Secure admin communication channel
@@ -1470,7 +1500,7 @@ const VideoCall = ({
                     }`}
                   >
                     <div
-                      className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm ${
+                      className={`max-w-[80%] rounded-2xl px-3 sm:px-4 py-2 sm:py-3 text-sm ${
                         message.senderId === socket?.id
                           ? "bg-emerald-500 text-white rounded-br-md"
                           : "bg-slate-800 text-slate-100 rounded-bl-md border border-slate-700"
@@ -1504,7 +1534,7 @@ const VideoCall = ({
               {/* Typing indicators */}
               {typingUsers.length > 0 && (
                 <div className="flex justify-start">
-                  <div className="bg-slate-800 text-slate-400 rounded-2xl rounded-bl-md px-4 py-3 text-sm border border-slate-700">
+                  <div className="bg-slate-800 text-slate-400 rounded-2xl rounded-bl-md px-3 sm:px-4 py-2 sm:py-3 text-sm border border-slate-700">
                     <div className="flex items-center gap-1">
                       <div className="flex gap-1">
                         <div className="w-2 h-2 bg-slate-500 rounded-full animate-bounce"></div>
@@ -1528,7 +1558,7 @@ const VideoCall = ({
               )}
             </div>
 
-            <div className="p-4 border-t border-slate-800">
+            <div className="p-3 sm:p-4 border-t border-slate-800">
               <div className="flex gap-2">
                 <input
                   type="text"
@@ -1542,7 +1572,7 @@ const VideoCall = ({
                   }}
                   onFocus={handleTyping}
                   onBlur={handleStopTyping}
-                  className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 text-white text-sm focus:outline-none focus:border-slate-500 placeholder:text-slate-600"
+                  className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-3 sm:px-4 py-2 text-white text-sm focus:outline-none focus:border-slate-500 placeholder:text-slate-600"
                 />
                 <Button
                   size="icon"
@@ -1573,15 +1603,16 @@ const VideoCall = ({
 
         {/* Self Video (Admin View) */}
         <div
-          className={`absolute md:bottom-8 md:right-8 bottom-4 right-4 md:w-64 md:h-44 w-44 h-36 rounded-[2rem] overflow-hidden border-4 border-slate-900 shadow-2xl transition-all duration-500 ${
+          className={`absolute md:bottom-8 md:right-8 bottom-24 right-4 md:w-64 md:h-44 w-44 h-36 rounded-[2rem] overflow-hidden border-4 border-slate-900 shadow-2xl transition-all duration-500 ${
             showParticipants || showChat ? "md:translate-x-[-320px]" : ""
           }`}
         >
           <video
             ref={(el) => {
-              if (el) {
+              if (el && localStream) {
                 localVideoRef.current = el;
-                if (localStream) {
+                // Only assign srcObject if it's different to prevent blinking
+                if (el.srcObject !== localStream) {
                   try {
                     el.srcObject = localStream;
                   } catch (err) {
@@ -1608,21 +1639,21 @@ const VideoCall = ({
 
       {/* Controls */}
       <div className="bg-slate-900 px-4 py-4 md:px-8 md:py-8 border-t border-slate-800 md:relative fixed bottom-0 left-0 right-0 z-40">
-        <div className="max-w-screen-xl mx-auto flex items-center justify-between">
-          <div className="w-32 hidden md:flex items-center gap-2">
+        <div className="max-w-screen-xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 sm:gap-0">
+          <div className="w-24 sm:w-32 hidden md:flex items-center gap-2">
             <Badge
               variant="outline"
-              className="border-slate-700 text-slate-500"
+              className="border-slate-700 text-slate-500 text-[10px] px-2 py-0.5"
             >
               HD 1080p
             </Badge>
           </div>
 
-          <div className="flex items-center justify-center gap-4">
+          <div className="flex items-center justify-center gap-3 sm:gap-4 flex-wrap">
             <Button
               variant={audioEnabled ? "secondary" : "destructive"}
               size="icon"
-              className="rounded-2xl md:w-14 md:h-14 w-12 h-12 bg-slate-800 hover:bg-slate-700 border-slate-700"
+              className="rounded-2xl md:w-14 md:h-14 w-12 h-12 bg-slate-800 hover:bg-slate-700 border-slate-700 min-w-[48px]"
               onClick={toggleAudioHandler}
             >
               {audioEnabled ? (
@@ -1635,7 +1666,7 @@ const VideoCall = ({
             <Button
               variant={videoEnabled ? "secondary" : "destructive"}
               size="icon"
-              className="rounded-2xl md:w-14 md:h-14 w-12 h-12 bg-slate-800 hover:bg-slate-700 border-slate-700"
+              className="rounded-2xl md:w-14 md:h-14 w-12 h-12 bg-slate-800 hover:bg-slate-700 border-slate-700 min-w-[48px]"
               onClick={toggleVideoHandler}
             >
               {videoEnabled ? (
@@ -1648,7 +1679,7 @@ const VideoCall = ({
             <Button
               variant={screenSharing ? "default" : "secondary"}
               size="icon"
-              className={`rounded-2xl md:w-14 md:h-14 w-12 h-12 border-slate-700 ${
+              className={`rounded-2xl md:w-14 md:h-14 w-12 h-12 border-slate-700 min-w-[48px] ${
                 screenSharing
                   ? "bg-white text-slate-900"
                   : "bg-slate-800 text-slate-300 hover:bg-slate-700"
@@ -1676,7 +1707,7 @@ const VideoCall = ({
                 <Button
                   variant={isRecording ? "destructive" : "secondary"}
                   size="icon"
-                  className={`rounded-2xl md:w-16 md:h-16 w-14 h-14 border-2 ${
+                  className={`rounded-2xl md:w-16 md:h-16 w-14 h-12 border-2 min-w-[56px] ${
                     isRecording
                       ? "bg-red-600 text-white animate-pulse border-red-400 shadow-lg shadow-red-500/30"
                       : "bg-slate-800 text-slate-300 hover:bg-slate-700 border-slate-600"
@@ -1716,7 +1747,7 @@ const VideoCall = ({
             <Button
               variant="destructive"
               size="icon"
-              className="rounded-2xl md:w-16 md:h-14 w-14 h-12 bg-rose-500 hover:bg-rose-600 shadow-lg shadow-rose-500/20 ml-4"
+              className="rounded-2xl md:w-16 md:h-14 w-14 h-12 bg-rose-500 hover:bg-rose-600 shadow-lg shadow-rose-500/20 min-w-[56px]"
               onClick={
                 userRole === "admin" || isTherapist
                   ? endCall
@@ -1736,10 +1767,10 @@ const VideoCall = ({
             </Button> */}
           </div>
 
-          <div className="w-32 flex justify-end">
+          <div className="w-24 sm:w-32 flex justify-end">
             <div className="flex items-center gap-2">
               <div className="h-2 w-2 bg-emerald-500 rounded-full animate-pulse" />
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+              <span className="text-[8px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                 Monitoring
               </span>
             </div>

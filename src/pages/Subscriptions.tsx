@@ -805,18 +805,7 @@ export default function Subscriptions() {
                   className="mt-1"
                 />
               </div>
-              <div>
-                <Label htmlFor="validity">Validity Period (Days)</Label>
-                <Input
-                  id="validity"
-                  name="validity"
-                  type="number"
-                  placeholder="30"
-                  value={planForm.validity || ''}
-                  onChange={handleInputChange}
-                  className="mt-1"
-                />
-              </div>
+              
             </div>
 
             <div>
