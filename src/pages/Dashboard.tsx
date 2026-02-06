@@ -6,7 +6,13 @@ import {
   Calendar,
   Clock,
   Star,
-  TrendingUp
+  TrendingUp,
+  BadgeCheck,
+  IndianRupee,
+  CalendarClock,
+  CheckCircle,
+  Hourglass,
+  Layers
 } from "lucide-react";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { RevenueChart } from "@/components/dashboard/RevenueChart";
@@ -89,7 +95,7 @@ export default function Dashboard() {
 
   if (loading && !error) {
     return <PageLoader text="Loading dashboard..." />;
-}  
+  }
 
 
 
@@ -102,18 +108,7 @@ export default function Dashboard() {
           <p className="page-subtitle">Welcome back! Here's your platform overview.</p>
         </div>
         <div className="flex items-center gap-3">
-          {/* <Select defaultValue="this-month">
-            <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder="Select period" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="today">Today</SelectItem>
-              <SelectItem value="this-week">This Week</SelectItem>
-              <SelectItem value="this-month">This Month</SelectItem>
-              <SelectItem value="last-month">Last Month</SelectItem>
-              <SelectItem value="custom">Custom Range</SelectItem>
-            </SelectContent>
-          </Select> */}
+
           <Button variant="outline" className="" onClick={exportToPDF}>Export Report</Button>
         </div>
       </div>
@@ -122,63 +117,67 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Total Users"
-          value={stats?.stats?.totalUsers ? stats.stats.totalUsers.toLocaleString() : '0'}
+          value={stats?.stats?.totalUsers ? stats.stats.totalUsers.toLocaleString() : "0"}
           change={{ value: 12.5, isPositive: true }}
-          icon={Users}
+          icon={Users}              // ✅ correct
           iconColor="bg-info"
         />
+
         <StatCard
           title="Active Subscriptions"
-          value={stats?.stats?.activeSubscriptions ? stats.stats.activeSubscriptions.toLocaleString() : '0'}
+          value={stats?.stats?.activeSubscriptions ? stats.stats.activeSubscriptions.toLocaleString() : "0"}
           change={{ value: 15.3, isPositive: true }}
-          icon={CreditCard}
+          icon={BadgeCheck}         // 🔥 better than CreditCard
           iconColor="bg-primary"
         />
+
         <StatCard
           title="Total Revenue"
-          value={`₹${stats?.stats?.totalRevenue ? stats.stats.totalRevenue.toLocaleString() : '0'}`}
+          value={`₹${stats?.stats?.totalRevenue ? stats.stats.totalRevenue.toLocaleString() : "0"}`}
           change={{ value: 18.7, isPositive: true }}
-          icon={DollarSign}
+          icon={IndianRupee}        // 🔥 better than DollarSign (India)
           iconColor="bg-success"
         />
+
         <StatCard
           title="Upcoming Sessions"
-          value={stats?.stats?.upcomingSessions ? stats.stats.upcomingSessions.toString() : '0'}
-          icon={Calendar}
+          value={stats?.stats?.upcomingSessions ? stats.stats.upcomingSessions.toString() : "0"}
+          icon={CalendarClock}      // 🔥 more specific
           iconColor="bg-warning"
         />
       </div>
 
+
       {/* Secondary Stats */}
- <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-  <StatCard
-    title="Completed Today"
-    value={stats?.stats?.completedToday ? stats.stats.completedToday.toString() : '0'}
-    icon={Clock}
-    iconColor="bg-primary"
-  />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard
+          title="Completed Today"
+          value={stats?.stats?.completedToday ? stats.stats.completedToday.toString() : "0"}
+          icon={CheckCircle}        // 🔥 completion indicator
+          iconColor="bg-success"
+        />
 
-  <StatCard
-    title="Pending Bookings"
-    value={stats?.stats?.pendingBookings ? stats.stats.pendingBookings.toString() : '0'}
-    icon={CreditCard}
-    iconColor="bg-warning"
-  />
+        <StatCard
+          title="Pending Bookings"
+          value={stats?.stats?.pendingBookings ? stats.stats.pendingBookings.toString() : "0"}
+          icon={Hourglass}          // 🔥 pending / waiting
+          iconColor="bg-warning"
+        />
 
-  <StatCard
-    title="Customer Satisfaction"
-    value={`${stats?.stats?.customerSatisfactionScore || 0}%`}
-    icon={TrendingUp}
-    iconColor="bg-success"
-  />
+        <StatCard
+          title="Total Subscription Plans"
+          value={stats?.stats?.activeSubscriptions ? stats.stats.totalSubscriptionPlans.toString() : "0"}
+          icon={Layers}             // 🔥 stack / plans
+          iconColor="bg-primary"
+        />
 
-  <StatCard
-    title="Total Services"
-    value={stats?.stats?.totalServices ? stats.stats.totalServices.toString() : '0'}
-    icon={Stethoscope}
-    iconColor="bg-info"
-  />
-</div>
+        <StatCard
+          title="Total Services"
+          value={stats?.stats?.totalServices ? stats.stats.totalServices.toString() : "0"}
+          icon={Stethoscope}        // ✅ perfect
+          iconColor="bg-info"
+        />
+      </div>
 
 
       {/* Charts Row */}
