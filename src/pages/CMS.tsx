@@ -1,22 +1,8 @@
 import { useState, useEffect } from "react";
 import { useSelector, useDispatch } from 'react-redux';
 import { cn } from "@/lib/utils";
-import {
-  fetchAllCmsData,
-  updateHero,
-  createStep,
-  updateStep,
-  deleteStep,
-  updateConditions,
-  updateWhyUs,
-  createFaq,
-  updateFaq,
-  deleteFaq,
-  updateTerms,
-  updateFeaturedTherapist,
-  updateContact,
-  updateAbout,
-} from "@/features/cms/cmsSlice";
+import { fetchAllCmsData, updateHero, createStep, updateStep, deleteStep, updateConditions, updateWhyUs, createFaq, updateFaq, deleteFaq, updateTerms, updateFeaturedTherapist, updateContact, updateAbout, addSingleCondition, updateSingleCondition, deleteSingleCondition } from '@/features/cms/cmsSlice';
+
 // Import new components
 import AboutSection from "./cms-components/AboutSection";
 import EditHeroFormComponent from "./cms-components/forms/EditHeroForm";
