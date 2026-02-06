@@ -76,14 +76,12 @@ export default function ConditionsSection({ data, onEdit, onEditCondition, onAdd
                                 className="group cursor-pointer py-3 sm:py-4 bg-gradient-to-br from-white to-muted/20 dark:from-background dark:to-muted/5 rounded-2xl p-4 sm:p-6 text-center shadow-soft border-2 border-transparent transition-all duration-500 border-primary/20 hover:shadow-xl hover:border-primary/30 relative"
                             >
                                 <div className="h-12 w-12 sm:h-16 sm:w-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4 sm:mb-6 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-500 shadow-sm">
-                                    {condition.image && typeof condition.image === 'string' && condition.image.trim() !== '' && (condition.image.startsWith('http') || condition.image.startsWith('/')) ? (
+                                    {condition.image ? (
                                         <img 
                                             src={condition.image} 
                                             alt={condition.name}
                                             className="h-6 w-6 sm:h-8 sm:w-8 object-contain"
-                                            onError={(e) => {
-                                                console.error('Image failed to load:', condition.image);
-                                            }}
+                                           
                                         />
                                     ) : (
                                         <div className="h-6 w-6 sm:h-8 sm:w-8 flex items-center justify-center text-xs">No Image</div>
