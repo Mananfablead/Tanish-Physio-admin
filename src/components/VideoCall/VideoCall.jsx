@@ -83,6 +83,7 @@ const VideoCall = ({
     rejectCall,
     localVideoRef,
     remoteVideoRefs,
+    remoteAudioRefs,
     setCallActive,
     setParticipants,
     setCallLogId,
@@ -150,7 +151,10 @@ const VideoCall = ({
             }
           }
         } catch (err) {
-          console.error(`Error setting admin remote video srcObject for ${userId}:`, err);
+          console.error(
+            `Error setting admin remote video srcObject for ${userId}:`,
+            err
+          );
         }
       }
     });
@@ -235,7 +239,16 @@ const VideoCall = ({
         console.log("✅ Valid callLogId already present");
       }
     }
-  }, [callActive, callLogId, sessionId, roomId, roomType, user, setCallLogId, groupSessionId]);
+  }, [
+    callActive,
+    callLogId,
+    sessionId,
+    roomId,
+    roomType,
+    user,
+    setCallLogId,
+    groupSessionId,
+  ]);
 
   const [screenSharing, setScreenSharing] = useState(false);
   const [showParticipants, setShowParticipants] = useState(false);
@@ -307,8 +320,11 @@ const VideoCall = ({
       // Participants are validated through peer connections
       let isValidParticipant = true;
       let enhancedData = { ...data, isSelf: data.socketId === socket.id };
-      
-      console.log("✅ Admin participant joined via peer connection:", data.userId);
+
+      console.log(
+        "✅ Admin participant joined via peer connection:",
+        data.userId
+      );
 
       // If the participant doesn't have a name, try to get it from socket data
       if (!enhancedData.name) {
@@ -320,9 +336,9 @@ const VideoCall = ({
               : "You");
         } else {
           // For other participants, use name from socket data
-          enhancedData.name = 
-            data.name || 
-            (data.firstName && data.lastName 
+          enhancedData.name =
+            data.name ||
+            (data.firstName && data.lastName
               ? data.firstName + " " + data.lastName
               : `Participant ${
                   data.userId?.substring(0, 5) ||
@@ -330,7 +346,7 @@ const VideoCall = ({
                   "Unknown"
                 }`);
         }
-        
+
         console.log("Admin participant name assigned:", enhancedData.name);
       }
 
@@ -401,7 +417,7 @@ const VideoCall = ({
     isInitializingMedia,
     isInitializing,
     hasAttemptedInit,
-    initError
+    initError,
   ]);
 
   // Timer for call duration
@@ -443,7 +459,9 @@ const VideoCall = ({
 
   // Participants are now populated through peer connections
   useEffect(() => {
-    console.log("Admin: Participants will be populated through peer connections");
+    console.log(
+      "Admin: Participants will be populated through peer connections"
+    );
   }, []);
 
   const loadChatMessages = async () => {
@@ -671,15 +689,15 @@ const VideoCall = ({
         if (exists) return prev;
         return [...prev, { ...data, isSelf: data.socketId === socket.id }];
       });
-      
+
       // Initialize audio status for the new participant (default to enabled)
       if (data.userId) {
-        setParticipantAudioStatus(prev => ({
+        setParticipantAudioStatus((prev) => ({
           ...prev,
-          [data.userId]: true // Audio enabled by default
+          [data.userId]: true, // Audio enabled by default
         }));
       }
-      
+
       if (
         data.isTherapist &&
         userRole !== "therapist" &&
@@ -694,10 +712,10 @@ const VideoCall = ({
       setParticipants((prev) => {
         return prev.filter((p) => p.userId !== data.userId);
       });
-      
+
       // Remove audio status for the leaving participant
       if (data.userId) {
-        setParticipantAudioStatus(prev => {
+        setParticipantAudioStatus((prev) => {
           const newStatus = { ...prev };
           delete newStatus[data.userId];
           return newStatus;
@@ -723,7 +741,11 @@ const VideoCall = ({
           sessionDetails.sessionId.length === 24
         ) {
           finalCallLogId = sessionDetails.sessionId;
-        } else if (roomId && typeof roomId === "string" && roomId.length === 24) {
+        } else if (
+          roomId &&
+          typeof roomId === "string" &&
+          roomId.length === 24
+        ) {
           finalCallLogId = roomId;
         } else {
           finalCallLogId = "507f1f77bcf86cd799439011";
@@ -789,13 +811,18 @@ const VideoCall = ({
     // Handle audio toggle
     const audioToggleListener = (data) => {
       // Update UI to reflect other participant's audio status
-      console.log("Audio toggle received from user:", data.userId, "muted:", data.muted);
-      
+      console.log(
+        "Audio toggle received from user:",
+        data.userId,
+        "muted:",
+        data.muted
+      );
+
       // Update the audio status for the specific user
       if (data.userId) {
-        setParticipantAudioStatus(prev => ({
+        setParticipantAudioStatus((prev) => ({
           ...prev,
-          [data.userId]: !data.muted // Store whether audio is enabled (opposite of muted)
+          [data.userId]: !data.muted, // Store whether audio is enabled (opposite of muted)
         }));
       }
     };
@@ -816,12 +843,15 @@ const VideoCall = ({
     // Handle chat message
     const chatMessageListener = (data) => {
       console.log("Admin received chat message:", data);
-      
+
       // Determine sender name - use provided name or fallback
-      const senderName = data.senderName || 
-                        data.message?.senderName || 
-                        (data.senderId === socket?.id ? (userInfo.name || user?.name || "Admin") : "Participant");
-      
+      const senderName =
+        data.senderName ||
+        data.message?.senderName ||
+        (data.senderId === socket?.id
+          ? userInfo.name || user?.name || "Admin"
+          : "Participant");
+
       // Add the received message to chat messages
       setChatMessages((prev) => [
         ...prev,
@@ -842,12 +872,15 @@ const VideoCall = ({
     // Handle real-time message broadcast
     const messageReceivedListener = (data) => {
       console.log("Admin received real-time message:", data);
-      
+
       // Determine sender name - use provided name or fallback
-      const senderName = data.senderName || 
-                        data.message?.senderName || 
-                        (data.senderId === socket?.id ? (userInfo.name || user?.name || "Admin") : "Participant");
-      
+      const senderName =
+        data.senderName ||
+        data.message?.senderName ||
+        (data.senderId === socket?.id
+          ? userInfo.name || user?.name || "Admin"
+          : "Participant");
+
       setChatMessages((prev) => [
         ...prev,
         {
@@ -937,7 +970,7 @@ const VideoCall = ({
     sessionDetails,
     roomId,
     userInfo.name,
-    user?.name
+    user?.name,
   ]);
 
   // Toggle audio
@@ -1008,6 +1041,37 @@ const VideoCall = ({
 
       return (
         <div className="relative w-full h-full bg-black rounded-xl overflow-hidden">
+          {/* Hidden audio element for remote audio */}
+          <audio
+            ref={(el) => {
+              if (el && stream) {
+                remoteAudioRefs.current[userId] = el;
+                if (el.srcObject !== stream) {
+                  try {
+                    el.srcObject = stream;
+                    el.muted = false;
+                    el.autoplay = true;
+                    const playPromise = el.play();
+                    if (playPromise !== undefined) {
+                      playPromise.catch((error) => {
+                        el.muted = false;
+                        el.play().catch(() => {});
+                      });
+                    }
+                  } catch (err) {
+                    console.error(
+                      `Error assigning audio for ${
+                        participant.name || "Participant"
+                      }:`,
+                      err
+                    );
+                  }
+                }
+              }
+            }}
+            autoPlay
+            className="hidden"
+          />
           <video
             ref={(el) => {
               if (el && stream) {
@@ -1019,7 +1083,7 @@ const VideoCall = ({
                     el.muted = true;
                     el.autoplay = true;
                     el.playsInline = true;
-                
+
                     const playPromise = el.play();
                     if (playPromise !== undefined) {
                       playPromise.catch((error) => {
@@ -1028,7 +1092,12 @@ const VideoCall = ({
                       });
                     }
                   } catch (err) {
-                    console.error(`Error assigning video for ${participant.name || "Participant"}:`, err);
+                    console.error(
+                      `Error assigning video for ${
+                        participant.name || "Participant"
+                      }:`,
+                      err
+                    );
                   }
                 }
               }
@@ -1069,6 +1138,35 @@ const VideoCall = ({
               key={userId}
               className="relative bg-black rounded-xl overflow-hidden border border-slate-700"
             >
+              {/* Hidden audio element for remote audio */}
+              <audio
+                ref={(el) => {
+                  if (el && stream) {
+                    remoteAudioRefs.current[userId] = el;
+                    if (el.srcObject !== stream) {
+                      try {
+                        el.srcObject = stream;
+                        el.muted = false;
+                        el.autoplay = true;
+                        const playPromise = el.play();
+                        if (playPromise !== undefined) {
+                          playPromise.catch((error) => {
+                            el.muted = false;
+                            el.play().catch(() => {});
+                          });
+                        }
+                      } catch (err) {
+                        console.error(
+                          `Error with group audio ${index + 1}:`,
+                          err
+                        );
+                      }
+                    }
+                  }
+                }}
+                autoPlay
+                className="hidden"
+              />
               <video
                 ref={(el) => {
                   if (el && stream) {
@@ -1089,7 +1187,10 @@ const VideoCall = ({
                           });
                         }
                       } catch (err) {
-                        console.error(`Error with group video ${index + 1}:`, err);
+                        console.error(
+                          `Error with group video ${index + 1}:`,
+                          err
+                        );
                       }
                     }
                   }

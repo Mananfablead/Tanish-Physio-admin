@@ -80,6 +80,7 @@ const useWebRTC = (roomId, socket, userRole = 'admin') => {
     const peerRefs = useRef({});
     const localVideoRef = useRef(null);
     const remoteVideoRefs = useRef({});
+    const remoteAudioRefs = useRef({});
     const localStreamRef = useRef(null);
 
     // Helper function to update both state and ref
@@ -1406,7 +1407,7 @@ const useWebRTC = (roomId, socket, userRole = 'admin') => {
                     }
 
                     const formData = new FormData();
-                    formData.append('recording', blob, `recording-${roomId}-${Date.now()}.webm`);
+                    formData.append('recording-videos', blob, `recording-${roomId}-${Date.now()}.webm`);
                     formData.append('callLogId', callLogId);
 
                     const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/video-call/recording/upload`, {
@@ -1519,6 +1520,7 @@ const useWebRTC = (roomId, socket, userRole = 'admin') => {
         rejectCall,
         localVideoRef,
         remoteVideoRefs,
+        remoteAudioRefs,
         setCallActive,
         setParticipants,
         setCallLogId,
