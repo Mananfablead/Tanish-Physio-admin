@@ -107,6 +107,13 @@ export default function Testimonials() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errors, setErrors] = useState({
+    userId: false,
+    clientEmail: false,
+    serviceUsed: false,
+    problem: false,
+    content: false,
+  });
 
 
   const [editingTestimonial, setEditingTestimonial] =
@@ -192,6 +199,14 @@ export default function Testimonials() {
       status: "pending",
       featured: false,
     });
+    // Clear any existing errors
+    setErrors({
+      userId: false,
+      clientEmail: false,
+      serviceUsed: false,
+      problem: false,
+      content: false,
+    });
     setIsModalOpen(true);
   };
 
@@ -236,34 +251,38 @@ export default function Testimonials() {
       status: testimonial.status,
       featured: testimonial.featured,
     });
+    // Clear any existing errors
+    setErrors({
+      userId: false,
+      clientEmail: false,
+      serviceUsed: false,
+      problem: false,
+      content: false,
+    });
     setIsModalOpen(true);
   };
 
+  const validateForm = () => {
+    const newErrors = {
+      userId: !formData.userId.trim(),
+      clientEmail: !formData.clientEmail.trim(),
+      serviceUsed: !formData.serviceUsed.trim(),
+      problem: !formData.problem.trim(),
+      content: !formData.content.trim(),
+    };
+    
+    setErrors(newErrors);
+    
+    return !Object.values(newErrors).some(error => error);
+  };
+
   const handleSubmit = async () => {
+    if (!validateForm()) {
+      return;
+    }
+    
     setIsSubmitting(true);
     try {
-      // Validate required fields for both add and edit
-      if (!formData.userId) {
-        setIsSubmitting(false);
-        return;
-      }
-      if (!formData.clientEmail) {
-        setIsSubmitting(false);
-        return;
-      }
-      if (!formData.serviceUsed) {
-        setIsSubmitting(false);
-        return;
-      }
-      if (!formData.problem) {
-        setIsSubmitting(false);
-        return;
-      }
-      if (!formData.content) {
-        setIsSubmitting(false);
-        return;
-      }
-
       if (editingTestimonial) {
         // Update existing testimonial
         await dispatch(updateTestimonial({ id: editingTestimonial.id, data: formData })).unwrap();
@@ -274,12 +293,22 @@ export default function Testimonials() {
 
       // Close modal
       setIsModalOpen(false);
+      
+      // Clear errors
+      setErrors({
+        userId: false,
+        clientEmail: false,
+        serviceUsed: false,
+        problem: false,
+        content: false,
+      });
 
       // Refresh testimonials to ensure the new/updated testimonial appears in the filtered list
       dispatch(fetchTestimonials({ search: searchQuery, status: statusFilter }));
       dispatch(fetchTestimonialStats());
     } catch (error) {
       console.error('Error saving testimonial:', error);
+      alert(error.message || "An error occurred while saving the testimonial");
       // Still refresh in case of error to ensure UI consistency
       dispatch(fetchTestimonials({ search: searchQuery, status: statusFilter }));
       dispatch(fetchTestimonialStats());
@@ -356,6 +385,10 @@ export default function Testimonials() {
       userId: user._id,
       clientName: user.name || user.fullName || (user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user._id),
       clientEmail: user.email || "",
+      // Automatically set service used if user has services
+      serviceUsed: user.servicesUsed && user.servicesUsed.length > 0 
+        ? user.servicesUsed[0].serviceName || "" 
+        : ""
     }));
     setOpenUserSelector(false);
   };
@@ -678,7 +711,7 @@ export default function Testimonials() {
                       variant="outline"
                       role="combobox"
                       aria-expanded={openUserSelector}
-                      className={`w-full justify-between ${!selectedUser && editingTestimonial ? "border-red-500" : ""}`}
+                      className={`w-full justify-between ${errors.userId ? "border-red-500" : ""}`}
                     >
                       {selectedUser
                         ? selectedUser.name || selectedUser.fullName || selectedUser.firstName + " " + selectedUser.lastName
@@ -724,8 +757,8 @@ export default function Testimonials() {
                     </Command>
                   </PopoverContent>
                 </Popover>
-                {!selectedUser && (
-                  <p className="text-sm text-red-500">Client name is required</p>
+                {errors.userId && (
+                  <p className="text-sm text-red-500">Client is required</p>
                 )}
               </div>
               <div className="space-y-2">
@@ -734,13 +767,16 @@ export default function Testimonials() {
                   id="clientEmail"
                   type="email"
                   value={formData.clientEmail}
-                  onChange={(e) =>
-                    setFormData({ ...formData, clientEmail: e.target.value })
-                  }
+                  onChange={(e) => {
+                    setFormData({ ...formData, clientEmail: e.target.value });
+                    if (errors.clientEmail && e.target.value.trim()) {
+                      setErrors(prev => ({ ...prev, clientEmail: false }));
+                    }
+                  }}
                   placeholder="Enter client email"
-                  className={editingTestimonial && !formData.clientEmail ? "border-red-500" : ""}
+                  className={errors.clientEmail ? "border-red-500" : ""}
                 />
-                {!formData.clientEmail && (
+                {errors.clientEmail && (
                   <p className="text-sm text-red-500">Client email is required</p>
                 )}
               </div>
@@ -759,14 +795,17 @@ export default function Testimonials() {
 
                 <Select
                   value={formData.serviceUsed}
-                  onValueChange={(value) =>
-                    setFormData({ ...formData, serviceUsed: value })
-                  }
+                  onValueChange={(value) => {
+                    setFormData({ ...formData, serviceUsed: value });
+                    if (errors.serviceUsed && value.trim()) {
+                      setErrors(prev => ({ ...prev, serviceUsed: false }));
+                    }
+                  }}
                   disabled={!allUsers?.length}
                 >
                   <SelectTrigger
                     id="serviceUsed"
-                    className={editingTestimonial && !formData.serviceUsed ? "border-red-500" : ""}
+                    className={errors.serviceUsed ? "border-red-500" : ""}
                   >
                     <SelectValue placeholder="Select a service" />
                   </SelectTrigger>
@@ -778,14 +817,16 @@ export default function Testimonials() {
                           user.servicesUsed?.map((service: any) => service.serviceName) || []
                         )
                       )
-                    ).map((serviceName: string) => (
+                    )
+                    .filter((serviceName: string) => serviceName && serviceName.trim() !== "")
+                    .map((serviceName: string) => (
                       <SelectItem key={serviceName} value={serviceName}>
                         {serviceName}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                {!formData.serviceUsed && (
+                {errors.serviceUsed && (
                   <p className="text-sm text-red-500">Service used is required</p>
                 )}
               </div>
@@ -797,13 +838,16 @@ export default function Testimonials() {
               <Input
                 id="problem"
                 value={formData.problem}
-                onChange={(e) =>
-                  setFormData({ ...formData, problem: e.target.value })
-                }
+                onChange={(e) => {
+                  setFormData({ ...formData, problem: e.target.value });
+                  if (errors.problem && e.target.value.trim()) {
+                    setErrors(prev => ({ ...prev, problem: false }));
+                  }
+                }}
                 placeholder="Enter the problem that was treated"
-                className={editingTestimonial && !formData.problem ? "border-red-500" : ""}
+                className={errors.problem ? "border-red-500" : ""}
               />
-              {!formData.problem && (
+              {errors.problem && (
                 <p className="text-sm text-red-500">Problem is required</p>
               )}
             </div>
@@ -832,14 +876,17 @@ export default function Testimonials() {
               <Textarea
                 id="content"
                 value={formData.content}
-                onChange={(e) =>
-                  setFormData({ ...formData, content: e.target.value })
-                }
+                onChange={(e) => {
+                  setFormData({ ...formData, content: e.target.value });
+                  if (errors.content && e.target.value.trim()) {
+                    setErrors(prev => ({ ...prev, content: false }));
+                  }
+                }}
                 placeholder="Enter the client's testimonial..."
                 rows={4}
-                className={editingTestimonial && !formData.content ? "border-red-500" : ""}
+                className={errors.content ? "border-red-500" : ""}
               />
-              {!formData.content && (
+              {errors.content && (
                 <p className="text-sm text-red-500">Testimonial content is required</p>
               )}
             </div>

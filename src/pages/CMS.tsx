@@ -22,6 +22,7 @@ import AboutSection from "./cms-components/AboutSection";
 import EditHeroFormComponent from "./cms-components/forms/EditHeroForm";
 import EditStepFormComponent from "./cms-components/forms/EditStepForm";
 import EditConditionsFormComponent from "./cms-components/forms/EditConditionsForm";
+import EditConditionForm from "./cms-components/forms/EditConditionForm";
 import {
     Tabs,
     TabsContent,
@@ -331,18 +332,28 @@ export default function CMS() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalSection, setModalSection] = useState(null);
     const [modalItem, setModalItem] = useState(null);
+    const [modalItemIndex, setModalItemIndex] = useState(null);
 
     
     // Delete confirmation state
     const [deleteItemId, setDeleteItemId] = useState<string | null>(null);
     const [deleteItemType, setDeleteItemType] = useState<"step" | "faq" | null>(null);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [deleteConditionIndex, setDeleteConditionIndex] = useState<number | null>(null);
+    const [isDeleteConditionDialogOpen, setIsDeleteConditionDialogOpen] = useState(false);
 
     // Open edit modal
-    const openEditModal = (section, item = null) => {
+    const openEditModal = (section, item = null, index = null) => {
         setModalSection(section);
         setModalItem(item);
+        setModalItemIndex(index);
         setIsModalOpen(true);
+    };
+
+    // Delete condition - opens confirmation dialog
+    const openDeleteConditionDialog = (index: number) => {
+        setDeleteConditionIndex(index);
+        setIsDeleteConditionDialogOpen(true);
     };
 
     // Close modal
@@ -350,6 +361,7 @@ export default function CMS() {
         setIsModalOpen(false);
         setModalSection(null);
         setModalItem(null);
+        setModalItemIndex(null);
     };
 
     // Save changes from modal
@@ -391,11 +403,38 @@ export default function CMS() {
                 }
             }
         } else if (modalSection === 'conditions') {
-            dispatch(updateConditions(updatedData));
-            setData(prev => ({
-                ...prev,
-                conditions: updatedData
-            }));
+            if (modalItemIndex !== null && modalItemIndex >= 0) {
+                // Editing an individual condition - use the new endpoint
+                const conditionWithProperTitle = {
+                    ...updatedData,
+                    title: updatedData.name || updatedData.title || '',
+                    content: updatedData.content || ''
+                };
+                const result = await dispatch(updateSingleCondition({ index: modalItemIndex, conditionData: conditionWithProperTitle }));
+                if (updateSingleCondition.fulfilled.match(result)) {
+                    // Refresh data after successful update
+                    dispatch(fetchAllCmsData());
+                }
+            } else if (modalItemIndex === -1) {
+                // Adding a new condition - use the new endpoint
+                const conditionWithProperTitle = {
+                    ...updatedData,
+                    title: updatedData.name || updatedData.title || '',
+                    content: updatedData.content || ''
+                };
+                const result = await dispatch(addSingleCondition(conditionWithProperTitle));
+                if (addSingleCondition.fulfilled.match(result)) {
+                    // Refresh data after successful add
+                    dispatch(fetchAllCmsData());
+                }
+            } else {
+                // Updating the entire conditions section
+                const result = await dispatch(updateConditions(updatedData));
+                if (updateConditions.fulfilled.match(result)) {
+                    // Refresh data after successful update
+                    dispatch(fetchAllCmsData());
+                }
+            }
         } else if (modalSection === 'whyUs') {
             dispatch(updateWhyUs(updatedData));
             setData(prev => ({
@@ -513,6 +552,50 @@ export default function CMS() {
         setDeleteItemId(null);
         setDeleteItemType(null);
         setIsDeleteDialogOpen(false);
+    };
+
+    // // Confirm delete condition
+    // const confirmDeleteCondition = async () => {
+    //     if (deleteConditionIndex === null) return;
+        
+    //     // Actually delete from backend
+    //     const result = await dispatch(deleteSingleCondition(deleteConditionIndex));
+    //     if (deleteSingleCondition.fulfilled.match(result)) {
+    //         // Refresh data after successful delete
+    //         dispatch(fetchAllCmsData());
+    //     }
+        
+    //     // Reset delete state
+    //     setDeleteConditionIndex(null);
+    //     setIsDeleteConditionDialogOpen(false);
+    // };
+
+    // // Cancel delete condition
+    // const cancelDeleteCondition = () => {
+    //     setDeleteConditionIndex(null);
+    //     setIsDeleteConditionDialogOpen(false);
+    // };
+
+    // Confirm delete condition
+    const confirmDeleteCondition = async () => {
+        if (deleteConditionIndex === null) return;
+        
+        // Actually delete from backend
+        const result = await dispatch(deleteSingleCondition(deleteConditionIndex));
+        if (deleteSingleCondition.fulfilled.match(result)) {
+            // Refresh data after successful delete
+            dispatch(fetchAllCmsData());
+        }
+        
+        // Reset delete state
+        setDeleteConditionIndex(null);
+        setIsDeleteConditionDialogOpen(false);
+    };
+
+    // Cancel delete condition
+    const cancelDeleteCondition = () => {
+        setDeleteConditionIndex(null);
+        setIsDeleteConditionDialogOpen(false);
     };
 
     // Cancel delete
@@ -774,6 +857,9 @@ export default function CMS() {
                     <ConditionsSection 
                         data={data.conditions} 
                         onEdit={openEditModal}
+                        onEditCondition={(condition, index) => openEditModal('conditions', condition, index)}
+                        onAddCondition={() => openEditModal('conditions', { name: '', title: '', image: null }, -1)}
+                        onDeleteCondition={openDeleteConditionDialog}
                         loading={loading.updateConditions}
                     />
                 </TabsContent>
@@ -868,7 +954,10 @@ export default function CMS() {
                 {activeTab === "conditions" && (
                     <ConditionsSection 
                         data={data.conditions} 
-                        onEdit={openEditModal} 
+                        onEdit={openEditModal}
+                        onEditCondition={(condition, index) => openEditModal('conditions', condition, index)}
+                        onAddCondition={() => openEditModal('conditions', { name: '', title: '', image: null }, -1)}
+                        onDeleteCondition={openDeleteConditionDialog}
                         loading={loading.updateConditions}
                     />
                 )}
@@ -925,7 +1014,10 @@ export default function CMS() {
                         <DialogTitle className="text-lg sm:text-xl">
                             {modalSection === 'hero' && 'Edit Hero Section'}
                             {modalSection === 'step' && (modalItem ? 'Edit Step' : 'Add Multiple Steps')}
-                            {modalSection === 'conditions' && 'Edit Conditions'}
+                            {modalSection === 'conditions' && (
+                                modalItemIndex === -1 ? 'Add Condition' : 
+                                modalItemIndex !== null && modalItemIndex >= 0 ? 'Edit Condition' : 'Edit Conditions Section'
+                            )}
                             {modalSection === 'whyUs' && 'Edit Why Choose Us'}
                             {modalSection === 'faq' && (modalItem ? 'Edit FAQ' : 'Manage FAQs')}
                             {modalSection === 'featuredTherapist' && 'Edit Team Member'}
@@ -950,7 +1042,16 @@ export default function CMS() {
                         )}
 
                         {modalSection === 'conditions' && (
-                            <EditConditionsFormComponent data={modalItem || data.conditions} onSave={saveModalChanges} onCancel={closeEditModal} />
+                            modalItemIndex === -1 ? (
+                                // Adding new individual condition
+                                <EditConditionForm data={{ name: '', title: '', image: null }} onSave={saveModalChanges} onCancel={closeEditModal} />
+                            ) : modalItemIndex !== null && modalItemIndex >= 0 ? (
+                                // Editing individual condition
+                                <EditConditionForm data={modalItem} onSave={saveModalChanges} onCancel={closeEditModal} />
+                            ) : (
+                                // Editing entire conditions section
+                                <EditConditionsFormComponent data={modalItem || data.conditions} onSave={saveModalChanges} onCancel={closeEditModal} />
+                            )
                         )}
 
                         {modalSection === 'whyUs' && (
@@ -1000,6 +1101,27 @@ export default function CMS() {
                             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                         >
                             Delete {deleteItemType === "step" ? "Step" : "FAQ"}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Delete Condition Confirmation Modal */}
+            <AlertDialog open={isDeleteConditionDialogOpen} onOpenChange={setIsDeleteConditionDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This action cannot be undone. This will permanently delete the condition from the Conditions section.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel onClick={cancelDeleteCondition}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction 
+                            onClick={confirmDeleteCondition}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                            Delete Condition
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

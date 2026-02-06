@@ -546,6 +546,31 @@ export const cmsAPI = {
   // Conditions section
   getConditionsPublic: () => apiClient.get(API.CMS_CONDITIONS_PUBLIC),
   getConditionsAdmin: () => apiClient.get(API.CMS_CONDITIONS_ADMIN),
+  createConditions: (data) => {
+    const formData = new FormData();
+    
+    // Append basic fields
+    formData.append('title', data.title);
+    formData.append('description', data.description);
+    formData.append('isPublic', data.isPublic ? 'true' : 'false');
+    
+    // Append conditions with indexed keys format
+    if (data.conditions && Array.isArray(data.conditions)) {
+      data.conditions.forEach((condition, index) => {
+        formData.append(`conditions[${index}][title]`, condition.name || '');
+        formData.append(`conditions[${index}][content]`, ''); // Empty content as per backend expectation
+        
+        // Append image only if it's a File object
+        if (condition.image && condition.image instanceof File) {
+          formData.append(`conditions[${index}][image]`, condition.image);
+        }
+      });
+    }
+    
+    return apiClient.post(API.CMS_CONDITIONS_ADMIN, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  },
   updateConditions: (data) => {
     const formData = new FormData();
     
@@ -568,6 +593,72 @@ export const cmsAPI = {
     }
     
     return apiClient.put(API.CMS_CONDITIONS_ADMIN, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  },
+  
+  // Add a single condition
+  addSingleCondition: (data) => {
+    const formData = new FormData();
+    
+    // Append condition data
+    formData.append('title', data.title || data.name || '');
+    formData.append('content', data.content || '');
+    
+    // Append image if it's a File object
+    if (data.image && data.image instanceof File) {
+      formData.append('image', data.image);
+    }
+    
+    return apiClient.post(`${API.CMS_CONDITIONS_ADMIN}/single`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  },
+  
+  // Update a single condition by index
+  updateSingleCondition: (index, data) => {
+    const formData = new FormData();
+    
+    // Append condition data
+    formData.append('title', data.title || data.name || '');
+    formData.append('content', data.content || '');
+    
+    // Append image if it's a File object
+    if (data.image && data.image instanceof File) {
+      formData.append('image', data.image);
+    }
+    
+    return apiClient.put(`${API.CMS_CONDITIONS_ADMIN}/single/${index}`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  },
+  
+  // Delete a single condition by index
+  deleteSingleCondition: (index) => {
+    return apiClient.delete(`${API.CMS_CONDITIONS_ADMIN}/single/${index}`);
+  },
+  updateConditionsById: (id, data) => {
+    const formData = new FormData();
+    
+    // Append basic fields
+    formData.append('title', data.title);
+    formData.append('description', data.description);
+    formData.append('isPublic', data.isPublic ? 'true' : 'false');
+    
+    // Append conditions with indexed keys format
+    if (data.conditions && Array.isArray(data.conditions)) {
+      data.conditions.forEach((condition, index) => {
+        formData.append(`conditions[${index}][title]`, condition.name || '');
+        formData.append(`conditions[${index}][content]`, ''); // Empty content as per backend expectation
+        
+        // Append image only if it's a File object
+        if (condition.image && condition.image instanceof File) {
+          formData.append(`conditions[${index}][image]`, condition.image);
+        }
+      });
+    }
+    
+    return apiClient.put(`${API.CMS_CONDITIONS_ADMIN}/${id}`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
   },

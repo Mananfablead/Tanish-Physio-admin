@@ -2,33 +2,49 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Edit, Eye } from "lucide-react";
+import { Edit, Eye, Plus, Trash2 } from "lucide-react";
 
 interface ConditionsData {
     _id: string;
     title: string;
     description: string;
-    conditions: Array<{
+    conditions: Array<{ 
         name: string;
         image: string; // This will be imageUrl from backend
     }>;
 }
 
+interface ConditionItem {
+    name: string;
+    image: string;
+}
+
 interface ConditionsSectionProps {
     data: ConditionsData;
     onEdit: (section: string, item: ConditionsData) => void;
+    onEditCondition: (condition: ConditionItem, index: number) => void;
+    onAddCondition: () => void;
+    onDeleteCondition: (index: number) => void;
     loading?: boolean;
 }
 
-export default function ConditionsSection({ data, onEdit, loading = false }: ConditionsSectionProps) {
+export default function ConditionsSection({ data, onEdit, onEditCondition, onAddCondition, onDeleteCondition, loading = false }: ConditionsSectionProps) {
     return (
         <div className="bg-card rounded-2xl border border-border overflow-hidden animate-fade-in shadow-lg">
             <div className="p-4 sm:p-6 md:p-8">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
                     <h2 className="text-xl sm:text-2xl font-bold tracking-tight">Conditions We Treat</h2>
                     <div className="flex flex-wrap items-center gap-2">
-
                         <Button 
+                            size="sm" 
+                            variant="outline" 
+                            onClick={onAddCondition}
+                            disabled={loading}
+                        >
+                            <Plus className="w-4 h-4 mr-2" />
+                            Add Condition
+                        </Button>
+                        {/* <Button 
                             size="sm" 
                             variant="outline" 
                             onClick={() => onEdit('conditions', data)}
@@ -39,8 +55,8 @@ export default function ConditionsSection({ data, onEdit, loading = false }: Con
                             ) : (
                                 <Edit className="w-4 h-4 mr-2" />
                             )}
-                            {loading ? 'Saving...' : 'Edit'}
-                        </Button>
+                            {loading ? 'Saving...' : 'Edit Section'}
+                        </Button> */}
                     </div>
                 </div>
 
@@ -56,8 +72,8 @@ export default function ConditionsSection({ data, onEdit, loading = false }: Con
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                         {(data.conditions || []).map((condition, index) => (
                             <div 
-                                key={index}
-                                className="group cursor-pointer py-3 sm:py-4 bg-gradient-to-br from-white to-muted/20 dark:from-background dark:to-muted/5 rounded-2xl p-4 sm:p-6 text-center shadow-soft border-2 border-transparent transition-all duration-500 border-primary/20 hover:shadow-xl hover:border-primary/30"
+                                key={`${index}-${condition.name}`}
+                                className="group cursor-pointer py-3 sm:py-4 bg-gradient-to-br from-white to-muted/20 dark:from-background dark:to-muted/5 rounded-2xl p-4 sm:p-6 text-center shadow-soft border-2 border-transparent transition-all duration-500 border-primary/20 hover:shadow-xl hover:border-primary/30 relative"
                             >
                                 <div className="h-12 w-12 sm:h-16 sm:w-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4 sm:mb-6 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-500 shadow-sm">
                                     {condition.image && typeof condition.image === 'string' && condition.image.trim() !== '' && (condition.image.startsWith('http') || condition.image.startsWith('/')) ? (
@@ -75,6 +91,26 @@ export default function ConditionsSection({ data, onEdit, loading = false }: Con
                                 </div>
                                 <span className="font-bold text-sm sm:text-base tracking-wide">{condition.name}</span>
                                 <div className="mt-4 h-1 w-0 bg-primary mx-auto rounded-full group-hover:w-12 transition-all duration-500" />
+                                <div className="absolute top-2 right-2 flex gap-1">
+                                    <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="p-1 h-6 w-6"
+                                        onClick={() => onEditCondition(condition, index)}
+                                        disabled={loading}
+                                    >
+                                        <Edit className="h-3 w-3" />
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="p-1 h-6 w-6 text-red-500 hover:text-red-700"
+                                        onClick={() => onDeleteCondition(index)}
+                                        disabled={loading}
+                                    >
+                                        <Trash2 className="h-3 w-3" />
+                                    </Button>
+                                </div>
                             </div>
                         ))}
                     </div>

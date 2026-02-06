@@ -97,6 +97,66 @@ export const updateConditions = createAsyncThunk(
   }
 );
 
+export const createConditions = createAsyncThunk(
+  'cms/createConditions',
+  async (conditionsData, { rejectWithValue }) => {
+    try {
+      const response = await cmsAPI.createConditions(conditionsData);
+      return response.data.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
+export const updateConditionsById = createAsyncThunk(
+  'cms/updateConditionsById',
+  async ({ id, conditionsData }, { rejectWithValue }) => {
+    try {
+      const response = await cmsAPI.updateConditionsById(id, conditionsData);
+      return response.data.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
+export const addSingleCondition = createAsyncThunk(
+  'cms/addSingleCondition',
+  async (conditionData, { rejectWithValue }) => {
+    try {
+      const response = await cmsAPI.addSingleCondition(conditionData);
+      return response.data.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
+export const updateSingleCondition = createAsyncThunk(
+  'cms/updateSingleCondition',
+  async ({ index, conditionData }, { rejectWithValue }) => {
+    try {
+      const response = await cmsAPI.updateSingleCondition(index, conditionData);
+      return response.data.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
+export const deleteSingleCondition = createAsyncThunk(
+  'cms/deleteSingleCondition',
+  async (index, { rejectWithValue }) => {
+    try {
+      const response = await cmsAPI.deleteSingleCondition(index);
+      return response.data.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
 export const updateWhyUs = createAsyncThunk(
   'cms/updateWhyUs',
   async (whyUsData, { rejectWithValue }) => {
@@ -374,6 +434,68 @@ const cmsSlice = createSlice({
         };
       })
       .addCase(updateConditions.rejected, (state, action) => {
+        state.loading.updateConditions = false;
+        state.error = action.payload;
+      })
+      
+      // Create conditions
+      .addCase(createConditions.pending, (state) => {
+        state.loading.updateConditions = true;
+        state.error = null;
+      })
+      .addCase(createConditions.fulfilled, (state, action) => {
+        state.loading.updateConditions = false;
+        // Transform backend response to match frontend structure
+        const backendData = action.payload;
+        
+        // Handle different data structures
+        let conditionsArray = [];
+        if (Array.isArray(backendData.conditions)) {
+          conditionsArray = backendData.conditions;
+        } else if (backendData.conditions && Array.isArray(backendData.conditions.conditions)) {
+          conditionsArray = backendData.conditions.conditions;
+        }
+        
+        state.data.conditions = {
+          ...backendData,
+          conditions: conditionsArray.map(condition => ({
+            name: condition.title || '',
+            image: condition.image || ''
+          }))
+        };
+      })
+      .addCase(createConditions.rejected, (state, action) => {
+        state.loading.updateConditions = false;
+        state.error = action.payload;
+      })
+      
+      // Update conditions by ID
+      .addCase(updateConditionsById.pending, (state) => {
+        state.loading.updateConditions = true;
+        state.error = null;
+      })
+      .addCase(updateConditionsById.fulfilled, (state, action) => {
+        state.loading.updateConditions = false;
+        // Transform backend response to match frontend structure
+        const backendData = action.payload;
+        
+        // Handle different data structures
+        let conditionsArray = [];
+        if (Array.isArray(backendData.conditions)) {
+          conditionsArray = backendData.conditions;
+        } else if (backendData.conditions && Array.isArray(backendData.conditions.conditions)) {
+          conditionsArray = backendData.conditions.conditions;
+        }
+        
+        state.data.conditions = {
+          ...backendData,
+          conditions: conditionsArray.map(condition => ({
+            name: condition.title || '',
+            image: condition.image || ''
+          }))
+        };
+      })
+      .addCase(updateConditionsById.rejected, (state, action) => {
         state.loading.updateConditions = false;
         state.error = action.payload;
       })
