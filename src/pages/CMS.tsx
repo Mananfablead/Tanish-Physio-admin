@@ -5,12 +5,9 @@ import { fetchAllCmsData, updateHero, createStep, updateStep, deleteStep, update
 
 // Import new components
 import AboutSection from "./cms-components/AboutSection";
-<<<<<<< HEAD
-=======
 import EditHeroFormComponent from "./cms-components/forms/EditHeroForm";
 import EditStepFormComponent from "./cms-components/forms/EditStepForm";
 import EditConditionsFormComponent from "./cms-components/forms/EditConditionsForm";
->>>>>>> 85626ad (change s)
 import {
     Tabs,
     TabsContent,
