@@ -1,16 +1,16 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from "react-router-dom";
-import { 
-  Play, 
-  Pause, 
-  Volume2, 
-  Download, 
-  Calendar, 
-  Clock, 
-  User, 
-  UserCog, 
-  Video, 
-  FileVideo, 
+import {
+  Play,
+  Pause,
+  Volume2,
+  Download,
+  Calendar,
+  Clock,
+  User,
+  UserCog,
+  Video,
+  FileVideo,
   Filter,
   Search
 } from 'lucide-react';
@@ -18,7 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -56,48 +56,66 @@ const SessionRecordings = () => {
         const recordingsData = response.recordings || [];
 
         // Transform the data to match the component's expected format
-        const transformedRecordings = recordingsData.map((recording: any) => ({
-          id: recording._id,
-          user:
-            recording.participants?.find((p: any) => p.role === "patient")
-              ?.userId?.name ||
-            recording.participants?.find(
-              (p: any) => p.userId.role === "patient"
-            )?.userId?.name ||
-            "Unknown User",
-          therapist:
-            recording.participants?.find(
-              (p: any) => p.role === "therapist" || p.role === "admin"
-            )?.userId?.name ||
-            recording.participants?.find(
-              (p: any) =>
-                p.userId.role === "therapist" || p.userId.role === "admin"
-            )?.userId?.name ||
-            "Unknown Therapist",
-          date: recording.sessionId?.date
-            ? new Date(recording.sessionId.date).toLocaleDateString()
-            : recording.callStartedAt
-            ? new Date(recording.callStartedAt).toLocaleDateString()
-            : "Unknown Date",
-          time:
-            recording.sessionId?.time ||
-            (recording.callStartedAt
-              ? new Date(recording.callStartedAt).toLocaleTimeString()
-              : "Unknown Time"),
-          duration: recording.recordingDuration
-            ? `${Math.floor(recording.recordingDuration / 60)} min`
-            : "Unknown",
-          type: recording.type === "one-on-one" ? "1-on-1" : "Group",
-          recordingUrl: recording.recordingUrl || "#",
-          thumbnail: `https://picsum.photos/seed/${recording._id}/400/225`,
-          status: recording.recordingStatus || "available",
-          fileSize: recording.recordingSize
-            ? `${(recording.recordingSize / (1024 * 1024)).toFixed(1)} MB`
-            : "Unknown",
-          format: recording.recordingFormat?.toUpperCase() || "WEBM",
-          quality: "HD",
-          originalData: recording,
-        }));
+ const transformedRecordings = recordingsData.map((recording: any) => ({
+  id: recording._id,
+
+  user:
+    recording.participants?.find((p: any) => p.role === "patient")
+      ?.userId?.name ||
+    recording.participants?.find(
+      (p: any) => p.userId?.role === "patient"
+    )?.userId?.name ||
+    "Unknown User",
+
+  therapist:
+    recording.participants?.find(
+      (p: any) => p.role === "therapist" || p.role === "admin"
+    )?.userId?.name ||
+    recording.participants?.find(
+      (p: any) =>
+        p.userId?.role === "therapist" || p.userId?.role === "admin"
+    )?.userId?.name ||
+    "Unknown Therapist",
+
+  date: recording.sessionId?.date
+    ? new Date(recording.sessionId.date).toLocaleDateString()
+    : recording.callStartedAt
+    ? new Date(recording.callStartedAt).toLocaleDateString()
+    : "Unknown Date",
+
+  time:
+    recording.sessionId?.time ||
+    (recording.callStartedAt
+      ? new Date(recording.callStartedAt).toLocaleTimeString()
+      : "Unknown Time"),
+
+  /* ✅ IMPORTANT: RAW seconds (NUMBER only) */
+  recordingDuration:
+    typeof recording.recordingDuration === "number"
+      ? recording.recordingDuration
+      : typeof recording.duration === "number"
+      ? recording.duration
+      : 0,
+
+  type: recording.type === "one-on-one" ? "1-on-1" : "Group",
+
+  recordingUrl: recording.recordingUrl || "#",
+
+  thumbnail: `https://picsum.photos/seed/${recording._id}/400/225`,
+
+  status: recording.recordingStatus || "available",
+
+  fileSize: recording.recordingSize
+    ? `${(recording.recordingSize / (1024 * 1024)).toFixed(1)} MB`
+    : "Unknown",
+
+  format: recording.recordingFormat?.toUpperCase() || "WEBM",
+
+  quality: "HD",
+
+  originalData: recording,
+}));
+
 
         setAllRecordings(transformedRecordings);
         setRecordings(transformedRecordings);
@@ -188,11 +206,17 @@ const SessionRecordings = () => {
     }
     return () => clearInterval(interval);
   }, [isPlaying, selectedRecording]);
+  const formatDuration = (duration: any) => {
+    const totalSeconds = Math.floor(Number(duration));
 
-  const formatDuration = (duration: string) => {
-    // Convert duration string like "45 min" to a number of seconds for display
-    const minutes = parseInt(duration.split(" ")[0]);
-    return `${minutes} min`;
+    if (Number.isNaN(totalSeconds) || totalSeconds < 0) {
+      return "00:00";
+    }
+
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+
+    return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
   };
 
   if (loading) {
@@ -389,8 +413,11 @@ const SessionRecordings = () => {
                   </Button>
                 </div>
                 <div className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
-                  {formatDuration(recording.duration)}
+                  {formatDuration(recording.recordingDuration ?? recording.duration)}
                 </div>
+
+
+
               </div>
 
               <CardHeader className="pb-3">

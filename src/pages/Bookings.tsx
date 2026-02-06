@@ -187,7 +187,7 @@ export default function Bookings() {
     setIsEditing(true);
   };
 
- 
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "confirmed":
@@ -335,13 +335,46 @@ export default function Bookings() {
               <tbody>
                 {paginatedBookings.map((booking) => (
                   <tr key={booking.id}>
-                    <td>{booking.serviceName}</td>
-                    <td>{booking.clientName}</td>
+                    <td>
+                      <div className="flex items-center gap-3">
+                        {booking.serviceId?.images && booking.serviceId.images.length > 0 ? (
+                          <img
+                            src={booking.serviceId.images[0]}
+                            alt={booking.serviceName}
+                            className="w-10 h-10 rounded-lg object-cover"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-xs font-semibold">
+                            {booking.serviceName.substring(0, 2).toUpperCase()}
+                          </div>
+                        )}
+                        <span >{booking.serviceName}</span>
+                      </div>
+                    </td>
+                    <td>
+                      <div className="flex items-center gap-3">
+
+                        <span className="capitalize">{booking.clientName}</span>
+                      </div>
+                    </td>
                     {/* <td>{booking.therapistName}</td> */}
                     <td>
-                      {booking.date} <Clock className="inline w-4 h-4 ml-2" />{" "}
-                      {booking.time}
+                      <div className="flex flex-col gap-1">
+                        <span className="font-medium">{booking.date}</span>
+
+                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                          <Clock className="w-4 h-4" />
+                          <span>
+                            {new Date(booking.purchaseDate).toLocaleTimeString("en-IN", {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                              hour12: true,
+                            })}
+                          </span>
+                        </div>
+                      </div>
                     </td>
+
                     <td>
 
                       <span

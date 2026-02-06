@@ -91,7 +91,7 @@ export default function Users() {
       }
 
       if (activeFilter === "Expired") {
-        return user.subscriptionInfo?.status === "expired";
+        return user.subscriptionInfo?.isExpired === true;
       }
 
       if (activeFilter === "No Subscription") {
@@ -104,7 +104,13 @@ export default function Users() {
 
 
   /* ---------------- HELPERS ---------------- */
-  const getSubscriptionBadge = (status) => {
+  const getSubscriptionBadge = (status, isExpired) => {
+    // Check if subscription is expired first
+    if (isExpired) {
+      return "bg-red-100 text-red-700";
+    }
+
+    // Otherwise check status
     switch (status) {
       case "active":
         return "bg-green-100 text-green-700";
@@ -214,26 +220,55 @@ export default function Users() {
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Name</th>
-                  <th>Email</th>
+                  <th>User Details</th>
+                 
                   <th>Phone</th>
                   <th>Subscription</th>
                   <th>Status</th>
                   <th>Join Date</th>
-                  <th></th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredUsers.map((user) => (
                   <tr key={user._id}>
-                    <td className="font-medium">{user.name}</td>
-                    <td>{user.email}</td>
+                    <td>
+                      <div className="flex items-center gap-3">
+                        <div className="relative">
+                          {/* Avatar */}
+                          {user.profilePicture ? (
+                            <img
+                              src={user.profilePicture}
+                              alt={user.name}
+                              className="w-10 h-10 rounded-full object-cover border"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 rounded-full bg-gray-400 flex items-center justify-center text-white font-semibold">
+                              {user.name.charAt(0).toUpperCase()}
+                            </div>
+                          )}
+
+                          {/* Status Dot */}
+                          <div
+                            className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${user.status === "active" ? "bg-green-500" : "bg-gray-400"
+                              }`}
+                          />
+                        </div>
+
+                        {/* User Info */}
+                        <div>
+                          <div className="font-medium">{user.name}</div>
+                          <div className="text-sm text-muted-foreground">{user.email}</div>
+                        </div>
+                      </div>
+                    </td>
+
                     <td>{user.phone}</td>
                     <td>
                       <span
                         className={cn(
                           "px-2 py-1 rounded-full text-xs",
-                          getSubscriptionBadge(user.subscriptionInfo?.status)
+                          getSubscriptionBadge(user.subscriptionInfo?.status, user.subscriptionInfo?.isExpired)
                         )}
                       >
                         {user.subscriptionInfo?.planName || "No Subscription"}

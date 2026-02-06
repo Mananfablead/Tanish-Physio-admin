@@ -598,13 +598,7 @@ export default function Subscriptions() {
 
                         {/* END DATE */}
                         <td className="text-muted-foreground">
-                          {sub.planId === "monthly"
-                            ? new Date(
-                              new Date(sub.startDate).setDate(
-                                new Date(sub.startDate).getDate() + 30
-                              )
-                            ).toLocaleDateString()
-                            : "—"}
+                          {new Date(sub.endDate).toLocaleDateString()}
                         </td>
 
                         {/* SUBSCRIPTION SESSIONS */}
@@ -622,35 +616,7 @@ export default function Subscriptions() {
                             <span className="text-muted-foreground">—</span>
                           )}
                         </td>
-                        
-                        {/* SERVICE SESSIONS */}
-                        {/* <td>
-                          {sub.purchasedServices && sub.purchasedServices.length > 0 ? (
-                            <div className="space-y-2 max-w-xs">
-                              {sub.purchasedServices.map((service: any, index: number) => (
-                                <div key={index} className="text-center p-2 bg-muted/30 rounded">
-                                  <p className="text-xs font-medium truncate" title={service.serviceName || service.service?.name}>
-                                    {service.serviceName || service.service?.name || 'Unnamed Service'}
-                                  </p>
-                                  {service.serviceSessionInfo ? (
-                                    <div>
-                                      <span className="text-xs font-medium">
-                                        {service.serviceSessionInfo.used}/{service.serviceSessionInfo.total}
-                                      </span>
-                                      <p className="text-xs text-muted-foreground">
-                                        {service.serviceSessionInfo.remaining} left
-                                      </p>
-                                    </div>
-                                  ) : (
-                                    <span className="text-xs text-muted-foreground">No session info</span>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <span className="text-muted-foreground">No services</span>
-                          )}
-                        </td> */}
+               
 
                         {/* STATUS */}
                         <td>

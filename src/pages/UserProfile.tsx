@@ -142,14 +142,19 @@ const toggleUserStatus = async () => {
   /* ============================
      HELPERS
   ============================ */
-  const getSubscriptionBadge = (subscription) => {
+  const getSubscriptionBadge = (subscription, isExpired) => {
+    // Check if subscription is expired first
+    if (isExpired) {
+      return "bg-red-100 text-red-700";
+    }
+    
     switch (subscription?.toLowerCase()) {
       case "monthly":
       case "weekly":
       case "daily":
         return "bg-emerald-100 text-emerald-700";
       case "expired":
-        return "bg-yellow-100 text-yellow-700";
+        return "bg-red-100 text-red-700"; // Changed to red for expired
       default:
         return "bg-zinc-100 text-zinc-600";
     }
@@ -205,9 +210,20 @@ const toggleUserStatus = async () => {
           >
             <ChevronLeft className="w-5 h-5" />
           </Button>
+          <div className="relative">
+            <div className="w-20 h-20 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-2xl">
+              {user.name.charAt(0).toUpperCase()}
+            </div>
+            <div className={`absolute bottom-2 right-2 w-6 h-6 rounded-full border-4 border-white ${user.status === 'active' ? 'bg-green-500' : 'bg-gray-400'}`} />
+          </div>
           <div>
             <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-3xl font-extrabold">{user.name}</h1>
+              <div>
+                <h1 className="text-3xl font-extrabold">{user.name}</h1>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-muted-foreground text-base">{user.email}</span>
+                </div>
+              </div>
               <span
                 className={cn(
                   "px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide",
@@ -220,10 +236,6 @@ const toggleUserStatus = async () => {
               </span>
             </div>
             <div className="flex flex-wrap items-center gap-4 text-muted-foreground">
-              <span className="flex items-center gap-1.5 text-sm">
-                <Mail className="w-4 h-4" />
-                {user.email}
-              </span>
               <span className="flex items-center gap-1.5 text-sm">
                 <Phone className="w-4 h-4" />
                 {user.phone}
@@ -295,14 +307,14 @@ const toggleUserStatus = async () => {
                   <span
                     className={cn(
                       "inline-block px-3 py-1 rounded-full text-xs font-bold",
-                      getSubscriptionBadge(user.subscriptionInfo?.status || user.subscription)
+                      getSubscriptionBadge(user.subscriptionInfo?.status || user.subscription, user.subscriptionInfo?.isExpired)
                     )}
                   >
                     {user.subscriptionInfo?.planName || user.subscription}
                   </span>
                   {user.subscriptionInfo && (
                     <p className="text-xs text-muted-foreground mt-1">
-                      Status: {user.subscriptionInfo.status} | Ends: {new Date(user.subscriptionInfo.endDate).toLocaleDateString()}
+                      Status: {user.subscriptionInfo.isExpired ? 'Expired' : user.subscriptionInfo.status} | Ends: {new Date(user.subscriptionInfo.endDate).toLocaleDateString()}
                     </p>
                   )}
                 </div>
@@ -412,8 +424,8 @@ const toggleUserStatus = async () => {
                 <div className="p-4 border rounded-lg bg-muted/30">
                   <h4 className="text-sm font-semibold text-muted-foreground mb-1">Status</h4>
                   <p className="font-medium">
-                    <span className={user.subscriptionInfo.status === 'active' ? 'text-emerald-600' : 'text-orange-600'}>
-                      {user.subscriptionInfo.status}
+                    <span className={user.subscriptionInfo.isExpired ? 'text-red-600' : 'text-emerald-600'}>
+                      {user.subscriptionInfo.isExpired ? 'Expired' : user.subscriptionInfo.status}
                     </span>
                   </p>
                 </div>
@@ -436,6 +448,21 @@ const toggleUserStatus = async () => {
                 <div className="p-4 border rounded-lg bg-muted/30 md:col-span-2">
                   <h4 className="text-sm font-semibold text-muted-foreground mb-1">Plan ID</h4>
                   <p className="font-medium">{user.subscriptionInfo.planId}</p>
+                </div>
+                
+                <div className="p-4 border rounded-lg bg-muted/30 md:col-span-2">
+                  <h4 className="text-sm font-semibold text-muted-foreground mb-1">Expiration Status</h4>
+                  <p className="font-medium">
+                    {user.subscriptionInfo.isExpired ? (
+                      <span className="text-red-600">Expired</span>
+                    ) : user.subscriptionInfo.daysUntilExpiry > 7 ? (
+                      <span className="text-emerald-600">Active ({user.subscriptionInfo.daysUntilExpiry} days remaining)</span>
+                    ) : user.subscriptionInfo.daysUntilExpiry > 0 ? (
+                      <span className="text-yellow-600">Expiring Soon ({user.subscriptionInfo.daysUntilExpiry} days left)</span>
+                    ) : (
+                      <span className="text-red-600">Expired</span>
+                    )}
+                  </p>
                 </div>
               </div>
             </div>

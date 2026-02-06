@@ -270,7 +270,7 @@ export default function Payments() {
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Transaction ID</th>
+                  {/* <th>Transaction ID</th> */}
                   <th>User</th>
                   <th>Plan</th>
                   <th>Amount</th>
@@ -283,7 +283,7 @@ export default function Payments() {
               <tbody>
                 {filteredPayments.map((payment: Payment) => (
                   <tr key={payment._id}>
-                    <td className="font-mono text-sm">{payment._id}</td>
+                    {/* <td className="font-mono text-sm">{payment._id}</td> */}
                     <td>
                       <div>
                         <p className="font-medium">{payment.userId?.name}</p>

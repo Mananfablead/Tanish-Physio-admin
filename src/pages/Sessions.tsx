@@ -828,8 +828,7 @@ export default function Sessions() {
                     <thead>
                       <tr>
                         <th>Booking/Subscription Info</th>
-                        <th>User</th>
-                        <th>Therapist</th>
+                        <th>User</th>                      
                         <th>Date & Time</th>
                         <th>Type</th>
                         <th>Status</th>
@@ -911,22 +910,7 @@ export default function Sessions() {
                               </div>
                             </td>
 
-                            {/* THERAPIST */}
-                            <td className="px-4 py-3">
-                              <div className="flex items-center gap-2">
-                                <div className="h-8 w-8 rounded-full bg-purple-100 flex items-center justify-center">
-                                  <UserCog className="h-4 w-4 text-purple-600" />
-                                </div>
-                                <div>
-                                  <p className="font-medium">
-                                    {session.therapistId?.name || "N/A"}
-                                  </p>
-                                  <p className="text-xs text-muted-foreground">
-                                    {session.therapistId?.email || ""}
-                                  </p>
-                                </div>
-                              </div>
-                            </td>
+                          
 
                             {/* DATE & TIME */}
                             <td className="px-4 py-3">
