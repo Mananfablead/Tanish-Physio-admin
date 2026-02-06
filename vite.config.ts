@@ -38,7 +38,6 @@ export default defineConfig(({ mode }) => ({
     port: 8080,
     proxy: {
       "/api": {
-        // target: "http://72.62.226.64:5000",
         target: "http://localhost:5000",
         changeOrigin: true,
         secure: false,
@@ -47,10 +46,9 @@ export default defineConfig(({ mode }) => ({
     },
   },
 
-  plugins: [
-    react(),
-    mode === "development" && componentTagger(),
-  ].filter(Boolean),
+  plugins: [react(), mode === "development" && componentTagger()].filter(
+    Boolean
+  ),
 
   resolve: {
     alias: {

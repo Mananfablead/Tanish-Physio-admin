@@ -105,11 +105,14 @@ export default function Dashboard() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="page-header">
           <h1 className="page-title">Dashboard</h1>
-          <p className="page-subtitle">Welcome back! Here's your platform overview.</p>
+          <p className="page-subtitle">
+            Welcome back! Here's your platform overview.
+          </p>
         </div>
         <div className="flex items-center gap-3">
-
-          <Button variant="outline" className="" onClick={exportToPDF}>Export Report</Button>
+          <Button variant="outline" className="" onClick={exportToPDF}>
+            Export Report
+          </Button>
         </div>
       </div>
 
@@ -117,83 +120,115 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Total Users"
-          value={stats?.stats?.totalUsers ? stats.stats.totalUsers.toLocaleString() : "0"}
+          value={
+            stats?.stats?.totalUsers
+              ? stats.stats.totalUsers.toLocaleString()
+              : "0"
+          }
           change={{ value: 12.5, isPositive: true }}
-          icon={Users}              // ✅ correct
+          icon={Users} // ✅ correct
           iconColor="bg-info"
         />
 
         <StatCard
           title="Active Subscriptions"
-          value={stats?.stats?.activeSubscriptions ? stats.stats.activeSubscriptions.toLocaleString() : "0"}
+          value={
+            stats?.stats?.activeSubscriptions
+              ? stats.stats.activeSubscriptions.toLocaleString()
+              : "0"
+          }
           change={{ value: 15.3, isPositive: true }}
-          icon={BadgeCheck}         // 🔥 better than CreditCard
+          icon={BadgeCheck} // 🔥 better than CreditCard
           iconColor="bg-primary"
         />
 
         <StatCard
           title="Total Revenue"
-          value={`₹${stats?.stats?.totalRevenue ? stats.stats.totalRevenue.toLocaleString() : "0"}`}
+          value={`₹${
+            stats?.stats?.totalRevenue
+              ? stats.stats.totalRevenue.toLocaleString()
+              : "0"
+          }`}
           change={{ value: 18.7, isPositive: true }}
-          icon={IndianRupee}        // 🔥 better than DollarSign (India)
+          icon={IndianRupee} // 🔥 better than DollarSign (India)
           iconColor="bg-success"
         />
 
         <StatCard
           title="Upcoming Sessions"
-          value={stats?.stats?.upcomingSessions ? stats.stats.upcomingSessions.toString() : "0"}
-          icon={CalendarClock}      // 🔥 more specific
+          value={
+            stats?.stats?.upcomingSessions != null
+              ? stats.stats.upcomingSessions.toString()
+              : "0"
+          }
+          icon={CalendarClock} // 🔥 more specific
           iconColor="bg-warning"
         />
       </div>
-
 
       {/* Secondary Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Completed Today"
-          value={stats?.stats?.completedToday ? stats.stats.completedToday.toString() : "0"}
-          icon={CheckCircle}        // 🔥 completion indicator
+          value={
+            stats?.stats?.completedToday != null
+              ? stats.stats.completedToday.toString()
+              : "0"
+          }
+          icon={CheckCircle} // 🔥 completion indicator
           iconColor="bg-success"
         />
 
         <StatCard
           title="Pending Bookings"
-          value={stats?.stats?.pendingBookings ? stats.stats.pendingBookings.toString() : "0"}
-          icon={Hourglass}          // 🔥 pending / waiting
+          value={
+            stats?.stats?.pendingBookings != null
+              ? stats.stats.pendingBookings.toString()
+              : "0"
+          }
+          icon={Hourglass} // 🔥 pending / waiting
           iconColor="bg-warning"
         />
 
         <StatCard
           title="Total Subscription Plans"
-          value={stats?.stats?.activeSubscriptions ? stats.stats.totalSubscriptionPlans.toString() : "0"}
-          icon={Layers}             // 🔥 stack / plans
+          value={
+            stats?.stats?.totalSubscriptionPlans != null
+              ? stats.stats.totalSubscriptionPlans.toString()
+              : "0"
+          }
+          icon={Layers} // 🔥 stack / plans
           iconColor="bg-primary"
         />
 
         <StatCard
           title="Total Services"
-          value={stats?.stats?.totalServices ? stats.stats.totalServices.toString() : "0"}
-          icon={Stethoscope}        // ✅ perfect
+          value={
+            stats?.stats?.totalServices != null
+              ? stats.stats.totalServices.toString()
+              : "0"
+          }
+          icon={Stethoscope} // ✅ perfect
           iconColor="bg-info"
         />
       </div>
 
-
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <RevenueChart revenueData={stats?.revenueChart || []} />
-        <SessionsChart sessionsData={stats?.sessionsChart || []} />
+        <RevenueChart revenueData={stats?.revenueChart ?? []} />
+        <SessionsChart sessionsData={stats?.sessionsChart ?? []} />
       </div>
 
       {/* User Growth Chart */}
-      <UserGrowthChart userGrowthData={stats?.userGrowthChart || []} />
+      <UserGrowthChart userGrowthData={stats?.userGrowthChart ?? []} />
 
       {/* Expiration Overview Section */}
       <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
         <div className="flex items-center gap-2 mb-3">
           <AlertCircle className="h-5 w-5 text-yellow-600" />
-          <h3 className="font-bold text-yellow-800 text-lg">Expiration Overview</h3>
+          <h3 className="font-bold text-yellow-800 text-lg">
+            Expiration Overview
+          </h3>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-white p-4 rounded-lg border border-yellow-200">
@@ -216,14 +251,18 @@ export default function Dashboard() {
 
       {/* Expired Items Dashboard */}
       <div className="space-y-4">
-        <h3 className="text-xl font-bold text-slate-900">Expired Items Overview</h3>
+        <h3 className="text-xl font-bold text-slate-900">
+          Expired Items Overview
+        </h3>
         <ExpiredItemsDashboard />
       </div>
 
       {/* Activity & Sessions Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <RecentActivity recentActivityData={stats?.recentActivity || []} />
-        <UpcomingSessions upcomingSessionsData={stats?.upcomingSessions || []} />
+        <RecentActivity recentActivityData={stats?.recentActivity ?? []} />
+        <UpcomingSessions
+          upcomingSessionsData={stats?.upcomingSessions ?? []}
+        />
       </div>
     </div>
   );

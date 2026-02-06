@@ -6,7 +6,16 @@ export const fetchDashboard = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const res = await reportAPI.getDashboardReport();
-      return res.data.data; // Extract the data from response structure
+      // Provide default structure if data is missing
+      const data = res.data.data || {};
+      return {
+        stats: data.stats || {},
+        revenueChart: data.revenueChart || [],
+        sessionsChart: data.sessionsChart || [],
+        userGrowthChart: data.userGrowthChart || [],
+        recentActivity: data.recentActivity || [],
+        upcomingSessions: data.upcomingSessions || []
+      };
     } catch (err) {
       return rejectWithValue(err.response?.data?.message || "Dashboard load failed");
     }
@@ -16,7 +25,14 @@ export const fetchDashboard = createAsyncThunk(
 const dashboardSlice = createSlice({
   name: "dashboard",
   initialState: {
-    stats: null,
+    stats: {
+      stats: {},
+      revenueChart: [],
+      sessionsChart: [],
+      userGrowthChart: [],
+      recentActivity: [],
+      upcomingSessions: []
+    },
     loading: false,
     error: null,
   },
