@@ -110,7 +110,7 @@ export const adminVideoCallApi = {
 
     uploadRecording: async (file, callLogId) => {
         const formData = new FormData();
-        formData.append('recording', file);
+        formData.append('recording-videos', file);
         formData.append('callLogId', callLogId);
 
         const response = await apiClient.post('/recording/upload', formData, {

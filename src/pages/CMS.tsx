@@ -18,7 +18,10 @@ import {
   updateAbout,
 } from "@/features/cms/cmsSlice";
 // Import new components
-
+import AboutSection from "./cms-components/AboutSection";
+import EditHeroFormComponent from "./cms-components/forms/EditHeroForm";
+import EditStepFormComponent from "./cms-components/forms/EditStepForm";
+import EditConditionsFormComponent from "./cms-components/forms/EditConditionsForm";
 import {
     Tabs,
     TabsContent,
