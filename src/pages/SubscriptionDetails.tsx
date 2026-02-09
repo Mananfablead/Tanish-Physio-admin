@@ -5,13 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
-  ArrowLeft, 
-  CreditCard, 
-  Users, 
-  Calendar, 
-  Clock, 
-  CheckCircle, 
+import {
+  ArrowLeft,
+  CreditCard,
+  Users,
+  Calendar,
+  Clock,
+  CheckCircle,
   XCircle,
   Edit,
   Trash2
@@ -44,20 +44,21 @@ export default function SubscriptionDetails() {
 
   const [plan, setPlan] = useState<SubscriptionPlan | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+useEffect(() => {
+  if (!id) return;
 
-  useEffect(() => {
-    if (id) {
-      // First check if the plan is already in the store
-      const existingPlan = plans.find((p: SubscriptionPlan) => p._id === id || p.id === id);
-      if (existingPlan) {
-        setPlan(existingPlan);
-        setIsLoading(false);
-      } else {
-        // If not in store, fetch it
-        fetchPlanById();
-      }
-    }
-  }, [id, plans]);
+  const existingPlan = plans?.find(
+    (p: SubscriptionPlan) => p?._id === id || p?.id === id
+  );
+
+  if (existingPlan) {
+    setPlan(existingPlan);
+    setIsLoading(false);
+  } else {
+    fetchPlanById();
+  }
+}, [id]);
+
 
   const fetchPlanById = async () => {
     try {
@@ -170,11 +171,13 @@ export default function SubscriptionDetails() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Status</CardTitle>
           </CardHeader>
           <CardContent>
-            <Badge 
-              variant={plan.status === 'active' ? 'default' : 'secondary'} 
+            <Badge
+              variant={plan.status === 'active' ? 'default' : 'secondary'}
               className={plan.status === 'active' ? 'bg-success' : 'bg-destructive'}
             >
-              {plan.status.charAt(0).toUpperCase() + plan.status.slice(1)}
+              {(plan.status || 'inactive').charAt(0).toUpperCase() +
+                (plan.status || 'inactive').slice(1)}
+
             </Badge>
             <p className="text-xs text-muted-foreground mt-2">
               Auto-renew: {plan.autoRenew ? 'Enabled' : 'Disabled'}
@@ -188,8 +191,8 @@ export default function SubscriptionDetails() {
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="features">Features</TabsTrigger>
-          <TabsTrigger value="subscribers">Subscribers</TabsTrigger>
-          <TabsTrigger value="analytics">Analytics</TabsTrigger>
+          {/* <TabsTrigger value="subscribers">Subscribers</TabsTrigger>
+          <TabsTrigger value="analytics">Analytics</TabsTrigger> */}
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
@@ -205,17 +208,21 @@ export default function SubscriptionDetails() {
                 </div>
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground">Status</h3>
-                  <Badge 
-                    variant={plan.status === 'active' ? 'default' : 'secondary'} 
+                  <Badge
+                    variant={plan.status === 'active' ? 'default' : 'secondary'}
                     className={plan.status === 'active' ? 'bg-success' : 'bg-destructive'}
                   >
-                    {plan.status.charAt(0).toUpperCase() + plan.status.slice(1)}
+                    {(plan.status || 'inactive').charAt(0).toUpperCase() +
+                      (plan.status || 'inactive').slice(1)}
+
                   </Badge>
                 </div>
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground">Duration</h3>
                   <p className="font-medium">
-                    {plan.duration ? plan.duration.charAt(0).toUpperCase() + plan.duration.slice(1) : 'Monthly'}
+                    {(plan.duration || 'monthly').charAt(0).toUpperCase() +
+                      (plan.duration || 'monthly').slice(1)}
+
                   </p>
                 </div>
                 <div>

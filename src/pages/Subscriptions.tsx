@@ -88,25 +88,8 @@ export default function Subscriptions() {
   console.log("userSubscriptions", userSubscriptions);
   const [activeTab, setActiveTab] = useState("plans");
   const [searchQuery, setSearchQuery] = useState("");
-  const [isEditPlanOpen, setIsEditPlanOpen] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(
-    null
-  );
   const [deletePlanId, setDeletePlanId] = useState<string | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-
-  // State for the plan form
-  const [planForm, setPlanForm] = useState({
-    name: "",
-    price: 0,
-    description: "",
-    status: "active", // Using status instead of active
-    features: [""], // Array of features
-    duration: "",
-    autoRenew: true,
-    sessions: 0,
-    validity: 0,
-  });
 
   useEffect(() => {
     dispatch(fetchAllSubscriptionPlans());
@@ -132,27 +115,6 @@ export default function Subscriptions() {
     (acc: number, plan: SubscriptionPlan) => acc + plan.price,
     0
   ); // Using actual plan prices
-
-  // Populate form when selectedPlan changes (for editing)
-  useEffect(() => {
-    if (selectedPlan) {
-      setPlanForm({
-        name: selectedPlan.name || "",
-        price: selectedPlan.price || 0,
-        description: selectedPlan.description || "",
-        status: selectedPlan.status || "active",
-        features: selectedPlan.features || [""],
-        duration: selectedPlan.duration || selectedPlan.period || "",
-        autoRenew:
-          selectedPlan.autoRenew !== undefined ? selectedPlan.autoRenew : true,
-        sessions: selectedPlan.sessions || 0,
-        validity: selectedPlan.validity || 0,
-      });
-    } else if (!isEditPlanOpen) {
-      // Reset form when modal is closed
-      resetForm();
-    }
-  }, [selectedPlan, isEditPlanOpen]);
 
   const initializeRazorpayPayment = (orderData: any) => {
     // This function would initialize the Razorpay checkout
@@ -190,122 +152,25 @@ export default function Subscriptions() {
     }
   };
 
-  // Handle form input changes
-  const handleInputChange = (
-    e: React.ChangeEvent<
-      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >
-  ) => {
-    const { name, value, type } = e.target;
-
-    if (type === "checkbox") {
-      const target = e.target as HTMLInputElement;
-      if (name === "status") {
-        setPlanForm((prev) => ({
-          ...prev,
-          [name]: target.checked ? "active" : "inactive",
-        }));
-      } else {
-        setPlanForm((prev) => ({
-          ...prev,
-          [name]: target.checked,
-        }));
-      }
-    } else {
-      setPlanForm((prev) => ({
-        ...prev,
-        [name]: name === "price" ? Number(value) : value,
-      }));
-    }
-  };
-
-  // Handle feature changes
-  const handleFeatureChange = (index: number, value: string) => {
-    const newFeatures = [...planForm.features];
-    newFeatures[index] = value;
-    setPlanForm((prev) => ({
-      ...prev,
-      features: newFeatures,
-    }));
-  };
-
-  // Add a new feature input
-  const addFeature = () => {
-    setPlanForm((prev) => ({
-      ...prev,
-      features: [...prev.features, ""],
-    }));
-  };
-
-  // Remove a feature
-  const removeFeature = (index: number) => {
-    if (planForm.features.length <= 1) return;
-    const newFeatures = planForm.features.filter((_, i) => i !== index);
-    setPlanForm((prev) => ({
-      ...prev,
-      features: newFeatures,
-    }));
-  };
-
-  // Reset form
-  const resetForm = () => {
-    setPlanForm({
-      name: "",
-      price: 0,
-      description: "",
-      status: "active",
-      features: [""],
-      duration: "",
-      autoRenew: true,
-      sessions: 0,
-      validity: 0,
-    });
-    setSelectedPlan(null);
-  };
-
-  // Handle save plan (update only)
-  const handleSavePlan = async () => {
-    try {
-      if (selectedPlan) {
-        // Update existing plan - format data according to API expectation
-        const updateData = {
-          name: planForm.name,
-          price: planForm.price,
-          description: planForm.description,
-          status: planForm.status,
-          duration: planForm.duration,
-          features: planForm.features,
-          autoRenew: planForm.autoRenew,
-        };
-        const result = await dispatch(
-          updateSubscriptionPlan({
-            id: selectedPlan._id || selectedPlan.id,
-            planData: updateData,
-          })
-        );
-
-        if (updateSubscriptionPlan.fulfilled.match(result)) {
-          toast({
-            title: "Success",
-            description: "Subscription plan updated successfully!",
-          });
-          setIsEditPlanOpen(false);
-          resetForm();
-          dispatch(fetchAllSubscriptionPlans());
-        }
-      }
-    } catch (err: any) {
-      console.error("Error saving subscription plan:", err);
-      toast({
-        title: "Error",
-        description: err.message || "Failed to save subscription plan",
-        variant: "destructive",
-      });
-    }
+  // Check if a plan has subscribers
+  const hasSubscribers = (planId: string) => {
+    const plan = plans.find(p => p._id === planId || p.id === planId);
+    return (plan?.subscriberCount || 0) > 0;
   };
 
   // Handle delete plan - opens confirmation dialog
   const handleDeletePlan = (planId: string) => {
+    const planHasSubscribers = hasSubscribers(planId);
+
+    if (planHasSubscribers) {
+      toast({
+        title: "Cannot Delete Plan",
+        description: "This plan has active subscribers and cannot be deleted.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setDeletePlanId(planId);
     setIsDeleteDialogOpen(true);
   };
@@ -407,13 +272,16 @@ export default function Subscriptions() {
             <TabsTrigger value="plans">Subscription Plans</TabsTrigger>
             <TabsTrigger value="subscriptions">User Subscriptions</TabsTrigger>
           </TabsList>
+          {plans.length < 3 && (
+            <Button className="gap-2" asChild>
+              <Link to="/add-subscription">
+                <Plus className="w-4 h-4" />
+                Create Plan
+              </Link>
+            </Button>
+          )}
 
-          <Button className="gap-2" asChild>
-            <Link to="/add-subscription">
-              <Plus className="w-4 h-4" />
-              Create Plan
-            </Link>
-          </Button>
+
         </div>
 
         {/* Plans Tab */}
@@ -427,118 +295,117 @@ export default function Subscriptions() {
                     "border-border hover:border-primary/30 hover:shadow-md"
                   )}
                 >
-                <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <h3 className="font-semibold">{plan.name}</h3>
-                    <p className="text-sm text-muted-foreground">
-                      {plan.description}
-                    </p>
-                  </div>
-                  <span
-                    className={cn(
-                      "px-2 py-1 rounded-full text-xs font-medium",
-                      plan.status === "active"
-                        ? "bg-green-100 text-green-800"
-                        : "bg-red-100 text-red-800"
-                    )}
-                  >
-                    {plan.status === "active" ? "Active" : "Inactive"}
-                  </span>
-                </div>
-
-                <div className="mb-4">
-                  <p className="text-3xl font-bold">₹{plan.price}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {plan.features && plan.features.length > 0
-                      ? `${plan.features.length} features`
-                      : "Basic plan"}
-                  </p>
-                  {plan.sessions !== undefined && plan.sessions > 0 && (
-                    <div className="mt-2">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-muted-foreground">Sessions:</span>
-                        <span className="font-medium">{plan.sessions} total</span>
-                      </div>
+                  <div className="flex items-start justify-between mb-4">
+                    <div>
+                      <h3 className="font-semibold">{plan.name}</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {plan.description}
+                      </p>
                     </div>
-                  )}
-                </div>
+                    <span
+                      className={cn(
+                        "px-2 py-1 rounded-full text-xs font-medium",
+                        plan.status === "active"
+                          ? "bg-green-100 text-green-800"
+                          : "bg-red-100 text-red-800"
+                      )}
+                    >
+                      {plan.status === "active" ? "Active" : "Inactive"}
+                    </span>
+                  </div>
 
-                <div className="space-y-2 text-sm mb-4">
-                  {/* <div className="flex items-center justify-between">
+                  <div className="mb-4">
+                    <p className="text-3xl font-bold">₹{plan.price}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {plan.features && plan.features.length > 0
+                        ? `${plan.features.length} features`
+                        : "Basic plan"}
+                    </p>
+                    {plan.sessions !== undefined && plan.sessions > 0 && (
+                      <div className="mt-2">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-muted-foreground">Sessions:</span>
+                          <span className="font-medium">{plan.sessions} total</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-2 text-sm mb-4">
+                    {/* <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Auto-renew</span>
                     <span className="text-success">
                       {plan.autoRenew ? "Yes" : "No"}
                     </span>
                   </div> */}
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Subscribers</span>
-                    <span className="font-medium">{plan.subscriberCount || 0}</span>
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Subscribers</span>
+                      <span className="font-medium">{plan.subscriberCount || 0}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Sessions</span>
+                      <span className="font-medium">{plan.sessions || 'Unlimited'}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Duration</span>
+                      <span className="font-medium">{plan.duration || 'N/A'}</span>
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Sessions</span>
-                    <span className="font-medium">{plan.sessions || 'Unlimited'}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Duration</span>
-                    <span className="font-medium">{plan.duration || 'N/A'}</span>
-                  </div>
-                </div>
 
-                <div className="flex gap-2 justify-end">
-                  {/* VIEW */}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    asChild
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <Link to={`/subscriptions/${plan._id || plan.id}`}>
-                      <Eye className="w-4 h-4" />
-                    </Link>
-                  </Button>
-                  {/* EDIT */}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedPlan(plan);
-                      setIsEditPlanOpen(true);
-                    }}
-                  >
-                    <Edit2 className="w-4 h-4" />
-                  </Button>
-                  {/* DELETE */}
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeletePlan(plan._id || plan.id);
-                    }}
-                    disabled={loading}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+                  <div className="flex gap-2 justify-end">
+                    {/* VIEW */}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      asChild
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Link to={`/subscriptions/${plan._id || plan.id}`}>
+                        <Eye className="w-4 h-4" />
+                      </Link>
+                    </Button>
+                    {/* EDIT */}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      asChild
+                    >
+                      <Link to={`/subscriptions/edit/${plan._id || plan.id}`}>
+                        <Edit2 className="w-4 h-4" />
+                      </Link>
+                    </Button>
+                    {/* DELETE - disabled if plan has subscribers */}
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeletePlan(plan._id || plan.id);
+                      }}
+                      disabled={loading || hasSubscribers(plan._id || plan.id)}
+                      title={hasSubscribers(plan._id || plan.id) ? "Cannot delete plan with active subscribers" : "Delete plan"}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
+              ))
+            ) : (
+              <div className="col-span-full text-center py-12">
+                <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+                  <CreditCard className="w-8 h-8 text-muted-foreground" />
+                </div>
+                <h3 className="text-lg font-medium mb-2">No Subscription Plans</h3>
+                <p className="text-muted-foreground mb-4">Get started by creating your first subscription plan.</p>
+                <Button asChild>
+                  <Link to="/add-subscription">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create Plan
+                  </Link>
+                </Button>
               </div>
-            ))
-          ) : (
-            <div className="col-span-full text-center py-12">
-              <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
-                <CreditCard className="w-8 h-8 text-muted-foreground" />
-              </div>
-              <h3 className="text-lg font-medium mb-2">No Subscription Plans</h3>
-              <p className="text-muted-foreground mb-4">Get started by creating your first subscription plan.</p>
-              <Button asChild>
-                <Link to="/add-subscription">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Create Plan
-                </Link>
-              </Button>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
         </TabsContent>
 
         {/* User Subscriptions Tab */}
@@ -572,68 +439,67 @@ export default function Subscriptions() {
                   </thead>
                   <tbody>
                     {filteredSubscriptions.map((sub, index) => {
-                    console.log("Subscription Row:", index, sub);
+                      console.log("Subscription Row:", index, sub);
 
-                    return (
-                      <tr key={sub._id}>
-                        {/* USER */}
-                        <td>
-                          <div>
-                            <p className="font-medium">
-                              {sub.userId?.name || "N/A"}
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                              {sub.userId?.email || "N/A"}
-                            </p>
-                          </div>
-                        </td>
-
-                        {/* PLAN NAME */}
-                        <td className="font-medium">{sub.planName}</td>
-
-                        {/* START DATE */}
-                        <td className="text-muted-foreground">
-                          {new Date(sub.startDate).toLocaleDateString()}
-                        </td>
-
-                        {/* END DATE */}
-                        <td className="text-muted-foreground">
-                          {new Date(sub.endDate).toLocaleDateString()}
-                        </td>
-
-                        {/* SUBSCRIPTION SESSIONS */}
-                        <td>
-                          {sub.availableSessions ? (
-                            <div className="text-center">
-                              <span className="font-medium">
-                                {sub.availableSessions.used}/{sub.availableSessions.total}
-                              </span>
-                              <p className="text-xs text-muted-foreground">
-                                {sub.availableSessions.remaining} left
+                      return (
+                        <tr key={sub._id}>
+                          {/* USER */}
+                          <td>
+                            <div>
+                              <p className="font-medium">
+                                {sub.userId?.name || "N/A"}
+                              </p>
+                              <p className="text-sm text-muted-foreground">
+                                {sub.userId?.email || "N/A"}
                               </p>
                             </div>
-                          ) : (
-                            <span className="text-muted-foreground">—</span>
-                          )}
-                        </td>
-               
+                          </td>
 
-                        {/* STATUS */}
-                        <td>
-                          <span
-                            className={cn(
-                              "px-2 py-1 rounded-full text-xs font-medium",
-                              sub.status === "active"
-                                ? "bg-green-100 text-green-800"
-                                : "bg-red-100 text-red-800"
+                          {/* PLAN NAME */}
+                          <td className="font-medium">{sub.planName}</td>
+
+                          {/* START DATE */}
+                          <td className="text-muted-foreground">
+                            {new Date(sub.startDate).toLocaleDateString()}
+                          </td>
+
+                          {/* END DATE */}
+                          <td className="text-muted-foreground">
+                            {new Date(sub.endDate).toLocaleDateString()}
+                          </td>
+
+                          {/* SUBSCRIPTION SESSIONS */}
+                          <td>
+                            {sub.availableSessions ? (
+                              <div className="text-center">
+                                <span className="font-medium">
+                                  {sub.availableSessions.used}/{sub.availableSessions.total}
+                                </span>
+                                <p className="text-xs text-muted-foreground">
+                                  {sub.availableSessions.remaining} left
+                                </p>
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
                             )}
-                          >
-                            {sub.status}
-                          </span>
-                        </td>
+                          </td>
 
-                        {/* ACTIONS */}
-                        {/* <td>
+                          {/* STATUS */}
+                          <td>
+                            <span
+                              className={cn(
+                                "px-2 py-1 rounded-full text-xs font-medium",
+                                sub.status === "active"
+                                  ? "bg-green-100 text-green-800"
+                                  : "bg-red-100 text-red-800"
+                              )}
+                            >
+                              {sub.status}
+                            </span>
+                          </td>
+
+                          {/* ACTIONS */}
+                          {/* <td>
                           <div className="flex items-center gap-2">
                             {sub.status === "active" ? (
                               <>
@@ -655,23 +521,23 @@ export default function Subscriptions() {
                             )}
                           </div>
                         </td> */}
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            ) : (
-              <div className="text-center py-12">
-                <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
-                  <Users className="w-8 h-8 text-muted-foreground" />
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              ) : (
+                <div className="text-center py-12">
+                  <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+                    <Users className="w-8 h-8 text-muted-foreground" />
+                  </div>
+                  <h3 className="text-lg font-medium mb-2">No User Subscriptions</h3>
+                  <p className="text-muted-foreground">No users have subscribed to any plans yet.</p>
                 </div>
-                <h3 className="text-lg font-medium mb-2">No User Subscriptions</h3>
-                <p className="text-muted-foreground">No users have subscribed to any plans yet.</p>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
 
-          <div className="flex items-center justify-between px-4 py-3 border-t border-border">
+            <div className="flex items-center justify-between px-4 py-3 border-t border-border">
               <p className="text-sm text-muted-foreground">
                 {filteredSubscriptions.length > 0 ? (
                   <>
@@ -700,168 +566,6 @@ export default function Subscriptions() {
           </div>
         </TabsContent>
       </Tabs>
-
-      {/* Edit/Create Plan Modal */}
-      <Dialog open={isEditPlanOpen} onOpenChange={setIsEditPlanOpen}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              {selectedPlan ? "Edit Plan" : "Create New Plan"}
-            </DialogTitle>
-            <DialogDescription>
-              {selectedPlan
-                ? "Update the subscription plan details."
-                : "Set up a new subscription plan."}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 mt-4">
-            <div>
-              <Label htmlFor="name">Plan Name</Label>
-              <Input
-                id="name"
-                name="name"
-                placeholder="e.g., Monthly Plan"
-                value={planForm.name}
-                onChange={handleInputChange}
-                className="mt-1"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="price">Price (₹)</Label>
-                <Input
-                  id="price"
-                  name="price"
-                  type="number"
-                  placeholder="49.99"
-                  value={planForm.price}
-                  onChange={handleInputChange}
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label htmlFor="duration">Duration</Label>
-                <select
-                  id="duration"
-                  name="duration"
-                  value={planForm.duration}
-                  onChange={handleInputChange}
-                  className="w-full mt-1 px-3 py-2 rounded-md border border-input bg-background"
-                >
-                  <option value="daily">Daily</option>
-                  <option value="weekly">Weekly</option>
-                  <option value="monthly">Monthly</option>
-                  <option value="quarterly">Quarterly</option>
-                  <option value="yearly">Yearly</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="sessions">Number of Sessions</Label>
-                <Input
-                  id="sessions"
-                  name="sessions"
-                  type="number"
-                  placeholder="10"
-                  value={planForm.sessions || ''}
-                  onChange={handleInputChange}
-                  className="mt-1"
-                />
-              </div>
-              
-            </div>
-
-            <div>
-              <Label htmlFor="description">Description</Label>
-              <textarea
-                id="description"
-                name="description"
-                placeholder="Describe the subscription plan"
-                value={planForm.description}
-                onChange={handleInputChange}
-                className="w-full p-2 border rounded-md mt-1 min-h-[80px]"
-              />
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <Label>Features</Label>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={addFeature}
-                >
-                  Add Feature
-                </Button>
-              </div>
-              <div className="space-y-2">
-                {planForm.features.map((feature, index) => (
-                  <div key={index} className="flex gap-2">
-                    <Input
-                      placeholder={`Feature ${index + 1}`}
-                      value={feature}
-                      onChange={(e) =>
-                        handleFeatureChange(index, e.target.value)
-                      }
-                      className="flex-1"
-                    />
-                    {planForm.features.length > 1 && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        onClick={() => removeFeature(index)}
-                        className="h-9 w-9"
-                      >
-                        <span className="text-red-500">-</span>
-                      </Button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-
-
-            <div className="flex items-center justify-between">
-              <div>
-                <Label>Active</Label>
-                <p className="text-xs text-muted-foreground">
-                  Plan is available for purchase
-                </p>
-              </div>
-              <Switch
-                id="status"
-                name="status"
-                checked={planForm.status === "active"}
-                onCheckedChange={(checked) =>
-                  setPlanForm((prev) => ({
-                    ...prev,
-                    status: checked ? "active" : "inactive",
-                  }))
-                }
-              />
-            </div>
-          </div>
-
-          <DialogFooter className="mt-4">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setIsEditPlanOpen(false);
-                resetForm();
-              }}
-            >
-              Cancel
-            </Button>
-            <Button onClick={handleSavePlan}>Save Changes</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Delete Confirmation Modal */}
       <AlertDialog
