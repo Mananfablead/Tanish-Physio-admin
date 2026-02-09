@@ -286,13 +286,13 @@ export default function Payments() {
                     {/* <td className="font-mono text-sm">{payment._id}</td> */}
                     <td>
                       <div>
-                        <p className="font-medium">{payment.userId?.name}</p>
-                        <p className="text-sm text-muted-foreground">{payment.userId?.email}</p>
+                        <p className="font-medium">{payment.userId?.name || payment?.guestName}</p>
+                        <p className="text-sm text-muted-foreground">{payment.userId?.email || payment?.guestEmail}</p>
                       </div>
                     </td>
                     <td>{payment.bookingId?.serviceName}</td>
                     <td className="font-semibold">₹{payment.amount}</td>
-                    <td className="text-muted-foreground">{payment.method || payment.currency}</td>
+                    <td className="text-muted-foreground">{payment.paymentMethod}</td>
                     <td className="text-muted-foreground">{new Date(payment.createdAt).toLocaleDateString()}</td>
                     <td>
                       <span className={cn("status-badge inline-flex items-center gap-1", getStatusBadge(payment.status as PaymentStatus))}>
