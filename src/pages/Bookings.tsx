@@ -216,24 +216,7 @@ export default function Bookings() {
           </p>
         </div>
         <div className="flex gap-2">
-          {/* <Button
-            variant="outline"
-            onClick={() => {
-              setIsModalOpen(true);
-              setIsEditing(false);
-              setBookingForm({
-                status: "confirmed" as "confirmed" | "pending" | "cancelled",
-                serviceId: "",
-                date: "",
-                time: "",
-                notes: "",
-                clientName: "",
-              });
-            }}
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Create Booking
-          </Button> */}
+        
         </div>
       </div>
       {/* Stats */}{" "}
@@ -702,30 +685,35 @@ export default function Bookings() {
             >
               Cancel
             </Button>
-            <Button
-              onClick={async () => {
-                if (selectedBooking && newStatus) {
-                  try {
-                    await dispatch(
-                      updateBooking({
-                        id: selectedBooking._id,
-                        bookingData: { status: newStatus },
-                      })
-                    );
-                    setIsStatusDialogOpen(false);
-                    setNewStatus('');
-                    // Refresh the bookings list
-                    dispatch(fetchBookings());
-                    toast({ title: "Booking status updated successfully", variant: "default" });
-                  } catch (error) {
-                    console.error("Failed to update booking status:", error);
-                    toast({ title: "Failed to update booking status", variant: "destructive" });
-                  }
-                }
-              }}
-            >
-              Update Status
-            </Button>
+           <Button
+  onClick={async () => {
+    if (!selectedBooking || !newStatus) return;
+
+    const result = await dispatch(
+      updateBooking({
+        id: selectedBooking._id,
+        bookingData: { status: newStatus },
+      })
+    );
+
+    if (updateBooking.fulfilled.match(result)) {
+      setIsStatusDialogOpen(false);
+      setNewStatus("");
+      dispatch(fetchBookings());
+      toast({
+        title: "Booking status updated successfully",
+      });
+    } else {
+      toast({
+        title: result.payload?.message || "Insufficient permissions",
+        variant: "destructive",
+      });
+    }
+  }}
+>
+  Update Status
+</Button>
+
           </DialogFooter>
         </DialogContent>
       </Dialog>

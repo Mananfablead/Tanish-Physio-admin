@@ -24,12 +24,14 @@ interface Payment {
     _id: string;
     name: string;
     email: string;
+
   };
   amount: number;
   currency: string;
   status: "created" | "captured" | "failed" | "refunded" | "disputed" | "pending" | "successful" | "paid";
   method?: string;
   razorpayOrderId?: string;
+  
   razorpayPaymentId?: string;
   razorpaySignature?: string;
   createdAt: string;
