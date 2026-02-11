@@ -113,6 +113,7 @@ export const API = {
   // payments
   PAYMENTS: "/payments",
   PAYMENTS_ADMIN_ALL: "/payments/admin/all",
+  PAYMENT_BY_ID: "/payments/admin/:paymentId",
   PAYMENTS_CREATE_ORDER: "/payments/create-order",
   PAYMENTS_VERIFY: "/payments/verify",
   PAYMENTS_WEBHOOK: "/payments/webhook",
@@ -429,6 +430,9 @@ export const bookingAPI = {
 export const paymentAPI = {
   // Get all payments (admin)
   getAll: () => apiClient.get(API.PAYMENTS_ADMIN_ALL),
+
+  // Get payment by ID (admin)
+  getById: (paymentId) => apiClient.get(API.PAYMENT_BY_ID.replace(':paymentId', paymentId)),
 
   // Create payment order
   createOrder: (data) => apiClient.post(API.PAYMENTS_CREATE_ORDER, data),

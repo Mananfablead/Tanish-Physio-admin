@@ -493,7 +493,7 @@ const filteredSubscriptions = Array.isArray(userSubscriptions)
                           <td>
                             <span
                               className={cn(
-                                "px-2 py-1 rounded-full text-xs font-medium",
+                                "px-2 py-1 rounded-full text-xs font-medium capitalize",
                                 sub.status === "active"
                                   ? "bg-green-100 text-green-800"
                                   : "bg-red-100 text-red-800"

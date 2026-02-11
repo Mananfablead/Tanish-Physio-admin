@@ -5,25 +5,17 @@ import {
   MoreHorizontal,
   Calendar,
   Clock,
-  User,
-  UserCog,
-  Edit,
+  
   CheckCircle,
   XCircle,
   Clock as ClockIcon,
-  Plus,
-  Activity,
+
   Eye,
 } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+
 import {
   Dialog,
   DialogContent,
@@ -172,20 +164,6 @@ export default function Bookings() {
   /* ===========================
      PREPARE EDIT BOOKING
   =========================== */
-  const prepareEditBooking = (booking) => {
-    setSelectedBooking(booking);
-    console.log("Selected Booking:", booking);
-    setBookingForm({
-      serviceId: booking.serviceId?._id || "",
-      date: booking.date || "",
-      time: booking.time || "",
-      notes: booking.notes || "",
-      clientName: booking.clientName || "",
-      status: booking.status || "pending",
-    });
-    setIsModalOpen(true);
-    setIsEditing(true);
-  };
 
 
   const getStatusBadge = (status: string) => {
@@ -310,8 +288,8 @@ export default function Bookings() {
                   <th>Client</th>
                   {/* <th>Therapist</th> */}
                   <th>Date & Time</th>
-                  <th>Status</th>
                   <th>Expiration</th>
+                  <th>Status</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -358,18 +336,7 @@ export default function Bookings() {
                       </div>
                     </td>
 
-                    <td>
-
-                      <span
-                        className={cn(
-                          "status-badge",
-                          getStatusBadge(booking.status)
-                        )}
-                      >
-                        {booking.status}
-                      </span>
-
-                    </td>
+                   
                     <td>
                       {booking.isServiceExpired ? (
                         <span className="px-2 py-1 rounded-full text-xs font-semibold text-red-600 bg-red-100">
@@ -385,6 +352,43 @@ export default function Bookings() {
                         </span>
                       )}
                     </td>
+                     <td>
+                      <Select
+                        value={booking.status}
+                        onValueChange={async (value) => {
+                          const result = await dispatch(
+                            updateBooking({
+                              id: booking._id || booking.id,
+                              bookingData: { status: value },
+                            })
+                          );
+
+                          if (updateBooking.fulfilled.match(result)) {
+                            dispatch(fetchBookings());
+                            toast({
+                              title: "Booking status updated successfully",
+                            });
+                          } else {
+                            toast({
+                              title: result.payload?.message || "Failed to update status",
+                              variant: "destructive",
+                            });
+                          }
+                        }}
+                      >
+                        <SelectTrigger className={cn(
+                          "w-[120px] capitalize rounded-lg bg-transparent border-none outline-none",
+                          getStatusBadge(booking.status)
+                        )}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="confirmed">Confirmed</SelectItem>
+                          <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="cancelled">Cancelled</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </td>
                     <td>
                       <div className="flex items-center gap-2">
                         <Link to={`/bookings/${booking._id || booking.id}`}>
@@ -392,35 +396,7 @@ export default function Bookings() {
                             <Eye className="w-4 h-4" />
                           </Button>
                         </Link>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button size="icon" variant="ghost" className="h-8 w-8">
-                              <MoreHorizontal className="w-4 h-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-44">
-                            {/* EDIT BOOKING */}
-                            {/* <DropdownMenuItem
-                              onClick={() => prepareEditBooking(booking)}
-                              className="cursor-pointer"
-                            >
-                              <Edit className="w-4 h-4 mr-2 text-slate-600" />
-                              Edit Booking
-                            </DropdownMenuItem> */}
-
-                            {/* STATUS UPDATE */}
-                            <DropdownMenuItem
-                              onClick={() => {
-                                setSelectedBooking(booking);
-                                setIsStatusDialogOpen(true);
-                              }}
-                              className="cursor-pointer"
-                            >
-                              <Activity className="w-4 h-4 mr-2" />
-                              Update Status
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        
                       </div>
                     </td>
                   </tr>
@@ -639,84 +615,7 @@ export default function Bookings() {
         </DialogContent>
       </Dialog>
 
-      {/* STATUS UPDATE DIALOG */}
-      <Dialog open={isStatusDialogOpen} onOpenChange={setIsStatusDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Update Booking Status</DialogTitle>
-            <DialogDescription>
-              Change the status of the booking
-            </DialogDescription>
-          </DialogHeader>
 
-          <div className="py-4">
-            <div className="mb-4">
-              <p className="text-sm font-medium mb-2">Current Status:</p>
-              <span className={cn(
-                "status-badge",
-                getStatusBadge(selectedBooking?.status)
-              )}>
-                {selectedBooking?.status}
-              </span>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">New Status:</label>
-              <Select value={newStatus} onValueChange={setNewStatus}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="confirmed">Confirmed</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setIsStatusDialogOpen(false);
-                setNewStatus('');
-              }}
-            >
-              Cancel
-            </Button>
-           <Button
-  onClick={async () => {
-    if (!selectedBooking || !newStatus) return;
-
-    const result = await dispatch(
-      updateBooking({
-        id: selectedBooking._id,
-        bookingData: { status: newStatus },
-      })
-    );
-
-    if (updateBooking.fulfilled.match(result)) {
-      setIsStatusDialogOpen(false);
-      setNewStatus("");
-      dispatch(fetchBookings());
-      toast({
-        title: "Booking status updated successfully",
-      });
-    } else {
-      toast({
-        title: result.payload?.message || "Insufficient permissions",
-        variant: "destructive",
-      });
-    }
-  }}
->
-  Update Status
-</Button>
-
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

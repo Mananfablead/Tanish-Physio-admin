@@ -267,7 +267,7 @@ export default function Users() {
                     <td>
                       <span
                         className={cn(
-                          "px-2 py-1 rounded-full text-xs",
+                          "px-2 py-1 rounded-full text-xs font-medium capitalize",
                           getSubscriptionBadge(user.subscriptionInfo?.status, user.subscriptionInfo?.isExpired)
                         )}
                       >
@@ -277,7 +277,7 @@ export default function Users() {
                     <td>
                       <span
                         className={cn(
-                          "status-badge",
+                          "status-badge inline-flex items-center gap-1 capitalize",
                           user.status === "active"
                             ? "status-active"
                             : "status-inactive"

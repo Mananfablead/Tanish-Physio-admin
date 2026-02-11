@@ -140,7 +140,7 @@ export default function Services() {
                               )}
                             </div>
                             <div>
-                              <span className="font-medium">{service.name}</span>
+                              <span className="font-medium ">{service.name}</span>
                               {(service.status === "inactive" || service.status === false) && (
                                 <span className="ml-2 text-xs text-muted-foreground">(Inactive)</span>
                               )}
@@ -154,7 +154,7 @@ export default function Services() {
                         <td>{service.sessions}</td>
                         <td>{service.validity} days</td>
                         <td>
-                          <span className={cn("status-badge", (service.status === "active" || service.status === true) ? "status-active" : "status-inactive")}>
+                          <span className={cn("status-badge capitalize", (service.status === "active" || service.status === true) ? "status-active" : "status-inactive")}>
                             {service.status === true ? 'active' : service.status === false ? 'inactive' : service.status}
                           </span>
                         </td>

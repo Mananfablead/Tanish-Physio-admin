@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchAllPayments } from '@/features/payments/paymentSlice';
+import { useNavigate } from 'react-router-dom';
 
 // API Base URL - Update this to your backend URL
 const API_BASE_URL = "http://localhost:3000";
@@ -50,6 +51,7 @@ const filters = ["All", "Successful", "Failed", "Refunded", "Disputed", "Pending
 
 export default function Payments() {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { payments, loading: isLoading, error } = useSelector((state: any) => state.payments);
   console.log(payments);
   const [searchQuery, setSearchQuery] = useState("");
@@ -332,14 +334,18 @@ export default function Payments() {
                     <td className="text-muted-foreground">{payment.paymentMethod}</td>
                     <td className="text-muted-foreground">{new Date(payment.createdAt).toLocaleDateString()}</td>
                     <td>
-                      <span className={cn("status-badge inline-flex items-center gap-1", getStatusBadge(payment.status as PaymentStatus))}>
+                      <span className={cn("status-badge inline-flex items-center gap-1 capitalize", getStatusBadge(payment.status as PaymentStatus))}>
                         {getStatusIcon(payment.status as PaymentStatus)}
                         {payment.status}
                       </span>
                     </td>
                     <td>
                       <div className="flex items-center gap-1">
-                        <Button variant="ghost" size="sm">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => navigate(`/payment-details/${payment._id}`)}
+                        >
                           <Eye className="w-4 h-4" />
                         </Button>
                         {payment.status === "captured" && (
