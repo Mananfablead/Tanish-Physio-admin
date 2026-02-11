@@ -135,6 +135,7 @@ interface ConditionsSectionData {
     conditions: {
         name: string;
         image: string;
+        content: string;
     }[];
     image: string;
     isPublic: boolean;
@@ -1445,7 +1446,9 @@ const EditConditionsForm = ({ data, onSave, onCancel }) => {
         conditions: data?.conditions?.map(condition => ({
             ...condition,
             // Ensure image is null if it's an empty string
-            image: condition.image || null
+            image: condition.image || null,
+            // Ensure content is empty string if not provided
+            content: condition.content || ''
         })) || []
     });
     const [errors, setErrors] = useState<{ [key: string]: string }>({});

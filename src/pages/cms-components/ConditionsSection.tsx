@@ -11,12 +11,14 @@ interface ConditionsData {
     conditions: Array<{ 
         name: string;
         image: string; // This will be imageUrl from backend
+        content: string;
     }>;
 }
 
 interface ConditionItem {
     name: string;
     image: string;
+    content: string;
 }
 
 interface ConditionsSectionProps {
@@ -88,6 +90,11 @@ export default function ConditionsSection({ data, onEdit, onEditCondition, onAdd
                                     )}
                                 </div>
                                 <span className="font-bold text-sm sm:text-base tracking-wide">{condition.name}</span>
+                                {condition.content && (
+                                    <p className="mt-2 text-xs sm:text-sm text-muted-foreground line-clamp-2">
+                                        {condition.content}
+                                    </p>
+                                )}
                                 <div className="mt-4 h-1 w-0 bg-primary mx-auto rounded-full group-hover:w-12 transition-all duration-500" />
                                 <div className="absolute top-2 right-2 flex gap-1">
                                     <Button

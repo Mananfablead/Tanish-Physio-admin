@@ -11,6 +11,7 @@ interface ConditionData {
   name?: string;
   title?: string;
   image: string | File | null;
+  content?: string;
 }
 
 interface BackendConditionData {
@@ -28,7 +29,8 @@ interface EditConditionFormProps {
 export default function EditConditionForm({ data, onSave, onCancel }: EditConditionFormProps) {
   const [formData, setFormData] = useState<ConditionData>({
     name: data?.name || data?.title || '',
-    image: data?.image || null
+    image: data?.image || null,
+    content: data?.content || '',
   });
 
   const handleChange = (field: string, value: any) => {
@@ -48,7 +50,7 @@ export default function EditConditionForm({ data, onSave, onCancel }: EditCondit
   const handleSubmit = () => {
     const cleanedData = {
       title: formData.name, // Map frontend 'name' to backend 'title'
-      content: '', // Backend expects content field too
+      content: formData.content || '',
       ...(formData.image ? { image: formData.image } : {})
     };
     
@@ -63,6 +65,15 @@ export default function EditConditionForm({ data, onSave, onCancel }: EditCondit
           value={formData.name}
           onChange={(e) => handleChange('name', e.target.value)}
           placeholder="Enter condition name"
+        />
+      </div>
+      
+      <div>
+        <Label>Content</Label>
+        <Input
+          value={formData.content}
+          onChange={(e) => handleChange('content', e.target.value)}
+          placeholder="Enter condition content/description"
         />
       </div>
       
