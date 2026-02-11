@@ -257,21 +257,6 @@ export default function Services() {
                                 Edit
                               </DropdownMenuItem>
                               <DropdownMenuItem
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  // Open the client-facing service page in a new tab using the slug
-                                  const clientUrl = service.slug
-                                    ? `${window.location.origin}/service/slug/${service.slug}`
-                                    : `${window.location.origin}/service/${
-                                        service._id || service.id
-                                      }`;
-                                  window.open(clientUrl, "_blank");
-                                }}
-                              >
-                                <Eye className="w-4 h-4 mr-2" />
-                                View on Site
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
                                 className="text-destructive"
                                 onClick={(e) => {
                                   e.stopPropagation();
