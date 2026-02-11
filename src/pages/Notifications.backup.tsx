@@ -116,11 +116,10 @@ export default function Notifications() {
     loading,
     error,
   } = useSelector((state: any) => state.notifications);
-
+  
   // Combine stored notifications with real-time notifications
   const [realTimeNotifications, setRealTimeNotifications] = useState([]);
   const [token] = useSelector((state: any) => [state.auth.token]);
-
   const [showDeleteAllConfirmation, setShowDeleteAllConfirmation] =
     useState(false);
   const [notificationToDelete, setNotificationToDelete] = useState<
@@ -138,21 +137,10 @@ export default function Notifications() {
     type: "system",
     recipientType: "all",
     userId: "",
-    sendVia: {
-      email: true,
-      whatsapp: true,
-      inApp: true,
-    },
   });
   const [isSending, setIsSending] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
-  const [notificationChannels, setNotificationChannels] = useState({
-    email: true,
-    whatsapp: true,
-    inApp: true,
-  });
-  const [sendResults, setSendResults] = useState<any[]>([]);
 
   useEffect(() => {
     dispatch(fetchNotifications());
@@ -163,21 +151,19 @@ export default function Notifications() {
     if (!token) return;
 
     // Connect to notification socket
-    const socket = io("http://localhost:5000", {
+    const socket = io('http://localhost:5001', {
       auth: { token },
-      transports: ["websocket", "polling"],
+      transports: ['websocket', 'polling']
     });
 
-    socket.on("connect", () => {
-      console.log(
-        "Connected to admin notification socket for Notifications page"
-      );
-      socket.emit("join-admin-notifications", {});
+    socket.on('connect', () => {
+      console.log('Connected to admin notification socket for Notifications page');
+      socket.emit('join-admin-notifications', {});
     });
 
-    socket.on("admin-notification", (data) => {
-      console.log("Notifications page received:", data);
-
+    socket.on('admin-notification', (data) => {
+      console.log('Notifications page received:', data);
+      
       const newNotification = {
         _id: `rt_${Date.now()}`,
         title: data.title || "New Notification",
@@ -186,10 +172,10 @@ export default function Notifications() {
         userId: null,
         read: false,
         createdAt: data.timestamp || new Date().toISOString(),
-        updatedAt: data.timestamp || new Date().toISOString(),
+        updatedAt: data.timestamp || new Date().toISOString()
       };
 
-      setRealTimeNotifications((prev) => [newNotification, ...prev]);
+      setRealTimeNotifications(prev => [newNotification, ...prev]);
     });
 
     return () => {
@@ -203,18 +189,19 @@ export default function Notifications() {
   // Fetch users when specific user is selected
   useEffect(() => {
     if (newNotification.recipientType === "specific") {
-      loadUsers();
+      fetchUsers();
     }
   }, [newNotification.recipientType]);
 
-  const loadUsers = async () => {
+  const fetchUsers = async () => {
+    setLoadingUsers(true);
     try {
-      setLoadingUsers(true);
-      // Fetch users from API
-      const response = await userAPI.getAllUsers();
-      setUsers(response.data.data || []);
+      const response = await userAPI.getAll({ limit: 100 });
+      const usersData =
+        response.data.data?.users || response.data.data || response.data || [];
+      setUsers(usersData);
     } catch (error) {
-      console.error("Failed to load users:", error);
+      console.error("Failed to fetch users:", error);
     } finally {
       setLoadingUsers(false);
     }
@@ -253,38 +240,45 @@ export default function Notifications() {
       label: type.label,
     })),
   };
+  };
 
   const handleSendNotification = async () => {
-    try {
-      setIsSending(true);
+    // Validate required fields
+    if (!newNotification.title.trim()) {
+      alert("Please enter a title");
+      return;
+    }
 
-      const notificationData = {
-        title: newNotification.title,
-        message: newNotification.message,
+    if (!newNotification.message.trim()) {
+      alert("Please enter a message");
+      return;
+    }
+
+    if (
+      newNotification.recipientType === "specific" &&
+      !newNotification.userId
+    ) {
+      alert("Please select a user for specific recipient");
+      return;
+    }
+
+    setIsSending(true);
+    try {
+      const notificationData: any = {
+        title: newNotification.title.trim(),
+        message: newNotification.message.trim(),
         type: newNotification.type,
-        recipientType: newNotification.recipientType,
-        userId:
-          newNotification.recipientType === "specific"
-            ? newNotification.userId
-            : undefined,
-        channels: {
-          email: notificationChannels.email,
-          whatsapp: notificationChannels.whatsapp,
-          inApp: notificationChannels.inApp,
-        },
       };
 
-      const result = await dispatch(
-        sendNotification(notificationData)
-      ).unwrap();
-
-      // Show success message with results
-      if (result?.notificationResults) {
-        setSendResults(result.notificationResults);
-        setTimeout(() => {
-          setSendResults([]);
-        }, 5000);
+      // Add userId only if specific recipient is selected
+      if (
+        newNotification.recipientType === "specific" &&
+        newNotification.userId.trim()
+      ) {
+        notificationData.userId = newNotification.userId.trim();
       }
+
+      await dispatch(sendNotification(notificationData)).unwrap();
 
       // Reset form
       setNewNotification({
@@ -293,23 +287,11 @@ export default function Notifications() {
         type: "system",
         recipientType: "all",
         userId: "",
-        sendVia: {
-          email: true,
-          whatsapp: true,
-          inApp: true,
-        },
-      });
-      setNotificationChannels({
-        email: true,
-        whatsapp: true,
-        inApp: true,
       });
       setShowSendModal(false);
-    } catch (error: any) {
+    } catch (error) {
       console.error("Failed to send notification:", error);
-      alert(
-        `Failed to send notification: ${error.message || "Please try again."}`
-      );
+      alert("Failed to send notification. Please try again.");
     } finally {
       setIsSending(false);
     }
@@ -352,8 +334,8 @@ export default function Notifications() {
         </p>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {/* Statistics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -458,6 +440,18 @@ export default function Notifications() {
             <Plus className="w-4 h-4" />
             Send Notification
           </Button>
+
+          {filteredNotifications.length > 0 && (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => setShowDeleteAllConfirmation(true)}
+              className="flex items-center gap-2"
+            >
+              <Trash2 className="w-4 h-4" />
+              Delete All
+            </Button>
+          )}
         </div>
       </div>
 
@@ -481,10 +475,9 @@ export default function Notifications() {
                     <th>Message</th>
                     <th>Type</th>
                     <th>Recipient</th>
-                    <th>Channels</th>
                     <th>Sent At</th>
                     <th>Status</th>
-                    {/* <th className="w-24">Actions</th> */}
+                    <th className="w-24">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -512,28 +505,6 @@ export default function Notifications() {
                               : "All Users"}
                           </Badge>
                         </td>
-                        <td>
-                          <div className="flex flex-wrap gap-1">
-                            {notification.channels ? (
-                              Object.entries(notification.channels).map(
-                                ([channel, enabled]) =>
-                                  enabled ? (
-                                    <Badge
-                                      key={channel}
-                                      variant="secondary"
-                                      className="text-xs capitalize"
-                                    >
-                                      {channel}
-                                    </Badge>
-                                  ) : null
-                              )
-                            ) : (
-                              <Badge variant="secondary" className="text-xs">
-                                In-App
-                              </Badge>
-                            )}
-                          </div>
-                        </td>
                         <td className="text-muted-foreground">
                           {new Date(
                             notification.createdAt
@@ -552,11 +523,12 @@ export default function Notifications() {
                             {notification.read ? "Read" : "Unread"}
                           </Badge>
                         </td>
-                        {/* <td>
+                        <td>
                           <div className="flex gap-1">
                             <Button
-                              size="sm"
                               variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0"
                               onClick={() =>
                                 dispatch(
                                   markNotificationAsRead(
@@ -566,11 +538,16 @@ export default function Notifications() {
                               }
                               disabled={notification.read}
                             >
-                              <Check className="w-4 h-4" />
+                              {notification.read ? (
+                                <EyeOff className="w-4 h-4" />
+                              ) : (
+                                <Eye className="w-4 h-4" />
+                              )}
                             </Button>
                             <Button
-                              size="sm"
                               variant="ghost"
+                              size="sm"
+                              className="text-destructive hover:text-destructive/80 h-8 w-8 p-0"
                               onClick={() =>
                                 confirmDeleteNotification(
                                   notification._id || notification.id
@@ -580,13 +557,13 @@ export default function Notifications() {
                               <Trash2 className="w-4 h-4" />
                             </Button>
                           </div>
-                        </td> */}
+                        </td>
                       </tr>
                     ))
                   ) : (
                     <tr>
                       <td
-                        colSpan={8}
+                        colSpan={7}
                         className="text-center py-8 text-muted-foreground"
                       >
                         No notifications found
@@ -609,9 +586,8 @@ export default function Notifications() {
                     <th>Message</th>
                     <th>Type</th>
                     <th>Recipient</th>
-                    <th>Channels</th>
                     <th>Sent At</th>
-                    {/* <th className="w-24">Actions</th> */}
+                    <th className="w-24">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -642,38 +618,17 @@ export default function Notifications() {
                                 : "All Users"}
                             </Badge>
                           </td>
-                          <td>
-                            <div className="flex flex-wrap gap-1">
-                              {notification.channels ? (
-                                Object.entries(notification.channels).map(
-                                  ([channel, enabled]) =>
-                                    enabled ? (
-                                      <Badge
-                                        key={channel}
-                                        variant="secondary"
-                                        className="text-xs capitalize"
-                                      >
-                                        {channel}
-                                      </Badge>
-                                    ) : null
-                                )
-                              ) : (
-                                <Badge variant="secondary" className="text-xs">
-                                  In-App
-                                </Badge>
-                              )}
-                            </div>
-                          </td>
                           <td className="text-muted-foreground">
                             {new Date(
                               notification.createdAt
                             ).toLocaleDateString()}
                           </td>
-                          {/* <td>
+                          <td>
                             <div className="flex gap-1">
                               <Button
-                                size="sm"
                                 variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0"
                                 onClick={() =>
                                   dispatch(
                                     markNotificationAsRead(
@@ -685,8 +640,9 @@ export default function Notifications() {
                                 <Check className="w-4 h-4" />
                               </Button>
                               <Button
-                                size="sm"
                                 variant="ghost"
+                                size="sm"
+                                className="text-destructive hover:text-destructive/80 h-8 w-8 p-0"
                                 onClick={() =>
                                   confirmDeleteNotification(
                                     notification._id || notification.id
@@ -696,13 +652,13 @@ export default function Notifications() {
                                 <Trash2 className="w-4 h-4" />
                               </Button>
                             </div>
-                          </td> */}
+                          </td>
                         </tr>
                       ))
                   ) : (
                     <tr>
                       <td
-                        colSpan={7}
+                        colSpan={6}
                         className="text-center py-8 text-muted-foreground"
                       >
                         No unread notifications
@@ -718,14 +674,13 @@ export default function Notifications() {
         <TabsContent value="by-type" className="mt-4">
           <div className="space-y-6">
             {stats.byType.map((typeStat) => {
-              const typeInfo = notificationTypes.find(
-                (t) => t.value === typeStat.type
-              );
               const typeNotifications = filteredNotifications.filter(
                 (n: any) => n.type === typeStat.type
               );
-
-              if (typeNotifications.length === 0) return null;
+              const typeInfo = notificationTypes.find(
+                (t) => t.value === typeStat.type
+              );
+              if (!typeInfo) return null;
 
               return (
                 <div key={typeStat.type}>
@@ -744,10 +699,9 @@ export default function Notifications() {
                             <th>Title</th>
                             <th>Message</th>
                             <th>Recipient</th>
-                            <th>Channels</th>
                             <th>Sent At</th>
                             <th>Status</th>
-                            {/* <th className="w-24">Actions</th> */}
+                            <th className="w-24">Actions</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -770,31 +724,6 @@ export default function Notifications() {
                                       : "All Users"}
                                   </Badge>
                                 </td>
-                                <td>
-                                  <div className="flex flex-wrap gap-1">
-                                    {notification.channels ? (
-                                      Object.entries(notification.channels).map(
-                                        ([channel, enabled]) =>
-                                          enabled ? (
-                                            <Badge
-                                              key={channel}
-                                              variant="secondary"
-                                              className="text-xs capitalize"
-                                            >
-                                              {channel}
-                                            </Badge>
-                                          ) : null
-                                      )
-                                    ) : (
-                                      <Badge
-                                        variant="secondary"
-                                        className="text-xs"
-                                      >
-                                        In-App
-                                      </Badge>
-                                    )}
-                                  </div>
-                                </td>
                                 <td className="text-muted-foreground">
                                   {new Date(
                                     notification.createdAt
@@ -816,11 +745,12 @@ export default function Notifications() {
                                     {notification.read ? "Read" : "Unread"}
                                   </Badge>
                                 </td>
-                                {/* <td>
+                                <td>
                                   <div className="flex gap-1">
                                     <Button
-                                      size="sm"
                                       variant="ghost"
+                                      size="sm"
+                                      className="h-8 w-8 p-0"
                                       onClick={() =>
                                         dispatch(
                                           markNotificationAsRead(
@@ -830,11 +760,16 @@ export default function Notifications() {
                                       }
                                       disabled={notification.read}
                                     >
-                                      <Check className="w-4 h-4" />
+                                      {notification.read ? (
+                                        <EyeOff className="w-4 h-4" />
+                                      ) : (
+                                        <Eye className="w-4 h-4" />
+                                      )}
                                     </Button>
                                     <Button
-                                      size="sm"
                                       variant="ghost"
+                                      size="sm"
+                                      className="text-destructive hover:text-destructive/80 h-8 w-8 p-0"
                                       onClick={() =>
                                         confirmDeleteNotification(
                                           notification._id || notification.id
@@ -844,16 +779,16 @@ export default function Notifications() {
                                       <Trash2 className="w-4 h-4" />
                                     </Button>
                                   </div>
-                                </td> */}
+                                </td>
                               </tr>
                             ))
                           ) : (
                             <tr>
                               <td
-                                colSpan={7}
+                                colSpan={6}
                                 className="text-center py-8 text-muted-foreground"
                               >
-                                No notifications of this type
+                                No {typeStat.label.toLowerCase()} notifications
                               </td>
                             </tr>
                           )}
@@ -949,284 +884,225 @@ export default function Notifications() {
         </TabsContent>
       </Tabs>
 
-      {/* Send Results Toast */}
-      {sendResults.length > 0 && (
-        <div className="fixed bottom-4 right-4 z-50 space-y-2 max-w-md">
-          {sendResults.map((result, index) => (
-            <div
-              key={index}
-              className="bg-card border border-border rounded-lg p-4 shadow-lg animate-fade-in"
-            >
-              <div className="flex items-start gap-3">
-                <div className="mt-0.5">
-                  {result.channels && result.channels.length > 0 ? (
-                    <CheckCircle className="w-5 h-5 text-green-500" />
-                  ) : (
-                    <X className="w-5 h-5 text-red-500" />
-                  )}
-                </div>
-                <div className="flex-1">
-                  <p className="font-medium text-sm">{result.recipient}</p>
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {result.channels &&
-                      result.channels.map((channel: string) => (
-                        <Badge
-                          key={channel}
-                          variant="secondary"
-                          className="text-xs"
-                        >
-                          {channel.toUpperCase()}
-                        </Badge>
-                      ))}
-                  </div>
-                  {(result.emailError || result.whatsappError) && (
-                    <p className="text-xs text-red-500 mt-1">
-                      {result.emailError && `Email: ${result.emailError}`}
-                      {result.whatsappError &&
-                        ` WhatsApp: ${result.whatsappError}`}
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
       {/* Send Notification Modal */}
       {showSendModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-card rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold">Send Notification</h3>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowSendModal(false)}
-                >
-                  <X className="w-4 h-4" />
-                </Button>
+          <div className="bg-card rounded-lg border border-border w-full max-w-md p-6 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-lg">Send New Notification</h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowSendModal(false)}
+                className="h-8 w-8 p-0"
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium mb-1 block">
+                  Title *
+                </label>
+                <Input
+                  value={newNotification.title}
+                  onChange={(e) =>
+                    setNewNotification({
+                      ...newNotification,
+                      title: e.target.value,
+                    })
+                  }
+                  placeholder="Enter notification title"
+                  required
+                />
               </div>
 
-              <div className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium mb-1 block">
-                    Title *
-                  </label>
-                  <Input
-                    value={newNotification.title}
-                    onChange={(e) =>
-                      setNewNotification({
-                        ...newNotification,
-                        title: e.target.value,
-                      })
-                    }
-                    placeholder="Enter notification title"
-                    required
-                  />
-                </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">
+                  Message *
+                </label>
+                <textarea
+                  value={newNotification.message}
+                  onChange={(e) =>
+                    setNewNotification({
+                      ...newNotification,
+                      message: e.target.value,
+                    })
+                  }
+                  placeholder="Enter notification message"
+                  className="w-full h-24 px-3 py-2 border border-input rounded-md bg-background text-sm"
+                  required
+                />
+              </div>
 
-                <div>
-                  <label className="text-sm font-medium mb-1 block">
-                    Message *
-                  </label>
-                  <textarea
-                    value={newNotification.message}
-                    onChange={(e) =>
-                      setNewNotification({
-                        ...newNotification,
-                        message: e.target.value,
-                      })
-                    }
-                    placeholder="Enter notification message"
-                    className="w-full p-2 border rounded-md bg-background min-h-[100px]"
-                    required
-                  />
-                </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">Type *</label>
+                <Select
+                  value={newNotification.type}
+                  onValueChange={(value) =>
+                    setNewNotification({ ...newNotification, type: value })
+                  }
+                  required
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {notificationTypes.map((type) => (
+                      <SelectItem key={type.value} value={type.value}>
+                        {type.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
+              <div>
+                <label className="text-sm font-medium mb-1 block">
+                  Recipient *
+                </label>
+                <Select
+                  value={newNotification.recipientType}
+                  onValueChange={(value) =>
+                    setNewNotification({
+                      ...newNotification,
+                      recipientType: value,
+                      userId:
+                        value === "specific" ? newNotification.userId : "",
+                    })
+                  }
+                  required
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {recipientTypes.map((type) => (
+                      <SelectItem key={type.value} value={type.value}>
+                        {type.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {newNotification.recipientType === "specific" && (
                 <div>
                   <label className="text-sm font-medium mb-1 block">
-                    Type *
+                    Select User *
                   </label>
                   <Select
-                    value={newNotification.type}
+                    value={newNotification.userId}
                     onValueChange={(value) =>
-                      setNewNotification({ ...newNotification, type: value })
+                      setNewNotification({
+                        ...newNotification,
+                        userId: value,
+                      })
                     }
                     required
                   >
                     <SelectTrigger>
-                      <SelectValue />
+                      <SelectValue placeholder="Select a user" />
                     </SelectTrigger>
                     <SelectContent>
-                      {notificationTypes.map((type) => (
-                        <SelectItem key={type.value} value={type.value}>
-                          {type.label}
+                      {loadingUsers ? (
+                        <SelectItem value="loading" disabled>
+                          Loading users...
                         </SelectItem>
-                      ))}
+                      ) : (
+                        users.map((user: any) => (
+                          <SelectItem key={user._id} value={user._id}>
+                            {user.name} ({user.email})
+                          </SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
+              )}
+            </div>
 
-                <div>
-                  <label className="text-sm font-medium mb-1 block">
-                    Recipient *
-                  </label>
-                  <Select
-                    value={newNotification.recipientType}
-                    onValueChange={(value) =>
-                      setNewNotification({
-                        ...newNotification,
-                        recipientType: value,
-                        userId:
-                          value === "specific" ? newNotification.userId : "",
-                      })
-                    }
-                    required
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {recipientTypes.map((type) => (
-                        <SelectItem key={type.value} value={type.value}>
-                          {type.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {newNotification.recipientType === "specific" && (
-                  <div>
-                    <label className="text-sm font-medium mb-1 block">
-                      Select User *
-                    </label>
-                    <Select
-                      value={newNotification.userId}
-                      onValueChange={(value) =>
-                        setNewNotification({
-                          ...newNotification,
-                          userId: value,
-                        })
-                      }
-                      required
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a user" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {loadingUsers ? (
-                          <SelectItem value="" disabled>
-                            Loading users...
-                          </SelectItem>
-                        ) : users.length > 0 ? (
-                          users.map((user) => (
-                            <SelectItem key={user._id} value={user._id}>
-                              {user.name} ({user.email})
-                            </SelectItem>
-                          ))
-                        ) : (
-                          <SelectItem value="" disabled>
-                            No users found
-                          </SelectItem>
-                        )}
-                      </SelectContent>
-                    </Select>
-                  </div>
+            <div className="flex gap-3 justify-end mt-6">
+              <Button
+                variant="outline"
+                onClick={() => setShowSendModal(false)}
+                disabled={isSending}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSendNotification}
+                disabled={isSending}
+                className="flex items-center gap-2"
+              >
+                {isSending ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-4 h-4" />
+                    Send Notification
+                  </>
                 )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
-                {/* Notification Channels */}
-                <div>
-                  <label className="text-sm font-medium mb-1 block">
-                    Send Via (Select Channels)
-                  </label>
-                  <div className="space-y-2">
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        id="email-channel"
-                        checked={notificationChannels.email}
-                        onChange={(e) =>
-                          setNotificationChannels({
-                            ...notificationChannels,
-                            email: e.target.checked,
-                          })
-                        }
-                        className="rounded border-gray-300 text-primary focus:ring-primary"
-                      />
-                      <label htmlFor="email-channel" className="text-sm">
-                        Email Notification
-                      </label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        id="whatsapp-channel"
-                        checked={notificationChannels.whatsapp}
-                        onChange={(e) =>
-                          setNotificationChannels({
-                            ...notificationChannels,
-                            whatsapp: e.target.checked,
-                          })
-                        }
-                        className="rounded border-gray-300 text-primary focus:ring-primary"
-                      />
-                      <label htmlFor="whatsapp-channel" className="text-sm">
-                        WhatsApp Notification
-                      </label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        id="inapp-channel"
-                        checked={notificationChannels.inApp}
-                        onChange={(e) =>
-                          setNotificationChannels({
-                            ...notificationChannels,
-                            inApp: e.target.checked,
-                          })
-                        }
-                        className="rounded border-gray-300 text-primary focus:ring-primary"
-                      />
-                      <label htmlFor="inapp-channel" className="text-sm">
-                        In-App Notification
-                      </label>
-                    </div>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Select one or more channels to send the notification through
-                  </p>
-                </div>
-              </div>
+      {/* Delete All Confirmation Dialog */}
+      {showDeleteAllConfirmation && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-card rounded-lg border border-border w-full max-w-md p-6 animate-in fade-in zoom-in-95">
+            <h3 className="font-semibold text-lg mb-2">
+              Delete All Notifications?
+            </h3>
+            <p className="text-muted-foreground mb-6">
+              Are you sure you want to delete all notifications? This action
+              cannot be undone.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => setShowDeleteAllConfirmation(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleDeleteAllNotifications}
+              >
+                Delete All
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
-              <div className="flex gap-3 justify-end mt-6">
-                <Button
-                  variant="outline"
-                  onClick={() => setShowSendModal(false)}
-                  disabled={isSending}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleSendNotification}
-                  disabled={isSending}
-                  className="flex items-center gap-2"
-                >
-                  {isSending ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      Sending...
-                    </>
-                  ) : (
-                    <>
-                      <Send className="w-4 h-4" />
-                      Send Notification
-                    </>
-                  )}
-                </Button>
-              </div>
+      {/* Delete Single Notification Confirmation Dialog */}
+      {notificationToDelete !== null && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-card rounded-lg border border-border w-full max-w-md p-6 animate-in fade-in zoom-in-95">
+            <h3 className="font-semibold text-lg mb-2">Delete Notification?</h3>
+            <p className="text-muted-foreground mb-6">
+              Are you sure you want to delete this notification? This action
+              cannot be undone.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <Button variant="outline" onClick={cancelDeleteNotification}>
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() =>
+                  handleDeleteNotification(String(notificationToDelete))
+                }
+              >
+                Delete
+              </Button>
             </div>
           </div>
         </div>

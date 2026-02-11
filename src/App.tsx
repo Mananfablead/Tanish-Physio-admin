@@ -10,6 +10,7 @@ import PublicRoute from "@/routes/PublicRoute";
 import AdminPage from "@/components/layout/AdminPage";
 
 // Pages
+import ComingSoonPage from "./pages/ComingSoonPage";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Users from "./pages/Users";
@@ -79,6 +80,7 @@ const App = () => (
           />
 
           {/* ================= PROTECTED ================= */}
+          {/* <Route path="/" element={<ComingSoonPage />} /> */}
           <Route
             path="/"
             element={

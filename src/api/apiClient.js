@@ -372,6 +372,15 @@ export const therapistAPI = {
   delete: (id) => apiClient.delete(`${API.THERAPIST_BY_ID.replace(":id", id)}`),
 };
 
+// User API endpoints
+export const userAPI = {
+  // Get all users
+  getAll: (params) => apiClient.get(API.USERS, { params }),
+
+  // Get user by ID
+  getById: (id) => apiClient.get(`${API.USER_BY_ID.replace(":id", id)}`),
+};
+
 // Notification API endpoints
 export const notificationAPI = {
   // Get all notifications
@@ -381,8 +390,19 @@ export const notificationAPI = {
   send: (data) => apiClient.post(API.NOTIFICATIONS, data),
 
   // Mark notification as read
-  markAsRead: (id) =>
-    apiClient.put(`${API.NOTIFICATION_MARK_READ.replace(":id", id)}`),
+  markAsRead: (id) => {
+    return apiClient.put(`${API.NOTIFICATION_MARK_READ.replace(":id", id)}`);
+  },
+
+  // Delete notification
+  delete: (id) => {
+    return apiClient.delete(`${API.NOTIFICATION_BY_ID.replace(":id", id)}`);
+  },
+
+  // Delete all notifications (would need backend endpoint)
+  deleteAll: () => {
+    return apiClient.delete(API.NOTIFICATIONS);
+  },
 };
 
 // Booking API endpoints
