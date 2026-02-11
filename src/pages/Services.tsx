@@ -1,5 +1,16 @@
 import { useState, useRef, useEffect } from "react";
-import { Search, MoreHorizontal, Plus, Upload, X, Edit, Trash2, Image as ImageIcon, Loader2 } from "lucide-react";
+import {
+  Search,
+  MoreHorizontal,
+  Plus,
+  Upload,
+  X,
+  Edit,
+  Trash2,
+  Image as ImageIcon,
+  Loader2,
+  Eye,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -9,12 +20,30 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchServices, createService, updateService, deleteService } from "@/features/services/serviceSlice";
+import {
+  fetchServices,
+  createService,
+  updateService,
+  deleteService,
+} from "@/features/services/serviceSlice";
 import PageLoader from "@/components/PageLoader";
 
 export default function Services() {
@@ -29,7 +58,11 @@ export default function Services() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const dispatch = useDispatch();
-  const { list: services, loading, error } = useSelector((state: any) => state.services);
+  const {
+    list: services,
+    loading,
+    error,
+  } = useSelector((state: any) => state.services);
 
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -42,18 +75,22 @@ export default function Services() {
     setCurrentPage(1);
   }, [searchQuery]);
 
-  const filteredServices = (services || []).filter((service) =>
-    service?.name?.toLowerCase().includes(searchQuery?.toLowerCase()) ||
-    service?.description?.toLowerCase().includes(searchQuery?.toLowerCase()) ||
-    service?.category?.toLowerCase().includes(searchQuery?.toLowerCase())
+  const filteredServices = (services || []).filter(
+    (service) =>
+      service?.name?.toLowerCase().includes(searchQuery?.toLowerCase()) ||
+      service?.description
+        ?.toLowerCase()
+        .includes(searchQuery?.toLowerCase()) ||
+      service?.category?.toLowerCase().includes(searchQuery?.toLowerCase())
   );
 
   // Pagination logic
   const totalPages = Math.ceil(filteredServices.length / servicesPerPage);
   const startIndex = (currentPage - 1) * servicesPerPage;
-  const paginatedServices = filteredServices.slice(startIndex, startIndex + servicesPerPage);
-
-
+  const paginatedServices = filteredServices.slice(
+    startIndex,
+    startIndex + servicesPerPage
+  );
 
   if (loading || !services) {
     return <PageLoader text="Loading services..." />;
@@ -64,11 +101,13 @@ export default function Services() {
 
     setIsDeleting(true);
 
-    dispatch(deleteService(selectedService._id || selectedService.id)).then(() => {
-      dispatch(fetchServices());
-    }).finally(() => {
-      setIsDeleting(false);
-    });
+    dispatch(deleteService(selectedService._id || selectedService.id))
+      .then(() => {
+        dispatch(fetchServices());
+      })
+      .finally(() => {
+        setIsDeleting(false);
+      });
     setIsDeleteServiceOpen(false);
   };
 
@@ -78,7 +117,9 @@ export default function Services() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="page-header">
           <h1 className="page-title">Services Management</h1>
-          <p className="page-subtitle">Manage services offered by your clinic</p>
+          <p className="page-subtitle">
+            Manage services offered by your clinic
+          </p>
         </div>
         <Button onClick={() => navigate("/add-service")}>
           <Plus className="w-4 h-4 mr-2" />
@@ -86,7 +127,6 @@ export default function Services() {
         </Button>
       </div>
 
- 
       <div className="space-y-4">
         <div className="relative max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -99,8 +139,8 @@ export default function Services() {
           />
         </div>
 
-        {!loading && (
-          paginatedServices.length > 0 ? (
+        {!loading &&
+          (paginatedServices.length > 0 ? (
             <div className="bg-card rounded-lg border border-border overflow-hidden animate-fade-in">
               <div className="overflow-x-auto">
                 <table className="data-table">
@@ -119,11 +159,27 @@ export default function Services() {
                   </thead>
                   <tbody>
                     {paginatedServices.map((service) => (
-                      <tr key={service._id || service.id} className={cn("cursor-pointer", (service.status === "inactive" || service.status === false) ? "opacity-70" : "")} onClick={() => navigate(`/services/${service._id || service.id}`)}>
+                      <tr
+                        key={service._id || service.id}
+                        className={cn(
+                          "cursor-pointer",
+                          service.status === "inactive" ||
+                            service.status === false
+                            ? "opacity-70"
+                            : ""
+                        )}
+                        onClick={() =>
+                          navigate(
+                            `/services/slug/${
+                              service.slug || service._id || service.id
+                            }`
+                          )
+                        }
+                      >
                         <td>
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-md bg-muted flex items-center justify-center overflow-hidden">
-                              {(service.images && service.images.length > 0) ? (
+                              {service.images && service.images.length > 0 ? (
                                 <img
                                   src={service.images[0]}
                                   alt={service.name}
@@ -140,38 +196,80 @@ export default function Services() {
                               )}
                             </div>
                             <div>
-                              <span className="font-medium ">{service.name}</span>
-                              {(service.status === "inactive" || service.status === false) && (
-                                <span className="ml-2 text-xs text-muted-foreground">(Inactive)</span>
+                              <span className="font-medium ">
+                                {service.name}
+                              </span>
+                              {(service.status === "inactive" ||
+                                service.status === false) && (
+                                <span className="ml-2 text-xs text-muted-foreground">
+                                  (Inactive)
+                                </span>
                               )}
                             </div>
                           </div>
                         </td>
-                       
+
                         <td>&#8377;{service.price}</td>
                         <td>{service.duration}</td>
                         <td>{service.purchaseCount}</td>
                         <td>{service.sessions}</td>
                         <td>{service.validity} days</td>
                         <td>
-                          <span className={cn("status-badge capitalize", (service.status === "active" || service.status === true) ? "status-active" : "status-inactive")}>
-                            {service.status === true ? 'active' : service.status === false ? 'inactive' : service.status}
+                          <span
+                            className={cn(
+                              "status-badge capitalize",
+                              service.status === "active" ||
+                                service.status === true
+                                ? "status-active"
+                                : "status-inactive"
+                            )}
+                          >
+                            {service.status === true
+                              ? "active"
+                              : service.status === false
+                              ? "inactive"
+                              : service.status}
                           </span>
                         </td>
                         <td>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                              >
                                 <MoreHorizontal className="w-4 h-4" />
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={(e) => {
-                                e.stopPropagation();
-                                navigate(`/services/${service._id || service.id}/edit`);
-                              }}>
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(
+                                    `/services/slug/${
+                                      service.slug || service._id || service.id
+                                    }/edit`
+                                  );
+                                }}
+                              >
                                 <Edit className="w-4 h-4 mr-2" />
                                 Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  // Open the client-facing service page in a new tab using the slug
+                                  const clientUrl = service.slug
+                                    ? `${window.location.origin}/service/slug/${service.slug}`
+                                    : `${window.location.origin}/service/${
+                                        service._id || service.id
+                                      }`;
+                                  window.open(clientUrl, "_blank");
+                                }}
+                              >
+                                <Eye className="w-4 h-4 mr-2" />
+                                View on Site
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 className="text-destructive"
@@ -196,13 +294,25 @@ export default function Services() {
               {/* PAGINATION CONTROLS */}
               <div className="flex items-center justify-between px-4 py-3 border-t border-border">
                 <p className="text-sm text-muted-foreground">
-                  Showing <span className="font-medium">{startIndex + 1}</span> to <span className="font-medium">{Math.min(startIndex + servicesPerPage, filteredServices.length)}</span> of <span className="font-medium">{filteredServices.length}</span> services
+                  Showing <span className="font-medium">{startIndex + 1}</span>{" "}
+                  to{" "}
+                  <span className="font-medium">
+                    {Math.min(
+                      startIndex + servicesPerPage,
+                      filteredServices.length
+                    )}
+                  </span>{" "}
+                  of{" "}
+                  <span className="font-medium">{filteredServices.length}</span>{" "}
+                  services
                 </p>
                 <div className="flex items-center gap-2">
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    onClick={() =>
+                      setCurrentPage((prev) => Math.max(prev - 1, 1))
+                    }
                     disabled={currentPage === 1}
                   >
                     Previous
@@ -213,7 +323,9 @@ export default function Services() {
                       return (
                         <Button
                           key={pageNum}
-                          variant={currentPage === pageNum ? "default" : "outline"}
+                          variant={
+                            currentPage === pageNum ? "default" : "outline"
+                          }
                           size="sm"
                           onClick={() => setCurrentPage(pageNum)}
                           className="w-10 h-10 p-0"
@@ -229,7 +341,9 @@ export default function Services() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    onClick={() =>
+                      setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                    }
                     disabled={currentPage === totalPages}
                   >
                     Next
@@ -249,17 +363,17 @@ export default function Services() {
                   : "Get started by adding your first service."}
               </p>
               {!searchQuery && (
-                <Button className="mt-4" onClick={() => navigate("/add-service")}>
+                <Button
+                  className="mt-4"
+                  onClick={() => navigate("/add-service")}
+                >
                   <Plus className="w-4 h-4 mr-2" />
                   Add Service
                 </Button>
               )}
             </div>
-          )
-        )}
+          ))}
       </div>
-
-
 
       {/* Delete Service Confirmation Modal */}
       <Dialog open={isDeleteServiceOpen} onOpenChange={setIsDeleteServiceOpen}>
@@ -267,7 +381,8 @@ export default function Services() {
           <DialogHeader>
             <DialogTitle>Delete Service</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete this service? This action cannot be undone.
+              Are you sure you want to delete this service? This action cannot
+              be undone.
             </DialogDescription>
           </DialogHeader>
 
@@ -280,7 +395,9 @@ export default function Services() {
                 </p>
                 <p className="text-sm">
                   <span className="text-muted-foreground">Category:</span>{" "}
-                  <span className="font-medium">{selectedService.category}</span>
+                  <span className="font-medium">
+                    {selectedService.category}
+                  </span>
                 </p>
                 <p className="text-sm">
                   <span className="text-muted-foreground">Price:</span>{" "}
@@ -291,10 +408,18 @@ export default function Services() {
           )}
 
           <DialogFooter className="mt-4">
-            <Button variant="outline" onClick={() => setIsDeleteServiceOpen(false)} disabled={isDeleting}>
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteServiceOpen(false)}
+              disabled={isDeleting}
+            >
               Cancel
             </Button>
-            <Button variant="destructive" onClick={handleDeleteService} disabled={isDeleting}>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteService}
+              disabled={isDeleting}
+            >
               {isDeleting ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin mr-2" />

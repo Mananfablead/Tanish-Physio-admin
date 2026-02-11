@@ -29,6 +29,18 @@ export const fetchServiceById = createAsyncThunk(
   }
 );
 
+export const fetchServiceBySlug = createAsyncThunk(
+  "services/fetchBySlug",
+  async (slug, { rejectWithValue }) => {
+    try {
+      const res = await serviceAPI.getBySlug(slug);
+      return res.data?.data.service;
+    } catch (err) {
+      return rejectWithValue("Service fetch by slug failed");
+    }
+  }
+);
+
 export const createService = createAsyncThunk(
   "services/create",
   async (serviceData, { rejectWithValue }) => {
@@ -107,6 +119,19 @@ const serviceSlice = createSlice({
         state.currentService = action.payload;
       })
       .addCase(fetchServiceById.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+
+      /* ---------- FETCH BY SLUG ---------- */
+      .addCase(fetchServiceBySlug.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(fetchServiceBySlug.fulfilled, (state, action) => {
+        state.loading = false;
+        state.currentService = action.payload;
+      })
+      .addCase(fetchServiceBySlug.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })

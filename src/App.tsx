@@ -59,7 +59,7 @@ const App = () => (
       <Toaster />
       <Sonner />
 
-      <BrowserRouter basename="/admin">
+      <BrowserRouter basename="/physio-admin">
         <Routes>
           {/* ================= PUBLIC ================= */}
           <Route
@@ -335,6 +335,17 @@ const App = () => (
           />
 
           <Route
+            path="/services/slug/:slug"
+            element={
+              <ProtectedRoute>
+                <AdminPage>
+                  <ServiceDetails />
+                </AdminPage>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
             path="/bookings/:id"
             element={
               <ProtectedRoute>
@@ -358,6 +369,17 @@ const App = () => (
 
           <Route
             path="/services/:id/edit"
+            element={
+              <ProtectedRoute>
+                <AdminPage>
+                  <UpdateService />
+                </AdminPage>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/services/slug/:slug/edit"
             element={
               <ProtectedRoute>
                 <AdminPage>

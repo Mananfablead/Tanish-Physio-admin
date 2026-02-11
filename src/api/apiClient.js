@@ -83,6 +83,7 @@ export const API = {
   SERVICES: "/services/admin/all",
   SERVICE_BY_ID: "/services/:id",
   GET_SERVICE_BY_ID: "/services/admin/:id",
+  GET_SERVICE_BY_SLUG: "/services/admin/slug/:slug",
   SERVICE_REMOVE_MEDIA: "/services/:id/remove-media",
 
   // sessions
@@ -297,6 +298,9 @@ export const serviceAPI = {
 
   // Get service by ID
   getById: (id) => apiClient.get(`${API.GET_SERVICE_BY_ID.replace(":id", id)}`),
+
+  // Get service by slug
+  getBySlug: (slug) => apiClient.get(`${API.GET_SERVICE_BY_SLUG.replace(":slug", slug)}`),
 
   // Create service
   create: (data) => apiClient.post(API.CREATE_SERVICES, data),
