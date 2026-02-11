@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,10 +9,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ArrowLeft,
   Clock,
   Wallet,
+  Info,
+  ShoppingCart,
+  Users,
+  BarChart3,
 } from "lucide-react";
 import {
   fetchServiceById,
@@ -20,12 +25,81 @@ import {
 } from "@/features/services/serviceSlice";
 import PageLoader from "@/components/PageLoader";
 
+interface PurchaseStat {
+  totalPurchases: number;
+  activeBookings: number;
+  completedBookings: number;
+  recentPurchases: Array<{
+    id: string;
+    userId: {
+      _id: string;
+      name: string;
+      email: string;
+      phone: string;
+    };
+    guestUserId?: {
+      _id: string;
+      name: string;
+      email: string;
+      phone: string;
+    };
+    bookingDate: string;
+    amount: number;
+    status: string;
+    paymentStatus: string;
+  }>;
+  purchasers?: Array<{
+    id: string;
+    userId?: {
+      _id: string;
+      name: string;
+      email: string;
+      phone: string;
+    };
+    guestUserId?: {
+      _id: string;
+      name: string;
+      email: string;
+      phone: string;
+    };
+    amount: number;
+    status: string;
+    bookingDate: string;
+    updatedDate: string;
+  }>;
+}
+
+interface Service {
+  _id?: string;
+  id?: string;
+  name: string;
+  price: number;
+  description: string;
+  features: string[];
+  status: string;
+  category?: string;
+  duration?: string;
+  sessions?: number;
+  validity?: number;
+  images?: string[];
+  image?: string;
+  about?: string;
+  benefits?: string[];
+  videos?: string[];
+  prerequisites?: string[];
+  contraindications?: string[];
+  createdAt?: string;
+  updatedAt?: string;
+  purchaseStats?: PurchaseStat;
+}
+
 export default function ServiceDetails() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const dispatch = useDispatch();
   
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [activeTab, setActiveTab] = useState("overview");
 
   const {
     currentService: service,
@@ -203,60 +277,240 @@ export default function ServiceDetails() {
             </CardContent>
           </Card>
 
-          {/* Details */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Service Details</CardTitle>
-            </CardHeader>
-            <CardContent className="p-6 space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="space-y-6">
-                  {/* About Section */}
-                  {service?.about && (
-                    <div className="pb-4 border-b border-border last:border-0 last:pb-0">
-                      <h4 className="font-medium text-lg mb-3">About This Service</h4>
-                      <p className="text-muted-foreground whitespace-pre-line leading-relaxed">
-                        {service?.about}
-                      </p>
+          {/* Tabbed Interface */}
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="overview" className="flex items-center gap-2">
+                <Info className="w-4 h-4" />
+                Overview
+              </TabsTrigger>
+              <TabsTrigger value="details" className="flex items-center gap-2">
+                <Info className="w-4 h-4" />
+                Details
+              </TabsTrigger>
+              <TabsTrigger value="purchases" className="flex items-center gap-2">
+                <ShoppingCart className="w-4 h-4" />
+                Purchases
+              </TabsTrigger>
+              <TabsTrigger value="analytics" className="flex items-center gap-2">
+                <BarChart3 className="w-4 h-4" />
+                Analytics
+              </TabsTrigger>
+            </TabsList>
+          
+            
+            {/* Overview Tab */}
+            <TabsContent value="overview" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Service Overview</CardTitle>
+                </CardHeader>
+                <CardContent className="p-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="space-y-6">
+                      {/* About Section */}
+                      {service?.about && (
+                        <div className="pb-4 border-b border-border last:border-0 last:pb-0">
+                          <h4 className="font-medium text-lg mb-3">About This Service</h4>
+                          <p className="text-muted-foreground whitespace-pre-line leading-relaxed">
+                            {service?.about}
+                          </p>
+                        </div>
+                      )}
+                      
+                      {/* Features */}
+                      <Section
+                        title="Features"
+                        data={service?.features}
+                      />
                     </div>
-                  )}
-                  
-                  {/* Features */}
-                  <Section
-                    title="Features"
-                    data={service?.features}
-                  />
-                  
-                  {/* Benefits */}
-                  <Section
-                    title="Benefits"
-                    data={service?.benefits}
-                  />
-                </div>
+                    
+                    <div className="space-y-6">
+                      {/* Benefits */}
+                      <Section
+                        title="Benefits"
+                        data={service?.benefits}
+                      />
+                      
+                      {/* Videos */}
+                      <Section
+                        title="Videos"
+                        data={service?.videos || []}
+                        isVideo={true}
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+            
+            {/* Details Tab */}
+            <TabsContent value="details" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Service Details</CardTitle>
+                </CardHeader>
+                <CardContent className="p-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="space-y-6">
+                      {/* Prerequisites */}
+                      <Section
+                        title="Prerequisites"
+                        data={service?.prerequisites}
+                      />
+                      
+                      {/* Contraindications */}
+                      <Section
+                        title="Contraindications"
+                        data={service?.contraindications}
+                      />
+                    </div>
+                    
+                    <div className="space-y-6">
+                      {/* Additional Information */}
+                      <div className="space-y-4">
+                        <h4 className="font-medium text-lg">Service Information</h4>
+                        <div className="space-y-3 text-sm">
+                          <InfoRow label="Category" value={service?.category || "N/A"} />
+                          <InfoRow label="Duration" value={service?.duration || "N/A"} />
+                          <InfoRow label="Sessions" value={service?.sessions?.toString() || "N/A"} />
+                          <InfoRow label="Validity" value={`${service?.validity || 0} days`} />
+                          <InfoRow label="Price" value={`₹${service?.price || 0}`} />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+            
+            {/* Purchases Tab */}
+            <TabsContent value="purchases" className="space-y-6">
+        
+              {service?.purchaseStats?.purchasers && service.purchaseStats.purchasers.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>All Purchasers ({service.purchaseStats.purchasers.length})</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b">
+                            <th className="py-3 px-4 text-left">Customer</th>
+                            <th className="py-3 px-4 text-left">Amount</th>
+                            <th className="py-3 px-4 text-left">Date</th>
+                            <th className="py-3 px-4 text-left">Status</th>
+                            <th className="py-3 px-4 text-left">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {service.purchaseStats.purchasers.map((purchaser) => (
+                            <tr key={purchaser.id} className="border-b hover:bg-muted/50">
+                              <td className="py-3 px-4">
+                                <div className="font-medium">
+                                  {purchaser.userId?.name || 'Guest'}
+                                </div>
+                                <div className="text-sm text-muted-foreground">
+                                  {purchaser.userId?.email || 'N/A'}
+                                </div>
+                              </td>
+                              <td className="py-3 px-4">
+                                ₹{purchaser.amount}
+                              </td>
+                              <td className="py-3 px-4">
+                                {purchaser.bookingDate ? new Date(purchaser.bookingDate).toLocaleDateString() : 'N/A'}
+                              </td>
+                              <td className="py-3 px-4">
+                                <Badge
+                                  variant={purchaser.status === 'confirmed' || purchaser.status === 'ongoing' ? 'default' : purchaser.status === 'completed' ? 'secondary' : 'destructive'}
+                                >
+                                  {purchaser.status.charAt(0).toUpperCase() + purchaser.status.slice(1)}
+                                </Badge>
+                              </td>
+                              <td className="py-3 px-4">
+                                <Button variant="outline" size="sm" asChild>
+                                  <Link to={`/bookings/${purchaser.id}`}>
+                                    View Booking
+                                  </Link>
+                                </Button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+            
+            {/* Analytics Tab */}
+            <TabsContent value="analytics" className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">Total Purchases</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-3xl font-bold">
+                      {service?.purchaseStats?.totalPurchases || 0}
+                    </div>
+                  </CardContent>
+                </Card>
                 
-                <div className="space-y-6">
-                  {/* Videos */}
-                  <Section
-                    title="Videos"
-                    data={service?.videos || []}
-                    isVideo={true}
-                  />
-                  
-                  {/* Prerequisites */}
-                  <Section
-                    title="Prerequisites"
-                    data={service?.prerequisites}
-                  />
-                  
-                  {/* Contraindications */}
-                  <Section
-                    title="Contraindications"
-                    data={service?.contraindications}
-                  />
-                </div>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">Active Bookings</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-3xl font-bold text-blue-600">
+                      {service?.purchaseStats?.activeBookings || 0}
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">Completed</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-3xl font-bold text-green-600">
+                      {service?.purchaseStats?.completedBookings || 0}
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
-            </CardContent>
-          </Card>
+              
+              <Card>
+                <CardHeader>
+                  <CardTitle>Purchase Statistics</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <InfoRow 
+                      label="Total Revenue" 
+                      value={`₹${(service?.purchaseStats?.totalPurchases || 0) * (service?.price || 0)}`} 
+                    />
+                    <InfoRow 
+                      label="Average Purchase Value" 
+                      value={`₹${service?.price || 0}`} 
+                    />
+                    <InfoRow 
+                      label="Conversion Rate" 
+                      value="N/A" 
+                    />
+                    <InfoRow 
+                      label="Last Purchase" 
+                      value={service?.purchaseStats?.recentPurchases?.[0]?.bookingDate ? 
+                        new Date(service.purchaseStats.recentPurchases[0].bookingDate).toLocaleDateString() : 'N/A'} 
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+     
         </div>
 
         {/* ================= SIDEBAR ================= */}
@@ -283,6 +537,8 @@ export default function ServiceDetails() {
               />
             </CardContent>
           </Card>
+          
+
 
           {/* Related */}
           {/* <Card>

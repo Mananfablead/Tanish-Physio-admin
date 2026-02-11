@@ -30,6 +30,29 @@ interface AboutSectionProps {
   loading?: boolean;
 }
 
+// Helper function to get correct values array
+const getCorrectValues = (data: AboutData) => {
+  if (data.values && Array.isArray(data.values)) {
+    // If it's already an array of strings
+    let cmsValues = [...data.values];
+    
+    // Check if the first element is a JSON string (incorrectly stored)
+    if (cmsValues.length === 1 && typeof cmsValues[0] === 'string') {
+      try {
+        const parsedValue = JSON.parse(cmsValues[0]);
+        if (Array.isArray(parsedValue)) {
+          cmsValues = parsedValue;
+        }
+      } catch {
+        // If parsing fails, return empty array
+        return [];
+      }
+    }
+    return cmsValues;
+  }
+  return [];
+};
+
 export default function AboutSection({ data, onEdit, loading = false }: AboutSectionProps) {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
@@ -64,6 +87,19 @@ export default function AboutSection({ data, onEdit, loading = false }: AboutSec
                 <div>
                   <h4 className="text-sm font-medium text-gray-700">Vision:</h4>
                   <p className="text-gray-600">{data.vision}</p>
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-gray-700">Core Values:</h4>
+                  <div className="flex flex-wrap gap-2 mt-1">
+                    {getCorrectValues(data)?.map((value, index) => (
+                      <span 
+                        key={index} 
+                        className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full"
+                      >
+                        {value}
+                      </span>
+                    ))}
+                  </div>
                 </div>
                 {data.image && (
                   <div>
@@ -137,7 +173,7 @@ export default function AboutSection({ data, onEdit, loading = false }: AboutSec
             <div>
               <h4 className="text-sm font-medium text-gray-700">Core Values:</h4>
               <div className="flex flex-wrap gap-2 mt-1">
-                {data.values?.slice(0, 3).map((value, index) => (
+                {getCorrectValues(data)?.slice(0, 3).map((value, index) => (
                   <span 
                     key={index} 
                     className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full"
@@ -145,9 +181,9 @@ export default function AboutSection({ data, onEdit, loading = false }: AboutSec
                     {value}
                   </span>
                 ))}
-                {data.values?.length > 3 && (
+                {getCorrectValues(data)?.length > 3 && (
                   <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
-                    +{data.values.length - 3} more
+                    +{getCorrectValues(data).length - 3} more
                   </span>
                 )}
               </div>

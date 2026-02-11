@@ -74,38 +74,47 @@ export default function EditStepForm({ data, onSave, onCancel, isNew }: EditStep
           className="text-sm"
         />
       </div>
-      <div>
-        <Label className="text-sm">Step Image</Label>
-        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-2">
-          <div className="flex-1">
-            <Input
-              type="file"
-              accept="image/*"
-              onChange={handleImageUpload}
-              className="hidden"
-              id={`step-${formData._id || 'new'}-image-upload`}
-            />
-            <label
-              htmlFor={`step-${formData._id || 'new'}-image-upload`}
-              className="flex flex-col items-center justify-center w-full h-24 sm:h-32 border-2 border-dashed rounded-lg cursor-pointer bg-muted hover:bg-accent transition-colors"
-            >
-              <Upload className="w-6 h-6 sm:w-8 sm:h-8 text-muted-foreground mb-1 sm:mb-2" />
-              <span className="text-xs sm:text-sm text-muted-foreground">Click to upload image</span>
-            </label>
-          </div>
-          {formData.image && (
-            <div className="flex-1">
-              <div className="aspect-square bg-muted rounded-lg border flex items-center justify-center overflow-hidden">
-                <img
-                  src={typeof formData.image === 'string' ? formData.image : URL.createObjectURL(formData.image as File)}
-                  alt="Preview"
-                  className="w-full h-full object-cover"
-                />
-              </div>
-            </div>
-          )}
-        </div>
+     <div>
+  <Label className="text-sm">Step Image</Label>
+
+  <div className="flex gap-4 mt-2">
+    {/* Upload box */}
+    <div className="w-32 h-32 sm:w-36 sm:h-36">
+      <Input
+        type="file"
+        accept="image/*"
+        onChange={handleImageUpload}
+        className="hidden"
+        id={`step-${formData._id || "new"}-image-upload`}
+      />
+      <label
+        htmlFor={`step-${formData._id || "new"}-image-upload`}
+        className="flex flex-col items-center justify-center w-full h-full border-2 border-dashed rounded-lg cursor-pointer bg-muted hover:bg-accent transition-colors"
+      >
+        <Upload className="w-6 h-6 sm:w-7 sm:h-7 text-muted-foreground mb-1" />
+        <span className="text-xs text-muted-foreground text-center">
+          Upload Image
+        </span>
+      </label>
+    </div>
+
+    {/* Preview box */}
+    {formData.image && (
+      <div className="w-32 h-32 sm:w-36 sm:h-36 rounded-lg border overflow-hidden bg-muted">
+        <img
+          src={
+            typeof formData.image === "string"
+              ? formData.image
+              : URL.createObjectURL(formData.image as File)
+          }
+          alt="Preview"
+          className="w-full h-full object-cover"
+        />
       </div>
+    )}
+  </div>
+</div>
+    
       <DialogFooter className="flex justify-between">
         <Button type="button" variant="outline" onClick={onCancel} className="text-sm">Cancel</Button>
         <Button type="button" onClick={() => handleSubmit(isNew)} className="text-sm">

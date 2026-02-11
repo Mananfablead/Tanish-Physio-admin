@@ -31,6 +31,26 @@ interface SubscriptionPlan {
   duration?: string;
   autoRenew?: boolean;
   subscribers?: number;
+  subscriberCount?: number;
+  activeSubscribers?: number;
+  expiredSubscribers?: number;
+  subscribersList?: Array<{
+    id: string;
+    userId: {
+      _id: string;
+      name: string;
+      email: string;
+      phone: string;
+      joinDate: string;
+    };
+    status: string;
+    startDate: string;
+    endDate: string;
+    createdAt: string;
+    updatedAt: string;
+    amount: number;
+    currency: string;
+  }>;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -44,43 +64,37 @@ export default function SubscriptionDetails() {
 
   const [plan, setPlan] = useState<SubscriptionPlan | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+const fetchPlanById = async () => {
+  try {
+    setIsLoading(true);
+
+    const result = await dispatch(fetchSubscriptionPlanById(id));
+
+    if (fetchSubscriptionPlanById.fulfilled.match(result)) {
+      setPlan(result.payload);
+    } else {
+      throw new Error(result.payload || "Failed to fetch subscription plan");
+    }
+  } catch (err: any) {
+    console.error("Error fetching subscription plan:", err);
+
+    toast({
+      title: "Error",
+      description: err.message || "Failed to load subscription plan",
+      variant: "destructive",
+    });
+
+    navigate("/subscriptions");
+  } finally {
+    setIsLoading(false);
+  }
+};
+
 useEffect(() => {
   if (!id) return;
-
-  const existingPlan = plans?.find(
-    (p: SubscriptionPlan) => p?._id === id || p?.id === id
-  );
-
-  if (existingPlan) {
-    setPlan(existingPlan);
-    setIsLoading(false);
-  } else {
-    fetchPlanById();
-  }
+  fetchPlanById();
 }, [id]);
 
-
-  const fetchPlanById = async () => {
-    try {
-      setIsLoading(true);
-      const result = await dispatch(fetchSubscriptionPlanById(id));
-      if (fetchSubscriptionPlanById.fulfilled.match(result)) {
-        setPlan(result.payload);
-      } else {
-        throw new Error(result.payload || 'Failed to fetch subscription plan');
-      }
-    } catch (err: any) {
-      console.error('Error fetching subscription plan:', err);
-      toast({
-        title: "Error",
-        description: err.message || 'Failed to load subscription plan',
-        variant: "destructive",
-      });
-      navigate('/subscriptions');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleDeletePlan = async () => {
     if (window.confirm("Are you sure you want to delete this subscription plan? This action cannot be undone.")) {
@@ -145,7 +159,7 @@ useEffect(() => {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-5 sm:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Price</CardTitle>
@@ -159,11 +173,29 @@ useEffect(() => {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Subscribers</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total Subscribers</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{plan.subscriberCount || plan.subscribers || 0}</div>
-            <p className="text-xs text-muted-foreground">Active users</p>
+            <p className="text-xs text-muted-foreground">All subscribers</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Active Subscribers</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{plan.activeSubscribers || 0}</div>
+            <p className="text-xs text-muted-foreground">Currently active</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Expired Subscribers</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{plan.expiredSubscribers || 0}</div>
+            <p className="text-xs text-muted-foreground">Expired subscriptions</p>
           </CardContent>
         </Card>
         <Card>
@@ -191,8 +223,8 @@ useEffect(() => {
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="features">Features</TabsTrigger>
-          {/* <TabsTrigger value="subscribers">Subscribers</TabsTrigger>
-          <TabsTrigger value="analytics">Analytics</TabsTrigger> */}
+          <TabsTrigger value="subscribers">Subscribers</TabsTrigger>
+          <TabsTrigger value="analytics">Analytics</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
@@ -275,19 +307,67 @@ useEffect(() => {
         <TabsContent value="subscribers" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Subscribers</CardTitle>
+              <CardTitle>Subscribers ({plan.subscriberCount || 0})</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-8">
-                <Users className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-                <h3 className="text-lg font-medium mb-1">Subscribers List</h3>
-                <p className="text-muted-foreground mb-4">
-                  {plan.subscribers} user{plan.subscribers !== 1 ? 's' : ''} subscribed to this plan
-                </p>
-                <Button variant="outline" disabled>
-                  View Subscriber Details
-                </Button>
-              </div>
+              {plan.subscribers && plan.subscribers?.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="py-3 px-4 text-left">User</th>
+                        <th className="py-3 px-4 text-left">Status</th>
+                        <th className="py-3 px-4 text-left">Start Date</th>
+                        <th className="py-3 px-4 text-left">End Date</th>
+                        <th className="py-3 px-4 text-left">Amount</th>
+                        {/* <th className="py-3 px-4 text-left">Actions</th> */}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {plan.subscribers && plan.subscribers.length > 0 && plan.subscribers.map((subscriber) => (
+                        <tr key={subscriber.id} className="border-b hover:bg-muted/50">
+                          <td className="py-3 px-4">
+                            <div className="font-medium">{subscriber.userId?.name}</div>
+                            <div className="text-sm text-muted-foreground">{subscriber.userId?.email}</div>
+                          </td>
+                          <td className="py-3 px-4">
+                            <Badge
+                              variant={subscriber.status === 'active' ? 'default' : subscriber.status === 'expired' ? 'destructive' : 'secondary'}
+                              className={subscriber.status === 'active' ? 'bg-success' : subscriber.status === 'expired' ? 'bg-destructive' : ''}
+                            >
+                              {subscriber.status.charAt(0).toUpperCase() + subscriber.status.slice(1)}
+                            </Badge>
+                          </td>
+                          <td className="py-3 px-4">
+                            {subscriber.startDate ? new Date(subscriber.startDate).toLocaleDateString() : 'N/A'}
+                          </td>
+                          <td className="py-3 px-4">
+                            {subscriber.endDate ? new Date(subscriber.endDate).toLocaleDateString() : 'N/A'}
+                          </td>
+                          <td className="py-3 px-4">
+                            ₹{subscriber.amount} {subscriber.currency}
+                          </td>
+                          {/* <td className="py-3 px-4">
+                            <Button variant="outline" size="sm" asChild>
+                              <Link to={`/users/${subscriber.userId?._id}`}>
+                                View Profile
+                              </Link>
+                            </Button>
+                          </td> */}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <Users className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-medium mb-1">No Subscribers</h3>
+                  <p className="text-muted-foreground">
+                    No users have subscribed to this plan yet.
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -301,16 +381,16 @@ useEffect(() => {
               <div className="text-center py-8">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                   <div className="text-center">
-                    <div className="text-3xl font-bold text-primary">{plan.subscribers || 0}</div>
+                    <div className="text-3xl font-bold text-primary">{plan.subscriberCount || plan.subscribers || 0}</div>
                     <div className="text-sm text-muted-foreground">Total Subscribers</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-3xl font-bold text-success">0</div>
+                    <div className="text-3xl font-bold text-success">{plan.activeSubscribers || 0}</div>
                     <div className="text-sm text-muted-foreground">Active Subscribers</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-3xl font-bold text-destructive">0</div>
-                    <div className="text-sm text-muted-foreground">Cancelled Subscribers</div>
+                    <div className="text-3xl font-bold text-destructive">{plan.expiredSubscribers || 0}</div>
+                    <div className="text-sm text-muted-foreground">Expired Subscribers</div>
                   </div>
                 </div>
                 <div className="text-muted-foreground">

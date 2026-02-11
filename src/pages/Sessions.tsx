@@ -53,6 +53,10 @@ export default function Sessions() {
   } = useSelector((state: any) => state.sessions);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("all");
+    
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10; // Set to 10 items per page as requested
   // Count sessions by status for tabs
   const scheduledCount = (allSessions || []).filter(
     (session: any) => session.status === "scheduled"
@@ -162,6 +166,25 @@ export default function Sessions() {
     dispatch(fetchBookings());
     dispatch(getAllAvailability());
   }, [dispatch, activeTab]);
+
+  // Function to change page
+  const goToPage = (pageNumber: number) => {
+    setCurrentPage(pageNumber);
+  };
+
+  // Function to go to next page
+  const nextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  // Function to go to previous page
+  const prevPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
 
   // State for creating a new session
   const [newSession, setNewSession] = useState({
