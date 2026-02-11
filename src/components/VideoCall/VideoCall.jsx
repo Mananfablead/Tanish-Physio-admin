@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -18,6 +18,7 @@ import useSocket from "@/hooks/useSocket";
 import useWebRTC from "@/hooks/useWebRTC";
 import { adminVideoCallApi } from "@/lib/videoCallApi";
 import { adminChatApi } from "@/lib/chatApi";
+import WaitingNotification from "@/components/WaitingRoom/WaitingNotification";
 
 const VideoCall = ({
   roomId,
@@ -98,6 +99,40 @@ const VideoCall = ({
     setInitError,
   } = useWebRTC(roomId, socket, userRole);
 
+  // Debug: Log session info
+  useEffect(() => {
+    console.log("🎬 VideoCall - Admin session info:", {
+      sessionId: sessionId,
+      roomId: roomId,
+      userRole: userRole,
+      socketConnected: socket?.connected,
+      sessionDetails: sessionDetails
+    });
+    console.log("🎬 VideoCall component re-rendering due to dependency changes");
+    if (sessionDetails) {
+      console.log("📊 SessionDetails content:", JSON.stringify(sessionDetails, null, 2));
+    }
+  }, [sessionId, roomId, userRole, socket, sessionDetails]);
+
+  // Handle patient approved callback
+  const handlePatientApproved = (patient) => {
+    console.log("✅ Patient approved, joining video room:", patient);
+    // The patient will automatically join the video room after approval
+    // We just need to make sure we're ready to connect with them
+  };
+
+  // Memoize WaitingNotification to prevent re-renders
+  const WaitingNotificationMemo = useMemo(() => {
+    return (
+      <WaitingNotification 
+        key={`waiting-notification-${sessionId || roomId}`}
+        socket={socket} 
+        sessionId={sessionId || roomId}
+        onPatientApproved={handlePatientApproved}
+      />
+    );
+  }, [socket, sessionId, roomId]);
+
   // Auto-start call when admin joins successfully
   useEffect(() => {
     if (joinedCall && !callStarted && userRole === "admin") {
@@ -108,12 +143,39 @@ const VideoCall = ({
   const [audioEnabled, setAudioEnabled] = useState(true);
   const [videoEnabled, setVideoEnabled] = useState(true);
   const [participantAudioStatus, setParticipantAudioStatus] = useState({});
+  const [apiParticipants, setApiParticipants] = useState([]);
+  const [loadingParticipants, setLoadingParticipants] = useState(false);
 
   // Debug callActive changes
   useEffect(() => {
     console.log("📊 callActive value:", callActive);
     console.log("📊 callLogId value:", callLogId);
   }, [callActive, callLogId]);
+
+  // Fetch participants from API when component mounts and sessionId is available
+  useEffect(() => {
+    if (sessionId) {
+      const fetchParticipants = async () => {
+        try {
+          setLoadingParticipants(true);
+          const response = await adminVideoCallApi.getSessionParticipants(sessionId);
+          if (response.success && response.data && response.data.participants) {
+            setApiParticipants(response.data.participants);
+          } else {
+            console.error("Failed to fetch participants:", response);
+            setApiParticipants([]);
+          }
+        } catch (error) {
+          console.error("Error fetching participants:", error);
+          setApiParticipants([]);
+        } finally {
+          setLoadingParticipants(false);
+        }
+      };
+      
+      fetchParticipants();
+    }
+  }, [sessionId]); // Removed the interval, now it runs only once
 
   // Effect to update video elements when streams change
   useEffect(() => {
@@ -310,9 +372,9 @@ const VideoCall = ({
       setJoinedCall(true);
       setCallActive(true);
       setCallStatus("connected");
-      setSocketError(null); // Clear any previous errors
+      setSocketErrorState(null); // Clear any previous errors
+      setLocalError(null); // Clear any previous errors
       console.log("✅ Admin joined call successfully");
-      setError(null); // Clear any previous errors
       console.log("✅ Admin joined call successfully and call is now active");
     };
 
@@ -1277,6 +1339,9 @@ const VideoCall = ({
 
   return (
     <div className="h-screen bg-black flex flex-col">
+      {/* Waiting Room Notification */}
+      {WaitingNotificationMemo}
+      
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-center justify-between px-4 sm:px-8 py-4 bg-slate-900 border-b border-slate-800 gap-3 sm:gap-0">
         <div className="flex items-center gap-3 sm:gap-6">
@@ -1413,102 +1478,89 @@ const VideoCall = ({
               </Button>
             </div>
             <div className="flex-1 p-6 space-y-6">
-              {participants.map((participant, index) => (
-                <div
-                  key={`${participant.userId || "unknown"}-${
-                    participant.socketId || "unknown"
-                  }`}
-                  className="flex items-center gap-4"
-                >
-                  <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-300 font-semibold text-sm">
-                    {participant.name?.charAt(0)?.toUpperCase() || "U"}
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between">
-                      <p className="text-white font-medium text-sm">
-                        {participant.name ||
-                          (participant.firstName && participant.lastName
-                            ? `${participant.firstName} ${participant.lastName}`
-                            : null) ||
-                          participant.displayName ||
-                          `User ${
-                            participant.userId?.substring(0, 5) || "Unknown"
-                          }`}
-                      </p>
-                      {participant.isSelf ? (
-                        <Badge className="bg-slate-800 text-slate-400 border-none text-[8px] h-4">
-                          You
-                        </Badge>
-                      ) : (
-                        <Badge className="bg-slate-800 text-slate-400 border-none text-[8px] h-4">
-                          {participant.role === "admin"
-                            ? "Admin"
-                            : participant.role === "therapist"
-                            ? "Staff"
-                            : "Patient"}
-                        </Badge>
-                      )}
-                    </div>
-                    <p className="text-slate-500 text-xs">
-                      {participant.joinedAt
-                        ? `Joined: ${new Date(
-                            participant.joinedAt
-                          ).toLocaleTimeString()}`
-                        : ""}
-                    </p>
-                    {/* Admin Controls */}
-                    {userRole === "admin" && !participant.isSelf && (
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        className="mt-2 text-xs h-6 px-2 bg-rose-500/20 text-rose-400 hover:bg-rose-500/30 border border-rose-500/20"
-                        onClick={() => {
-                          // Force leave participant
-                          if (roomId && socket) {
-                            socket.emit("force-leave", {
-                              roomId,
-                              userId: participant.userId,
-                              reason: "Admin removed participant",
-                            });
-                          }
-                        }}
-                      >
-                        Remove
-                      </Button>
-                    )}
-                  </div>
+              {loadingParticipants && (
+                <div className="text-center py-4">
+                  <p className="text-slate-500 text-sm">Loading participants...</p>
                 </div>
-              ))}
-              {/* Add static entries if no participants yet */}
-              {participants.length === 0 && (
+              )}
+              {!loadingParticipants && (
                 <>
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-300 font-semibold text-sm">
-                      {therapistInfo.name?.charAt(0)?.toUpperCase() || "T"}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between">
-                        <p className="text-white font-medium text-sm">
-                          {therapistInfo.name}
-                        </p>
-                        <Badge className="bg-slate-800 text-slate-400 border-none text-[8px] h-4">
-                          Staff
-                        </Badge>
+                  {(apiParticipants.length > 0 ? apiParticipants : participants).map((participant, index) => {
+                    // Convert API participant to match expected format
+                    const participantData = {
+                      ...participant,
+                      name: participant.name || participant.firstName + " " + participant.lastName || participant.username || `User ${participant.userId?.substring(0, 5) || index}`,
+                      userId: participant.userId || participant._id,
+                      role: participant.role || participant.userType,
+                      isSelf: participant.isSelf || (participant.userId === user?.userId)
+                    };
+                    
+                    return (
+                      <div
+                        key={`${participantData.userId || "unknown"}-${
+                          participantData.socketId || "unknown"
+                        }`}
+                        className="flex items-center gap-4"
+                      >
+                        <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-300 font-semibold text-sm">
+                          {participantData.name?.charAt(0)?.toUpperCase() || "U"}
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between">
+                            <p className="text-white font-medium text-sm">
+                              {participantData.name}
+                            </p>
+                            {participantData.isSelf ? (
+                              <Badge className="bg-slate-800 text-slate-400 border-none text-[8px] h-4">
+                                You
+                              </Badge>
+                            ) : (
+                              <Badge className="bg-slate-800 text-slate-400 border-none text-[8px] h-4">
+                                {participantData.role === "admin"
+                                  ? "Admin"
+                                  : participantData.role === "therapist" || participantData.role === "staff"
+                                  ? "Staff"
+                                  : "Patient"}
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-slate-500 text-xs">
+                            {participantData.joinedAt
+                              ? `Joined: ${new Date(
+                                  participantData.joinedAt
+                                ).toLocaleTimeString()}`
+                              : ""}
+                          </p>
+                          {/* Admin Controls */}
+                          {userRole === "admin" && !participantData.isSelf && (
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              className="mt-2 text-xs h-6 px-2 bg-rose-500/20 text-rose-400 hover:bg-rose-500/30 border border-rose-500/20"
+                              onClick={() => {
+                                // Force leave participant
+                                if (roomId && socket) {
+                                  socket.emit("force-leave", {
+                                    roomId,
+                                    userId: participantData.userId,
+                                    reason: "Admin removed participant",
+                                  });
+                                }
+                              }}
+                            >
+                              Remove
+                            </Button>
+                          )}
+                        </div>
                       </div>
-                      <p className="text-slate-500 text-xs">Active</p>
+                    );
+                  })}
+                  {/* Show message if no participants from either source */}
+                  {(apiParticipants.length === 0 && participants.length === 0) && (
+                    <div className="text-center py-4">
+                      <p className="text-slate-500 text-sm">No participants found</p>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-300 font-semibold text-sm">
-                      {userInfo.initials}
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-white font-medium text-sm">
-                        {userInfo.name}
-                      </p>
-                      <p className="text-slate-500 text-xs">You</p>
-                    </div>
-                  </div>
+                  )}
                 </>
               )}
 

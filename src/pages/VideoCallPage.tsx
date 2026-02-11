@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { mockSessions } from "@/lib/session-data";
 import { adminVideoCallApi } from "@/lib/videoCallApi";
@@ -16,6 +16,11 @@ export default function VideoCallPage() {
   } | null>(null);
   const [connected, setConnected] = useState(false);
   const [sessionDetails, setSessionDetails] = useState<any>(null); // Store session details including participants
+
+  // Memoize session details to prevent unnecessary re-renders
+  const memoizedSessionDetails = useMemo(() => {
+    return sessionDetails;
+  }, [JSON.stringify(sessionDetails)]);
 
   // In a real app, this would fetch from an API
   useEffect(() => {
@@ -104,7 +109,7 @@ export default function VideoCallPage() {
           : undefined
       } // Simple group detection
       connected={connected}
-      sessionDetails={sessionDetails}
+      sessionDetails={memoizedSessionDetails}
       user={user}
     />
   );
