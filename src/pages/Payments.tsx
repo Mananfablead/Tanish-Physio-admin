@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchAllPayments } from '@/features/payments/paymentSlice';
+import { useNavigate } from 'react-router-dom';
 
 // API Base URL - Update this to your backend URL
 const API_BASE_URL = "http://localhost:3000";
@@ -26,10 +27,13 @@ interface Payment {
     email: string;
 
   };
+  guestName?: string;
+  guestEmail?: string;
   amount: number;
   currency: string;
   status: "created" | "captured" | "failed" | "refunded" | "disputed" | "pending" | "successful" | "paid";
   method?: string;
+  paymentMethod?: string;
   razorpayOrderId?: string;
   
   razorpayPaymentId?: string;
@@ -47,6 +51,7 @@ const filters = ["All", "Successful", "Failed", "Refunded", "Disputed", "Pending
 
 export default function Payments() {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { payments, loading: isLoading, error } = useSelector((state: any) => state.payments);
   console.log(payments);
   const [searchQuery, setSearchQuery] = useState("");
@@ -56,7 +61,10 @@ export default function Payments() {
   const [isDisputeModalOpen, setIsDisputeModalOpen] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
   const [refundReason, setRefundReason] = useState("");
-
+    
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10; // Set to 10 items per page as requested
   // Load payments on component mount
   useEffect(() => {
     dispatch(fetchAllPayments());
@@ -125,6 +133,12 @@ export default function Payments() {
     return matchesSearch && payment.status.toLowerCase() === activeFilter.toLowerCase();
   }) || [];
 
+  // Pagination logic
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = filteredPayments.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredPayments.length / itemsPerPage);
+
   const stats = {
     total: payments?.reduce((acc: number, p: Payment) => acc + p.amount, 0) || 0,
     successful: payments?.filter((p: Payment) => p.status === "captured" || p.status === "successful" || p.status === "paid").length || 0,
@@ -133,6 +147,29 @@ export default function Payments() {
     pending: payments?.filter((p: Payment) => p.status === "pending" || p.status === "created").length || 0,
   };
 
+  // Function to change page
+  const goToPage = (pageNumber: number) => {
+    setCurrentPage(pageNumber);
+  };
+
+  // Function to go to next page
+  const nextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  // Function to go to previous page
+  const prevPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, activeFilter, dateFilter]);
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -283,7 +320,7 @@ export default function Payments() {
                 </tr>
               </thead>
               <tbody>
-                {filteredPayments.map((payment: Payment) => (
+                {currentItems.map((payment: Payment) => (
                   <tr key={payment._id}>
                     {/* <td className="font-mono text-sm">{payment._id}</td> */}
                     <td>
@@ -297,14 +334,18 @@ export default function Payments() {
                     <td className="text-muted-foreground">{payment.paymentMethod}</td>
                     <td className="text-muted-foreground">{new Date(payment.createdAt).toLocaleDateString()}</td>
                     <td>
-                      <span className={cn("status-badge inline-flex items-center gap-1", getStatusBadge(payment.status as PaymentStatus))}>
+                      <span className={cn("status-badge inline-flex items-center gap-1 capitalize", getStatusBadge(payment.status as PaymentStatus))}>
                         {getStatusIcon(payment.status as PaymentStatus)}
                         {payment.status}
                       </span>
                     </td>
                     <td>
                       <div className="flex items-center gap-1">
-                        <Button variant="ghost" size="sm">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => navigate(`/payment-details/${payment._id}`)}
+                        >
                           <Eye className="w-4 h-4" />
                         </Button>
                         {payment.status === "captured" && (
@@ -342,15 +383,41 @@ export default function Payments() {
 
           <div className="flex items-center justify-between px-4 py-3 border-t border-border">
             <p className="text-sm text-muted-foreground">
-              Showing <span className="font-medium">{filteredPayments.length}</span> of{" "}
-              <span className="font-medium">{payments?.length || 0}</span> transactions
+              Showing <span className="font-medium">{Math.min(indexOfLastItem, filteredPayments.length)}</span> of{" "}
+              <span className="font-medium">{filteredPayments.length}</span> transactions
             </p>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" disabled>
+              <Button variant="outline" size="sm" onClick={prevPage} disabled={currentPage <= 1}>
                 <ChevronLeft className="w-4 h-4" />
               </Button>
-              <Button variant="outline" size="sm" className="min-w-[32px]">1</Button>
-              <Button variant="outline" size="sm">
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                let pageNum;
+                if (totalPages <= 5) {
+                  // If total pages <= 5, show all pages
+                  pageNum = i + 1;
+                } else if (currentPage <= 3) {
+                  // If near the beginning, show first 5
+                  pageNum = i + 1;
+                } else if (currentPage >= totalPages - 2) {
+                  // If near the end, show last 5
+                  pageNum = totalPages - 4 + i;
+                } else {
+                  // Otherwise, show current page in the middle
+                  pageNum = currentPage - 2 + i;
+                }
+                return (
+                  <Button
+                    key={pageNum}
+                    variant={currentPage === pageNum ? "default" : "outline"}
+                    size="sm"
+                    className="min-w-[32px]"
+                    onClick={() => goToPage(pageNum)}
+                  >
+                    {pageNum}
+                  </Button>
+                );
+              })}
+              <Button variant="outline" size="sm" onClick={nextPage} disabled={currentPage >= totalPages}>
                 <ChevronRight className="w-4 h-4" />
               </Button>
             </div>

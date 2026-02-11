@@ -28,41 +28,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { 
-    PlusCircle, 
-    MinusCircle, 
-    Edit3, 
+
     Trash2, 
-    Save, 
-    X, 
-    Eye, 
-    Layers, 
-    CheckCircle, 
-    Clock, 
-    File, 
     Plus, 
-    Edit, 
-    Settings, 
-    FileImage, 
     Upload,
-    ClipboardList,
-    UserCheck,
-    Video,
     Star,
-    Shield,
-    Award,
-    ArrowRight,
-    Users,
-    Activity,
-    Bone,
-    HeartPulse,
-    Zap,
-    Dumbbell,
-    Stethoscope,
-    Mail,
-    Phone,
-    MapPin,
-    Globe,
-    FileText
+    
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -250,7 +221,7 @@ export default function CMS() {
         contact: { _id: '', title: '', description: '', email: '', phone: '', address: '', hours: '', socialLinks: [], isPublic: true },
         about: { _id: '', title: '', description: '', mission: '', vision: '', values: [], foundingStory: '', teamInfo: '', image: '', images: [], isPublic: true }
     });
-    
+    console.log("CMS Data:", data)
     // Update local state when Redux state changes
     useEffect(() => {
         if (cmsStateData) {
@@ -299,21 +270,17 @@ export default function CMS() {
         }
     }, [cmsStateData]);
     
-    // State for mobile dropdown selection
-    const [activeTab, setActiveTab] = useState("hero");
-
-    // State for managing edit modes
-    const [editingSections, setEditingSections] = useState({
-        hero: false,
-        steps: {},
-        conditions: false,
-        whyus: false,
-        faq: {},
-        terms: false,
-        contact: false,
-        featuredTherapist: false,
-        about: false,
+    // State for mobile dropdown selection - persist in localStorage
+    const [activeTab, setActiveTab] = useState(() => {
+        // Get saved tab from localStorage or default to "hero"
+        const savedTab = localStorage.getItem('cmsActiveTab');
+        return savedTab || "hero";
     });
+
+    // Save active tab to localStorage whenever it changes
+    useEffect(() => {
+        localStorage.setItem('cmsActiveTab', activeTab);
+    }, [activeTab]);
 
     // Modal state
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -479,23 +446,7 @@ export default function CMS() {
         closeEditModal();
     };
 
-    // Toggle edit mode for a section
-    const toggleEdit = (section, id = null) => {
-        if (id !== null) {
-            setEditingSections(prev => ({
-                ...prev,
-                [section]: {
-                    ...prev[section],
-                    [id]: !prev[section][id]
-                }
-            }));
-        } else {
-            setEditingSections(prev => ({
-                ...prev,
-                [section]: !prev[section]
-            }));
-        }
-    };
+  
 
     // Add new step (multi-step only)
     const addStep = () => {
@@ -541,29 +492,6 @@ export default function CMS() {
         setIsDeleteDialogOpen(false);
     };
 
-    // // Confirm delete condition
-    // const confirmDeleteCondition = async () => {
-    //     if (deleteConditionIndex === null) return;
-        
-    //     // Actually delete from backend
-    //     const result = await dispatch(deleteSingleCondition(deleteConditionIndex));
-    //     if (deleteSingleCondition.fulfilled.match(result)) {
-    //         // Refresh data after successful delete
-    //         dispatch(fetchAllCmsData());
-    //     }
-        
-    //     // Reset delete state
-    //     setDeleteConditionIndex(null);
-    //     setIsDeleteConditionDialogOpen(false);
-    // };
-
-    // // Cancel delete condition
-    // const cancelDeleteCondition = () => {
-    //     setDeleteConditionIndex(null);
-    //     setIsDeleteConditionDialogOpen(false);
-    // };
-
-    // Confirm delete condition
     const confirmDeleteCondition = async () => {
         if (deleteConditionIndex === null) return;
         
@@ -592,86 +520,7 @@ export default function CMS() {
         setIsDeleteDialogOpen(false);
     };
 
-    // Update data in state
-    const updateData = (section, field, value) => {
-        setData(prev => ({
-            ...prev,
-            [section]: {
-                ...prev[section],
-                [field]: value
-            }
-        }));
-    };
-
-    // Update nested field in data
-    const updateNestedData = (section, field, subField, value) => {
-        setData(prev => ({
-            ...prev,
-            [section]: {
-                ...prev[section],
-                [field]: {
-                    ...prev[section][field],
-                    [subField]: value
-                }
-            }
-        }));
-    };
-
-    // Update step data
-    const updateStepData = (_id, field, value) => {
-        setData(prev => ({
-            ...prev,
-            steps: prev.steps.map(step =>
-                step._id === _id ? { ...step, [field]: value } : step
-            )
-        }));
-    };
-
-    // Update FAQ data
-    const updateFaqData = (_id, field, value) => {
-        setData(prev => ({
-            ...prev,
-            faq: prev.faq.map(faq =>
-                faq._id === _id ? { ...faq, [field]: value } : faq
-            )
-        }));
-    };
-
-    // Update stat in Why Us section
-    const updateStatData = (statField, value) => {
-        setData(prev => ({
-            ...prev,
-            whyUs: {
-                ...prev.whyUs,
-                stats: {
-                    ...prev.whyUs.stats,
-                    [statField]: value
-                }
-            }
-        }));
-    };
-
-    // Preview content function
-    const previewContent = () => {
-        alert('Preview functionality would open a preview of the homepage with current content.');
-        // In a real app, this would open a preview of the homepage
-        console.log('Preview content:', data);
-    };
-
-    // Save all content function
-    const saveAllContent = () => {
-        // Dispatch actions to save all CMS data
-        dispatch(updateHero(data.hero));
-        dispatch(updateConditions(data.conditions));
-        dispatch(updateWhyUs(data.whyUs));
-        dispatch(updateTerms(data.terms));
-        dispatch(updateFeaturedTherapist(data.featuredTherapist));
-        dispatch(updateContact(data.contact));
-        dispatch(updateAbout(data.about));
-        
-        console.log('Saving all content:', data);
-        alert('Content saved successfully!');
-    };
+  
 
     return (
         <div className="space-y-4 sm:space-y-6">
@@ -695,87 +544,6 @@ export default function CMS() {
                 </div>
             )}
 
-            {/* Stats Cards */}
-            {/* <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                <>
-                    <Card>
-                        <CardContent className="p-4">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 sm:p-3 rounded-lg bg-blue-100">
-                                    <Layers className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
-                                </div>
-                                <div>
-                                    <p className="text-xl sm:text-2xl font-semibold">9</p>
-                                    <p className="text-xs sm:text-sm text-muted-foreground">Total Sections</p>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardContent className="p-4">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 sm:p-3 rounded-lg bg-green-100">
-                                    <Eye className="w-5 h-5 sm:w-6 sm:h-6 text-green-600" />
-                                </div>
-                                <div>
-                                    <p className="text-xl sm:text-2xl font-semibold">
-                                        {[
-                                            data.hero?.isPublic,
-                                            data.steps?.every(step => step.isPublic),
-                                            data.conditions?.isPublic,
-                                            data.whyUs?.isPublic,
-                                            data.faq?.every(faq => faq.isPublic),
-                                            data.terms?.isPublic,
-                                            data.contact?.isPublic,
-                                            data.about?.isPublic
-                                        ].filter(Boolean).length}
-                                    </p>
-                                    <p className="text-xs sm:text-sm text-muted-foreground">Public</p>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardContent className="p-4">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 sm:p-3 rounded-lg bg-orange-100">
-                                    <Shield className="w-5 h-5 sm:w-6 sm:h-6 text-orange-600" />
-                                </div>
-                                <div>
-                                    <p className="text-xl sm:text-2xl font-semibold">
-                                        {[
-                                            !data.hero?.isPublic,
-                                            data.steps?.some(step => !step.isPublic),
-                                            !data.conditions?.isPublic,
-                                            !data.whyUs?.isPublic,
-                                            data.faq?.some(faq => !faq.isPublic),
-                                            !data.terms?.isPublic,
-                                            !data.contact?.isPublic,
-                                            !data.about?.isPublic
-                                        ].filter(Boolean).length}
-                                    </p>
-                                    <p className="text-xs sm:text-sm text-muted-foreground">Not Public</p>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardContent className="p-4">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 sm:p-3 rounded-lg bg-purple-100">
-                                    <Edit3 className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600" />
-                                </div>
-                                <div>
-                                    <p className="text-xl sm:text-2xl font-semibold">{Object.keys(editingSections).filter(key => editingSections[key]).length}</p>
-                                    <p className="text-xs sm:text-sm text-muted-foreground">Active Editing</p>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </>
-            </div> */}
-
-            {/* Mobile/Tablet Dropdown */}
             <div className="lg:hidden w-full mb-4">
                 <Select value={activeTab} onValueChange={setActiveTab}>
                     <SelectTrigger className="w-full">
@@ -796,7 +564,7 @@ export default function CMS() {
             </div>
 
             {/* Desktop Tabs */}
-            <Tabs defaultValue="hero" className="hidden lg:block w-full">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="hidden lg:block w-full">
                 <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-8">
                     <TabsTrigger value="hero" className="text-xs sm:text-sm">Hero</TabsTrigger>
                     <TabsTrigger value="steps" className="text-xs sm:text-sm">
@@ -1024,7 +792,15 @@ export default function CMS() {
                             modalItem ? (
                                 <EditStepFormComponent data={modalItem} onSave={saveModalChanges} onCancel={closeEditModal} isNew={!modalItem} />
                             ) : (
-                                <MultiStepForm onSave={saveModalChanges} onCancel={closeEditModal} />
+                              <MultiStepForm
+                                data={{
+                                    heading: data.steps?.[0]?.title || '',
+                                    subHeading: data.steps?.[0]?.description || '',
+                                }}
+                                onSave={saveModalChanges}
+                                onCancel={closeEditModal}
+                                                        />
+
                             )
                         )}
 
@@ -1120,592 +896,8 @@ export default function CMS() {
 
 
 
-// Form Components
-const EditHeroForm = ({ data, onSave, onCancel }) => {
-    const [formData, setFormData] = useState(data);
 
-    const handleChange = (field, value) => {
-        setFormData(prev => ({
-            ...prev,
-            [field]: value
-        }));
-    };
 
-    // Handle image upload
-    const handleImageUpload = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            // Set the actual file object instead of base64 string
-            setFormData(prev => ({
-                ...prev,
-                image: file
-            }));
-        }
-    };
-
-    const handleFeatureChange = (index, value) => {
-        const newFeatures = [...(formData.features || [])];
-        newFeatures[index] = value;
-        setFormData(prev => ({
-            ...prev,
-            features: newFeatures
-        }));
-    };
-
-    const addFeature = () => {
-        setFormData(prev => ({
-            ...prev,
-            features: [...(prev.features || []), '']
-        }));
-    };
-
-    const removeFeature = (index) => {
-        const newFeatures = (formData.features || []).filter((_, i) => i !== index);
-        setFormData(prev => ({
-            ...prev,
-            features: newFeatures
-        }));
-    };
-
-    const handleSubmit = () => {
-        onSave(formData);
-    };
-
-    return (
-        <div className="space-y-4">
-            <div>
-                <Label className="text-sm">Main Heading</Label>
-                <Input
-                    value={formData.heading}
-                    onChange={(e) => handleChange('heading', e.target.value)}
-                    className="text-sm"
-                />
-            </div>
-            <div>
-                <Label className="text-sm">Sub Heading</Label>
-                <Input
-                    value={formData.subHeading}
-                    onChange={(e) => handleChange('subHeading', e.target.value)}
-                    className="text-sm"
-                />
-            </div>
-            <div>
-                <Label>Description</Label>
-                <Textarea
-                    value={formData.description}
-                    onChange={(e) => handleChange('description', e.target.value)}
-                />
-            </div>
-            <div>
-                <Label className="text-sm">Primary CTA Button Text</Label>
-                <Input
-                    value={formData.ctaText}
-                    onChange={(e) => handleChange('ctaText', e.target.value)}
-                    className="text-sm"
-                />
-            </div>
-            {/* <div>
-                <Label>Secondary CTA Button Text</Label>
-                <Input
-                    value={formData.secondaryCtaText || ''}
-                    onChange={(e) => handleChange('secondaryCtaText', e.target.value)}
-                />
-            </div> */}
-            <div className="flex items-center space-x-2">
-                <input
-                    type="checkbox"
-                    id="therapist-available"
-                    checked={formData.isTherapistAvailable}
-                    onChange={(e) => handleChange('isTherapistAvailable', e.target.checked)}
-                    className="h-4 w-4"
-                />
-                <Label htmlFor="therapist-available" className="text-sm">Show Therapist Available Indicator</Label>
-            </div>
-            <div>
-                <Label className="text-sm">Trusted By Text</Label>
-                <Input
-                    value={formData.trustedBy}
-                    onChange={(e) => handleChange('trustedBy', e.target.value)}
-                    className="text-sm"
-                />
-            </div>
-            <div>
-                <div className="flex items-center justify-between mb-2">
-                    <Label>Features</Label>
-                    <Button type="button" variant="outline" size="sm" onClick={addFeature}>
-                        <Plus className="h-4 w-4 mr-2" /> Add Feature
-                    </Button>
-                </div>
-                <div className="space-y-2">
-                    {(formData.features || []).map((feature, index) => (
-                        <div key={index} className="flex items-center gap-2">
-                            <Input
-                                value={feature}
-                                onChange={(e) => handleFeatureChange(index, e.target.value)}
-                                placeholder={`Feature ${index + 1}`}
-                            />
-                            <Button 
-                                type="button" 
-                                variant="outline" 
-                                size="sm" 
-                                onClick={() => removeFeature(index)}
-                                disabled={(formData.features || []).length <= 1}
-                            >
-                                <Trash2 className="h-4 w-4" />
-                            </Button>
-                        </div>
-                    ))}
-                </div>
-            </div>
-            <div>
-                <Label className="text-sm">Hero Image</Label>
-                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-2">
-                    <div className="flex-1">
-                        <Input
-                            type="file"
-                            accept="image/*"
-                            onChange={handleImageUpload}
-                            className="hidden"
-                            id="hero-image-upload"
-                        />
-                        <label
-                            htmlFor="hero-image-upload"
-                            className="flex flex-col items-center justify-center w-full h-24 sm:h-32 border-2 border-dashed rounded-lg cursor-pointer bg-muted hover:bg-accent transition-colors"
-                        >
-                            <Upload className="w-6 h-6 sm:w-8 sm:h-8 text-muted-foreground mb-1 sm:mb-2" />
-                            <span className="text-xs sm:text-sm text-muted-foreground">Click to upload image</span>
-                        </label>
-                    </div>
-                    {formData.image && (
-                        <div className="flex-1">
-                            <div className="aspect-video bg-muted rounded-lg border flex items-center justify-center overflow-hidden">
-                                <img
-                                    src={formData.image}
-                                    alt="Preview"
-                                    className="w-full h-full object-cover"
-                                />
-                            </div>
-                        </div>
-                    )}
-                </div>
-            </div>
-            <DialogFooter className="flex justify-between">
-                <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
-                <Button type="button" onClick={handleSubmit}>Save Changes</Button>
-            </DialogFooter>
-        </div>
-    );
-};
-
-const EditStepForm = ({ data, onSave, onCancel, isNew }) => {
-    const [formData, setFormData] = useState(data || { _id: '', title: '', description: '', icon: '', image: '' });
-    const [errors, setErrors] = useState<{ [key: string]: string }>({});
-    const [isLoading, setIsLoading] = useState(false);
-
-    const handleChange = (field, value) => {
-        setFormData(prev => ({
-            ...prev,
-            [field]: value
-        }));
-        
-        // Clear error when user starts typing
-        if (errors[field]) {
-            setErrors(prev => ({
-                ...prev,
-                [field]: ''
-            }));
-        }
-    };
-
-    // Handle image upload
-    const handleImageUpload = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            // Set the actual file object instead of base64 string
-            setFormData(prev => ({
-                ...prev,
-                image: file
-            }));
-        }
-    };
-
-    const validateForm = () => {
-        const newErrors: { [key: string]: string } = {};
-        
-        if (!formData.title?.trim()) {
-            newErrors.title = 'Step title is required';
-        }
-        
-        setErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
-    };
-
-    const handleSubmit = (newItem = false) => {
-        if (!validateForm()) {
-            return;
-        }
-        setIsLoading(true);
-        onSave({ ...formData, isNew: newItem });
-    };
-
-    return (
-        <div className="space-y-3 sm:space-y-4">
-            <div>
-                <Label className="text-sm">Main Heading</Label>
-                <Input
-                    value={formData.heading}
-                    onChange={(e) => handleChange('heading', e.target.value)}
-                    className="text-sm"
-                />
-            </div>
-            <div>
-                <Label className="text-sm">Sub Heading</Label>
-                <Input
-                    value={formData.subHeading}
-                    onChange={(e) => handleChange('subHeading', e.target.value)}
-                    className="text-sm"
-                />
-            </div>
-            <div>
-                <Label className="text-sm">Step Title *</Label>
-                <Input
-                    value={formData.title}
-                    onChange={(e) => handleChange('title', e.target.value)}
-                    className={errors.title ? 'border-red-500 text-sm' : 'text-sm'}
-                />
-                {errors.title && <p className="text-red-500 text-sm mt-1">{errors.title}</p>}
-            </div>
-            <div>
-                <Label className="text-sm">Step Description</Label>
-                <Textarea
-                    value={formData.description}
-                    onChange={(e) => handleChange('description', e.target.value)}
-                    className="text-sm"
-                />
-            </div>
-            {/* <div>
-                <Label className="text-sm">Icon name (lucide)</Label>
-                <Input
-                    value={formData.icon}
-                    onChange={(e) => handleChange('icon', e.target.value)}
-                    className="text-sm"
-                />
-            </div> */}
-            <div>
-                <Label className="text-sm">Step Image</Label>
-                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-2">
-                    <div className="flex-1">
-                        <Input
-                            type="file"
-                            accept="image/*"
-                            onChange={handleImageUpload}
-                            className="hidden"
-                            id={`step-${formData.id}-image-upload`}
-                        />
-                        <label
-                            htmlFor={`step-${formData.id}-image-upload`}
-                            className="flex flex-col items-center justify-center w-full h-24 sm:h-32 border-2 border-dashed rounded-lg cursor-pointer bg-muted hover:bg-accent transition-colors"
-                        >
-                            <Upload className="w-6 h-6 sm:w-8 sm:h-8 text-muted-foreground mb-1 sm:mb-2" />
-                            <span className="text-xs sm:text-sm text-muted-foreground">Click to upload image</span>
-                        </label>
-                    </div>
-                    {formData.image && (
-                        <div className="flex-1">
-                            <div className="aspect-square bg-muted rounded-lg border flex items-center justify-center overflow-hidden">
-                                <img
-                                    src={typeof formData.image === 'string' ? formData.image : URL.createObjectURL(formData.image)}
-                                    alt="Preview"
-                                    className="w-full h-full object-cover"
-                                />
-                            </div>
-                        </div>
-                    )}
-                </div>
-            </div>
-            <DialogFooter className="flex justify-between">
-                <Button type="button" variant="outline" onClick={onCancel} className="text-sm" disabled={isLoading}>Cancel</Button>
-                <Button type="button" onClick={() => handleSubmit(isNew)} className="text-sm" disabled={isLoading}>
-                    {isLoading ? (
-                        <>
-                            <span className="mr-2 h-4 w-4 animate-spin">⏳</span>
-                            {isNew ? 'Adding...' : 'Saving...'}
-                        </>
-                    ) : (
-                        isNew ? 'Add Step' : 'Save Changes'
-                    )}
-                </Button>
-            </DialogFooter>
-        </div>
-    );
-};
-
-const EditConditionsForm = ({ data, onSave, onCancel }) => {
-    const [formData, setFormData] = useState({
-        ...data,
-        conditions: data?.conditions?.map(condition => ({
-            ...condition,
-            // Ensure image is null if it's an empty string
-            image: condition.image || null,
-            // Ensure content is empty string if not provided
-            content: condition.content || ''
-        })) || []
-    });
-    const [errors, setErrors] = useState<{ [key: string]: string }>({});
-    const [isLoading, setIsLoading] = useState(false);
-
-    const handleChange = (field, value) => {
-        setFormData(prev => ({
-            ...prev,
-            [field]: value
-        }));
-        
-        // Clear error when user starts typing
-        if (errors[field]) {
-            setErrors(prev => ({
-                ...prev,
-                [field]: ''
-            }));
-        }
-    };
-
-    const handleConditionChange = (index, field, value) => {
-        const newConditions = [...(formData.conditions || [])];
-        // For image field, convert empty string to null
-        const finalValue = field === 'image' && value === '' ? null : value;
-        newConditions[index][field] = finalValue;
-        setFormData(prev => ({
-            ...prev,
-            conditions: newConditions
-        }));
-    };
-
-    const addCondition = () => {
-        const newCondition = { name: '', image: null };
-        setFormData(prev => ({
-            ...prev,
-            conditions: [...(prev.conditions || []), newCondition]
-        }));
-    };
-
-    const removeCondition = (index) => {
-        const newConditions = (formData.conditions || []).filter((_, i) => i !== index);
-        setFormData(prev => ({
-            ...prev,
-            conditions: newConditions
-        }));
-    };
-
-    // Handle image upload
-    const handleImageUpload = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            setFormData(prev => ({
-                ...prev,
-                image: file
-            }));
-        }
-    };
-
-    const validateForm = () => {
-        const newErrors: { [key: string]: string } = {};
-        
-        if (!formData.title?.trim()) {
-            newErrors.title = 'Section title is required';
-        }
-        
-        if (!formData.description?.trim()) {
-            newErrors.description = 'Description is required';
-        }
-        
-        // Validate that at least one condition exists with a name
-        if (!formData.conditions || formData.conditions.length === 0) {
-            newErrors.conditions = 'At least one condition is required';
-        } else {
-            const hasValidCondition = formData.conditions.some(condition => 
-                condition.name && condition.name.trim() !== ''
-            );
-            
-            if (!hasValidCondition) {
-                newErrors.conditions = 'At least one condition with a name is required';
-            }
-        }
-        
-        setErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
-    };
-
-    const handleSubmit = () => {
-        if (!validateForm()) {
-            return;
-        }
-        
-        setIsLoading(true);
-        
-        // Clean up the form data before submitting
-        const cleanedData = {
-            ...formData,
-            conditions: formData.conditions?.map(condition => ({
-                ...condition,
-                // Remove image field if it's null
-                ...(condition.image ? { image: condition.image } : {})
-            })) || []
-        };
-        
-        onSave(cleanedData);
-    };
-
-    return (
-        <div className="space-y-3 sm:space-y-4">
-            <div>
-                <Label>Section Title *</Label>
-                <Input
-                    value={formData.title}
-                    onChange={(e) => handleChange('title', e.target.value)}
-                    className={errors.title ? 'border-red-500' : ''}
-                />
-                {errors.title && <p className="text-red-500 text-sm mt-1">{errors.title}</p>}
-            </div>
-            <div>
-                <Label className="text-sm">Short Description *</Label>
-                <Textarea
-                    rows={3}
-                    value={formData.description}
-                    onChange={(e) => handleChange('description', e.target.value)}
-                    className={errors.description ? 'border-red-500 text-sm' : 'text-sm'}
-                />
-                {errors.description && <p className="text-red-500 text-sm mt-1">{errors.description}</p>}
-            </div>
-            <div>
-                <div className="flex items-center justify-between mb-2">
-                    <Label className="text-sm">Conditions Treated *</Label>
-                    <Button type="button" variant="outline" size="sm" onClick={addCondition} className="text-xs sm:text-sm">
-                        <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" /> Add Condition
-                    </Button>
-                </div>
-                {errors.conditions && <p className="text-red-500 text-sm mt-1 mb-2">{errors.conditions}</p>}
-                <div className="space-y-3">
-                    {(formData.conditions || []).map((condition, index) => (
-                        <div key={index} className="flex gap-2">
-                            <div className="flex-1">
-                                <Label className="text-sm">Condition Name</Label>
-                                <Input
-                                    value={condition.name}
-                                    onChange={(e) => handleConditionChange(index, 'name', e.target.value)}
-                                    placeholder="Condition name"
-                                    className="text-sm"
-                                />
-                            </div>
-                            <div className="flex-1">
-                                <Label className="text-sm">Image</Label>
-                                <div className="flex flex-col sm:flex-row gap-2 mt-1">
-                                    <div className="flex-1">
-                                        <Input
-                                            type="file"
-                                            accept="image/*"
-                                            onChange={(e) => {
-                                                const file = e.target.files?.[0];
-                                                if (file) {
-                                                    handleConditionChange(index, 'image', file);
-                                                }
-                                            }}
-                                            className="hidden"
-                                            id={`condition-image-upload-${index}`}
-                                        />
-                                        <label
-                                            htmlFor={`condition-image-upload-${index}`}
-                                            className="flex flex-col items-center justify-center w-full h-10 border border-input rounded-md cursor-pointer bg-background hover:bg-accent transition-colors text-sm"
-                                        >
-                                            <Upload className="w-4 h-4 text-muted-foreground" />
-                                            <span className="text-xs text-muted-foreground mt-1">Upload Image</span>
-                                        </label>
-                                    </div>
-                                    {condition.image && (
-                                        <div className="flex-1 flex items-center gap-2">
-                                            <div className="w-10 h-10 rounded border overflow-hidden flex-shrink-0">
-                                                <img
-                                                    src={typeof condition.image === 'string' ? condition.image : URL.createObjectURL(condition.image)}
-                                                    alt="Preview"
-                                                    className="w-full h-full object-cover"
-                                                />
-                                            </div>
-                                            <Button 
-                                                type="button" 
-                                                variant="outline" 
-                                                size="sm" 
-                                                onClick={() => handleConditionChange(index, 'image', '')}
-                                                className="h-8 w-8 p-0"
-                                            >
-                                                <X className="h-3 w-3" />
-                                            </Button>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                            <div className="flex items-end">
-                                <Button 
-                                    type="button" 
-                                    variant="outline" 
-                                    size="sm" 
-                                    onClick={() => removeCondition(index)}
-                                    disabled={(formData.conditions || []).length <= 1}
-                                    className="h-8 w-8 p-0 sm:h-9 sm:w-9"
-                                >
-                                    <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
-                                </Button>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </div>
-            {/* <div>
-                <Label>Conditions Image</Label>
-                <div className="flex flex-col sm:flex-row gap-4 mt-2">
-                    <div className="flex-1">
-                        <Input
-                            type="file"
-                            accept="image/*"
-                            onChange={handleImageUpload}
-                            className="hidden"
-                            id="conditions-image-upload"
-                        />
-                        <label
-                            htmlFor="conditions-image-upload"
-                            className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-muted hover:bg-accent transition-colors"
-                        >
-                            <Upload className="w-8 h-8 text-muted-foreground mb-2" />
-                            <span className="text-sm text-muted-foreground">Click to upload image</span>
-                        </label>
-                    </div>
-                    {formData.image && (
-                        <div className="flex-1">
-                            <div className="aspect-video bg-muted rounded-lg border flex items-center justify-center overflow-hidden">
-                                <img
-                                    src={formData.image}
-                                    alt="Preview"
-                                    className="w-full h-full object-cover"
-                                />
-                            </div>
-                        </div>
-                    )}
-                </div>
-            </div> */}
-            <DialogFooter className="flex justify-between">
-                <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>Cancel</Button>
-                <Button type="button" onClick={handleSubmit} disabled={isLoading}>
-                    {isLoading ? (
-                        <>
-                            <span className="mr-2 h-4 w-4 animate-spin">⏳</span>
-                            Saving...
-                        </>
-                    ) : (
-                        'Save Changes'
-                    )}
-                </Button>
-            </DialogFooter>
-        </div>
-    );
-};
 
 const EditWhyUsForm = ({ data, onSave, onCancel }) => {
     const [formData, setFormData] = useState({
@@ -1771,7 +963,20 @@ const EditWhyUsForm = ({ data, onSave, onCancel }) => {
     };
 
     const handleSubmit = () => {
-        onSave(formData);
+        // Filter out stats that have empty required fields
+        const cleanedStats = (formData.stats || []).filter(stat => 
+            stat.label && stat.label.trim() !== '' && 
+            stat.value && stat.value.trim() !== '' && 
+            stat.description && stat.description.trim() !== ''
+        );
+        
+        // Create updated form data with cleaned stats
+        const updatedFormData = {
+            ...formData,
+            stats: cleanedStats
+        };
+        
+        onSave(updatedFormData);
     };
 
     return (
@@ -2013,43 +1218,7 @@ const EditTermsForm = ({ data, onSave, onCancel }) => {
     );
 };
 
-const EditSeoForm = ({ data, onSave, onCancel }) => {
-    const [formData, setFormData] = useState(data);
 
-    const handleChange = (field, value) => {
-        setFormData(prev => ({
-            ...prev,
-            [field]: value
-        }));
-    };
-
-    const handleSubmit = () => {
-        onSave(formData);
-    };
-
-    return (
-        <div className="space-y-4">
-            <div>
-                <Label>Meta Title</Label>
-                <Input
-                    value={formData.metaTitle}
-                    onChange={(e) => handleChange('metaTitle', e.target.value)}
-                />
-            </div>
-            <div>
-                <Label>Meta Description</Label>
-                <Textarea
-                    value={formData.metaDescription}
-                    onChange={(e) => handleChange('metaDescription', e.target.value)}
-                />
-            </div>
-            <DialogFooter className="flex justify-between">
-                <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
-                <Button type="button" onClick={handleSubmit}>Save Changes</Button>
-            </DialogFooter>
-        </div>
-    );
-};
 
 const EditFeaturedTherapistForm = ({ data, onSave, onCancel }) => {
     const [formData, setFormData] = useState(data);

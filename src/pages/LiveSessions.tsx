@@ -220,7 +220,11 @@ const LiveSessions = () => {
             </div>
             <div>
               <p className="text-2xl font-semibold">
-                {allSessions.filter((session: any) => session.status === "live").length}
+                {
+                  allSessions.filter(
+                    (session: any) => session.status === "live"
+                  ).length
+                }
               </p>
               <p className="text-sm text-muted-foreground">Available to Join</p>
             </div>
@@ -336,13 +340,47 @@ const LiveSessions = () => {
                       </div>
                     </div>
 
+                    {/* GOOGLE MEET LINK DISPLAY */}
+                    {session.googleMeetLink && (
+                      <div className="pt-2">
+                        <div className="flex flex-col gap-1">
+                          <a
+                            href={session.googleMeetLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center justify-center
+                              bg-blue-100 hover:bg-blue-200
+                              text-blue-700 font-bold text-xs
+                              px-2 py-1 rounded-full whitespace-nowrap gap-1"
+                          >
+                            <svg
+                              className="h-3 w-3"
+                              fill="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path d="M22.2819 9.8211a5.9848 5.9848 0 0 0-.5157-2.1734 6.0633 6.0633 0 0 0-1.4432-1.9437 6.0335 6.0335 0 0 0-1.9441-1.4427 5.996 5.996 0 0 0-2.174-.5152c-.3747-.0428-.7511-.0643-1.1277-.0643-.4163 0-.7927.025-1.168.0745a5.993 5.993 0 0 0-2.174.5137 6.058 6.058 0 0 0-1.944 1.4441 6.035 6.035 0 0 0-1.443 1.9433 5.996 5.996 0 0 0-.515 2.174c-.0428.375-.0643.751-.0643 1.128 0 .416.025.793.074 1.168a5.993 5.993 0 0 0 .513 2.174 6.058 6.058 0 0 0 1.444 1.944 6.035 6.035 0 0 0 1.943 1.443 5.996 5.996 0 0 0 2.174.515c.375.043.751.064 1.128.064.416 0 .793-.025 1.168-.074a5.993 5.993 0 0 0 2.174-.513 6.058 6.058 0 0 0 1.944-1.444 6.035 6.035 0 0 0 1.443-1.943 5.996 5.996 0 0 0 .515-2.174c.043-.375.064-.751.064-1.128 0-.416-.025-.793-.074-1.168zm-9.478 4.3233L6.4358 10.006a.75.75 0 0 1 .254-1.225l13.006-7.5a.75.75 0 0 1 1.089.254.75.75 0 0 1-.254 1.09l-12.212 7.05 12.212 7.05a.75.75 0 0 1 .254 1.09.75.75 0 0 1-1.09.254l-13-7.5a.75.75 0 0 1-.254-.254z" />
+                            </svg>
+                            Join Google Meet
+                          </a>
+                          {session.googleMeetCode && (
+                            <span className="text-xs text-muted-foreground font-mono">
+                              Code: {session.googleMeetCode}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
                     <div className="flex gap-2 pt-2">
                       {(() => {
                         // Calculate if session time has arrived
-                        const sessionDateTime = new Date(`${session.date} ${session.time}`);
+                        const sessionDateTime = new Date(
+                          `${session.date} ${session.time}`
+                        );
                         const now = new Date();
-                        const isSessionTimeArrived = sessionDateTime.getTime() <= now.getTime();
-                                              
+                        const isSessionTimeArrived =
+                          sessionDateTime.getTime() <= now.getTime();
+
                         if (session.status === "live") {
                           // For live sessions, check if the actual session time has arrived
                           if (isSessionTimeArrived) {
@@ -368,24 +406,118 @@ const LiveSessions = () => {
                                 >
                                   <Copy className="w-4 h-4" />
                                 </Button>
+                                {/* Google Meet Generation Button */}
+                                {!session.googleMeetLink && (
+                                  <Button
+                                    variant="outline"
+                                    size="icon"
+                                    className="text-blue-600 border-blue-600 hover:bg-blue-600 hover:text-white"
+                                    onClick={async () => {
+                                      try {
+                                        const response = await fetch(
+                                          `${
+                                            import.meta.env.VITE_API_BASE_URL ||
+                                            "http://localhost:5000"
+                                          }/video-call/generate-google-meet`,
+                                          {
+                                            method: "POST",
+                                            headers: {
+                                              "Content-Type":
+                                                "application/json",
+                                              Authorization: `Bearer ${localStorage.getItem(
+                                                "token"
+                                              )}`,
+                                            },
+                                            body: JSON.stringify({
+                                              sessionId: session._id,
+                                            }),
+                                          }
+                                        );
+
+                                        const data = await response.json();
+
+                                        if (data.success) {
+                                          // Refresh sessions to show the new link
+                                          dispatch(fetchSessions());
+
+                                          // Show success toast
+                                          const toastElement =
+                                            document.createElement("div");
+                                          toastElement.className =
+                                            "fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 animate-in fade-in slide-in-from-right";
+                                          toastElement.innerHTML =
+                                            "✅ Google Meet link generated successfully!";
+                                          document.body.appendChild(
+                                            toastElement
+                                          );
+
+                                          setTimeout(() => {
+                                            document.body.removeChild(
+                                              toastElement
+                                            );
+                                          }, 3000);
+                                        } else {
+                                          throw new Error(
+                                            data.message ||
+                                              "Failed to generate Google Meet link"
+                                          );
+                                        }
+                                      } catch (error) {
+                                        console.error(
+                                          "Error generating Google Meet link:",
+                                          error
+                                        );
+                                        // Show error toast
+                                        const toastElement =
+                                          document.createElement("div");
+                                        toastElement.className =
+                                          "fixed top-4 right-4 bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 animate-in fade-in slide-in-from-right";
+                                        toastElement.innerHTML =
+                                          "❌ Failed to generate Google Meet link";
+                                        document.body.appendChild(toastElement);
+
+                                        setTimeout(() => {
+                                          document.body.removeChild(
+                                            toastElement
+                                          );
+                                        }, 3000);
+                                      }
+                                    }}
+                                  >
+                                    <Video className="w-4 h-4" />
+                                  </Button>
+                                )}
                               </div>
                             );
                           } else {
                             // Session is marked as live but time hasn't arrived yet
                             return (
-                              <Button className="flex-1" variant="secondary" disabled>
+                              <Button
+                                className="flex-1"
+                                variant="secondary"
+                                disabled
+                              >
                                 <Clock className="w-4 h-4 mr-2" />
-                                Session Early - Starts in {calculateTimeUntilSession(session.date, session.time)}
+                                Session Early - Starts in{" "}
+                                {calculateTimeUntilSession(
+                                  session.date,
+                                  session.time
+                                )}
                               </Button>
                             );
                           }
                         } else {
                           // For non-live sessions, use timingStatus
-                          if (session.timingStatus === 'join_now') {
+                          if (session.timingStatus === "join_now") {
                             // Check if the actual session time has arrived
                             if (isSessionTimeArrived) {
                               return (
-                                <Button className="flex-1" onClick={() => navigate(`/video-call/${session._id}`)}>
+                                <Button
+                                  className="flex-1"
+                                  onClick={() =>
+                                    navigate(`/video-call/${session._id}`)
+                                  }
+                                >
                                   <Video className="w-4 h-4 mr-2" />
                                   Join Session
                                 </Button>
@@ -393,13 +525,21 @@ const LiveSessions = () => {
                             } else {
                               // Session is in join_now window but time hasn't arrived yet
                               return (
-                                <Button className="flex-1" variant="secondary" disabled>
+                                <Button
+                                  className="flex-1"
+                                  variant="secondary"
+                                  disabled
+                                >
                                   <Clock className="w-4 h-4 mr-2" />
-                                  Session Early - Starts in {calculateTimeUntilSession(session.date, session.time)}
+                                  Session Early - Starts in{" "}
+                                  {calculateTimeUntilSession(
+                                    session.date,
+                                    session.time
+                                  )}
                                 </Button>
                               );
                             }
-                          } else if (session.timingStatus === 'join_soon') {
+                          } else if (session.timingStatus === "join_soon") {
                             return (
                               <Button className="flex-1" variant="secondary">
                                 <Clock className="w-4 h-4 mr-2" />
@@ -408,7 +548,11 @@ const LiveSessions = () => {
                             );
                           } else {
                             return (
-                              <Button className="flex-1" variant="secondary" disabled>
+                              <Button
+                                className="flex-1"
+                                variant="secondary"
+                                disabled
+                              >
                                 <Clock className="w-4 h-4 mr-2" />
                                 Starts in{" "}
                                 {calculateTimeUntilSession(

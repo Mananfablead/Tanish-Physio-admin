@@ -21,7 +21,7 @@ export const sendNotification = createAsyncThunk(
   async (notificationData, { rejectWithValue }) => {
     try {
       const res = await notificationAPI.send(notificationData);
-      return res.data.data || res.data;
+      return res.data;
     } catch (err) {
       return rejectWithValue(err.response?.data?.message || "Notification send failed");
     }
@@ -41,6 +41,32 @@ export const markNotificationAsRead = createAsyncThunk(
   }
 );
 
+// Delete notification
+export const deleteNotification = createAsyncThunk(
+  "notifications/delete",
+  async (id, { rejectWithValue }) => {
+    try {
+      const res = await notificationAPI.delete(id);
+      return id; // Return the ID of deleted notification
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || "Delete notification failed");
+    }
+  }
+);
+
+// Delete all notifications
+export const deleteAllNotifications = createAsyncThunk(
+  "notifications/deleteAll",
+  async (_, { rejectWithValue }) => {
+    try {
+      const res = await notificationAPI.deleteAll();
+      return res.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || "Delete all notifications failed");
+    }
+  }
+);
+
 const notificationSlice = createSlice({
   name: "notifications",
   initialState: {
@@ -54,7 +80,9 @@ const notificationSlice = createSlice({
     },
     // Add a reducer to remove a specific notification
     removeNotification: (state, action) => {
-      state.list = state.list.filter(notification => notification.id !== action.payload);
+      state.list = state.list.filter(notification =>
+        notification._id !== action.payload && notification.id !== action.payload
+      );
     },
     // Add a reducer to clear all notifications
     clearAllNotifications: (state) => {
@@ -92,15 +120,45 @@ const notificationSlice = createSlice({
       // Mark notification as read
       .addCase(markNotificationAsRead.fulfilled, (state, action) => {
         state.loading = false;
-        const index = state.list.findIndex(notification => notification.id === action.payload.id);
+        const index = state.list.findIndex(notification =>
+          notification._id === action.payload._id || notification.id === action.payload.id
+        );
         if (index !== -1) {
-          state.list[index] = { ...state.list[index], ...action.payload };
+          state.list[index] = { ...state.list[index], read: true };
         }
       })
       .addCase(markNotificationAsRead.pending, (state) => {
         state.loading = true;
       })
       .addCase(markNotificationAsRead.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+
+      // Delete notification
+      .addCase(deleteNotification.fulfilled, (state, action) => {
+        state.loading = false;
+        state.list = state.list.filter(notification =>
+          notification._id !== action.payload && notification.id !== action.payload
+        );
+      })
+      .addCase(deleteNotification.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(deleteNotification.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+
+      // Delete all notifications
+      .addCase(deleteAllNotifications.fulfilled, (state) => {
+        state.loading = false;
+        state.list = [];
+      })
+      .addCase(deleteAllNotifications.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(deleteAllNotifications.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       });

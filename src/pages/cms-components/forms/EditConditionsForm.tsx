@@ -101,7 +101,7 @@ export default function EditConditionsForm({ data, onSave, onCancel }: EditCondi
           className="text-sm"
         />
       </div>
-      <div>
+      {/* <div>
         <div className="flex items-center justify-between mb-2">
           <Label className="text-sm">Conditions Treated</Label>
           <Button type="button" variant="outline" size="sm" onClick={addCondition} className="text-xs sm:text-sm">
@@ -181,7 +181,7 @@ export default function EditConditionsForm({ data, onSave, onCancel }: EditCondi
             </div>
           ))}
         </div>
-      </div>
+      </div> */}
       <DialogFooter className="flex justify-between">
         <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
         <Button type="button" onClick={handleSubmit}>Save Changes</Button>

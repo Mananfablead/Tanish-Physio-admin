@@ -81,10 +81,10 @@ export function AdminSidebar({ isMobileOpen, onMobileClose, collapsed: propColla
       <div className="flex h-18 items-center justify-between px-4 border-b border-sidebar-border">
         {!effectiveCollapsed && (
           <div className="flex items-center gap-2">
-            <div className="flex-col justify-center relative w-[--sidebar-width] z-10">
+            <div className="flex-col justify-center py-4 relative w-[--sidebar-width] z-10">
 
-              <Link to="/" className="mb-8">
-                <img src={logo} alt="Logo" className="h-16 w-auto mt-2" />
+              <Link to="/" className="">
+                <img src={logo} alt="Logo" className="h-20 w-auto " />
               </Link>
 
             </div>

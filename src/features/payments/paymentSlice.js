@@ -62,10 +62,24 @@ export const verifySubscriptionPayment = createAsyncThunk(
   }
 );
 
+// Async thunk to fetch single payment by ID
+export const fetchPaymentById = createAsyncThunk(
+  'payments/fetchById',
+  async (paymentId, { rejectWithValue }) => {
+    try {
+      const response = await paymentAPI.getById(paymentId);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
 // Initial state
 const initialState = {
   payments: [],
   currentPayment: null,
+  singlePayment: null,
   loading: false,
   error: null,
   success: false,
@@ -165,6 +179,20 @@ const paymentSlice = createSlice({
         state.success = true;
       })
       .addCase(verifySubscriptionPayment.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // Fetch payment by ID
+      .addCase(fetchPaymentById.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchPaymentById.fulfilled, (state, action) => {
+        state.loading = false;
+        state.singlePayment = action.payload;
+        state.success = true;
+      })
+      .addCase(fetchPaymentById.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       });

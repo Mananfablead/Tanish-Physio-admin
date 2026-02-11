@@ -96,15 +96,22 @@ export default function Subscriptions() {
     dispatch(fetchAllUserSubscriptions());
   }, [dispatch]);
 
-  const filteredSubscriptions = Array.isArray(userSubscriptions)
-    ? userSubscriptions.filter(
-      (sub) =>
-        sub.userId?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        sub.userId?.email?.toLowerCase().includes(searchQuery.toLowerCase())
-    )
-    : [];
+const filteredSubscriptions = Array.isArray(userSubscriptions)
+  ? userSubscriptions.filter((sub) => {
+      if (!searchQuery.trim()) return true;
 
-  console.log("filteredSubscriptions", filteredSubscriptions);
+      const name = sub.userId?.name?.toLowerCase() || "";
+      const email = sub.userId?.email?.toLowerCase() || "";
+
+      return (
+        name.includes(searchQuery.toLowerCase()) ||
+        email.includes(searchQuery.toLowerCase())
+      );
+    })
+  : [];
+
+
+    console.log("filteredSubscriptions", filteredSubscriptions);
   // Calculate stats from actual plans
   const totalSubscribers =
     userSubscriptions?.filter(
@@ -332,12 +339,10 @@ export default function Subscriptions() {
                   </div>
 
                   <div className="space-y-2 text-sm mb-4">
-                    {/* <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Auto-renew</span>
-                    <span className="text-success">
-                      {plan.autoRenew ? "Yes" : "No"}
-                    </span>
-                  </div> */}
+                  <div className="flex items-center justify-between">
+                      <span className="text-black font-bold">Plan Type</span>
+                      <span className="font-bold uppercase">{plan.planId || 'N/A'}</span>
+                    </div>
                     <div className="flex items-center justify-between">
                       <span className="text-muted-foreground">Subscribers</span>
                       <span className="font-medium">{plan.subscriberCount || 0}</span>
@@ -346,10 +351,11 @@ export default function Subscriptions() {
                       <span className="text-muted-foreground">Sessions</span>
                       <span className="font-medium">{plan.sessions || 'Unlimited'}</span>
                     </div>
-                    <div className="flex items-center justify-between">
+                    {/* <div className="flex items-center justify-between">
                       <span className="text-muted-foreground">Duration</span>
                       <span className="font-medium">{plan.duration || 'N/A'}</span>
-                    </div>
+                    </div> */}
+                    
                   </div>
 
                   <div className="flex gap-2 justify-end">
@@ -439,18 +445,17 @@ export default function Subscriptions() {
                   </thead>
                   <tbody>
                     {filteredSubscriptions.map((sub, index) => {
-                      console.log("Subscription Row:", index, sub);
 
                       return (
                         <tr key={sub._id}>
                           {/* USER */}
                           <td>
                             <div>
-                              <p className="font-medium">
-                                {sub.userId?.name || "N/A"}
+                              <p className="font-bold">
+                                {sub.userId?.name ||sub.guestName}
                               </p>
-                              <p className="text-sm text-muted-foreground">
-                                {sub.userId?.email || "N/A"}
+                              <p className="text-sm text-medium">
+                                {sub.userId?.email || sub.guestEmail}
                               </p>
                             </div>
                           </td>
@@ -488,7 +493,7 @@ export default function Subscriptions() {
                           <td>
                             <span
                               className={cn(
-                                "px-2 py-1 rounded-full text-xs font-medium",
+                                "px-2 py-1 rounded-full text-xs font-medium capitalize",
                                 sub.status === "active"
                                   ? "bg-green-100 text-green-800"
                                   : "bg-red-100 text-red-800"

@@ -22,25 +22,58 @@ import {
   getAllAvailability,
 } from '@/features/availability/availabilitySlice';
 import { toast } from "@/hooks/use-toast";
-type SessionStatus = "pending" | "scheduled" | "live" | "completed" | "cancelled";
+import GenerateGoogleMeetModal from "@/components/VideoCall/GenerateGoogleMeetModal";
+type SessionStatus =
+  | "pending"
+  | "scheduled"
+  | "live"
+  | "completed"
+  | "cancelled";
 
 export default function Sessions() {
   const navigate = useNavigate();
   const dispatch: any = useDispatch();
-  const { list: bookings, loading: bookingsLoading, error: bookingsError } = useSelector((state: any) => state.bookings);
-  const { availability, loading: isLoading, error: availabilityError } = useSelector((state: any) => state.availability);
+  const {
+    list: bookings,
+    loading: bookingsLoading,
+    error: bookingsError,
+  } = useSelector((state: any) => state.bookings);
+  const {
+    availability,
+    loading: isLoading,
+    error: availabilityError,
+  } = useSelector((state: any) => state.availability);
   // console.log("object", availability)
 
-  const { list: allSessions = [], upcomingSessions = [], loading, error } = useSelector((state: any) => state.sessions);
+  const {
+    list: allSessions = [],
+    upcomingSessions = [],
+    loading,
+    error,
+  } = useSelector((state: any) => state.sessions);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("all");
+    
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10; // Set to 10 items per page as requested
   // Count sessions by status for tabs
-  const scheduledCount = (allSessions || []).filter((session: any) => session.status === "scheduled").length;
+  const scheduledCount = (allSessions || []).filter(
+    (session: any) => session.status === "scheduled"
+  ).length;
   const allCount = (allSessions || []).length;
-  const liveCount = (allSessions || []).filter((session: any) => session.status === "live").length;
-  const completedCount = (allSessions || []).filter((session: any) => session.status === "completed").length;
-  const cancelledCount = (allSessions || []).filter((session: any) => session.status === "cancelled").length;
-  const pendingCount = (allSessions || []).filter((session: any) => session.status === "pending").length;
+  const liveCount = (allSessions || []).filter(
+    (session: any) => session.status === "live"
+  ).length;
+  const completedCount = (allSessions || []).filter(
+    (session: any) => session.status === "completed"
+  ).length;
+  const cancelledCount = (allSessions || []).filter(
+    (session: any) => session.status === "cancelled"
+  ).length;
+  const pendingCount = (allSessions || []).filter(
+    (session: any) => session.status === "pending"
+  ).length;
   const upcomingCount = (upcomingSessions || []).length;
   // Note: "missed" and "no-show" statuses are automatically set by the backend
   // They should not be manually set by admins
@@ -48,7 +81,7 @@ export default function Sessions() {
   // Filter sessions based on active tab and search query
   const filteredSessions = (() => {
     let sessionsToFilter = [];
-    
+
     switch (activeTab) {
       case "upcoming":
         sessionsToFilter = upcomingSessions;
@@ -57,7 +90,7 @@ export default function Sessions() {
         sessionsToFilter = allSessions;
         break;
     }
-    
+
     return sessionsToFilter.filter((session: any) => {
       // First filter by tab status (only for non-upcoming tabs)
       if (activeTab !== "upcoming") {
@@ -124,9 +157,8 @@ export default function Sessions() {
     });
   })();
 
-
   useEffect(() => {
-    if (activeTab === 'upcoming') {
+    if (activeTab === "upcoming") {
       dispatch(fetchAllUpcomingSessions());
     } else {
       dispatch(fetchSessions());
@@ -134,6 +166,25 @@ export default function Sessions() {
     dispatch(fetchBookings());
     dispatch(getAllAvailability());
   }, [dispatch, activeTab]);
+
+  // Function to change page
+  const goToPage = (pageNumber: number) => {
+    setCurrentPage(pageNumber);
+  };
+
+  // Function to go to next page
+  const nextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  // Function to go to previous page
+  const prevPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
 
   // State for creating a new session
   const [newSession, setNewSession] = useState({
@@ -145,8 +196,77 @@ export default function Sessions() {
     time: "",
     type: "1-on-1",
     status: "pending",
-    notes: ""
+    notes: "",
   });
+
+  // State for Google Meet generation
+  const [isGeneratingMeet, setIsGeneratingMeet] = useState(false);
+  const [selectedSessionForMeet, setSelectedSessionForMeet] = useState(null);
+  const [isGoogleMeetModalOpen, setIsGoogleMeetModalOpen] = useState(false);
+
+  // Setup admin notification socket
+  useEffect(() => {
+    const setupAdminNotifications = async () => {
+      try {
+        // Import socket connection (assuming similar setup as client)
+        const { io } = await import("socket.io-client");
+        const token = localStorage.getItem("adminToken"); // Adjust based on your auth system
+
+        if (token) {
+          const socket = io("http://localhost:5001", {
+            // Adjust URL as needed
+            auth: { token },
+            transports: ["websocket", "polling"],
+          });
+
+          socket.on("connect", () => {
+            console.log("Admin connected to notification socket");
+            socket.emit("join-admin-notifications", {});
+          });
+
+          socket.on("admin-notifications-joined", (data) => {
+            console.log("Joined admin notifications:", data);
+          });
+
+          socket.on("admin-notification", (data) => {
+            console.log("Admin received notification:", data);
+
+            // Show toast notification for connection failures
+            if (data.type === "connection_failure") {
+              toast({
+                title: data.title || "Connection Issue Reported",
+                description:
+                  data.message || "A user is experiencing connection problems",
+                variant: "destructive",
+              });
+
+              // Optionally auto-refresh sessions to show updated status
+              dispatch(fetchSessions());
+            }
+          });
+
+          socket.on("disconnect", () => {
+            console.log("Admin disconnected from notification socket");
+          });
+
+          // Store socket reference for cleanup
+          (window as any).adminNotificationSocket = socket;
+        }
+      } catch (error) {
+        console.error("Error setting up admin notifications:", error);
+      }
+    };
+
+    setupAdminNotifications();
+
+    // Cleanup function
+    return () => {
+      if ((window as any).adminNotificationSocket) {
+        (window as any).adminNotificationSocket.disconnect();
+        delete (window as any).adminNotificationSocket;
+      }
+    };
+  }, []);
 
   // State for rescheduling
   const [rescheduleDate, setRescheduleDate] = useState("");
@@ -156,11 +276,12 @@ export default function Sessions() {
   const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false);
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [selectedSession, setSelectedSession] = useState<any>(null);
-  const [isCreateSessionModalOpen, setIsCreateSessionModalOpen] = useState(false);
+  const [isCreateSessionModalOpen, setIsCreateSessionModalOpen] =
+    useState(false);
 
   // Calendar state variables
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<'day' | 'week' | 'month'>('month');
+  const [viewMode, setViewMode] = useState<"day" | "week" | "month">("month");
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   const selectedDay = availability?.find(
@@ -179,7 +300,9 @@ export default function Sessions() {
 
   // Get today's date for highlighting
   const today = new Date();
-  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const todayStr = `${today.getFullYear()}-${String(
+    today.getMonth() + 1
+  ).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
 
   // Function to check if a date is in the past
   const isPastDate = (dateStr: string) => {
@@ -198,18 +321,27 @@ export default function Sessions() {
     // Create an array of days with their availability status
     const calendarDays = Array.from({ length: daysInMonth }, (_, i) => {
       const day = i + 1;
-      const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(
+        2,
+        "0"
+      )}-${String(day).padStart(2, "0")}`;
 
       // Find availability for this date
-      const availabilityForDate = availability.find(item => item.date === dateStr);
+      const availabilityForDate = availability.find(
+        (item) => item.date === dateStr
+      );
 
       // Determine status based on time slots
       let status = 0; // default to available
       if (availabilityForDate && availabilityForDate.timeSlots) {
         const slots = availabilityForDate.timeSlots;
-        const bookedSlots = slots.filter(slot => slot.status === 'booked');
-        const unavailableSlots = slots.filter(slot => slot.status === 'unavailable');
-        const availableSlots = slots.filter(slot => slot.status === 'available');
+        const bookedSlots = slots.filter((slot) => slot.status === "booked");
+        const unavailableSlots = slots.filter(
+          (slot) => slot.status === "unavailable"
+        );
+        const availableSlots = slots.filter(
+          (slot) => slot.status === "available"
+        );
 
         if (bookedSlots.length > 0) {
           status = 1; // booked (if any slots are booked)
@@ -224,7 +356,7 @@ export default function Sessions() {
         date: dateStr,
         day,
         status, // 0 = available (green), 1 = booked (blue), 2 = holiday (red)
-        availability: availabilityForDate
+        availability: availabilityForDate,
       };
     });
 
@@ -255,7 +387,9 @@ export default function Sessions() {
     setSelectedDate(date);
     if (date) {
       // Find existing availability for this date
-      const existingAvailability = availability.find(item => item.date === date);
+      const existingAvailability = availability.find(
+        (item) => item.date === date
+      );
 
       if (existingAvailability) {
         // Load existing availability data from time slots
@@ -280,7 +414,7 @@ export default function Sessions() {
   };
 
   const handleTimeSlotClick = (date: string, timeSlot: any) => {
-    if (timeSlot.status === 'available') {
+    if (timeSlot.status === "available") {
       setSelectedDate(date);
       setRescheduleDate(date);
       setRescheduleTime(timeSlot.start);
@@ -292,8 +426,6 @@ export default function Sessions() {
       }
     }
   };
-
-
 
   const handleCreateSession = async () => {
     try {
@@ -308,10 +440,14 @@ export default function Sessions() {
       }
 
       // Validate required fields for subscription sessions
-      if (newSession.subscriptionId && (!newSession.userId || !newSession.therapistId)) {
+      if (
+        newSession.subscriptionId &&
+        (!newSession.userId || !newSession.therapistId)
+      ) {
         toast({
           title: "Error",
-          description: "User ID and Therapist ID are required for subscription sessions",
+          description:
+            "User ID and Therapist ID are required for subscription sessions",
           variant: "destructive",
         });
         return;
@@ -342,7 +478,7 @@ export default function Sessions() {
       });
       // Refresh sessions list
       dispatch(fetchSessions());
-      
+
       toast({
         title: "Success",
         description: "Session created successfully",
@@ -388,13 +524,13 @@ export default function Sessions() {
 
   // Helper function to extract error message
   const getErrorMessage = (error: any): string => {
-    if (typeof error?.payload === 'object' && error?.payload !== null) {
+    if (typeof error?.payload === "object" && error?.payload !== null) {
       // Check for the specific success/message structure from our API
       if (error.payload.success === false && error.payload.message) {
         return error.payload.message;
       }
       // Fallback to other possible locations in payload
-      if (typeof error.payload === 'string') {
+      if (typeof error.payload === "string") {
         return error.payload;
       }
       return (
@@ -416,7 +552,10 @@ export default function Sessions() {
     );
   };
 
-  const handleUpdateSessionStatus = async (sessionId: string, status: string) => {
+  const handleUpdateSessionStatus = async (
+    sessionId: string,
+    status: string
+  ) => {
     try {
       await dispatch(
         updateSessionStatus({
@@ -433,8 +572,6 @@ export default function Sessions() {
       });
       dispatch(fetchSessions());
     } catch (error: any) {
-
-
       toast({
         title: "Error",
         description: error,
@@ -463,7 +600,6 @@ export default function Sessions() {
       });
       dispatch(fetchSessions());
     } catch (error: any) {
-
       toast({
         title: "Error",
         description: error,
@@ -509,44 +645,46 @@ export default function Sessions() {
   };
 
   const statusStyles: Record<string, string> = {
-    pending:
-      "bg-yellow-100 text-yellow-800 border border-yellow-300",
-    scheduled:
-      "bg-blue-100 text-blue-800 border border-blue-300",
-    live:
-      "bg-green-100 text-green-800 border border-green-300",
-    completed:
-      "bg-green-100 text-green-800 border border-green-300",
-    cancelled:
-      "bg-red-100 text-red-800 border border-red-300",
+    pending: "bg-yellow-100 text-yellow-800 border border-yellow-300",
+    scheduled: "bg-blue-100 text-blue-800 border border-blue-300",
+    live: "bg-green-100 text-green-800 border border-green-300",
+    completed: "bg-green-100 text-green-800 border border-green-300",
+    cancelled: "bg-red-100 text-red-800 border border-red-300",
   };
 
   const isEditableStatus = (status: string) =>
     status === "scheduled" || status === "live";
-
-
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="page-header">
-          <h1 className="page-title">{activeTab === 'live' ? 'Live Sessions' : activeTab === 'pending' ? 'Pending Sessions' : activeTab === 'upcoming' ? 'Upcoming Sessions' : activeTab === 'all' ? 'All Sessions' : 'Session Management'}</h1>
+          <h1 className="page-title">
+            {activeTab === "live"
+              ? "Live Sessions"
+              : activeTab === "pending"
+              ? "Pending Sessions"
+              : activeTab === "upcoming"
+              ? "Upcoming Sessions"
+              : activeTab === "all"
+              ? "All Sessions"
+              : "Session Management"}
+          </h1>
           <p className="page-subtitle">
-            {activeTab === 'live'
-              ? 'View and join live sessions'
-              : activeTab === 'pending'
-                ? 'Review and approve pending session requests'
-                : activeTab === 'upcoming'
-                  ? 'View sessions scheduled within 24 hours'
-                  : activeTab === 'all'
-                    ? 'Monitor and manage all platform sessions'
-                    : 'Monitor and manage all platform sessions'}
+            {activeTab === "live"
+              ? "View and join live sessions"
+              : activeTab === "pending"
+              ? "Review and approve pending session requests"
+              : activeTab === "upcoming"
+              ? "View sessions scheduled within 24 hours"
+              : activeTab === "all"
+              ? "Monitor and manage all platform sessions"
+              : "Monitor and manage all platform sessions"}
           </p>
         </div>
         <div className="flex items-center gap-3">
-
-          {activeTab !== 'live' && activeTab !== 'upcoming' && (
+          {activeTab !== "live" && activeTab !== "upcoming" && (
             <Select defaultValue="today">
               <SelectTrigger className="w-[140px]">
                 <SelectValue placeholder="Filter by date" />
@@ -569,9 +707,7 @@ export default function Sessions() {
               <UserCog className="w-5 h-5 text-warning" />
             </div>
             <div>
-              <p className="text-2xl font-semibold">
-                {pendingCount}
-              </p>
+              <p className="text-2xl font-semibold">{pendingCount}</p>
               <p className="text-sm text-muted-foreground">Pending</p>
             </div>
           </div>
@@ -582,9 +718,7 @@ export default function Sessions() {
               <Calendar className="w-5 h-5 text-info" />
             </div>
             <div>
-              <p className="text-2xl font-semibold">
-                {scheduledCount}
-              </p>
+              <p className="text-2xl font-semibold">{scheduledCount}</p>
               <p className="text-sm text-muted-foreground">Scheduled</p>
             </div>
           </div>
@@ -595,9 +729,7 @@ export default function Sessions() {
               <Play className="w-5 h-5 text-success" />
             </div>
             <div>
-              <p className="text-2xl font-semibold">
-                {liveCount}
-              </p>
+              <p className="text-2xl font-semibold">{liveCount}</p>
               <p className="text-sm text-muted-foreground">Live Now</p>
             </div>
           </div>
@@ -608,9 +740,7 @@ export default function Sessions() {
               <Video className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <p className="text-2xl font-semibold">
-                {completedCount}
-              </p>
+              <p className="text-2xl font-semibold">{completedCount}</p>
               <p className="text-sm text-muted-foreground">Completed</p>
             </div>
           </div>
@@ -621,9 +751,7 @@ export default function Sessions() {
               <X className="w-5 h-5 text-warning" />
             </div>
             <div>
-              <p className="text-2xl font-semibold">
-                {cancelledCount}
-              </p>
+              <p className="text-2xl font-semibold">{cancelledCount}</p>
               <p className="text-sm text-muted-foreground">Cancelled</p>
             </div>
           </div>
@@ -633,7 +761,6 @@ export default function Sessions() {
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
-
           <TabsTrigger value="all">
             All
             <span className="ml-1.5 px-1.5 py-0.5 text-xs bg-primary/20 text-primary rounded-full">
@@ -676,13 +803,15 @@ export default function Sessions() {
           <div className="relative max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder={activeTab === 'live'
-                ? 'Search by user, therapist, date, time, or type...'
-                : activeTab === 'pending'
-                  ? 'Search by booking, user, therapist, date, or status...'
-                  : activeTab === 'upcoming'
-                    ? 'Search by user, therapist, date, time, or type...'
-                    : 'Search by booking, user, therapist, date, or status...'}
+              placeholder={
+                activeTab === "live"
+                  ? "Search by user, therapist, date, time, or type..."
+                  : activeTab === "pending"
+                  ? "Search by booking, user, therapist, date, or status..."
+                  : activeTab === "upcoming"
+                  ? "Search by user, therapist, date, time, or type..."
+                  : "Search by booking, user, therapist, date, or status..."
+              }
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"
@@ -692,7 +821,7 @@ export default function Sessions() {
 
         {/* Sessions Content */}
         <TabsContent value={activeTab} className="mt-4">
-          {(activeTab === 'live' || activeTab === 'upcoming') ? (
+          {activeTab === "live" || activeTab === "upcoming" ? (
             /* Live Sessions Grid View */
             <div className="space-y-6">
               {filteredSessions.length > 0 ? (
@@ -702,43 +831,53 @@ export default function Sessions() {
                     const therapist = session.therapistId;
                     // Calculate timing status for upcoming sessions
                     const now = new Date();
-                    const sessionTime = new Date(`${session.date}T${session.time}`);
+                    const sessionTime = new Date(
+                      `${session.date}T${session.time}`
+                    );
                     const timeDiff = sessionTime.getTime() - now.getTime();
-                    const minutesUntilSession = Math.floor(timeDiff / (1000 * 60));
-                    
-                    let statusLabel = '';
+                    const minutesUntilSession = Math.floor(
+                      timeDiff / (1000 * 60)
+                    );
+
+                    let statusLabel = "";
                     let isJoinEnabled = false;
-                    
+
                     // Check if the actual session time has arrived
                     const isSessionTimeArrived = minutesUntilSession <= 0;
-                    
-                    if (activeTab === 'live') {
+
+                    if (activeTab === "live") {
                       // For live sessions, check if the actual session time has arrived
                       if (isSessionTimeArrived) {
-                        statusLabel = 'LIVE NOW';
+                        statusLabel = "LIVE NOW";
                         isJoinEnabled = true;
                       } else {
-                        statusLabel = 'SCHEDULED';
+                        statusLabel = "SCHEDULED";
                         isJoinEnabled = false; // Disable join if it's marked live but too early
                       }
                     } else {
-                      if (minutesUntilSession <= 10 && minutesUntilSession > 0) {
-                        statusLabel = 'JOIN NOW';
+                      if (
+                        minutesUntilSession <= 10 &&
+                        minutesUntilSession > 0
+                      ) {
+                        statusLabel = "JOIN NOW";
                         isJoinEnabled = true; // Enable join if within 10 min window
-                      } else if (minutesUntilSession <= 60 && minutesUntilSession > 10) {
-                        statusLabel = 'JOIN SOON';
+                      } else if (
+                        minutesUntilSession <= 60 &&
+                        minutesUntilSession > 10
+                      ) {
+                        statusLabel = "JOIN SOON";
                         isJoinEnabled = false; // Don't enable join yet if only within 1 hour
                       } else {
-                        statusLabel = 'UPCOMING';
+                        statusLabel = "UPCOMING";
                         isJoinEnabled = false;
                       }
-                      
+
                       // Additionally, if the session time hasn't arrived yet, disable join regardless of timing status
                       if (!isSessionTimeArrived) {
                         isJoinEnabled = false;
                       }
                     }
-                    
+
                     return (
                       <div
                         key={session._id}
@@ -784,7 +923,11 @@ export default function Sessions() {
                               disabled={!isJoinEnabled}
                             >
                               <Video className="w-4 h-4 mr-2" />
-                              {isJoinEnabled ? 'Join Session' : minutesUntilSession > 0 ? 'Session Early' : 'Session Not Started'}
+                              {isJoinEnabled
+                                ? "Join Session"
+                                : minutesUntilSession > 0
+                                ? "Session Early"
+                                : "Session Not Started"}
                             </Button>
                             <Button
                               variant="outline"
@@ -797,6 +940,18 @@ export default function Sessions() {
                             >
                               <Copy className="w-4 h-4" />
                             </Button>
+                            {!session.googleMeetLink && (
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() => {
+                                  setSelectedSessionForMeet(session);
+                                  setIsGoogleMeetModalOpen(true);
+                                }}
+                              >
+                                <Video className="w-4 h-4" />
+                              </Button>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -809,218 +964,385 @@ export default function Sessions() {
                     <Video className="w-8 h-8 text-muted-foreground" />
                   </div>
                   <h3 className="text-lg font-medium mb-2">
-                    {activeTab === 'live' ? 'No Live Sessions' : 'No Upcoming Sessions'}
+                    {activeTab === "live"
+                      ? "No Live Sessions"
+                      : "No Upcoming Sessions"}
                   </h3>
                   <p className="text-muted-foreground">
                     {searchQuery
-                      ? `No ${activeTab === 'live' ? 'live' : 'upcoming'} sessions match your search criteria.`
-                      : `There are no ${activeTab === 'live' ? 'live' : 'upcoming'} sessions.`}
+                      ? `No ${
+                          activeTab === "live" ? "live" : "upcoming"
+                        } sessions match your search criteria.`
+                      : `There are no ${
+                          activeTab === "live" ? "live" : "upcoming"
+                        } sessions.`}
                   </p>
                 </div>
               )}
             </div>
-          ) : (
-            /* Regular Table View for other tabs including 'all' */
-            filteredSessions.length > 0 ? (
-              <div className="bg-card rounded-lg border border-border overflow-hidden animate-fade-in">
-                <div className="overflow-x-auto">
-                  <table className="data-table">
-                    <thead>
-                      <tr>
-                        <th>Booking/Subscription Info</th>
-                        <th>User</th>                      
-                        <th>Date & Time</th>
-                        <th>Type</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredSessions.map((session: any) => {
-                        const booking = session.bookingId;
-                        const user = session.userId;
-                        // console.log("booking", session)
-                        return (
-                          <tr
-                            key={session._id}
-                            className="hover:bg-muted/40 transition"
-                          >
-                            {/* BOOKING/SUBSCRIPTION INFO */}
-                            <td className="px-4 py-3">
-                              <div className="space-y-2">
-                                {session.bookingId ? (
-                                  // Booking-based session
-                                  <div>
-                                    <p className="font-medium">
-                                      {booking?.serviceName || "N/A"}
-                                    </p>
-                                    <p className="text-xs text-muted-foreground">
-                                      Booking ID: {booking?._id?.slice(0, 8) || "N/A"}
-                                    </p>
-                                    <Badge variant="secondary" className="mt-1">
-                                      Booking Session
-                                    </Badge>
-                                  </div>
-                                ) : session.subscriptionId ? (
-                                  // Subscription-based session
-                                  <div>
-                                    <p className="font-medium">
-                                      {session.subscriptionId?.planName || "N/A"}
-                                    </p>
-                                    <p className="text-xs text-muted-foreground">
-                                      Subscription ID: {session.subscriptionId?._id?.slice(0, 8) || "N/A"}
-                                    </p>
-                                    <div className="flex items-center gap-2 mt-1">
-                                      <Badge variant="default" className="bg-blue-100 text-blue-800">
-                                        Subscription Session
-                                      </Badge>
-                                      <Badge variant="outline" className="text-xs">
-                                        {session.subscriptionId?.status || "N/A"}
-                                      </Badge>
-                                    </div>
-                                  </div>
-                                ) : (
-                                  // Unknown session type
-                                  <div>
-                                    <p className="font-medium text-muted-foreground">
-                                      No Booking/Subscription
-                                    </p>
-                                    <Badge variant="destructive" className="mt-1">
-                                      Invalid Session
-                                    </Badge>
-                                  </div>
-                                )}
-                              </div>
-                            </td>
-
-                            {/* USER */}
-                            <td className="px-4 py-3">
-                              <div className="flex items-center gap-2">
-                                <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
-                                  <User className="h-4 w-4 text-blue-600" />
-                                </div>
+          ) : /* Regular Table View for other tabs including 'all' */
+          filteredSessions.length > 0 ? (
+            <div className="bg-card rounded-lg border border-border overflow-hidden animate-fade-in">
+              <div className="overflow-x-auto">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Booking/Subscription Info</th>
+                      <th>User</th>
+                      <th>Date & Time</th>
+                      <th>Type</th>
+                      <th>Status</th>
+                      {activeTab === "live" && <th>Google Meet</th>}
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredSessions.map((session: any) => {
+                      const booking = session.bookingId;
+                      const user = session.userId;
+                      return (
+                        <tr
+                          key={session._id}
+                          className="hover:bg-muted/40 transition"
+                        >
+                          {/* BOOKING/SUBSCRIPTION INFO */}
+                          <td className="px-4 py-3">
+                            <div className="space-y-2">
+                              {session.bookingId ? (
+                                // Booking-based session
                                 <div>
                                   <p className="font-medium">
-                                    {user?.name || "N/A"}
+                                    {booking?.serviceName || "N/A"}
                                   </p>
                                   <p className="text-xs text-muted-foreground">
-                                    {user?.email || ""}
+                                    Booking ID:{" "}
+                                    {booking?._id?.slice(0, 8) || "N/A"}
                                   </p>
+                                  <Badge variant="secondary" className="mt-1">
+                                    Booking Session
+                                  </Badge>
                                 </div>
-                              </div>
-                            </td>
-
-                          
-
-                            {/* DATE & TIME */}
-                            <td className="px-4 py-3">
-                              <div className="space-y-0.5">
-                                <div className="flex items-center gap-1">
-                                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                                  <span>{session.date}</span>
+                              ) : session.subscriptionId ? (
+                                // Subscription-based session
+                                <div>
+                                  <p className="font-medium">
+                                    {session.subscriptionId?.planName || "N/A"}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground">
+                                    Subscription ID:{" "}
+                                    {session.subscriptionId?._id?.slice(0, 8) ||
+                                      "N/A"}
+                                  </p>
+                                  <div className="flex items-center gap-2 mt-1">
+                                    <Badge
+                                      variant="default"
+                                      className="bg-blue-100 text-blue-800"
+                                    >
+                                      Subscription Session
+                                    </Badge>
+                                    <Badge
+                                      variant="outline"
+                                      className="text-xs"
+                                    >
+                                      {session.subscriptionId?.status || "N/A"}
+                                    </Badge>
+                                  </div>
                                 </div>
-                                <div className="flex items-center gap-1 text-muted-foreground">
-                                  <Clock className="h-4 w-4" />
-                                  <span>{session.time}</span>
-                                </div>
-                              </div>
-                            </td>
-
-                            {/* TYPE */}
-                            <td className="">
-                              <span className=" text-xs font-semibold">
-                                {session.type}
-                              </span>
-                            </td>
-
-                            {/* STATUS */}
-                            <td className="px-4 py-3">
-                              {isEditableStatus(session.status) ? (
-                                <Select
-                                  value={session.status}
-                                  onValueChange={async (value) => {
-                                    await handleUpdateSessionStatus(session._id, value);
-                                  }}
-                                >
-                                  <SelectTrigger
-                                    className={`w-[130px] rounded-full text-xs font-semibold ${statusStyles[session.status]
-                                      }`}
-                                  >
-                                    <SelectValue />
-                                  </SelectTrigger>
-
-                                  <SelectContent>
-                                    <SelectItem value="scheduled">Scheduled</SelectItem>
-                                    <SelectItem value="live">Live</SelectItem>
-                                    <SelectItem value="completed">Completed</SelectItem>
-                                    <SelectItem value="cancelled">Cancelled</SelectItem>
-                                  </SelectContent>
-                                </Select>
                               ) : (
-                                <span
-                                  className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${statusStyles[session.status]
-                                    }`}
+                                // Unknown session type
+                                <div>
+                                  <p className="font-medium text-muted-foreground">
+                                    No Booking/Subscription
+                                  </p>
+                                  <Badge variant="destructive" className="mt-1">
+                                    Invalid Session
+                                  </Badge>
+                                </div>
+                              )}
+                            </div>
+                          </td>
+
+                          {/* USER */}
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
+                                <User className="h-4 w-4 text-blue-600" />
+                              </div>
+                              <div>
+                                <p className="font-medium">
+                                  {user?.name || "N/A"}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {user?.email || ""}
+                                </p>
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* DATE & TIME */}
+                          <td className="px-4 py-3">
+                            <div className="space-y-0.5">
+                              <div className="flex items-center gap-1">
+                                <Calendar className="h-4 w-4 text-muted-foreground" />
+                                <span>{session.date}</span>
+                              </div>
+                              <div className="flex items-center gap-1 text-muted-foreground">
+                                <Clock className="h-4 w-4" />
+                                <span>{session.time}</span>
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* TYPE */}
+                          <td className="">
+                            <span className=" text-xs font-semibold">
+                              {session.type}
+                            </span>
+                          </td>
+
+                          {/* STATUS */}
+                          <td className="px-4 py-3">
+                            {isEditableStatus(session.status) ? (
+                              <Select
+                                value={session.status}
+                                onValueChange={async (value) => {
+                                  await handleUpdateSessionStatus(
+                                    session._id,
+                                    value
+                                  );
+                                }}
+                              >
+                                <SelectTrigger
+                                  className={`w-[130px] rounded-full text-xs font-semibold ${
+                                    statusStyles[session.status]
+                                  }`}
                                 >
-                                  {session.status === "pending" ? (
-                                    <>
-                                      <UserCog className="w-3 h-3 mr-1" />
-                                      Pending Review
-                                    </>
-                                  ) : (
-                                    <>
-                                      {session.status.charAt(0).toUpperCase() + session.status.slice(1)}
-                                    </>
+                                  <SelectValue />
+                                </SelectTrigger>
+
+                                <SelectContent>
+                                  <SelectItem value="scheduled">
+                                    Scheduled
+                                  </SelectItem>
+                                  <SelectItem value="live">Live</SelectItem>
+                                  <SelectItem value="completed">
+                                    Completed
+                                  </SelectItem>
+                                  <SelectItem value="cancelled">
+                                    Cancelled
+                                  </SelectItem>
+                                </SelectContent>
+                              </Select>
+                            ) : (
+                              <span
+                                className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
+                                  statusStyles[session.status]
+                                }`}
+                              >
+                                {session.status === "pending" ? (
+                                  <>
+                                    <UserCog className="w-3 h-3 mr-1" />
+                                    Pending Review
+                                  </>
+                                ) : (
+                                  <>
+                                    {session.status.charAt(0).toUpperCase() +
+                                      session.status.slice(1)}
+                                  </>
+                                )}
+                              </span>
+                            )}
+                          </td>
+
+                          {/* GOOGLE MEET LINK - Only show in Live tab */}
+                          {activeTab === "live" && (
+                            <td className="px-4 py-3">
+                              {session.googleMeetLink ? (
+                                <div className="flex flex-col gap-1">
+                                  <a
+                                    href={session.googleMeetLink}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center justify-center
+                                      bg-blue-100 hover:bg-blue-200
+                                      text-blue-700 font-bold text-xs
+                                      px-2 py-1 rounded-full whitespace-nowrap gap-1"
+                                  >
+                                    <svg
+                                      className="h-3 w-3"
+                                      fill="currentColor"
+                                      viewBox="0 0 24 24"
+                                    >
+                                      <path d="M22.2819 9.8211a5.9848 5.9848 0 0 0-.5157-2.1734 6.0633 6.0633 0 0 0-1.4432-1.9437 6.0335 6.0335 0 0 0-1.9441-1.4427 5.996 5.996 0 0 0-2.174-.5152c-.3747-.0428-.7511-.0643-1.1277-.0643-.4163 0-.7927.025-1.168.0745a5.993 5.993 0 0 0-2.174.5137 6.058 6.058 0 0 0-1.944 1.4441 6.035 6.035 0 0 0-1.443 1.9433 5.996 5.996 0 0 0-.515 2.174c-.0428.375-.0643.751-.0643 1.128 0 .416.025.793.074 1.168a5.993 5.993 0 0 0 .513 2.174 6.058 6.058 0 0 0 1.444 1.944 6.035 6.035 0 0 0 1.943 1.443 5.996 5.996 0 0 0 2.174.515c.375.043.751.064 1.128.064.416 0 .793-.025 1.168-.074a5.993 5.993 0 0 0 2.174-.513 6.058 6.058 0 0 0 1.944-1.444 6.035 6.035 0 0 0 1.443-1.943 5.996 5.996 0 0 0 .515-2.174c.043-.375.064-.751.064-1.128 0-.416-.025-.793-.074-1.168zm-9.478 4.3233L6.4358 10.006a.75.75 0 0 1 .254-1.225l13.006-7.5a.75.75 0 0 1 1.089.254.75.75 0 0 1-.254 1.09l-12.212 7.05 12.212 7.05a.75.75 0 0 1 .254 1.09.75.75 0 0 1-1.09.254l-13-7.5a.75.75 0 0 1-.254-.254z" />
+                                    </svg>
+                                    Join Meeting
+                                  </a>
+                                  {session.googleMeetCode && (
+                                    <span className="text-xs text-muted-foreground font-mono">
+                                      Code: {session.googleMeetCode}
+                                    </span>
                                   )}
-                                </span>
+                                  {session.googleMeetExpiresAt && (
+                                    <span className="text-xs text-muted-foreground">
+                                      Expires:{" "}
+                                      {new Date(
+                                        session.googleMeetExpiresAt
+                                      ).toLocaleString()}
+                                    </span>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="flex flex-col gap-2">
+                                  <span className="text-xs text-muted-foreground italic">
+                                    Not generated
+                                  </span>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="w-full text-xs"
+                                    onClick={() => {
+                                      setSelectedSessionForMeet(session);
+                                      setIsGoogleMeetModalOpen(true);
+                                    }}
+                                  >
+                                    <Video className="w-3 h-3 mr-1" />
+                                    Generate Meet Link
+                                  </Button>
+                                </div>
                               )}
                             </td>
+                          )}
 
+                          {/* ACTIONS */}
+                          <td className="px-4 py-3 text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                >
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
 
-                            {/* ACTIONS */}
-                            <td className="px-4 py-3 text-right">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8"
-                                  >
-                                    <MoreHorizontal className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-48">
+                                {/* PENDING SESSIONS */}
+                                {session.status === "pending" && (
+                                  <>
+                                    <DropdownMenuItem
+                                      className="text-success"
+                                      onClick={async () => {
+                                        await handleAcceptSession(session._id);
+                                      }}
+                                    >
+                                      <UserCog className="h-4 w-4 mr-2" />
+                                      Accept Session
+                                    </DropdownMenuItem>
 
-                                <DropdownMenuContent align="end" className="w-48">
-                                  {/* PENDING SESSIONS */}
-                                  {session.status === "pending" && (
+                                    <DropdownMenuItem
+                                      className="text-destructive"
+                                      onClick={async () => {
+                                        await handleRejectSession(session._id);
+                                      }}
+                                    >
+                                      <X className="h-4 w-4 mr-2" />
+                                      Reject Session
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
+
+                                {/* SCHEDULED/CANCELLED SESSIONS (non-pending) */}
+                                {(activeTab === "scheduled" ||
+                                  activeTab === "all") &&
+                                  session.status !== "pending" && (
                                     <>
-                                      <DropdownMenuItem
-                                        className="text-success"
-                                        onClick={async () => {
-                                          await handleAcceptSession(session._id);
-                                        }}
-                                      >
-                                        <UserCog className="h-4 w-4 mr-2" />
-                                        Accept Session
-                                      </DropdownMenuItem>
+                                      {/* Google Meet Generation for sessions without links */}
+                                      {!session.googleMeetLink && (
+                                        <DropdownMenuItem
+                                          className="text-blue-600"
+                                          onClick={async () => {
+                                            try {
+                                              const response = await fetch(
+                                                `${
+                                                  import.meta.env
+                                                    .VITE_API_BASE_URL ||
+                                                  "http://localhost:5000"
+                                                }/video-call/generate-google-meet`,
+                                                {
+                                                  method: "POST",
+                                                  headers: {
+                                                    "Content-Type":
+                                                      "application/json",
+                                                    Authorization: `Bearer ${localStorage.getItem(
+                                                      "token"
+                                                    )}`,
+                                                  },
+                                                  body: JSON.stringify({
+                                                    sessionId: session._id,
+                                                  }),
+                                                }
+                                              );
 
-                                      <DropdownMenuItem
-                                        className="text-destructive"
-                                        onClick={async () => {
-                                          await handleRejectSession(session._id);
-                                        }}
-                                      >
-                                        <X className="h-4 w-4 mr-2" />
-                                        Reject Session
-                                      </DropdownMenuItem>
-                                    </>
-                                  )}
+                                              const data =
+                                                await response.json();
 
-                                  {/* SCHEDULED/CANCELLED SESSIONS (non-pending) */}
-                                  {(activeTab === "scheduled" ||
-                                    activeTab === "all") &&
-                                    session.status !== "pending" && (
-                                      <>
-                                        {/* <DropdownMenuItem
+                                              if (data.success) {
+                                                // Refresh sessions to show the new link
+                                                dispatch(fetchSessions());
+
+                                                // Show success toast
+                                                const toastElement =
+                                                  document.createElement("div");
+                                                toastElement.className =
+                                                  "fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 animate-in fade-in slide-in-from-right";
+                                                toastElement.innerHTML =
+                                                  "✅ Google Meet link generated successfully!";
+                                                document.body.appendChild(
+                                                  toastElement
+                                                );
+
+                                                setTimeout(() => {
+                                                  document.body.removeChild(
+                                                    toastElement
+                                                  );
+                                                }, 3000);
+                                              } else {
+                                                throw new Error(
+                                                  data.message ||
+                                                    "Failed to generate Google Meet link"
+                                                );
+                                              }
+                                            } catch (error) {
+                                              console.error(
+                                                "Error generating Google Meet link:",
+                                                error
+                                              );
+                                              // Show error toast
+                                              const toastElement =
+                                                document.createElement("div");
+                                              toastElement.className =
+                                                "fixed top-4 right-4 bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 animate-in fade-in slide-in-from-right";
+                                              toastElement.innerHTML =
+                                                "❌ Failed to generate Google Meet link";
+                                              document.body.appendChild(
+                                                toastElement
+                                              );
+
+                                              setTimeout(() => {
+                                                document.body.removeChild(
+                                                  toastElement
+                                                );
+                                              }, 3000);
+                                            }
+                                          }}
+                                        >
+                                          <Video className="h-4 w-4 mr-2" />
+                                          Generate Google Meet Link
+                                        </DropdownMenuItem>
+                                      )}
+
+                                      {/* <DropdownMenuItem
                                           onClick={() => {
                                             setSelectedSession(session);
                                             setIsRescheduleModalOpen(true);
@@ -1030,93 +1352,95 @@ export default function Sessions() {
                                           Reschedule
                                         </DropdownMenuItem> */}
 
-                                        <DropdownMenuItem
-                                          className="text-destructive"
-                                          onClick={() => handleCancelSession(session._id)}
-                                        >
-                                          <X className="h-4 w-4 mr-2" />
-                                          Cancel Session
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem
-                                          className="text-destructive"
-                                          onClick={() => handleDeleteSession(session._id)}
-                                        >
-                                          <X className="h-4 w-4 mr-2" />
-                                          Delete Session
-                                        </DropdownMenuItem>
-                                      </>
-                                    )}
-
-                                  {/* LIVE */}
-                                  {activeTab === "live" && (
-                                    <DropdownMenuItem
-                                      onClick={() =>
-                                        navigate(`/video-call/${session._id}`)
-                                      }
-                                    >
-                                      <Video className="h-4 w-4 mr-2" />
-                                      Join Session
-                                    </DropdownMenuItem>
+                                      <DropdownMenuItem
+                                        className="text-destructive"
+                                        onClick={() =>
+                                          handleCancelSession(session._id)
+                                        }
+                                      >
+                                        <X className="h-4 w-4 mr-2" />
+                                        Cancel Session
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem
+                                        className="text-destructive"
+                                        onClick={() =>
+                                          handleDeleteSession(session._id)
+                                        }
+                                      >
+                                        <X className="h-4 w-4 mr-2" />
+                                        Delete Session
+                                      </DropdownMenuItem>
+                                    </>
                                   )}
 
-                                  {/* COMPLETED */}
-                                  {activeTab === "completed" && (
-                                    <DropdownMenuItem
-                                      onClick={() =>
-                                        navigate(
-                                          `/session-recordings/${session._id}`
-                                        )
-                                      }
-                                    >
-                                      <Eye className="h-4 w-4 mr-2" />
-                                      View Recording
-                                    </DropdownMenuItem>
-                                  )}
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
+                                {/* LIVE */}
+                                {activeTab === "live" && (
+                                  <DropdownMenuItem
+                                    onClick={() =>
+                                      navigate(`/video-call/${session._id}`)
+                                    }
+                                  >
+                                    <Video className="h-4 w-4 mr-2" />
+                                    Join Session
+                                  </DropdownMenuItem>
+                                )}
 
-                  </table>
-                </div>
-
-                <div className="flex items-center justify-between px-4 py-3 border-t border-border">
-                  <p className="text-sm text-muted-foreground">
-                    Showing{" "}
-                    <span className="font-medium">{filteredSessions.length}</span>{" "}
-                    {activeTab === 'upcoming' ? 'upcoming sessions' : 'sessions'}
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" disabled>
-                      <ChevronLeft className="w-4 h-4" />
-                    </Button>
-                    <Button variant="outline" size="sm" className="min-w-[32px]">
-                      1
-                    </Button>
-                    <Button variant="outline" size="sm">
-                      <ChevronRight className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
+                                {/* COMPLETED */}
+                                {activeTab === "completed" && (
+                                  <DropdownMenuItem
+                                    onClick={() =>
+                                      navigate(
+                                        `/session-recordings/${session._id}`
+                                      )
+                                    }
+                                  >
+                                    <Eye className="h-4 w-4 mr-2" />
+                                    View Recording
+                                  </DropdownMenuItem>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
-            ) : (
-              <div className="border rounded-lg p-12 text-center">
-                <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
-                  <Calendar className="w-8 h-8 text-muted-foreground" />
-                </div>
-                <h3 className="text-lg font-medium mb-2">No Sessions Found</h3>
-                <p className="text-muted-foreground">
-                  {searchQuery
-                    ? "No sessions match your search criteria."
-                    : activeTab === 'upcoming'
-                      ? "No upcoming sessions found in the system."
-                      : `No ${activeTab} sessions found in the system.`}
+
+              <div className="flex items-center justify-between px-4 py-3 border-t border-border">
+                <p className="text-sm text-muted-foreground">
+                  Showing{" "}
+                  <span className="font-medium">{filteredSessions.length}</span>{" "}
+                  {activeTab === "upcoming" ? "upcoming sessions" : "sessions"}
                 </p>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" disabled>
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
+                  <Button variant="outline" size="sm" className="min-w-[32px]">
+                    1
+                  </Button>
+                  <Button variant="outline" size="sm">
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
-            )
+            </div>
+          ) : (
+            <div className="border rounded-lg p-12 text-center">
+              <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+                <Calendar className="w-8 h-8 text-muted-foreground" />
+              </div>
+              <h3 className="text-lg font-medium mb-2">No Sessions Found</h3>
+              <p className="text-muted-foreground">
+                {searchQuery
+                  ? "No sessions match your search criteria."
+                  : activeTab === "upcoming"
+                  ? "No upcoming sessions found in the system."
+                  : `No ${activeTab} sessions found in the system.`}
+              </p>
+            </div>
           )}
         </TabsContent>
       </Tabs>
@@ -1127,7 +1451,8 @@ export default function Sessions() {
           <DialogHeader>
             <DialogTitle>Delete Session</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete this session? This action cannot be undone.
+              Are you sure you want to delete this session? This action cannot
+              be undone.
             </DialogDescription>
           </DialogHeader>
 
@@ -1141,7 +1466,9 @@ export default function Sessions() {
               </p>
               <p className="text-sm">
                 <span className="text-muted-foreground">User:</span>{" "}
-                <span className="font-medium">{selectedSession.userId?.name || "N/A"}</span>
+                <span className="font-medium">
+                  {selectedSession.userId?.name || "N/A"}
+                </span>
               </p>
               <p className="text-sm">
                 <span className="text-muted-foreground">Date & Time:</span>{" "}
@@ -1206,7 +1533,6 @@ export default function Sessions() {
               <>
                 {/* CURRENT SESSION INFO */}
                 <div className="p-3 rounded-lg bg-muted/50">
-
                   <p className="text-sm">
                     <span className="text-muted-foreground">Current:</span>{" "}
                     <span className="font-medium">
@@ -1321,14 +1647,13 @@ export default function Sessions() {
                           (a) => a.date === day.date
                         );
 
-                        const hasAvailable =
-                          dayAvailability?.timeSlots
+                        const hasAvailable = dayAvailability?.timeSlots;
 
                         const statusColor = isPast
                           ? "bg-muted text-muted-foreground"
                           : hasAvailable
-                            ? "bg-green-100 text-green-700"
-                            : "";
+                          ? "bg-green-100 text-green-700"
+                          : "";
 
                         return (
                           <button
@@ -1350,10 +1675,11 @@ export default function Sessions() {
                             className={`
                         h-8 w-8 rounded-full text-xs flex items-center justify-center
                         ${statusColor}
-                        ${rescheduleDate === day.date
-                                ? "ring-2 ring-primary bg-primary text-white"
-                                : ""
-                              }
+                        ${
+                          rescheduleDate === day.date
+                            ? "ring-2 ring-primary bg-primary text-white"
+                            : ""
+                        }
                         ${isPast ? "opacity-50 cursor-not-allowed" : ""}
                       `}
                           >
@@ -1384,18 +1710,19 @@ export default function Sessions() {
                               }
                               className={`
                           w-full text-left p-2 border rounded-lg text-sm
-                          ${slot.status === "available"
-                                  ? "hover:bg-green-50 border-green-200"
-                                  : "opacity-50 border-gray-200"
-                                }
-                          ${rescheduleTime === slot.start
-                                  ? "ring-2 ring-primary bg-primary/10"
-                                  : ""
-                                }
+                          ${
+                            slot.status === "available"
+                              ? "hover:bg-green-50 border-green-200"
+                              : "opacity-50 border-gray-200"
+                          }
+                          ${
+                            rescheduleTime === slot.start
+                              ? "ring-2 ring-primary bg-primary/10"
+                              : ""
+                          }
                         `}
                             >
-                              {formatTime(slot.start)} -{" "}
-                              {formatTime(slot.end)}
+                              {formatTime(slot.start)} - {formatTime(slot.end)}
                             </button>
                           ))
                       ) : (
@@ -1464,15 +1791,32 @@ export default function Sessions() {
                 <div className="flex gap-4">
                   <button
                     type="button"
-                    className={`flex-1 p-3 border rounded-md text-center ${!newSession.subscriptionId ? "border-primary bg-primary/10" : "border-gray-200"}`}
-                    onClick={() => setNewSession({ ...newSession, subscriptionId: "", userId: "", therapistId: "" })}
+                    className={`flex-1 p-3 border rounded-md text-center ${
+                      !newSession.subscriptionId
+                        ? "border-primary bg-primary/10"
+                        : "border-gray-200"
+                    }`}
+                    onClick={() =>
+                      setNewSession({
+                        ...newSession,
+                        subscriptionId: "",
+                        userId: "",
+                        therapistId: "",
+                      })
+                    }
                   >
                     Booking Session
                   </button>
                   <button
                     type="button"
-                    className={`flex-1 p-3 border rounded-md text-center ${newSession.subscriptionId ? "border-primary bg-primary/10" : "border-gray-200"}`}
-                    onClick={() => setNewSession({ ...newSession, bookingId: "" })}
+                    className={`flex-1 p-3 border rounded-md text-center ${
+                      newSession.subscriptionId
+                        ? "border-primary bg-primary/10"
+                        : "border-gray-200"
+                    }`}
+                    onClick={() =>
+                      setNewSession({ ...newSession, bookingId: "" })
+                    }
                   >
                     Subscription Session
                   </button>
@@ -1497,15 +1841,15 @@ export default function Sessions() {
                   <option value="">Select Booking</option>
                   {bookings && Array.isArray(bookings)
                     ? bookings.map((booking) => (
-                      <option
-                        key={booking?._id || booking?.id}
-                        value={booking?._id || booking?.id}
-                      >
-                        {booking?.serviceName ||
-                          booking?.name ||
-                          "Unnamed Booking"}
-                      </option>
-                    ))
+                        <option
+                          key={booking?._id || booking?.id}
+                          value={booking?._id || booking?.id}
+                        >
+                          {booking?.serviceName ||
+                            booking?.name ||
+                            "Unnamed Booking"}
+                        </option>
+                      ))
                     : null}
                 </select>
               </div>
@@ -1599,6 +1943,32 @@ export default function Sessions() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Google Meet Generation Modal */}
+      <GenerateGoogleMeetModal
+        isOpen={isGoogleMeetModalOpen}
+        onClose={() => setIsGoogleMeetModalOpen(false)}
+        sessionId={selectedSessionForMeet?._id}
+        sessionInfo={
+          selectedSessionForMeet
+            ? {
+                userName: selectedSessionForMeet.userId?.name || "N/A",
+                therapistName:
+                  selectedSessionForMeet.therapistId?.name || "N/A",
+                date: selectedSessionForMeet.date,
+                time: selectedSessionForMeet.time,
+                serviceName:
+                  selectedSessionForMeet.bookingId?.serviceName ||
+                  selectedSessionForMeet.subscriptionId?.planName ||
+                  "Session",
+              }
+            : undefined
+        }
+        onSuccess={() => {
+          // Refresh sessions to show the new Google Meet link
+          dispatch(fetchSessions());
+        }}
+      />
     </div>
   );
 }

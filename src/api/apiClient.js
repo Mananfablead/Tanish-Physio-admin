@@ -82,6 +82,8 @@ export const API = {
   CREATE_SERVICES: "/services",
   SERVICES: "/services/admin/all",
   SERVICE_BY_ID: "/services/:id",
+  GET_SERVICE_BY_ID: "/services/admin/:id",
+  GET_SERVICE_BY_SLUG: "/services/admin/slug/:slug",
   SERVICE_REMOVE_MEDIA: "/services/:id/remove-media",
 
   // sessions
@@ -112,6 +114,7 @@ export const API = {
   // payments
   PAYMENTS: "/payments",
   PAYMENTS_ADMIN_ALL: "/payments/admin/all",
+  PAYMENT_BY_ID: "/payments/admin/:paymentId",
   PAYMENTS_CREATE_ORDER: "/payments/create-order",
   PAYMENTS_VERIFY: "/payments/verify",
   PAYMENTS_WEBHOOK: "/payments/webhook",
@@ -294,7 +297,10 @@ export const serviceAPI = {
   getAll: () => apiClient.get(API.SERVICES),
 
   // Get service by ID
-  getById: (id) => apiClient.get(`${API.SERVICE_BY_ID.replace(":id", id)}`),
+  getById: (id) => apiClient.get(`${API.GET_SERVICE_BY_ID.replace(":id", id)}`),
+
+  // Get service by slug
+  getBySlug: (slug) => apiClient.get(`${API.GET_SERVICE_BY_SLUG.replace(":slug", slug)}`),
 
   // Create service
   create: (data) => apiClient.post(API.CREATE_SERVICES, data),
@@ -372,6 +378,15 @@ export const therapistAPI = {
   delete: (id) => apiClient.delete(`${API.THERAPIST_BY_ID.replace(":id", id)}`),
 };
 
+// User API endpoints
+export const userAPI = {
+  // Get all users
+  getAll: (params) => apiClient.get(API.USERS, { params }),
+
+  // Get user by ID
+  getById: (id) => apiClient.get(`${API.USER_BY_ID.replace(":id", id)}`),
+};
+
 // Notification API endpoints
 export const notificationAPI = {
   // Get all notifications
@@ -381,8 +396,19 @@ export const notificationAPI = {
   send: (data) => apiClient.post(API.NOTIFICATIONS, data),
 
   // Mark notification as read
-  markAsRead: (id) =>
-    apiClient.put(`${API.NOTIFICATION_MARK_READ.replace(":id", id)}`),
+  markAsRead: (id) => {
+    return apiClient.put(`${API.NOTIFICATION_MARK_READ.replace(":id", id)}`);
+  },
+
+  // Delete notification
+  delete: (id) => {
+    return apiClient.delete(`${API.NOTIFICATION_BY_ID.replace(":id", id)}`);
+  },
+
+  // Delete all notifications (would need backend endpoint)
+  deleteAll: () => {
+    return apiClient.delete(API.NOTIFICATIONS);
+  },
 };
 
 // Booking API endpoints
@@ -408,6 +434,9 @@ export const bookingAPI = {
 export const paymentAPI = {
   // Get all payments (admin)
   getAll: () => apiClient.get(API.PAYMENTS_ADMIN_ALL),
+
+  // Get payment by ID (admin)
+  getById: (paymentId) => apiClient.get(API.PAYMENT_BY_ID.replace(':paymentId', paymentId)),
 
   // Create payment order
   createOrder: (data) => apiClient.post(API.PAYMENTS_CREATE_ORDER, data),

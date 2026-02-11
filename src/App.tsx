@@ -10,6 +10,7 @@ import PublicRoute from "@/routes/PublicRoute";
 import AdminPage from "@/components/layout/AdminPage";
 
 // Pages
+import ComingSoonPage from "./pages/ComingSoonPage";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Users from "./pages/Users";
@@ -46,6 +47,7 @@ import NotFound from "./pages/NotFound";
 import ResetPassword from "./pages/ResetPassword";
 import ExpirationManagement from "./pages/ExpirationManagement";
 import BookingDetails from "./pages/BookingDetails";
+import PaymentDetails from "./pages/PaymentDetails";
 import { useDispatch } from "react-redux";
 import { useEffect } from "react";
 
@@ -57,7 +59,7 @@ const App = () => (
       <Toaster />
       <Sonner />
 
-      <BrowserRouter basename="/admin">
+      <BrowserRouter basename="/physio-admin">
         <Routes>
           {/* ================= PUBLIC ================= */}
           <Route
@@ -79,6 +81,7 @@ const App = () => (
           />
 
           {/* ================= PROTECTED ================= */}
+          {/* <Route path="/" element={<ComingSoonPage />} /> */}
           <Route
             path="/"
             element={
@@ -245,6 +248,17 @@ const App = () => (
           />
 
           <Route
+            path="/payment-details/:paymentId"
+            element={
+              <ProtectedRoute>
+                <AdminPage>
+                  <PaymentDetails />
+                </AdminPage>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
             path="/notifications"
             element={
               <ProtectedRoute>
@@ -321,6 +335,17 @@ const App = () => (
           />
 
           <Route
+            path="/services/slug/:slug"
+            element={
+              <ProtectedRoute>
+                <AdminPage>
+                  <ServiceDetails />
+                </AdminPage>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
             path="/bookings/:id"
             element={
               <ProtectedRoute>
@@ -344,6 +369,17 @@ const App = () => (
 
           <Route
             path="/services/:id/edit"
+            element={
+              <ProtectedRoute>
+                <AdminPage>
+                  <UpdateService />
+                </AdminPage>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/services/slug/:slug/edit"
             element={
               <ProtectedRoute>
                 <AdminPage>

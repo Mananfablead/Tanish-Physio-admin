@@ -46,7 +46,7 @@ export default function ConditionsSection({ data, onEdit, onEditCondition, onAdd
                             <Plus className="w-4 h-4 mr-2" />
                             Add Condition
                         </Button>
-                        {/* <Button 
+                        <Button 
                             size="sm" 
                             variant="outline" 
                             onClick={() => onEdit('conditions', data)}
@@ -58,7 +58,7 @@ export default function ConditionsSection({ data, onEdit, onEditCondition, onAdd
                                 <Edit className="w-4 h-4 mr-2" />
                             )}
                             {loading ? 'Saving...' : 'Edit Section'}
-                        </Button> */}
+                        </Button>
                     </div>
                 </div>
 
@@ -71,11 +71,11 @@ export default function ConditionsSection({ data, onEdit, onEditCondition, onAdd
                         </p>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
                         {(data.conditions || []).map((condition, index) => (
                             <div 
                                 key={`${index}-${condition.name}`}
-                                className="group cursor-pointer py-3 sm:py-4 bg-gradient-to-br from-white to-muted/20 dark:from-background dark:to-muted/5 rounded-2xl p-4 sm:p-6 text-center shadow-soft border-2 border-transparent transition-all duration-500 border-primary/20 hover:shadow-xl hover:border-primary/30 relative"
+                                className="group cursor-pointer  py-3 sm:py-4 bg-gradient-to-br from-white to-muted/20 dark:from-background dark:to-muted/5 rounded-2xl p-4 sm:p-6 text-center shadow-soft  border transition-all duration-500 border-primary/20 hover:shadow-xl hover:border-primary/30  relative"
                             >
                                 <div className="h-12 w-12 sm:h-16 sm:w-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4 sm:mb-6 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-500 shadow-sm">
                                     {condition.image ? (

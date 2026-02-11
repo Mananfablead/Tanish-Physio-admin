@@ -8,6 +8,8 @@ interface StepData {
     description: string;
     icon: string;
     image: string;
+    heading?: string;
+    subHeading?: string;
 }
 
 interface StepsSectionProps {
@@ -45,6 +47,27 @@ export default function StepsSection({ data, onAdd, onDelete, onEdit, loading }:
                         </Button>
                     </div>
                 </div>
+                
+                {/* Display common fields if available from the first step */}
+                {data && data.length > 0 && (data[0].heading || data[0].subHeading) && (
+                    <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                        <h3 className="font-semibold text-blue-800 mb-2">Common Fields for All Steps:</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {data[0].heading && (
+                                <div>
+                                    <span className="text-sm text-muted-foreground">Main Heading:</span>
+                                    <p className="font-medium text-gray-800">{data[0].heading}</p>
+                                </div>
+                            )}
+                            {data[0].subHeading && (
+                                <div>
+                                    <span className="text-sm text-muted-foreground">Sub Heading:</span>
+                                    <p className="font-medium text-gray-800">{data[0].subHeading}</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
                 
                 <div className="overflow-x-auto rounded-xl border">
                     <table className="min-w-full divide-y divide-border">
