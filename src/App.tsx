@@ -35,6 +35,7 @@ import AddService from "./pages/AddService";
 import UpdateService from "./pages/UpdateService";
 import AddSubscription from "./pages/AddSubscription";
 import SubscriptionDetails from "./pages/SubscriptionDetails";
+import EditSubscription from "./pages/EditSubscription";
 import Bookings from "./pages/Bookings";
 import Courses from "./pages/Courses";
 import CMS from "./pages/CMS";
@@ -216,6 +217,17 @@ const App = () => (
               <ProtectedRoute>
                 <AdminPage>
                   <SubscriptionDetails />
+                </AdminPage>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/subscriptions/edit/:id"
+            element={
+              <ProtectedRoute>
+                <AdminPage>
+                  <EditSubscription />
                 </AdminPage>
               </ProtectedRoute>
             }
