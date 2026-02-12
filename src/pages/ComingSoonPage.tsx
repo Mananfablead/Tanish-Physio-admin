@@ -94,7 +94,7 @@ const ComingSoonPage = () => {
         >
           <img
             src={logo}
-            alt="Tanish Physio Logo"
+            alt="Tanish Physio & Fitness Logo"
             className="mx-auto h-20 w-auto"
           />
         </motion.div>

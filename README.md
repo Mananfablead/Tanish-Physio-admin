@@ -1,6 +1,6 @@
-# Tanish Physio Admin
+# Tanish Physio & Fitness Admin
 
-Admin dashboard for Tanish Physiotherapy management system. This application provides tools for managing appointments, patient records, therapists, and other administrative tasks for a physiotherapy clinic.
+Admin dashboard for Tanish Physio & Fitness management system. This application provides tools for managing appointments, patient records, therapists, and other administrative tasks for a physiotherapy clinic.
 
 ## Features
 

@@ -153,6 +153,7 @@ export default function Services() {
                       <th>Purchases</th>
                       <th>Sessions</th>
                       <th>Validity</th>
+                      <th>Featured</th>
                       <th>Status</th>
                       <th className="w-12">Actions</th>
                     </tr>
@@ -170,9 +171,9 @@ export default function Services() {
                         )}
                         onClick={() =>
                           navigate(
-                            `/services/slug/${
-                              service.slug || service._id || service.id
-                            }`
+                            service.slug
+                              ? `/services/slug/${service.slug}`
+                              : `/services/${service._id || service.id}`
                           )
                         }
                       >
@@ -218,6 +219,18 @@ export default function Services() {
                           <span
                             className={cn(
                               "status-badge capitalize",
+                              service.featured
+                                ? "status-active"
+                                : "status-inactive"
+                            )}
+                          >
+                            {service.featured ? "Yes" : "No"}
+                          </span>
+                        </td>
+                        <td>
+                          <span
+                            className={cn(
+                              "status-badge capitalize",
                               service.status === "active" ||
                                 service.status === true
                                 ? "status-active"
@@ -247,9 +260,11 @@ export default function Services() {
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   navigate(
-                                    `/services/slug/${
-                                      service.slug || service._id || service.id
-                                    }/edit`
+                                    service.slug
+                                      ? `/services/slug/${service.slug}/edit`
+                                      : `/services/${
+                                          service._id || service.id
+                                        }/edit`
                                   );
                                 }}
                               >

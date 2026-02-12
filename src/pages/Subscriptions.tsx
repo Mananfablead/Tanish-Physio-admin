@@ -131,7 +131,7 @@ const filteredSubscriptions = Array.isArray(userSubscriptions)
         key: orderData.key,
         amount: orderData.amount,
         currency: orderData.currency,
-        name: "Tanish Physio",
+        name: "Tanish Physio & Fitness",
         description: "Subscription Payment",
         order_id: orderData.orderId,
         handler: function (response: any) {

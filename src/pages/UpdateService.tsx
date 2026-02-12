@@ -36,7 +36,21 @@ export default function UpdateService() {
   const videoInputRef = useRef<HTMLInputElement>(null);
 
   /* ================= STATE ================= */
-  const [serviceForm, setServiceForm] = useState({
+  const [serviceForm, setServiceForm] = useState<{
+    name: string;
+    description: string;
+    about: string;
+    price: string;
+    duration: string;
+    sessions: string;
+    validity: string;
+    category: string;
+    status: "active" | "inactive";
+    featured: boolean;
+    features: string[];
+    prerequisites: string[];
+    benefits: string[];
+  }>({
     name: "",
     description: "",
     about: "", // New field
@@ -46,6 +60,7 @@ export default function UpdateService() {
     validity: "",
     category: "Therapy",
     status: "active" as "active" | "inactive",
+    featured: false,
     features: [] as string[],
     prerequisites: [] as string[],
     benefits: [] as string[],
@@ -102,6 +117,7 @@ export default function UpdateService() {
           service.status === "active" || service.status === "inactive"
             ? (service.status as "active" | "inactive")
             : "active",
+        featured: service.featured || false,
         features: service.features || [],
         prerequisites: service.prerequisites || [],
         benefits: service.benefits || [],
@@ -259,6 +275,7 @@ export default function UpdateService() {
     formData.append("validity", serviceForm.validity);
     formData.append("category", serviceForm.category);
     formData.append("status", serviceForm.status);
+    formData.append("featured", serviceForm.featured.toString());
 
     serviceForm.features
       .filter(Boolean)
@@ -416,7 +433,7 @@ export default function UpdateService() {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Select
               value={serviceForm.category}
               onValueChange={(v) =>
@@ -448,6 +465,24 @@ export default function UpdateService() {
                 <SelectItem value="inactive">Inactive</SelectItem>
               </SelectContent>
             </Select>
+
+            <div className="flex items-center space-x-2 pt-2">
+              <input
+                type="checkbox"
+                id="featured"
+                checked={serviceForm.featured}
+                onChange={(e) =>
+                  setServiceForm({ ...serviceForm, featured: e.target.checked })
+                }
+                className="h-4 w-4 rounded border-input bg-background"
+              />
+              <label
+                htmlFor="featured"
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              >
+                Featured
+              </label>
+            </div>
           </div>
 
           {/* ===== ARRAY SECTIONS ===== */}
