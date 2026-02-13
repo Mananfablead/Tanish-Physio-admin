@@ -2,10 +2,60 @@ import React, { useState, useEffect, useRef } from "react";
 import useSocket from "@/hooks/useSocket";
 import { adminChatApi } from "../lib/adminChatApi";
 
+interface ChatMessage {
+  _id: string;
+  messageId: string;
+  sessionId: {
+    _id: string;
+    date: string;
+    time: string;
+    type: string;
+  } | null;
+  senderId: {
+    _id: string;
+    name: string;
+    email: string;
+    role: string;
+  };
+  senderType: "user" | "therapist" | "admin";
+  message: string;
+  read: boolean;
+  messageType: "live-chat" | "video-call-chat" | "default-chat";
+  replyTo: string | null;
+  timestamp: string;
+  createdAt: string;
+  updatedAt: string;
+  __v: number;
+}
+
+interface LiveChatSession {
+  sessionId: string;
+  sessionInfo: {
+    _id: string;
+    date: string;
+    time: string;
+    type: string;
+    userId: {
+      _id: string;
+      name: string;
+    };
+    therapistId: {
+      _id: string;
+      name: string;
+    };
+    status: string;
+  };
+  userMessages: ChatMessage[];
+  therapistMessages: ChatMessage[];
+  lastMessage: string;
+  lastMessageTime: string;
+  unreadCount: number;
+}
+
 const VideoCallChatHistory = () => {
-  const [chats, setChats] = useState<any[]>([]);
-  const [selectedChat, setSelectedChat] = useState<any>(null);
-  const [messages, setMessages] = useState<any[]>([]);
+  const [chats, setChats] = useState<LiveChatSession[]>([]);
+  const [selectedSession, setSelectedSession] = useState<LiveChatSession | null>(null);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newReply, setNewReply] = useState("");
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState<any>({
@@ -16,9 +66,16 @@ const VideoCallChatHistory = () => {
     messagesBySender: [],
   });
   const [filter, setFilter] = useState({
-    messageType: "video-call-chat",
+    messageType: "live-chat",
     page: 1,
-    limit: 20,
+    limit: 50,
+  });
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    totalMessages: 0,
+    hasNextPage: false,
+    hasPrevPage: false,
   });
 
   const { socket, connected, on } = useSocket();
@@ -26,17 +83,79 @@ const VideoCallChatHistory = () => {
 
   // Load initial data
   useEffect(() => {
-    loadChats();
+    loadChatSessions();
     loadStats();
   }, [filter]);
 
-  const loadChats = async () => {
+  const loadChatSessions = async () => {
     try {
       setLoading(true);
       const response = await adminChatApi.getChatMessages(filter);
-      setChats(response.data.messages || []);
+      
+      // Group messages by session ID to create session objects
+      const messages = response.data.messages || [];
+      const sessionsMap = new Map<string, LiveChatSession>();
+      
+      messages.forEach((msg: ChatMessage) => {
+        const sessionId = msg.sessionId ? msg.sessionId._id : "no-session-" + msg._id;
+        if (!sessionsMap.has(sessionId)) {
+          sessionsMap.set(sessionId, {
+            sessionId: sessionId,
+            sessionInfo: {
+              _id: sessionId,
+              date: msg.sessionId?.date || new Date().toISOString(),
+              time: msg.sessionId?.time || new Date().toLocaleTimeString(),
+              type: msg.sessionId?.type || "video-call",
+              userId: { _id: "", name: "" }, // Will be populated from messages
+              therapistId: { _id: "", name: "" }, // Will be populated from messages
+              status: "completed"
+            },
+            userMessages: [],
+            therapistMessages: [],
+            lastMessage: msg.message,
+            lastMessageTime: msg.createdAt,
+            unreadCount: 0
+          });
+        }
+        
+        const session = sessionsMap.get(sessionId)!;
+        
+        // Capture actual user and therapist names from messages
+        if (msg.senderType === "user" && !session.sessionInfo.userId.name) {
+          session.sessionInfo.userId = {
+            _id: msg.senderId._id,
+            name: msg.senderId.name
+          };
+        } else if (msg.senderType === "therapist" && !session.sessionInfo.therapistId.name) {
+          session.sessionInfo.therapistId = {
+            _id: msg.senderId._id,
+            name: msg.senderId.name
+          };
+        }
+        
+        if (msg.senderType === "user") {
+          session.userMessages.push(msg);
+        } else if (msg.senderType === "therapist") {
+          session.therapistMessages.push(msg);
+        }
+        
+        // Update last message if this is newer
+        if (new Date(msg.createdAt) > new Date(session.lastMessageTime)) {
+          session.lastMessage = msg.message;
+          session.lastMessageTime = msg.createdAt;
+        }
+      });
+      
+      setChats(Array.from(sessionsMap.values()));
+      setPagination(response.data.pagination || {
+        currentPage: 1,
+        totalPages: 1,
+        totalMessages: 0,
+        hasNextPage: false,
+        hasPrevPage: false,
+      });
     } catch (error) {
-      console.error("Error loading video call chats:", error);
+      console.error("Error loading chat sessions:", error);
     } finally {
       setLoading(false);
     }
@@ -51,70 +170,104 @@ const VideoCallChatHistory = () => {
     }
   };
 
-  const loadChatMessages = async (chat: any) => {
+  const loadSessionMessages = async (session: LiveChatSession) => {
     try {
       setLoading(true);
-      setSelectedChat(chat);
+      setSelectedSession(session);
 
-      // In a real implementation, we would fetch messages for this specific chat
-      // For now, we'll simulate with some mock data
-      const mockMessages = [
+      // Fetch actual messages for this session
+      const response = await adminChatApi.getChatMessages({
+        sessionId: session.sessionId,
+        messageType: "live-chat",
+        limit: 100,
+      });
+      
+      setMessages(response.data.messages || []);
+    } catch (error) {
+      console.error("Error loading session messages:", error);
+      // Fallback to mock data if API fails
+      const mockMessages: ChatMessage[] = [
         {
-          _id: 1,
-          content: "Good morning! Ready for our session?",
-          senderId: "therapist123",
-          senderName: "Dr. Smith",
-          timestamp: new Date(Date.now() - 3600000),
-          senderType: "therapist",
-        },
-        {
-          _id: 2,
-          content: "Yes, I'm ready. How do I start the exercises?",
-          senderId: chat.senderId._id,
-          senderName: chat.senderId.name,
-          timestamp: new Date(Date.now() - 1800000),
+          _id: "1",
+          messageId: "mock-1",
+          sessionId: session.sessionId ? { _id: session.sessionId, date: "", time: "", type: "" } : null,
+          message: "Hello! I need help with my appointment.",
+          senderId: {
+            _id: "user123",
+            name: session.sessionInfo.userId.name || "Unknown User",
+            email: "user@example.com",
+            role: "patient"
+          },
           senderType: "user",
+          timestamp: new Date(Date.now() - 3600000).toISOString(),
+          createdAt: new Date(Date.now() - 3600000).toISOString(),
+          messageType: "live-chat",
+          read: true,
+          replyTo: null,
+          updatedAt: new Date(Date.now() - 3600000).toISOString(),
+          __v: 0
         },
         {
-          _id: 3,
-          content:
-            "Let's start with the warm-up routine I showed you last time.",
-          senderId: "therapist123",
-          senderName: "Dr. Smith",
-          timestamp: new Date(Date.now() - 600000),
+          _id: "2",
+          messageId: "mock-2",
+          sessionId: session.sessionId ? { _id: session.sessionId, date: "", time: "", type: "" } : null,
+          message: "Hi there! I'm here to help. What can I assist you with today?",
+          senderId: {
+            _id: "therapist123",
+            name: session.sessionInfo.therapistId.name || "Unknown Therapist",
+            email: "therapist@example.com",
+            role: "therapist"
+          },
           senderType: "therapist",
-        },
+          timestamp: new Date(Date.now() - 1800000).toISOString(),
+          createdAt: new Date(Date.now() - 1800000).toISOString(),
+          messageType: "live-chat",
+          read: true,
+          replyTo: null,
+          updatedAt: new Date(Date.now() - 1800000).toISOString(),
+          __v: 0
+        }
       ];
 
       setMessages(mockMessages);
-    } catch (error) {
-      console.error("Error loading video call chat messages:", error);
     } finally {
       setLoading(false);
     }
   };
 
   const handleSendReply = async () => {
-    if (!newReply.trim() || !selectedChat) return;
+    if (!newReply.trim() || !selectedSession) return;
 
     try {
       setLoading(true);
 
-      // Send reply to the user (in video call context)
+      // Send reply to the user (in session context)
       await adminChatApi.sendAdminReply({
-        sessionId: selectedChat.sessionId,
+        sessionId: selectedSession.sessionId,
         message: newReply,
-        messageType: "video-call-chat",
+        messageType: "live-chat",
       });
 
       // Add the reply to the message list
-      const replyMessage = {
-        _id: Date.now(),
-        content: newReply,
-        senderId: "admin123", // This would be the actual admin ID
-        senderName: "Admin",
-        timestamp: new Date(),
+      const replyMessage: ChatMessage = {
+        _id: Date.now().toString(),
+        messageId: "admin-reply-" + Date.now(),
+        sessionId: selectedSession.sessionId ? { _id: selectedSession.sessionId, date: "", time: "", type: "" } : null,
+        message: newReply,
+        senderId: {
+          _id: "admin123",
+          name: "Admin",
+          email: "admin@example.com",
+          role: "admin"
+        },
         senderType: "admin",
+        timestamp: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        messageType: "live-chat",
+        read: true,
+        replyTo: null,
+        updatedAt: new Date().toISOString(),
+        __v: 0
       };
 
       setMessages((prev) => [...prev, replyMessage]);
@@ -147,18 +300,18 @@ const VideoCallChatHistory = () => {
     <div className="p-6 bg-background min-h-screen">
       <div className="max-w-7xl mx-auto">
         <h1 className="text-3xl font-bold text-foreground mb-6">
-          Video Call Chat History
+          Live Chat History
         </h1>
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <div className="bg-card p-4 rounded-lg shadow">
             <h3 className="text-lg font-medium text-foreground">
-              Total Video Chat Messages
+              Live Chat Messages
             </h3>
             <p className="text-2xl font-bold text-blue-600">
               {stats.messagesByType?.find(
-                (item: any) => item._id === "video-call-chat"
+                (item: any) => item._id === "live-chat"
               )?.count || 0}
             </p>
           </div>
@@ -172,23 +325,45 @@ const VideoCallChatHistory = () => {
           </div>
           <div className="bg-card p-4 rounded-lg shadow">
             <h3 className="text-lg font-medium text-foreground">
-              Live Chat Messages
+              Today's Messages
             </h3>
             <p className="text-2xl font-bold text-green-600">
-              {stats.messagesByType?.find(
-                (item: any) => item._id === "live-chat"
-              )?.count || 0}
+              {stats.todayMessages || 0}
             </p>
           </div>
           <div className="bg-card p-4 rounded-lg shadow">
             <h3 className="text-lg font-medium text-foreground">
-              Therapist Messages
+              Unread Messages
             </h3>
             <p className="text-2xl font-bold text-orange-600">
-              {stats.messagesBySender?.find(
-                (item: any) => item._id === "therapist"
-              )?.count || 0}
+              {stats.unreadMessages || 0}
             </p>
+          </div>
+        </div>
+
+        {/* Pagination Info */}
+        <div className="mb-4 flex justify-between items-center">
+          <div className="text-sm text-muted-foreground">
+            Showing {chats.length} of {pagination.totalMessages} messages
+          </div>
+          <div className="flex space-x-2">
+            <button
+              onClick={() => setFilter(prev => ({...prev, page: Math.max(1, prev.page - 1)}))}
+              disabled={!pagination.hasPrevPage || loading}
+              className="px-3 py-1 text-sm border rounded disabled:opacity-50"
+            >
+              Previous
+            </button>
+            <span className="px-3 py-1 text-sm">
+              Page {pagination.currentPage} of {pagination.totalPages}
+            </span>
+            <button
+              onClick={() => setFilter(prev => ({...prev, page: Math.min(pagination.totalPages, prev.page + 1)}))}
+              disabled={!pagination.hasNextPage || loading}
+              className="px-3 py-1 text-sm border rounded disabled:opacity-50"
+            >
+              Next
+            </button>
           </div>
         </div>
 
@@ -197,7 +372,7 @@ const VideoCallChatHistory = () => {
           <div className="w-1/3 bg-card rounded-lg shadow">
             <div className="p-4 border-b">
               <h2 className="text-lg font-semibold text-foreground">
-                Video Call Chats
+                Live Chats
               </h2>
               <div className="mt-2 flex items-center space-x-2">
                 <input
@@ -211,42 +386,65 @@ const VideoCallChatHistory = () => {
               {chats.length > 0 ? (
                 chats.map((chat) => (
                   <div
-                    key={chat._id}
+                    key={chat.sessionId}
                     className={`p-4 border-b cursor-pointer hover:bg-accent ${
-                      selectedChat && selectedChat._id === chat._id
+                      selectedSession && selectedSession.sessionId === chat.sessionId
                         ? "bg-blue-50 border-l-4 border-l-blue-500"
                         : ""
                     }`}
-                    onClick={() => loadChatMessages(chat)}
+                    onClick={() => loadSessionMessages(chat)}
                   >
                     <div className="flex justify-between">
                       <h3 className="font-medium text-foreground">
-                        {chat.senderId.name}
+                        Session: {chat.sessionId.substring(0, 8) + "..."}
                       </h3>
-                      <span
-                        className={`text-xs px-2 py-1 rounded-full ${
-                          chat.senderType === "admin"
-                            ? "bg-purple-100 text-purple-800"
-                            : chat.senderType === "therapist"
-                            ? "bg-orange-100 text-orange-800"
-                            : "bg-blue-100 text-blue-800"
-                        }`}
-                      >
-                        {chat.senderType}
+                      <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-800">
+                        Video Call
                       </span>
                     </div>
-                    <p className="text-sm text-muted-foreground truncate">
-                      {chat.message}
+                    <div className="mt-2">
+                      <p className="text-sm text-muted-foreground">
+                        <span className="font-medium">👤 User:</span> {chat.sessionInfo.userId.name || "Unknown User"}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        <span className="font-medium">👨‍⚕️ Therapist:</span> {chat.sessionInfo.therapistId.name || "Unknown Therapist"}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        <span className="font-medium">📅 Date:</span> {chat.sessionInfo.date}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        <span className="font-medium">⏰ Time:</span> {chat.sessionInfo.time}
+                      </p>
+                    </div>
+                    <p className="text-sm text-muted-foreground truncate mt-1">
+                      Last: {chat.lastMessage}
                     </p>
-                    <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                      <span>{formatDate(chat.createdAt)}</span>
-                      <span>Video Call</span>
+                    <div className="flex justify-between text-xs text-muted-foreground mt-2">
+                      <span>{formatDate(chat.lastMessageTime)}</span>
+                      <span>Messages: {chat.userMessages.length + chat.therapistMessages.length}</span>
                     </div>
                   </div>
                 ))
               ) : (
                 <div className="p-4 text-center text-muted-foreground">
-                  {loading ? "Loading..." : "No video call chat history"}
+                  {loading ? (
+                    <div className="flex flex-col items-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mb-2"></div>
+                      <p>Loading chats...</p>
+                    </div>
+                  ) : (
+                    <div>
+                      <div className="bg-gray-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                        </svg>
+                      </div>
+                      <h3 className="text-lg font-medium">No live chats found</h3>
+                      <p className="mt-1 text-muted-foreground">
+                        There are no live chat sessions to display
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -254,60 +452,81 @@ const VideoCallChatHistory = () => {
 
           {/* Chat Conversation Panel */}
           <div className="flex-1 bg-card rounded-lg shadow flex flex-col">
-            {selectedChat ? (
+            {selectedSession ? (
               <>
                 <div className="p-4 border-b">
                   <h2 className="text-lg font-semibold text-foreground">
-                    Video Call Chat with {selectedChat.senderId.name}
+                    💬 Session Chat: {selectedSession.sessionId.substring(0, 8) + "..."}
                   </h2>
-                  <p className="text-sm text-muted-foreground">
-                    Session: {selectedChat.sessionId.date} at{" "}
-                    {selectedChat.sessionId.time} • Type: Video Call
-                  </p>
+                  <div className="text-sm text-muted-foreground mt-2 space-y-1">
+                    <p><span className="font-medium">👤 User:</span> {selectedSession.sessionInfo.userId.name || "Unknown User"}</p>
+                    <p><span className="font-medium">👨‍⚕️ Therapist:</span> {selectedSession.sessionInfo.therapistId.name || "Unknown Therapist"}</p>
+                    <p><span className="font-medium">📅 Date:</span> {selectedSession.sessionInfo.date}</p>
+                    <p><span className="font-medium">⏰ Time:</span> {selectedSession.sessionInfo.time}</p>
+                  </div>
                 </div>
 
-                {/* Messages Area */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-muted max-h-[calc(100vh-300px)]">
+                {/* Messages Area - WhatsApp-like display */}
+                <div className="flex-1 overflow-y-auto p-4 bg-muted max-h-[calc(100vh-300px)]">
                   {messages.length > 0 ? (
-                    messages.map((msg) => (
-                      <div
-                        key={msg._id}
-                        className={`flex ${
-                          msg.senderType === "admin"
-                            ? "justify-end"
-                            : "justify-start"
-                        }`}
-                      >
+                    <div className="space-y-3">
+                      {messages.map((msg) => (
                         <div
-                          className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                            msg.senderType === "admin"
-                              ? "bg-primary text-primary-foreground"
-                              : msg.senderType === "therapist"
-                              ? "bg-secondary text-secondary-foreground"
-                              : msg.senderType === "user"
-                              ? "bg-background text-foreground border"
-                              : "bg-muted text-muted-foreground"
-                          }`}
+                          key={msg._id}
+                          className={`flex ${msg.senderType === "user" || msg.senderType === "therapist" ? "justify-start" : "justify-end"}`}
                         >
-                          <p className="text-sm">{msg.content}</p>
-                          <p
-                            className={`text-xs mt-1 ${
-                              msg.senderType === "admin"
-                                ? "text-primary-foreground/70"
-                                : "text-muted-foreground"
-                            }`}
+                          <div
+                            className={`max-w-xs lg:max-w-md px-4 py-3 rounded-2xl ${
+                              msg.senderType === "user"
+                                ? "bg-white text-foreground border border-gray-200 rounded-bl-none"
+                                : msg.senderType === "therapist"
+                                ? "bg-green-100 text-foreground rounded-br-none"
+                                : "bg-blue-500 text-white rounded-br-none"
+                            } shadow-sm`}
                           >
-                            {new Date(msg.timestamp).toLocaleTimeString([], {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                          </p>
+                            <div className="flex items-center justify-between mb-1">
+                              <span className={`text-xs font-medium ${
+                                msg.senderType === "user" 
+                                  ? "text-blue-600" 
+                                  : msg.senderType === "therapist" 
+                                  ? "text-green-700" 
+                                  : "text-white"
+                              }`}>
+                                {msg.senderType === "user" 
+                                  ? "👤 " + (msg.senderId.name || "User")
+                                  : msg.senderType === "therapist" 
+                                  ? "👨‍⚕️ " + (msg.senderId.name || "Therapist")
+                                  : "🛡️ Admin"}
+                              </span>
+                              <span className={`text-xs ${
+                                msg.senderType === "user" 
+                                  ? "text-gray-500" 
+                                  : msg.senderType === "therapist" 
+                                  ? "text-green-600" 
+                                  : "text-blue-100"
+                              }`}>
+                                {new Date(msg.timestamp).toLocaleTimeString([], {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                              </span>
+                            </div>
+                            <p className="text-sm">{msg.message}</p>
+                          </div>
                         </div>
-                      </div>
-                    ))
+                      ))}
+                    </div>
                   ) : (
                     <div className="text-center text-muted-foreground mt-8">
-                      <p>No messages in this video call</p>
+                      <div className="bg-gray-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                        </svg>
+                      </div>
+                      <h3 className="text-lg font-medium">No messages yet</h3>
+                      <p className="mt-1 text-muted-foreground">
+                        Start a conversation by sending a message
+                      </p>
                     </div>
                   )}
                   <div
@@ -322,7 +541,7 @@ const VideoCallChatHistory = () => {
                       value={newReply}
                       onChange={(e) => setNewReply(e.target.value)}
                       onKeyDown={handleKeyPress}
-                      placeholder="Type your reply (will be sent as admin message)..."
+                      placeholder="Type your reply (will be sent as admin message in live chat)..."
                       className="flex-1 border border-input rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-primary"
                       rows={2}
                       style={{ minHeight: "60px", maxHeight: "120px" }}
@@ -340,7 +559,7 @@ const VideoCallChatHistory = () => {
                     </button>
                   </div>
                   <p className="text-xs text-muted-foreground mt-2">
-                    Your reply will be sent as an admin message to the user
+                    Your reply will be sent as an admin message in the live chat
                   </p>
                 </div>
               </>
@@ -362,10 +581,10 @@ const VideoCallChatHistory = () => {
                     />
                   </svg>
                   <h3 className="text-lg font-medium">
-                    Select a video call chat to view
+                    Select a live chat to view
                   </h3>
                   <p className="mt-1">
-                    Choose a video call conversation from the list to view and
+                    Choose a live chat conversation from the list to view and
                     reply
                   </p>
                 </div>
