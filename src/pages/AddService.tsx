@@ -37,7 +37,7 @@ export default function AddService() {
       about: string;
       price: string;
       duration: string;
-      sessions: string;
+      // sessions: string;
       validity: string;
       category: string;
       status: "active" | "inactive";
@@ -51,7 +51,7 @@ export default function AddService() {
       about: "", // New field
       price: "",
       duration: "",
-      sessions: "",
+      // sessions: "",
       validity: "",
       category: "Therapy",
       status: "active" as "active" | "inactive",
@@ -162,7 +162,7 @@ export default function AddService() {
       formData.append("about", serviceForm.about.trim());
       formData.append("price", serviceForm.price);
       formData.append("duration", serviceForm.duration);
-      formData.append("sessions", serviceForm.sessions);
+      // formData.append("sessions", serviceForm.sessions);
       formData.append("validity", serviceForm.validity);
       formData.append("category", serviceForm.category);
       formData.append("status", serviceForm.status);
@@ -265,7 +265,7 @@ export default function AddService() {
               rows={4}
             />
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               <Input
                 type="number"
                 placeholder="Price"
@@ -293,14 +293,14 @@ export default function AddService() {
                 )}
               </div>
 
-              <Input
+              {/* <Input
                 type="number"
                 placeholder="Sessions"
                 value={serviceForm.sessions}
                 onChange={(e) =>
                   setServiceForm({ ...serviceForm, sessions: e.target.value })
                 }
-              />
+              /> */}
 
               <Input
                 type="number"

@@ -7,6 +7,7 @@ import { Plus, Trash2, Upload } from "lucide-react";
 import {
   DialogFooter,
 } from "@/components/ui/dialog";
+import { ValidationError, validateForm, heroValidationSchema } from "@/lib/validation";
 
 interface HeroData {
   _id: string;
@@ -32,12 +33,31 @@ interface EditHeroFormProps {
 
 export default function EditHeroForm({ data, onSave, onCancel }: EditHeroFormProps) {
   const [formData, setFormData] = useState(data);
+  const [errors, setErrors] = useState<ValidationError>({});
+  const [touchedFields, setTouchedFields] = useState<Record<string, boolean>>({});
 
   const handleChange = (field: string, value: any) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
     }));
+
+    // Clear error when user starts typing
+    if (errors[field]) {
+      setErrors(prev => {
+        const newErrors = {...prev};
+        delete newErrors[field];
+        return newErrors;
+      });
+    }
+
+    // Mark field as touched
+    if (!touchedFields[field]) {
+      setTouchedFields(prev => ({
+        ...prev,
+        [field]: true
+      }));
+    }
   };
 
   // Handle image upload
@@ -48,6 +68,23 @@ export default function EditHeroForm({ data, onSave, onCancel }: EditHeroFormPro
         ...prev,
         image: file
       }));
+
+      // Clear error for image field
+      if (errors.image) {
+        setErrors(prev => {
+          const newErrors = {...prev};
+          delete newErrors.image;
+          return newErrors;
+        });
+      }
+
+      // Mark image field as touched
+      if (!touchedFields.image) {
+        setTouchedFields(prev => ({
+          ...prev,
+          image: true
+        }));
+      }
     }
   };
 
@@ -58,6 +95,23 @@ export default function EditHeroForm({ data, onSave, onCancel }: EditHeroFormPro
       ...prev,
       features: newFeatures
     }));
+
+    // Clear error for features field
+    if (errors.features) {
+      setErrors(prev => {
+        const newErrors = {...prev};
+        delete newErrors.features;
+        return newErrors;
+      });
+    }
+
+    // Mark features field as touched
+    if (!touchedFields.features) {
+      setTouchedFields(prev => ({
+        ...prev,
+        features: true
+      }));
+    }
   };
 
   const addFeature = () => {
@@ -65,6 +119,23 @@ export default function EditHeroForm({ data, onSave, onCancel }: EditHeroFormPro
       ...prev,
       features: [...(prev.features || []), '']
     }));
+
+    // Clear error for features field
+    if (errors.features) {
+      setErrors(prev => {
+        const newErrors = {...prev};
+        delete newErrors.features;
+        return newErrors;
+      });
+    }
+
+    // Mark features field as touched
+    if (!touchedFields.features) {
+      setTouchedFields(prev => ({
+        ...prev,
+        features: true
+      }));
+    }
   };
 
   const removeFeature = (index: number) => {
@@ -73,10 +144,46 @@ export default function EditHeroForm({ data, onSave, onCancel }: EditHeroFormPro
       ...prev,
       features: newFeatures
     }));
+
+    // Clear error for features field
+    if (errors.features) {
+      setErrors(prev => {
+        const newErrors = {...prev};
+        delete newErrors.features;
+        return newErrors;
+      });
+    }
+
+    // Mark features field as touched
+    if (!touchedFields.features) {
+      setTouchedFields(prev => ({
+        ...prev,
+        features: true
+      }));
+    }
+  };
+
+  const validate = () => {
+    const validationErrors = validateForm(formData, heroValidationSchema);
+    setErrors(validationErrors);
+    return Object.keys(validationErrors).length === 0;
   };
 
   const handleSubmit = () => {
-    onSave(formData);
+    if (validate()) {
+      onSave(formData);
+    } else {
+      // Mark all fields as touched to show errors
+      setTouchedFields({
+        heading: true,
+        subHeading: true,
+        description: true,
+        ctaText: true,
+        trustedBy: true,
+        features: true,
+        image: true
+      });
+    }
   };
 
   return (
@@ -86,31 +193,44 @@ export default function EditHeroForm({ data, onSave, onCancel }: EditHeroFormPro
         <Input
           value={formData.heading}
           onChange={(e) => handleChange('heading', e.target.value)}
-          className="text-sm"
+          className={`text-sm ${errors.heading && touchedFields.heading ? 'border-red-500' : ''}`}
         />
+        {errors.heading && touchedFields.heading && (
+          <p className="text-red-500 text-sm mt-1">{errors.heading}</p>
+        )}
       </div>
       <div>
         <Label className="text-sm">Sub Heading</Label>
         <Input
           value={formData.subHeading}
           onChange={(e) => handleChange('subHeading', e.target.value)}
-          className="text-sm"
+          className={`text-sm ${errors.subHeading && touchedFields.subHeading ? 'border-red-500' : ''}`}
         />
+        {errors.subHeading && touchedFields.subHeading && (
+          <p className="text-red-500 text-sm mt-1">{errors.subHeading}</p>
+        )}
       </div>
       <div>
         <Label>Description</Label>
         <Textarea
           value={formData.description}
           onChange={(e) => handleChange('description', e.target.value)}
+          className={`${errors.description && touchedFields.description ? 'border-red-500' : ''}`}
         />
+        {errors.description && touchedFields.description && (
+          <p className="text-red-500 text-sm mt-1">{errors.description}</p>
+        )}
       </div>
       <div>
         <Label className="text-sm">Primary CTA Button Text</Label>
         <Input
           value={formData.ctaText}
           onChange={(e) => handleChange('ctaText', e.target.value)}
-          className="text-sm"
+          className={`text-sm ${errors.ctaText && touchedFields.ctaText ? 'border-red-500' : ''}`}
         />
+        {errors.ctaText && touchedFields.ctaText && (
+          <p className="text-red-500 text-sm mt-1">{errors.ctaText}</p>
+        )}
       </div>
       <div className="flex items-center space-x-2">
         <input
@@ -127,8 +247,11 @@ export default function EditHeroForm({ data, onSave, onCancel }: EditHeroFormPro
         <Input
           value={formData.trustedBy}
           onChange={(e) => handleChange('trustedBy', e.target.value)}
-          className="text-sm"
+          className={`text-sm ${errors.trustedBy && touchedFields.trustedBy ? 'border-red-500' : ''}`}
         />
+        {errors.trustedBy && touchedFields.trustedBy && (
+          <p className="text-red-500 text-sm mt-1">{errors.trustedBy}</p>
+        )}
       </div>
       <div>
         <div className="flex items-center justify-between mb-2">
@@ -144,6 +267,7 @@ export default function EditHeroForm({ data, onSave, onCancel }: EditHeroFormPro
                 value={feature}
                 onChange={(e) => handleFeatureChange(index, e.target.value)}
                 placeholder={`Feature ${index + 1}`}
+                className={`${errors.features && touchedFields.features ? 'border-red-500' : ''}`}
               />
               <Button 
                 type="button" 
@@ -157,6 +281,9 @@ export default function EditHeroForm({ data, onSave, onCancel }: EditHeroFormPro
             </div>
           ))}
         </div>
+        {errors.features && touchedFields.features && (
+          <p className="text-red-500 text-sm mt-1">{errors.features}</p>
+        )}
       </div>
       <div>
         <Label className="text-sm">Hero Image</Label>
@@ -171,7 +298,7 @@ export default function EditHeroForm({ data, onSave, onCancel }: EditHeroFormPro
             />
             <label
               htmlFor="hero-image-upload"
-              className="flex flex-col items-center justify-center w-full h-24 sm:h-32 border-2 border-dashed rounded-lg cursor-pointer bg-muted hover:bg-accent transition-colors"
+              className={`flex flex-col items-center justify-center w-full h-24 sm:h-32 border-2 border-dashed rounded-lg cursor-pointer bg-muted hover:bg-accent transition-colors ${errors.image && touchedFields.image ? 'border-red-500' : ''}`}
             >
               <Upload className="w-6 h-6 sm:w-8 sm:h-8 text-muted-foreground mb-1 sm:mb-2" />
               <span className="text-xs sm:text-sm text-muted-foreground">Click to upload image</span>
@@ -189,6 +316,9 @@ export default function EditHeroForm({ data, onSave, onCancel }: EditHeroFormPro
             </div>
           )}
         </div>
+        {errors.image && touchedFields.image && (
+          <p className="text-red-500 text-sm mt-1">{errors.image}</p>
+        )}
       </div>
       <DialogFooter className="flex justify-between">
         <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>

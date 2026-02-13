@@ -123,6 +123,7 @@ export const API = {
 
   // testimonials
   TESTIMONIALS: "/testimonials",
+  TESTIMONIALS_CREATE: "/testimonials/create",
   TESTIMONIALS_PUBLIC: "/testimonials/public",
   TESTIMONIALS_FEATURED: "/testimonials/public/featured",
   TESTIMONIALS_STATS: "/testimonials/stats",
@@ -490,10 +491,52 @@ export const testimonialAPI = {
   getById: (id) => apiClient.get(API.TESTIMONIAL_BY_ID.replace(':id', id)),
 
   // Create testimonial (admin)
-  create: (data) => apiClient.post(API.TESTIMONIALS, data),
+  create: (data) => {
+    // Check if data contains a video file
+    if (data.video && data.video instanceof File) {
+      const formData = new FormData();
+      formData.append('video', data.video);
+      // Add other fields
+      Object.keys(data).forEach(key => {
+        if (key !== 'video') {
+          if (typeof data[key] === 'object' && data[key] !== null) {
+            formData.append(key, JSON.stringify(data[key]));
+          } else {
+            formData.append(key, data[key]);
+          }
+        }
+      });
+      return apiClient.post(API.TESTIMONIALS, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+    } else {
+      return apiClient.post(API.TESTIMONIALS, data);
+    }
+  },
 
   // Update testimonial (admin)
-  update: (id, data) => apiClient.put(API.TESTIMONIAL_BY_ID.replace(':id', id), data),
+  update: (id, data) => {
+    // Check if data contains a video file
+    if (data.video && data.video instanceof File) {
+      const formData = new FormData();
+      formData.append('video', data.video);
+      // Add other fields
+      Object.keys(data).forEach(key => {
+        if (key !== 'video') {
+          if (typeof data[key] === 'object' && data[key] !== null) {
+            formData.append(key, JSON.stringify(data[key]));
+          } else {
+            formData.append(key, data[key]);
+          }
+        }
+      });
+      return apiClient.put(API.TESTIMONIAL_BY_ID.replace(':id', id), formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+    } else {
+      return apiClient.put(API.TESTIMONIAL_BY_ID.replace(':id', id), data);
+    }
+  },
 
   // Update testimonial status (admin)
   updateStatus: (id, status) => apiClient.put(API.TESTIMONIAL_STATUS.replace(':id', id), { status }),

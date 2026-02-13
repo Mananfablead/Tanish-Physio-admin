@@ -19,7 +19,7 @@ interface AboutData {
   values: string[];
   foundingStory: string;
   teamInfo: string;
-  image: string;
+  image: string | File;
   images: (string | File)[];
   isPublic: boolean;
 }
@@ -51,6 +51,16 @@ const getCorrectValues = (data: AboutData) => {
     return cmsValues;
   }
   return [];
+};
+
+// Helper function to get image source (handles both File objects and URLs)
+const getImageSrc = (image: string | File) => {
+  if (typeof image === 'string') {
+    return image;
+  } else if (image instanceof File) {
+    return URL.createObjectURL(image);
+  }
+  return '';
 };
 
 export default function AboutSection({ data, onEdit, loading = false }: AboutSectionProps) {
@@ -105,7 +115,7 @@ export default function AboutSection({ data, onEdit, loading = false }: AboutSec
                   <div>
                     <h4 className="text-sm font-medium text-gray-700 mb-2">Primary Image:</h4>
                     <img 
-                      src={data.image} 
+                      src={getImageSrc(data.image)} 
                       alt="About Us" 
                       className="w-full h-auto rounded-lg"
                     />
@@ -204,7 +214,7 @@ export default function AboutSection({ data, onEdit, loading = false }: AboutSec
           <CardContent>
             <div className="aspect-video bg-muted rounded-lg border overflow-hidden">
               <img
-                src={data.image}
+                src={getImageSrc(data.image)}
                 alt="About Us"
                 className="w-full h-full object-cover"
               />

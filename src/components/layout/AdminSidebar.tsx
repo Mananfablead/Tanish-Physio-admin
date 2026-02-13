@@ -69,6 +69,7 @@ const navItems = [
   { icon: Quote, label: "Testimonials", path: "/testimonials" },
   // { icon: BarChart3, label: "Reports", path: "/reports" },
   { icon: Bell, label: "Notifications", path: "/notifications" },
+  { icon: CreditCard, label: "Offers & Coupons", path: "/offers" },
   // { icon: MessageSquare, label: "Chat Monitor", path: "/chat" },
   // { icon: Star, label: "Feedback", path: "/feedback" },
 ];

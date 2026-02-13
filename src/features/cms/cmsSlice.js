@@ -25,7 +25,8 @@ export const fetchAllCmsData = createAsyncThunk(
           ...data.conditions,
           conditions: conditionsArray.map(condition => ({
             name: condition.title || '',
-            image: condition.image || ''
+            image: condition.image || '',
+            content: condition.content || ''
           }))
         };
       }
@@ -429,7 +430,8 @@ const cmsSlice = createSlice({
           ...backendData,
           conditions: conditionsArray.map(condition => ({
             name: condition.title || '',
-            image: condition.image || ''
+            image: condition.image || '',
+            content: condition.content || ''
           }))
         };
       })
@@ -460,7 +462,8 @@ const cmsSlice = createSlice({
           ...backendData,
           conditions: conditionsArray.map(condition => ({
             name: condition.title || '',
-            image: condition.image || ''
+            image: condition.image || '',
+            content: condition.content || ''
           }))
         };
       })
@@ -491,7 +494,8 @@ const cmsSlice = createSlice({
           ...backendData,
           conditions: conditionsArray.map(condition => ({
             name: condition.title || '',
-            image: condition.image || ''
+            image: condition.image || '',
+            content: condition.content || ''
           }))
         };
       })

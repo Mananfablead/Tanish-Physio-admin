@@ -52,6 +52,7 @@ import ResetPassword from "./pages/ResetPassword";
 import ExpirationManagement from "./pages/ExpirationManagement";
 import BookingDetails from "./pages/BookingDetails";
 import PaymentDetails from "./pages/PaymentDetails";
+import OffersManagement from "./pages/OffersManagement";
 import { useDispatch } from "react-redux";
 import { useEffect } from "react";
 
@@ -312,6 +313,16 @@ const App = () => (
               <ProtectedRoute>
                 <AdminPage>
                   <Reports />
+                </AdminPage>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/offers"
+            element={
+              <ProtectedRoute>
+                <AdminPage>
+                  <OffersManagement />
                 </AdminPage>
               </ProtectedRoute>
             }
