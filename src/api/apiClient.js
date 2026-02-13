@@ -157,6 +157,10 @@ export const API = {
   CMS_ABOUT_PUBLIC: "/cms/public/about",
   CMS_ABOUT_ADMIN: "/cms/admin/about",
   CMS_ALL_ADMIN: "/cms/admin/all",
+  // contact messages
+  CONTACT_MESSAGES: "/cms/admin/contact-messages",
+  CONTACT_MESSAGES_STATS: "/cms/admin/contact-messages-stats",
+  CONTACT_MESSAGE_BY_ID: "/cms/admin/contact-messages/:id",
 };
 export const availabilityAPI = {
   // Get all availability
@@ -505,6 +509,24 @@ export const testimonialAPI = {
 
   // Get featured testimonials
   getFeatured: () => apiClient.get(API.TESTIMONIALS_FEATURED),
+};
+
+// Contact Messages API endpoints
+export const contactMessageAPI = {
+  // Get all contact messages
+  getAll: (params) => apiClient.get(API.CONTACT_MESSAGES, { params }),
+
+  // Get contact message by ID
+  getById: (id) => apiClient.get(API.CONTACT_MESSAGE_BY_ID.replace(':id', id)),
+
+  // Update contact message status/reply
+  update: (id, data) => apiClient.put(API.CONTACT_MESSAGE_BY_ID.replace(':id', id), data),
+
+  // Delete contact message
+  delete: (id) => apiClient.delete(API.CONTACT_MESSAGE_BY_ID.replace(':id', id)),
+
+  // Get contact messages statistics
+  getStats: () => apiClient.get(API.CONTACT_MESSAGES_STATS),
 };
 
 // CMS API endpoints

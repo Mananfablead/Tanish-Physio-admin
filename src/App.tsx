@@ -22,6 +22,9 @@ import Sessions from "./pages/Sessions";
 import Availability from "./pages/Availability";
 import SessionRecordings from "./pages/SessionRecordings";
 import LiveSessions from "./pages/LiveSessions";
+import LiveChatHistory from "./pages/LiveChatHistory";
+import VideoCallChatHistory from "./pages/VideoCallChatHistory";
+import AdminDashboard from "./pages/AdminDashboard";
 import Subscriptions from "./pages/Subscriptions";
 import Payments from "./pages/Payments";
 import Notifications from "./pages/Notifications";
@@ -42,6 +45,7 @@ import Courses from "./pages/Courses";
 import CMS from "./pages/CMS";
 import ContentDetails from "./pages/ContentDetails";
 import Testimonials from "./pages/Testimonials";
+import ContactMessages from "./pages/ContactMessages";
 import VideoCallPage from "./pages/VideoCallPage";
 import NotFound from "./pages/NotFound";
 import ResetPassword from "./pages/ResetPassword";
@@ -187,6 +191,39 @@ const App = () => (
               <ProtectedRoute>
                 <AdminPage>
                   <LiveSessions />
+                </AdminPage>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/live-chat-history"
+            element={
+              <ProtectedRoute>
+                <AdminPage>
+                  <LiveChatHistory />
+                </AdminPage>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <AdminPage>
+                  <AdminDashboard />
+                </AdminPage>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/video-call-chat-history"
+            element={
+              <ProtectedRoute>
+                <AdminPage>
+                  <VideoCallChatHistory />
                 </AdminPage>
               </ProtectedRoute>
             }
@@ -450,6 +487,17 @@ const App = () => (
               <ProtectedRoute>
                 <AdminPage>
                   <ContentDetails />
+                </AdminPage>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/contact-messages"
+            element={
+              <ProtectedRoute>
+                <AdminPage>
+                  <ContactMessages />
                 </AdminPage>
               </ProtectedRoute>
             }

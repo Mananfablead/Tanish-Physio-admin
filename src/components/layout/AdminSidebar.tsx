@@ -9,6 +9,7 @@ import {
   CreditCard,
   Wallet,
   MessageSquare,
+  MessageCircle,
   Star,
   Bell,
   BarChart3,
@@ -22,6 +23,7 @@ import {
   FileText,
   Quote,
   AlertCircle,
+  Mail,
 } from "lucide-react";
 import logo from "../../assets/logo.webp";
 import { cn } from "@/lib/utils";
@@ -48,11 +50,22 @@ const navItems = [
   { icon: Calendar, label: "Bookings", path: "/bookings" },
   { icon: Calendar, label: "Sessions", path: "/sessions" },
   { icon: Video, label: "Live & Upcoming", path: "/live-sessions" },
+  {
+    icon: MessageCircle,
+    label: "Live Chat History",
+    path: "/live-chat-history",
+  },
+  {
+    icon: Video,
+    label: "Video Call Chat History",
+    path: "/video-call-chat-history",
+  },
   { icon: Video, label: "Session Recordings", path: "/session-recordings" },
   { icon: CreditCard, label: "Plans & Subscriptions", path: "/subscriptions" },
   // { icon: AlertCircle, label: "Expiration Management", path: "/expiration-management" },
   { icon: Wallet, label: "Payments", path: "/payments" },
   { icon: FileText, label: "CMS", path: "/cms" },
+  { icon: Mail, label: "Contact Messages", path: "/contact-messages" },
   { icon: Quote, label: "Testimonials", path: "/testimonials" },
   // { icon: BarChart3, label: "Reports", path: "/reports" },
   { icon: Bell, label: "Notifications", path: "/notifications" },

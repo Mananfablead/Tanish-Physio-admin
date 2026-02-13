@@ -267,4 +267,107 @@ const useSocket = (roomId, roomType) => {
     };
 };
 
+// Special hook for admin chat functionality
+export const useAdminChatSocket = () => {
+    const [socket, setSocket] = useState(null);
+    const [connected, setConnected] = useState(false);
+    const [adminOnlineCount, setAdminOnlineCount] = useState(0);
+    const [anyAdminOnline, setAnyAdminOnline] = useState(false);
+    const { token } = useAuthRedux();
+
+    useEffect(() => {
+        if (!token) return;
+
+        const socketOptions = {
+            transports: ['websocket', 'polling'],
+            reconnection: true,
+            reconnectionAttempts: 5,
+            reconnectionDelay: 1000,
+            auth: { token }
+        };
+
+        let serverUrl;
+        if (import.meta.env.VITE_API_BASE_URL && import.meta.env.VITE_API_BASE_URL.includes('localhost')) {
+            serverUrl = 'http://localhost:5000';
+        } else if (import.meta.env.VITE_API_BASE_URL) {
+            serverUrl = import.meta.env.VITE_API_BASE_URL.replace(/\/api$/, '');
+        } else {
+            serverUrl = 'https://apitanishvideo.fableadtech.in';
+        }
+
+        const newSocket = io(serverUrl, socketOptions);
+
+        newSocket.on('connect', () => {
+            console.log('Admin chat socket connected');
+            setConnected(true);
+
+            // Join admin support room
+            newSocket.emit('join-default-chat');
+
+            // Request current admin status
+            newSocket.emit('admin-status-request');
+        });
+
+        // Listen for admin status updates
+        newSocket.on('admin-status-update', (data) => {
+            console.log('Admin status update received:', data);
+            setAnyAdminOnline(data.online);
+            // Update count if provided
+            if (data.onlineCount !== undefined) {
+                setAdminOnlineCount(data.onlineCount);
+            }
+        });
+
+        // Listen for admin presence updates
+        newSocket.on('admin-presence', (data) => {
+            console.log('Admin presence update:', data);
+            setAnyAdminOnline(data.presence === 'online');
+        });
+
+        newSocket.on('disconnect', () => {
+            console.log('Admin chat socket disconnected');
+            setConnected(false);
+            setAnyAdminOnline(false);
+            setAdminOnlineCount(0);
+        });
+
+        newSocket.on('connect_error', (err) => {
+            console.error('Admin chat socket connection error:', err);
+            setConnected(false);
+            setAnyAdminOnline(false);
+            setAdminOnlineCount(0);
+        });
+
+        setSocket(newSocket);
+
+        return () => {
+            if (newSocket) {
+                newSocket.close();
+            }
+        };
+    }, [token]);
+
+    const emit = useCallback((event, data) => {
+        if (socket && connected) {
+            socket.emit(event, data);
+        }
+    }, [socket, connected]);
+
+    const on = useCallback((event, callback) => {
+        if (socket) {
+            socket.on(event, callback);
+            return () => socket.off(event, callback);
+        }
+    }, [socket]);
+
+    return {
+        socket,
+        connected,
+        adminOnlineCount,
+        anyAdminOnline,
+        emit,
+        on
+    };
+};
+
 export default useSocket;
