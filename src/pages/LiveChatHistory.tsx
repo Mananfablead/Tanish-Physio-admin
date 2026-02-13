@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import useSocket from "@/hooks/useSocket";
 import { adminChatApi } from "../lib/adminChatApi";
-import { motion, AnimatePresence } from "framer-motion";
 
 interface Message {
   _id: string | number;
@@ -85,11 +84,6 @@ const LiveChatHistory = () => {
   const [chatsError, setChatsError] = useState<string | null>(null);
   const [statsError, setStatsError] = useState<string | null>(null);
   const [activeChatsError, setActiveChatsError] = useState<string | null>(null);
-  
-  // New state for filtering and search
-  const [searchTerm, setSearchTerm] = useState<string>("");
-  const [filterType, setFilterType] = useState<"all" | "unread" | "today">("all");
-  const [sortBy, setSortBy] = useState<"latest" | "oldest" | "name">("latest");
 
   const { socket, connected, on } = useSocket();
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -440,507 +434,258 @@ const LiveChatHistory = () => {
     }
   };
 
-  // Filter and sort chats
-  const filteredAndSortedChats = React.useMemo(() => {
-    let filtered = [...chats];
-    
-    // Apply search filter
-    if (searchTerm) {
-      filtered = filtered.filter(chat => 
-        getUserName(chat).toLowerCase().includes(searchTerm.toLowerCase()) ||
-        chat.message.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-    
-    // Apply type filter
-    if (filterType === "unread") {
-      // Filter for unread messages (you'll need to implement this logic)
-      filtered = filtered.filter(chat => chat.read === false);
-    } else if (filterType === "today") {
-      const today = new Date().toDateString();
-      filtered = filtered.filter(chat => 
-        new Date(chat.createdAt).toDateString() === today
-      );
-    }
-    
-    // Apply sorting
-    filtered.sort((a, b) => {
-      switch (sortBy) {
-        case "oldest":
-          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-        case "name":
-          return getUserName(a).localeCompare(getUserName(b));
-        case "latest":
-        default:
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-      }
-    });
-    
-    return filtered;
-  }, [chats, searchTerm, filterType, sortBy, getUserName]);
-
   return (
     <div className="p-6 bg-background min-h-screen">
       <div className="max-w-7xl mx-auto">
-        {/* Enhanced Header */}
-        <div className="mb-8">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-bold text-foreground mb-2">
-                Live Chat History
-              </h1>
-              <p className="text-muted-foreground">
-                Manage and respond to customer support conversations
-              </p>
-            </div>
-            <div className="flex items-center space-x-3">
-              <div className="flex items-center space-x-2 bg-card p-2 rounded-lg">
-                <div className={`w-3 h-3 rounded-full ${connected ? "bg-green-500 animate-pulse" : "bg-red-500"}`}></div>
-                <span className="text-sm text-muted-foreground">
-                  {connected ? "Connected" : "Disconnected"}
-                </span>
-              </div>
-              <button
-                onClick={() => {
-                  loadChats();
-                  loadStats();
-                  loadActiveChats();
-                }}
-                className="flex items-center space-x-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                <span>Refresh</span>
-              </button>
-            </div>
-          </div>
-        </div>
+        <h1 className="text-3xl font-bold text-foreground mb-6">
+          Live Chat History
+        </h1>
 
-        {/* Enhanced Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <motion.div 
-            whileHover={{ y: -5 }}
-            className="bg-gradient-to-br from-blue-50 to-blue-100 p-5 rounded-xl border border-blue-200 shadow-sm"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-medium text-blue-800">Total Messages</h3>
-                <p className="text-3xl font-bold text-blue-600 mt-1">
-                  {stats.totalMessages || 0}
-                </p>
-              </div>
-              <div className="p-3 bg-blue-500 rounded-lg">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                </svg>
-              </div>
-            </div>
-          </motion.div>
-          
-          <motion.div 
-            whileHover={{ y: -5 }}
-            className="bg-gradient-to-br from-red-50 to-red-100 p-5 rounded-xl border border-red-200 shadow-sm"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-medium text-red-800">Unread</h3>
-                <p className="text-3xl font-bold text-red-600 mt-1">
-                  {stats.unreadMessages || 0}
-                </p>
-              </div>
-              <div className="p-3 bg-red-500 rounded-lg">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                </svg>
-              </div>
-            </div>
-          </motion.div>
-          
-          <motion.div 
-            whileHover={{ y: -5 }}
-            className="bg-gradient-to-br from-green-50 to-green-100 p-5 rounded-xl border border-green-200 shadow-sm"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-medium text-green-800">Today's Messages</h3>
-                <p className="text-3xl font-bold text-green-600 mt-1">
-                  {stats.todayMessages || 0}
-                </p>
-              </div>
-              <div className="p-3 bg-green-500 rounded-lg">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-            </div>
-          </motion.div>
-          
-          <motion.div 
-            whileHover={{ y: -5 }}
-            className="bg-gradient-to-br from-purple-50 to-purple-100 p-5 rounded-xl border border-purple-200 shadow-sm"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-medium text-purple-800">Active Chats</h3>
-                <p className="text-3xl font-bold text-purple-600 mt-1">
-                  {activeChats.length}
-                </p>
-              </div>
-              <div className="p-3 bg-purple-500 rounded-lg">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-              </div>
-            </div>
-          </motion.div>
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <div className="bg-card p-4 rounded-lg shadow">
+            <h3 className="text-lg font-medium text-foreground">
+              Total Messages
+            </h3>
+            <p className="text-2xl font-bold text-blue-600">
+              {stats.totalMessages || 0}
+            </p>
+          </div>
+          <div className="bg-card p-4 rounded-lg shadow">
+            <h3 className="text-lg font-medium text-foreground">Unread</h3>
+            <p className="text-2xl font-bold text-red-600">
+              {stats.unreadMessages || 0}
+            </p>
+          </div>
+          <div className="bg-card p-4 rounded-lg shadow">
+            <h3 className="text-lg font-medium text-foreground">
+              Today's Messages
+            </h3>
+            <p className="text-2xl font-bold text-green-600">
+              {stats.todayMessages || 0}
+            </p>
+          </div>
+          <div className="bg-card p-4 rounded-lg shadow">
+            <h3 className="text-lg font-medium text-foreground">
+              Active Chats
+            </h3>
+            <p className="text-2xl font-bold text-purple-600">
+              {activeChats.length}
+            </p>
+          </div>
         </div>
 
         <div className="flex gap-6">
-          {/* Enhanced Chat List Panel */}
-          <div className="w-1/3 bg-card rounded-xl shadow-lg border border-border">
-            {/* Enhanced Header with Search and Filters */}
-            <div className="p-4 border-b bg-gradient-to-r from-card to-muted">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-foreground">
-                  Chat Conversations
-                </h2>
-                <div className="flex items-center space-x-2">
-                  <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded-full">
-                    {filteredAndSortedChats.length} chats
-                  </span>
-                </div>
-              </div>
-              
-              {/* Search and Filter Controls */}
-              <div className="space-y-3">
-                <div className="relative">
-                  <input
-                    type="text"
-                    placeholder="Search chats..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-background"
-                  />
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-muted-foreground absolute left-3 top-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                </div>
-                
-                <div className="flex space-x-2">
-                  <select
-                    value={filterType}
-                    onChange={(e) => setFilterType(e.target.value as any)}
-                    className="flex-1 px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-background"
-                  >
-                    <option value="all">All Chats</option>
-                    <option value="unread">Unread</option>
-                    <option value="today">Today</option>
-                  </select>
-                  
-                  <select
-                    value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value as any)}
-                    className="flex-1 px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-background"
-                  >
-                    <option value="latest">Latest</option>
-                    <option value="oldest">Oldest</option>
-                    <option value="name">Name</option>
-                  </select>
-                </div>
-              </div>
+          {/* Chat List Panel */}
+          <div className="w-1/3 bg-card rounded-lg shadow">
+            <div className="p-4 border-b">
+              <h2 className="text-lg font-semibold text-foreground">
+                Active Chats
+              </h2>
             </div>
-            
-            {/* Chat List */}
-            <div className="overflow-y-auto max-h-[calc(100vh-300px)]">
-              <AnimatePresence>
-                {filteredAndSortedChats.length > 0 ? (
-                  filteredAndSortedChats.map((chat, index) => (
-                    <motion.div
-                      key={typeof chat._id === "string" ? chat._id : JSON.stringify(chat)}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -20 }}
-                      transition={{ delay: index * 0.05 }}
-                      className={`p-4 border-b cursor-pointer transition-all duration-200 ${
+            <div className="overflow-y-auto max-h-[calc(100vh-250px)]">
+              {activeChats.length > 0 ? (
+                activeChats.map((chat) => (
+                  <div
+                    key={chat.sessionId || JSON.stringify(chat)}
+                    className={`p-4 border-b cursor-pointer hover:bg-accent ${
+                      selectedChat &&
+                      selectedChat.sessionId?.toString() ===
+                        chat.sessionId?.toString()
+                        ? "bg-blue-50 border-l-4 border-l-blue-500"
+                        : ""
+                    }`}
+                    onClick={() => loadChatMessages(chat)}
+                  >
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h3 className="font-medium text-foreground">
+                          {getUserName(chat)}
+                        </h3>
+                        <p className="text-sm text-muted-foreground truncate">
+                          {chat.lastMessage}
+                        </p>
+                      </div>
+                      <span className="bg-red-100 text-red-800 text-xs px-2 py-1 rounded-full">
+                        {chat.unreadCount} new
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {new Date(chat.lastMessageTime).toLocaleString()}
+                    </p>
+                  </div>
+                ))
+              ) : (
+                <div className="p-4 text-center text-muted-foreground">
+                  No active chats
+                </div>
+              )}
+
+              <div className="p-4 border-t">
+                <h3 className="text-lg font-semibold text-foreground mb-2">
+                  All Chats
+                </h3>
+                {chats.length > 0 ? (
+                  chats.map((chat) => (
+                    <div
+                      key={
+                        typeof chat._id === "string"
+                          ? chat._id
+                          : JSON.stringify(chat)
+                      }
+                      className={`p-3 border-b cursor-pointer hover:bg-accent ${
                         selectedChat &&
                         String(selectedChat.sessionId || selectedChat._id) ===
                           String(chat.sessionId || chat._id)
-                          ? "bg-blue-50 border-l-4 border-l-blue-500 shadow-sm"
-                          : "hover:bg-accent hover:shadow-sm"
+                          ? "bg-blue-50"
+                          : ""
                       }`}
                       onClick={async () => {
-                        console.log("Loading chat messages for:", chat);
+                        // Load actual messages for this chat
                         await loadChatMessages(chat);
                       }}
                     >
-                      <div className="flex justify-between items-start mb-2">
-                        <h4 className="font-medium text-foreground truncate flex-1">
-                          {getUserName(chat)}
-                        </h4>
-                        <div className="flex items-center space-x-2 ml-2">
-                          {chat.read === false && (
-                            <span className="w-2 h-2 bg-red-500 rounded-full"></span>
-                          )}
-                          <span className="text-xs text-muted-foreground whitespace-nowrap">
-                            {new Date(chat.createdAt).toLocaleTimeString([], {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                          </span>
-                        </div>
-                      </div>
-                      <p className="text-sm text-muted-foreground truncate mb-1">
+                      <h4 className="font-medium text-foreground">
+                        {getUserName(chat)}
+                      </h4>
+                      <p className="text-sm text-muted-foreground truncate">
                         {chat.message}
                       </p>
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-muted-foreground">
-                          {new Date(chat.createdAt).toLocaleDateString()}
-                        </span>
-                        {chat.read === false && (
-                          <span className="bg-red-100 text-red-800 text-xs px-2 py-0.5 rounded-full">
-                            Unread
-                          </span>
-                        )}
-                      </div>
-                    </motion.div>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(chat.createdAt).toLocaleString()}
+                      </p>
+                    </div>
                   ))
                 ) : (
-                  <motion.div 
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="p-8 text-center text-muted-foreground"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto mb-3 text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                    </svg>
-                    <p className="font-medium">No chats found</p>
-                    <p className="text-sm mt-1">Try adjusting your search or filters</p>
-                  </motion.div>
+                  <div className="p-4 text-center text-muted-foreground">
+                    No chat history
+                  </div>
                 )}
-              </AnimatePresence>
+              </div>
             </div>
           </div>
 
-          {/* Enhanced Chat Conversation Panel */}
-          <div className="flex-1 bg-card rounded-xl shadow-lg border border-border flex flex-col overflow-hidden">
+          {/* Chat Conversation Panel */}
+          <div className="flex-1 bg-card rounded-lg shadow flex flex-col">
             {selectedChat ? (
               <>
-                {/* Enhanced Chat Header */}
-                <div className="p-4 border-b bg-gradient-to-r from-card to-muted">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h2 className="text-lg font-semibold text-foreground flex items-center">
-                        <span className="w-3 h-3 bg-green-500 rounded-full mr-2 animate-pulse"></span>
-                        Chat with {getUserName(selectedChat)}
-                      </h2>
-                      <div className="flex items-center space-x-4 mt-1">
-                        <p className="text-sm text-muted-foreground">
-                          Session:{" "}
-                          {(selectedChat.sessionInfo &&
-                            typeof selectedChat.sessionInfo === "object" &&
-                            selectedChat.sessionInfo.date) ||
-                            (selectedChat.sessionInfo &&
-                              Array.isArray(selectedChat.sessionInfo) &&
-                              selectedChat.sessionInfo[0]?.date) ||
-                            "N/A"}
-                        </p>
-                        <span className="text-muted-foreground">•</span>
-                        <p className="text-sm text-muted-foreground">
-                          {(selectedChat.sessionInfo &&
-                            typeof selectedChat.sessionInfo === "object" &&
-                            selectedChat.sessionInfo.time) ||
-                            (selectedChat.sessionInfo &&
-                              Array.isArray(selectedChat.sessionInfo) &&
-                              selectedChat.sessionInfo[0]?.time) ||
-                            "N/A"}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={() => loadChatMessages(selectedChat)}
-                        className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors"
-                        title="Refresh conversation"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                        </svg>
-                      </button>
-                      <button
-                        onClick={() => setSelectedChat(null)}
-                        className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors"
-                        title="Close conversation"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
+                <div className="p-4 border-b">
+                  <h2 className="text-lg font-semibold text-foreground">
+                    Chat with {getUserName(selectedChat)}
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    Session:{" "}
+                    {(selectedChat.sessionInfo &&
+                      typeof selectedChat.sessionInfo === "object" &&
+                      selectedChat.sessionInfo.date) ||
+                      (selectedChat.sessionInfo &&
+                        Array.isArray(selectedChat.sessionInfo) &&
+                        selectedChat.sessionInfo[0]?.date) ||
+                      "N/A"}{" "}
+                    at{" "}
+                    {(selectedChat.sessionInfo &&
+                      typeof selectedChat.sessionInfo === "object" &&
+                      selectedChat.sessionInfo.time) ||
+                      (selectedChat.sessionInfo &&
+                        Array.isArray(selectedChat.sessionInfo) &&
+                        selectedChat.sessionInfo[0]?.time) ||
+                      "N/A"}
+                  </p>
                 </div>
 
-                {/* Enhanced Messages Area */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-muted to-background max-h-[calc(100vh-350px)]">
-                  <AnimatePresence>
-                    {messages.length > 0 ? (
-                      messages.map((msg, index) => (
-                        <motion.div
-                          key={msg._id}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: index * 0.05 }}
-                          className={`flex ${
+                {/* Messages Area */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-muted max-h-[calc(100vh-300px)]">
+                  {messages.length > 0 ? (
+                    messages.map((msg) => (
+                      <div
+                        key={msg._id}
+                        className={`flex ${
+                          msg.senderType === "admin"
+                            ? "justify-end"
+                            : "justify-start"
+                        }`}
+                      >
+                        <div
+                          className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
                             msg.senderType === "admin"
-                              ? "justify-end"
-                              : "justify-start"
+                              ? "bg-primary text-primary-foreground"
+                              : msg.senderType === "user"
+                              ? "bg-background text-foreground border"
+                              : "bg-secondary text-secondary-foreground"
                           }`}
                         >
-                          <div
-                            className={`max-w-xs lg:max-w-md px-4 py-3 rounded-2xl shadow-sm ${
+                          <p className="text-sm">{msg.content}</p>
+                          <p
+                            className={`text-xs mt-1 ${
                               msg.senderType === "admin"
-                                ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-br-md"
-                                : "bg-white text-foreground border border-border rounded-bl-md"
+                                ? "text-primary-foreground/70"
+                                : "text-muted-foreground"
                             }`}
                           >
-                            {msg.senderType !== "admin" && (
-                              <p className="text-xs font-medium text-muted-foreground mb-1">
-                                {msg.senderName || "User"}
-                              </p>
-                            )}
-                            <p className="text-sm">{msg.content}</p>
-                            <p
-                              className={`text-xs mt-1 ${
-                                msg.senderType === "admin"
-                                  ? "text-blue-100"
-                                  : "text-muted-foreground"
-                              }`}
-                            >
-                              {new Date(msg.timestamp).toLocaleTimeString([], {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
-                            </p>
-                          </div>
-                        </motion.div>
-                      ))
-                    ) : (
-                      <motion.div 
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        className="text-center text-muted-foreground mt-8"
-                      >
-                        <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                          </svg>
+                            {new Date(msg.timestamp).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </p>
                         </div>
-                        <h3 className="font-medium text-foreground">No messages yet</h3>
-                        <p className="text-sm mt-1">Start the conversation by sending a message</p>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center text-muted-foreground mt-8">
+                      <p>No messages yet</p>
+                    </div>
+                  )}
                   <div ref={messagesEndRef} />
                 </div>
 
-                {/* Enhanced Reply Area */}
-                <div className="border-t bg-gradient-to-r from-card to-muted p-4">
-                  <div className="flex items-end space-x-3">
-                    <div className="flex-1 relative">
-                      <textarea
-                        value={newReply}
-                        onChange={(e) => setNewReply(e.target.value)}
-                        onKeyPress={handleKeyPress}
-                        placeholder="Type your reply..."
-                        className="w-full border border-input rounded-xl px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 shadow-sm bg-background"
-                        rows={2}
-                        style={{ minHeight: "60px", maxHeight: "120px" }}
-                      />
-                      <div className="absolute right-3 bottom-3 flex items-center space-x-1">
-                        <button
-                          onClick={() => {}}
-                          className="p-1 text-muted-foreground hover:text-foreground transition-colors"
-                          title="Attach file"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-                          </svg>
-                        </button>
-                        <button
-                          onClick={() => {}}
-                          className="p-1 text-muted-foreground hover:text-foreground transition-colors"
-                          title="Emoji"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                        </button>
-                      </div>
-                    </div>
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
+                {/* Reply Area */}
+                <div className="border-t p-4">
+                  <div className="flex items-end space-x-2">
+                    <textarea
+                      value={newReply}
+                      onChange={(e) => setNewReply(e.target.value)}
+                      onKeyPress={handleKeyPress}
+                      placeholder="Type your reply..."
+                      className="flex-1 border border-input rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-primary"
+                      rows={2}
+                      style={{ minHeight: "60px", maxHeight: "120px" }}
+                    />
+                    <button
                       onClick={handleSendReply}
                       disabled={!newReply.trim() || loading}
-                      className={`px-5 py-3 rounded-xl font-medium shadow-md transition-all duration-200 ${
+                      className={`px-4 py-2 rounded-lg ${
                         newReply.trim() && !loading
-                          ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:shadow-lg hover:shadow-blue-500/30"
+                          ? "bg-primary text-primary-foreground hover:bg-primary/90"
                           : "bg-muted text-muted-foreground cursor-not-allowed"
                       }`}
                     >
-                      {loading ? (
-                        <div className="flex items-center space-x-2">
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                          <span>Sending...</span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center space-x-2">
-                          <span>Send</span>
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                          </svg>
-                        </div>
-                      )}
-                    </motion.button>
+                      {loading ? "Sending..." : "Send"}
+                    </button>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-2 text-center">
-                    Press Enter to send, Shift+Enter for new line
-                  </p>
                 </div>
               </>
             ) : (
-              <div className="flex-1 flex items-center justify-center p-8">
-                <motion.div 
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="text-center text-muted-foreground max-w-md"
-                >
-                  <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mx-auto mb-6">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-10 w-10 text-muted-foreground"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                      />
-                    </svg>
-                  </div>
-                  <h3 className="text-xl font-semibold text-foreground mb-2">Select a conversation</h3>
-                  <p className="text-muted-foreground">
-                    Choose a chat from the list to view messages and respond to customers
+              <div className="flex-1 flex items-center justify-center">
+                <div className="text-center text-muted-foreground">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-16 w-16 mx-auto mb-4 text-muted"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                    />
+                  </svg>
+                  <h3 className="text-lg font-medium">Select a chat to view</h3>
+                  <p className="mt-1">
+                    Choose a conversation from the list to view and reply
                   </p>
-                  <div className="mt-6 p-4 bg-muted rounded-lg">
-                    <p className="text-sm text-muted-foreground">
-                      <span className="font-medium">Tip:</span> Use the search and filter options to quickly find specific conversations
-                    </p>
-                  </div>
-                </motion.div>
+                </div>
               </div>
             )}
           </div>
