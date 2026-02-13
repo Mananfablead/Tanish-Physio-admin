@@ -462,14 +462,16 @@ export default function Notifications() {
       </div>
 
       <Tabs defaultValue="all" className="mt-4">
-        <TabsList>
-          <TabsTrigger value="all">
-            All Notifications ({filteredNotifications.length})
-          </TabsTrigger>
-          <TabsTrigger value="unread">Unread ({stats.unread})</TabsTrigger>
-          <TabsTrigger value="by-type">By Type</TabsTrigger>
-          <TabsTrigger value="analytics">Analytics</TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto pb-2 -mb-2">
+          <TabsList className="inline-flex min-w-max">
+            <TabsTrigger value="all" className="whitespace-nowrap">
+              All Notifications ({filteredNotifications.length})
+            </TabsTrigger>
+            <TabsTrigger value="unread" className="whitespace-nowrap">Unread ({stats.unread})</TabsTrigger>
+            <TabsTrigger value="by-type" className="whitespace-nowrap">By Type</TabsTrigger>
+            <TabsTrigger value="analytics" className="whitespace-nowrap">Analytics</TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="all" className="mt-4">
           <div className="bg-card rounded-lg border border-border overflow-hidden animate-fade-in">

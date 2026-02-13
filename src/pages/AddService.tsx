@@ -265,14 +265,25 @@ export default function AddService() {
               rows={4}
             />
 
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Input
                 type="number"
                 placeholder="Price"
                 value={serviceForm.price}
-                onChange={(e) =>
-                  setServiceForm({ ...serviceForm, price: e.target.value })
-                }
+                onChange={(e) => {
+                  const value = e.target.value;
+                  // Prevent negative values
+                  if (value === "" || (Number(value) >= 0 && !value.includes("-"))) {
+                    setServiceForm({ ...serviceForm, price: value });
+                  }
+                }}
+                min="0"
+                onKeyPress={(e) => {
+                  // Prevent negative sign and other non-numeric characters
+                  if (e.key === "-" || e.key === "e" || e.key === "+" || e.key === "E") {
+                    e.preventDefault();
+                  }
+                }}
               />
 
               <div>
@@ -306,9 +317,20 @@ export default function AddService() {
                 type="number"
                 placeholder="Validity (days)"
                 value={serviceForm.validity}
-                onChange={(e) =>
-                  setServiceForm({ ...serviceForm, validity: e.target.value })
-                }
+                onChange={(e) => {
+                  const value = e.target.value;
+                  // Prevent negative values
+                  if (value === "" || (Number(value) >= 0 && !value.includes("-"))) {
+                    setServiceForm({ ...serviceForm, validity: value });
+                  }
+                }}
+                min="0"
+                onKeyPress={(e) => {
+                  // Prevent negative sign and other non-numeric characters
+                  if (e.key === "-" || e.key === "e" || e.key === "+" || e.key === "E") {
+                    e.preventDefault();
+                  }
+                }}
               />
             </div>
 

@@ -191,17 +191,17 @@ export function ExpiredItemsDashboard() {
       </div>
 
       {/* Action Buttons */}
-      <div className="flex gap-4">
-        <Button onClick={fetchExpiredItems} variant="outline">
+      <div className="flex flex-col sm:flex-row gap-4">
+        <Button onClick={fetchExpiredItems} variant="outline" className="w-full sm:w-auto">
           Refresh Data
         </Button>
         {expiredSubscriptions.length > 0 && (
-          <Button variant="destructive">
+          <Button variant="destructive" className="w-full sm:w-auto">
             Notify Expired Subscriptions ({expiredSubscriptions.length})
           </Button>
         )}
         {expiredServices.length > 0 && (
-          <Button variant="destructive">
+          <Button variant="destructive" className="w-full sm:w-auto">
             Notify Expired Services ({expiredServices.length})
           </Button>
         )}

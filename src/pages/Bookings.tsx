@@ -280,52 +280,50 @@ export default function Bookings() {
       {/* Table or Empty State */}
       {paginatedBookings.length > 0 ? (
         <>
-          <div className="bg-card rounded-lg border overflow-hidden">
-            <table className="data-table">
+          <div className="bg-card rounded-lg border overflow-x-auto">
+            <table className="data-table w-full">
               <thead>
                 <tr>
-                  <th>Service</th>
-                  <th>Client</th>
+                  <th className="whitespace-nowrap">Service</th>
+                  <th className="whitespace-nowrap">Client</th>
                   {/* <th>Therapist</th> */}
-                  <th>Date & Time</th>
-                  <th>Expiration</th>
-                  <th>Status</th>
-                  <th>Actions</th>
+                  <th className="whitespace-nowrap">Date & Time</th>
+                  <th className="whitespace-nowrap">Expiration</th>
+                  <th className="whitespace-nowrap">Status</th>
+                  <th className="whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {paginatedBookings.map((booking) => (
                   <tr key={booking.id}>
-                    <td>
+                    <td className="min-w-[200px]">
                       <div className="flex items-center gap-3">
                         {booking.serviceId?.images && booking.serviceId.images.length > 0 ? (
                           <img
                             src={booking.serviceId.images[0]}
                             alt={booking.serviceName}
-                            className="w-10 h-10 rounded-lg object-cover"
+                            className="w-10 h-10 rounded-lg object-cover flex-shrink-0"
                           />
                         ) : (
-                          <div className="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-xs font-semibold">
+                          <div className="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-xs font-semibold flex-shrink-0">
                             {booking.serviceName.substring(0, 2).toUpperCase()}
                           </div>
                         )}
-                        <span >{booking.serviceName}</span>
+                        <span className="truncate">{booking.serviceName}</span>
                       </div>
                     </td>
-                    <td>
+                    <td className="min-w-[120px]">
                       <div className="flex items-center gap-3">
-
-                        <span className="capitalize">{booking.clientName}</span>
+                        <span className="capitalize truncate">{booking.clientName}</span>
                       </div>
                     </td>
                     {/* <td>{booking.therapistName}</td> */}
-                    <td>
+                    <td className="min-w-[150px]">
                       <div className="flex flex-col gap-1">
-                        <span className="font-medium">{booking.date}</span>
-
+                        <span className="font-medium truncate">{booking.date}</span>
                         <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                          <Clock className="w-4 h-4" />
-                          <span>
+                          <Clock className="w-4 h-4 flex-shrink-0" />
+                          <span className="truncate">
                             {new Date(booking.purchaseDate).toLocaleTimeString("en-IN", {
                               hour: "2-digit",
                               minute: "2-digit",
@@ -337,22 +335,22 @@ export default function Bookings() {
                     </td>
 
                    
-                    <td>
+                    <td className="min-w-[120px]">
                       {booking.isServiceExpired ? (
-                        <span className="px-2 py-1 rounded-full text-xs font-semibold text-red-600 bg-red-100">
+                        <span className="px-2 py-1 rounded-full text-xs font-semibold text-red-600 bg-red-100 whitespace-nowrap">
                           Expired
                         </span>
                       ) : booking.serviceExpiryDate ? (
-                        <span className="px-2 py-1 rounded-full text-xs font-semibold text-green-600 bg-green-100">
+                        <span className="px-2 py-1 rounded-full text-xs font-semibold text-green-600 bg-green-100 whitespace-nowrap">
                           {new Date(booking.serviceExpiryDate).toLocaleDateString()}
                         </span>
                       ) : (
-                        <span className="px-2 py-1 rounded-full text-xs font-semibold text-blue-600 bg-blue-100">
+                        <span className="px-2 py-1 rounded-full text-xs font-semibold text-blue-600 bg-blue-100 whitespace-nowrap">
                           Unlimited
                         </span>
                       )}
                     </td>
-                     <td>
+                     <td className="min-w-[140px]">
                       <Select
                         value={booking.status}
                         onValueChange={async (value) => {
@@ -377,7 +375,7 @@ export default function Bookings() {
                         }}
                       >
                         <SelectTrigger className={cn(
-                          "w-[120px] capitalize rounded-lg bg-transparent border-none outline-none",
+                          "w-full capitalize rounded-lg bg-transparent border-none outline-none",
                           getStatusBadge(booking.status)
                         )}>
                           <SelectValue />
@@ -389,10 +387,10 @@ export default function Bookings() {
                         </SelectContent>
                       </Select>
                     </td>
-                    <td>
+                    <td className="min-w-[100px]">
                       <div className="flex items-center gap-2">
                         <Link to={`/bookings/${booking._id || booking.id}`}>
-                          <Button size="icon" variant="outline" className="h-8 w-8">
+                          <Button size="icon" variant="outline" className="h-8 w-8 flex-shrink-0">
                             <Eye className="w-4 h-4" />
                           </Button>
                         </Link>

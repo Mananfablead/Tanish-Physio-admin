@@ -145,9 +145,7 @@ console.log("errer",singleBooking)
               <Badge className={getStatusBadge(typeof booking.status === 'string' ? booking.status : "")}>
                 {typeof booking.status === 'string' ? booking.status : "N/A"}
               </Badge>
-              <Badge className={getPaymentBadge(typeof booking.paymentStatus === 'string' ? booking.paymentStatus : "")}>
-                {typeof booking.paymentStatus === 'string' ? booking.paymentStatus : "N/A"}
-              </Badge>
+              
             </div>
           </div>
         </CardHeader>
@@ -272,6 +270,9 @@ console.log("errer",singleBooking)
             <CardHeader>
               <CardTitle className="flex gap-2">
                 <CreditCard /> Payment
+                <Badge className={getPaymentBadge(typeof booking.paymentStatus === 'string' ? booking.paymentStatus : "")}>
+                {typeof booking.paymentStatus === 'string' ? booking.paymentStatus : "N/A"}
+              </Badge>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">

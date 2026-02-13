@@ -306,6 +306,11 @@ const validateForm = () => {
                   : ""
               }
             />
+            {errors.steps?.[index]?.title && (
+              <p className="text-xs text-red-500 mt-1">
+                {errors.steps[index].title}
+              </p>
+            )}
           </div>
 
           <div>
@@ -321,6 +326,11 @@ const validateForm = () => {
                   : ""
               }
             />
+            {errors.steps?.[index]?.description && (
+              <p className="text-xs text-red-500 mt-1">
+                {errors.steps[index].description}
+              </p>
+            )}
           </div>
 
           <div>
@@ -336,6 +346,11 @@ const validateForm = () => {
                     : ""
                 }
               />
+              {errors.steps?.[index]?.image && (
+                <p className="text-xs text-red-500 mt-1">
+                  {errors.steps[index].image}
+                </p>
+              )}
               
               {/* Image Preview */}
               {steps[index].image && (
