@@ -16,7 +16,7 @@ const AdminDashboard = () => {
   const { adminOnlineCount, anyAdminOnline, connected } = useAdminChatSocket();
 
   // Load stats on component mount
-  React.useEffect(() => {
+  useEffect(() => {
     loadStats();
   }, []);
 
