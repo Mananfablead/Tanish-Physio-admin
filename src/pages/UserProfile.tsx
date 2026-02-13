@@ -57,6 +57,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { fetchUserById, updateUser } from "@/features/users/userSlice";
 import PageLoader from "@/components/PageLoader";
 import { toast } from "sonner";
+import { fetchActiveQuestionnaire } from "@/features/questionnaires/questionnaireSlice";
 
 export default function UserProfile() {
   const { id } = useParams();
@@ -69,6 +70,9 @@ const [updating, setUpdating] = useState(false);
 
   const usersState = useSelector((state: any) => state.users);
   const { selectedUser: user, loading } = usersState;
+  
+  const questionnaireState = useSelector((state: any) => state.questionnaires);
+  const { currentQuestionnaire: activeQuestionnaire } = questionnaireState;
   /* ============================
      FETCH USER
   ============================ */
@@ -76,7 +80,19 @@ const [updating, setUpdating] = useState(false);
     if (id) {
       dispatch(fetchUserById(id));
     }
+    // Fetch active questionnaire to get question structure
+    dispatch(fetchActiveQuestionnaire() as any);
   }, [id, dispatch]);
+
+  // Log for debugging
+  useEffect(() => {
+    if (questionnaireState.error) {
+      console.log("Questionnaire fetch error:", questionnaireState.error);
+    }
+    if (activeQuestionnaire) {
+      console.log("Active questionnaire loaded:", activeQuestionnaire);
+    }
+  }, [questionnaireState.error, activeQuestionnaire]);
 
   /* ============================
      STATUS UPDATE
@@ -160,6 +176,231 @@ const toggleUserStatus = async () => {
     }
   };
 
+  // Parse questionnaire responses from different sources
+  const getQuestionnaireResponses = () => {
+    const responses = [];
+    
+    // 1. Check structured questionnaire responses first
+    if (user?.healthProfile?.questionnaireResponses) {
+      // Convert map/object to array format
+      const respObj = user.healthProfile.questionnaireResponses;
+      Object.entries(respObj).forEach(([questionId, answer]) => {
+        if (answer) {
+          responses.push({
+            questionId,
+            question: `Question ID: ${questionId}`,
+            answer: answer as string,
+            source: 'structured'
+          });
+        }
+      });
+    }
+    
+    // 2. Check questionnaire metadata for detailed responses
+    if (user?.healthProfile?.questionnaireMetadata?.responses) {
+      user.healthProfile.questionnaireMetadata.responses.forEach((resp: any) => {
+        if (resp.answer) {
+          responses.push({
+            questionId: resp.questionId,
+            question: resp.questionText,
+            answer: resp.answer,
+            questionType: resp.questionType,
+            timestamp: resp.timestamp,
+            source: 'metadata'
+          });
+        }
+      });
+    }
+    
+    // 3. Fallback to parsing additionalNotes for legacy data
+    if (user?.healthProfile?.additionalNotes && responses.length === 0) {
+      const lines = user.healthProfile.additionalNotes.split('\n');
+      lines.forEach(line => {
+        if (line.trim()) {
+          const separatorIndex = line.indexOf(':');
+          if (separatorIndex > 0) {
+            const question = line.substring(0, separatorIndex).trim();
+            const answer = line.substring(separatorIndex + 1).trim();
+            if (question && answer) {
+              responses.push({
+                question,
+                answer,
+                source: 'legacy'
+              });
+            }
+          }
+        }
+      });
+    }
+    
+    return responses;
+  };
+
+  // Get response for a specific question
+  const getQuestionResponse = (questionText) => {
+    const responses = getQuestionnaireResponses();
+    const response = responses.find(r => r.question === questionText);
+    return response ? response.answer : null;
+  };
+
+  // Get all responses for display
+  const getAllResponses = () => {
+    return getQuestionnaireResponses();
+  };
+
+  // Get questionnaire completion info
+  const getQuestionnaireInfo = () => {
+    if (user?.healthProfile?.questionnaireMetadata) {
+      return {
+        completedAt: user.healthProfile.questionnaireMetadata.completedAt,
+        questionnaireId: user.healthProfile.questionnaireMetadata.questionnaireId,
+        totalQuestions: user.healthProfile.questionnaireMetadata.responses?.length || 0
+      };
+    }
+    return null;
+  };
+
+  // Get response by question ID
+  const getResponseByQuestionId = (questionId) => {
+    const responses = getQuestionnaireResponses();
+    return responses.find(r => r.questionId === questionId);
+  };
+
+  // Get response by question text
+  const getResponseByQuestionText = (questionText) => {
+    const responses = getQuestionnaireResponses();
+    return responses.find(r => r.question === questionText);
+  };
+
+  // Get response count
+  const getResponseCount = () => {
+    return getQuestionnaireResponses().length;
+  };
+
+  // Check if user has completed questionnaire
+  const hasCompletedQuestionnaire = () => {
+    return getResponseCount() > 0 || 
+           (user?.healthProfile?.questionnaireMetadata?.responses?.length > 0);
+  };
+
+  // Get questionnaire completion status
+  const getQuestionnaireStatus = () => {
+    if (hasCompletedQuestionnaire()) {
+      const info = getQuestionnaireInfo();
+      if (info) {
+        return `Completed on ${new Date(info.completedAt).toLocaleDateString()}`;
+      }
+      return 'Completed';
+    }
+    return 'Not completed';
+  };
+
+  // Get question type badge
+  const getQuestionTypeBadge = (questionType) => {
+    const typeMap = {
+      'text': 'bg-blue-100 text-blue-800',
+      'mcq': 'bg-green-100 text-green-800',
+      'slider': 'bg-purple-100 text-purple-800',
+      'skalaeton': 'bg-orange-100 text-orange-800'
+    };
+    return typeMap[questionType] || 'bg-gray-100 text-gray-800';
+  };
+
+  // Get source badge
+  const getSourceBadge = (source) => {
+    const sourceMap = {
+      'structured': 'bg-indigo-100 text-indigo-800',
+      'metadata': 'bg-cyan-100 text-cyan-800',
+      'legacy': 'bg-yellow-100 text-yellow-800'
+    };
+    return sourceMap[source] || 'bg-gray-100 text-gray-800';
+  };
+
+  // Get all questions from active questionnaire
+  const getActiveQuestionnaireQuestions = () => {
+    if (activeQuestionnaire && activeQuestionnaire.questions) {
+      return activeQuestionnaire.questions
+        .filter(q => q.active !== false)
+        .sort((a, b) => (a.order || 0) - (b.order || 0));
+    }
+    return [];
+  };
+
+  // Get user's answer for a specific question
+  const getUserAnswerForQuestion = (question) => {
+    // Try to find by question ID first
+    let response = getResponseByQuestionId(question._id);
+    if (response) return response;
+    
+    // Fallback to question text matching
+    response = getResponseByQuestionText(question.question);
+    return response;
+  };
+
+  // Get response status badge
+  const getResponseStatusBadge = (hasResponse) => {
+    return hasResponse 
+      ? 'text-emerald-600 bg-emerald-100' 
+      : 'text-destructive bg-destructive/10';
+  };
+
+  // Get response status text
+  const getResponseStatusText = (hasResponse) => {
+    return hasResponse ? 'Answered' : 'Not answered';
+  };
+
+  // Get response status indicator
+  const getResponseStatusIndicator = (hasResponse) => {
+    return hasResponse 
+      ? 'bg-emerald-600' 
+      : 'bg-destructive';
+  };
+
+  // Get formatted date
+  const formatDate = (dateString) => {
+    if (!dateString) return 'Unknown';
+    return new Date(dateString).toLocaleDateString();
+  };
+
+  // Get formatted datetime
+  const formatDateTime = (dateString) => {
+    if (!dateString) return 'Unknown';
+    return new Date(dateString).toLocaleString();
+  };
+
+  // Format answer based on question type
+  const formatAnswer = (answer, questionType) => {
+    if (!answer) return "Not answered";
+    
+    if (questionType === 'slider') {
+      return `${answer}/10`;
+    }
+    
+    if (questionType === 'mcq') {
+      return answer;
+    }
+    
+    return answer;
+  };
+
+  // Get questionnaire summary
+  const getQuestionnaireSummary = () => {
+    const responses = getQuestionnaireResponses();
+    const info = getQuestionnaireInfo();
+    const totalQuestions = activeQuestionnaire?.questions?.length || 0;
+    
+    return {
+      totalResponses: responses.length,
+      totalQuestions,
+      completionRate: totalQuestions > 0 
+        ? Math.round((responses.length / totalQuestions) * 100) 
+        : 0,
+      status: getQuestionnaireStatus(),
+      completedAt: info?.completedAt ? formatDate(info.completedAt) : null,
+      hasData: responses.length > 0
+    };
+  };
+
   /* ============================
      LOADING STATES
   ============================ */
@@ -200,33 +441,33 @@ const toggleUserStatus = async () => {
   return (
     <div className="max-w-7xl mx-auto space-y-8 pb-12">
       {/* HEADER */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6 bg-card rounded-xl border p-6 shadow-sm">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 bg-card rounded-xl border p-4 md:p-6 shadow-sm">
         <div className="flex items-center gap-4">
           <Button
             variant="outline"
             size="icon"
             onClick={() => navigate("/users")}
-            className="rounded-full h-10 w-10"
+            className="rounded-full h-10 w-10 flex-shrink-0"
           >
             <ChevronLeft className="w-5 h-5" />
           </Button>
-          <div className="relative">
-            <div className="w-20 h-20 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-2xl">
+          <div className="relative flex-shrink-0">
+            <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-xl md:text-2xl">
               {user.name.charAt(0).toUpperCase()}
             </div>
-            <div className={`absolute bottom-2 right-2 w-6 h-6 rounded-full border-4 border-white ${user.status === 'active' ? 'bg-green-500' : 'bg-gray-400'}`} />
+            <div className={`absolute -bottom-1 -right-1 md:bottom-2 md:right-2 w-4 h-4 md:w-6 md:h-6 rounded-full border-2 md:border-4 border-white ${user.status === 'active' ? 'bg-green-500' : 'bg-gray-400'}`} />
           </div>
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <div>
-                <h1 className="text-3xl font-extrabold">{user.name}</h1>
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:gap-3 mb-2">
+              <div className="min-w-0 flex-1">
+                <h1 className="text-2xl md:text-3xl font-extrabold truncate">{user.name}</h1>
                 <div className="flex items-center gap-2 mt-1">
-                  <span className="text-muted-foreground text-base">{user.email}</span>
+                  <span className="text-muted-foreground text-sm md:text-base truncate">{user.email}</span>
                 </div>
               </div>
               <span
                 className={cn(
-                  "px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide",
+                  "px-2 py-1 md:px-3 md:py-1 rounded-full text-xs font-bold uppercase tracking-wide whitespace-nowrap mt-2 sm:mt-0",
                   user.status === "active"
                     ? "bg-emerald-100 text-emerald-700 border border-emerald-200"
                     : "bg-destructive/10 text-destructive border border-destructive/20"
@@ -235,38 +476,37 @@ const toggleUserStatus = async () => {
                 {user.status}
               </span>
             </div>
-            <div className="flex flex-wrap items-center gap-4 text-muted-foreground">
+            <div className="flex flex-wrap items-center gap-3 md:gap-4 text-muted-foreground">
               <span className="flex items-center gap-1.5 text-sm">
-                <Phone className="w-4 h-4" />
-                {user.phone}
+                <Phone className="w-3 h-3 md:w-4 md:h-4 flex-shrink-0" />
+                <span className="truncate">{user.phone}</span>
               </span>
               <span className="flex items-center gap-1.5 text-sm">
-                <CalendarIcon className="w-4 h-4" />
-                Joined {user.joinDate}
+                <CalendarIcon className="w-3 h-3 md:w-4 md:h-4 flex-shrink-0" />
+                <span className="truncate">Joined {user.joinDate ? new Date(user.joinDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'N/A'}</span>
               </span>
             </div>
           </div>
         </div>
 
-        <div className="flex gap-3">
-       <Button
-  onClick={toggleUserStatus}
-  disabled={updating}
-  variant={user.status === "active" ? "destructive" : "default"}
-  className="min-w-[160px]"
->
-  {updating ? (
-    <>
-      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-      Updating...
-    </>
-  ) : user.status === "active" ? (
-    "Deactivate User"
-  ) : (
-    "Activate User"
-  )}
-</Button>
-
+        <div className="flex justify-end md:justify-start">
+          <Button
+            onClick={toggleUserStatus}
+            disabled={updating}
+            variant={user.status === "active" ? "destructive" : "default"}
+            className="w-full md:w-auto min-w-[140px] md:min-w-[160px]"
+          >
+            {updating ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Updating...
+              </>
+            ) : user.status === "active" ? (
+              "Deactivate User"
+            ) : (
+              "Activate User"
+            )}
+          </Button>
         </div>
       </div>
 
@@ -322,6 +562,37 @@ const toggleUserStatus = async () => {
             </div>
           </div>
 
+          {/* SERVICES USED CARD */}
+          <div className="bg-card rounded-xl border p-6 shadow-sm">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="p-2 rounded-lg bg-green-500/10">
+                <Star className="w-5 h-5 text-green-500" />
+              </div>
+              <h3 className="text-lg font-bold">Services Used</h3>
+            </div>
+            
+            {user.servicesUsed && user.servicesUsed.length > 0 ? (
+              <div className="space-y-3 max-h-60 overflow-y-auto">
+                {user.servicesUsed.map((service, index) => (
+                  <div key={index} className="p-3 border rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h4 className="font-medium text-sm">{service.serviceName}</h4>
+                      </div>
+                      <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full whitespace-nowrap">
+                        {new Date(service.bookingDate).toLocaleDateString()}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-4 text-muted-foreground">
+                <p className="text-sm">No services used yet</p>
+              </div>
+            )}
+          </div>
+
           {/* ACTION BUTTONS */}
           {/* <div className="space-y-3">
             <Button
@@ -347,14 +618,14 @@ const toggleUserStatus = async () => {
         <div className="lg:col-span-8 space-y-8">
           {/* HEALTH PROFILE SECTION */}
           <div className="bg-card rounded-xl border p-6 shadow-sm">
-            <div className="flex items-center gap-2 mb-6">
+            {/* <div className="flex items-center gap-2 mb-6">
               <div className="p-2 rounded-lg bg-blue-500/10">
                 <Activity className="w-5 h-5 text-blue-500" />
               </div>
               <h3 className="text-xl font-bold">Health Profile</h3>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            </div> */}
+{/*             
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
               <div className="p-5 border rounded-xl bg-muted/30 hover:bg-muted/50 transition-colors">
                 <h4 className="text-sm font-semibold text-muted-foreground mb-2">Primary Concern</h4>
                 <p className="font-medium">{user.healthProfile?.primaryConcern || "Not specified"}</p>
@@ -371,39 +642,215 @@ const toggleUserStatus = async () => {
                 <h4 className="text-sm font-semibold text-muted-foreground mb-2">Prior Treatments</h4>
                 <p className="font-medium">{user.healthProfile?.priorTreatments || "None recorded"}</p>
               </div>
-            </div>
-          </div>
-
-          {/* SERVICES USED SECTION */}
-          <div className="bg-card rounded-xl border p-6 shadow-sm">
-            <div className="flex items-center gap-2 mb-6">
-              <div className="p-2 rounded-lg bg-green-500/10">
-                <Star className="w-5 h-5 text-green-500" />
-              </div>
-              <h3 className="text-xl font-bold">Services Used</h3>
-            </div>
+            </div> */}
             
-            {user.servicesUsed && user.servicesUsed.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {user.servicesUsed.map((service, index) => (
-                  <div key={index} className="p-4 border rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h4 className="font-semibold">{service.serviceName}</h4>
-                      </div>
-                      <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                        {new Date(service.bookingDate).toLocaleDateString()}
-                      </span>
+            {/* Questionnaire Responses Section */}
+            <div className=" ">
+              <div className="flex items-center gap-2 mb-6">
+                <div className="p-2 rounded-lg bg-indigo-500/10">
+                  <ClipboardList className="w-5 h-5 text-indigo-500" />
+                </div>
+                <h3 className="text-xl font-bold">Health Profile</h3>
+                {hasCompletedQuestionnaire() && (
+                  <span className="text-sm text-muted-foreground ml-2">
+                    ({getResponseCount()} responses)
+                  </span>
+                )}
+              </div>
+              
+              {/* Questionnaire Summary */}
+              {hasCompletedQuestionnaire() && (
+                <div className="mb-6 p-4 bg-primary/5 rounded-lg border border-primary/20">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-primary">{getResponseCount()}</div>
+                      <div className="text-sm text-muted-foreground">Responses</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-primary">{getQuestionnaireSummary().completionRate}%</div>
+                      <div className="text-sm text-muted-foreground">Completion</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-sm font-medium">{getQuestionnaireSummary().status}</div>
+                      <div className="text-xs text-muted-foreground">Status</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-sm font-medium">{getQuestionnaireSummary().completedAt || 'N/A'}</div>
+                      <div className="text-xs text-muted-foreground">Completed</div>
                     </div>
                   </div>
-                ))}
+                </div>
+              )}
+              
+              {/* Questionnaire Responses Display */}
+              <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
+                {activeQuestionnaire && activeQuestionnaire.questions && activeQuestionnaire.questions.length > 0 ? (
+                  // Show structured questions with responses
+                  getActiveQuestionnaireQuestions().map((question, index) => {
+                    const userResponse = getUserAnswerForQuestion(question);
+                    const hasResponse = !!userResponse;
+                    
+                    return (
+                      <div 
+                        key={question._id || index} 
+                        className="p-4 border rounded-lg bg-muted/20 hover:bg-muted/30 transition-colors"
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2 flex-wrap">
+                              <span className="text-sm font-semibold text-primary">
+                                Q{index + 1}:
+                              </span>
+                              <h4 className="font-medium text-foreground">
+                                {question.question}
+                                {question.required && (
+                                  <span className="text-destructive ml-1">*</span>
+                                )}
+                              </h4>
+                              <span className={`text-xs px-2 py-1 rounded-full ${getQuestionTypeBadge(question.type)}`}>
+                                {question.type}
+                              </span>
+                              {userResponse && (
+                                <span className={`text-xs px-2 py-1 rounded-full ${getSourceBadge(userResponse.source || 'structured')}`}>
+                                  {userResponse.source || 'response'}
+                                </span>
+                              )}
+                            </div>
+                            
+                            <div className="ml-6 space-y-1">
+                              <p className="text-muted-foreground">
+                                <span className="font-medium">Answer:</span>{' '}
+                                <span className="font-medium text-foreground">
+                                  {hasResponse 
+                                    ? formatAnswer(userResponse.answer, question.type || userResponse.questionType)
+                                    : 'Not answered'
+                                  }
+                                </span>
+                              </p>
+                              {userResponse?.timestamp && (
+                                <p className="text-xs text-muted-foreground">
+                                  Answered: {formatDateTime(userResponse.timestamp)}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center gap-2">
+                            <span className={`flex items-center gap-1 text-sm px-2 py-1 rounded-full ${getResponseStatusBadge(hasResponse)}`}>
+                              <div className={`w-2 h-2 rounded-full ${getResponseStatusIndicator(hasResponse)}`}></div>
+                              {getResponseStatusText(hasResponse)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  // Show raw responses when no questionnaire structure
+                  getAllResponses().length > 0 ? (
+                    getAllResponses().map((response, index) => (
+                      <div 
+                        key={index}
+                        className="p-4 border rounded-lg bg-muted/20 hover:bg-muted/30 transition-colors"
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2 flex-wrap">
+                              <span className="text-sm font-semibold text-primary">
+                                Q{index + 1}:
+                              </span>
+                              <h4 className="font-medium text-foreground">
+                                {response.question}
+                              </h4>
+                              {response.questionType && (
+                                <span className={`text-xs px-2 py-1 rounded-full ${getQuestionTypeBadge(response.questionType || 'text')}`}>
+                                  {response.questionType || 'text'}
+                                </span>
+                              )}
+                              <span className={`text-xs px-2 py-1 rounded-full ${getSourceBadge(response.source || 'unknown')}`}>
+                                {response.source || 'unknown'}
+                              </span>
+                            </div>
+                            
+                            <div className="ml-6">
+                              <p className="text-muted-foreground">
+                                <span className="font-medium">Answer:</span>{' '}
+                                <span className="font-medium text-foreground">
+                                  {response.answer}
+                                </span>
+                              </p>
+                              {response.timestamp && (
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  Answered: {formatDateTime(response.timestamp)}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center gap-2">
+                            <span className="flex items-center gap-1 text-sm text-emerald-600 bg-emerald-100 px-2 py-1 rounded-full">
+                              <div className="w-2 h-2 rounded-full bg-emerald-600"></div>
+                              Answered
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    // No responses found
+                    <div className="text-center py-8 text-muted-foreground">
+                      <ClipboardList className="w-12 h-12 mx-auto mb-4 text-muted-foreground/50" />
+                      <p className="font-medium mb-1">No questionnaire responses found</p>
+                      <p className="text-sm">This user hasn't completed the questionnaire yet.</p>
+                    </div>
+                  )
+                )}
               </div>
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                <p>No services used yet</p>
+              
+              {/* Questionnaire Info Panel */}
+              <div className="mt-6 p-4 bg-muted/10 rounded-lg border border-dashed">
+                <h4 className="font-semibold mb-3 text-foreground flex items-center gap-2">
+                  <ClipboardList className="w-4 h-4" />
+                  Questionnaire Information
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="font-medium text-muted-foreground">Status:</span>
+                    <span className="ml-2">{getQuestionnaireStatus()}</span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-muted-foreground">Total Responses:</span>
+                    <span className="ml-2">{getResponseCount()}</span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-muted-foreground">Questionnaire ID:</span>
+                    <span className="ml-2 font-mono text-xs">{getQuestionnaireInfo()?.questionnaireId || 'N/A'}</span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-muted-foreground">Completion Date:</span>
+                    <span className="ml-2">{getQuestionnaireInfo()?.completedAt ? formatDateTime(getQuestionnaireInfo()?.completedAt) : 'Not completed'}</span>
+                  </div>
+                </div>
               </div>
-            )}
+            </div>
+              
+            {/* Backward Compatibility: Show raw notes if present */}
+            {/* {user?.healthProfile?.additionalNotes && user?.healthProfile?.additionalNotes.trim() && (
+              <div className="mt-6 pt-6 border-t border-border">
+                <h4 className="font-semibold mb-3 text-foreground flex items-center gap-2">
+                  <ClipboardList className="w-4 h-4" />
+                  Additional Notes (Legacy Format)
+                </h4>
+                <div className="bg-muted/10 p-4 rounded-lg border">
+                  <pre className="text-sm whitespace-pre-wrap text-muted-foreground font-mono">
+                    {user.healthProfile.additionalNotes}
+                  </pre>
+                </div>
+              </div>
+            )} */}
           </div>
+
+
           
           {/* SUBSCRIPTION DETAILS SECTION */}
           {user.subscriptionInfo && (

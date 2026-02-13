@@ -587,7 +587,7 @@ export default function Questionnaires() {
 
       {/* Edit/Create Modal */}
       <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-xl max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>
               {selectedQuestion ? "Edit Question" : "Add New Question"}
@@ -599,105 +599,107 @@ export default function Questionnaires() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 mt-4">
-            <div>
-              <Label>Question Text</Label>
-              <Input
-                placeholder="Enter your question..."
-                value={editForm.question}
-                onChange={(e) =>
-                  setEditForm({ ...editForm, question: e.target.value })
-                }
-                className="mt-1"
-              />
-            </div>
-
-            <div>
-              <Label>Question Type</Label>
-              <Select
-                value={editForm.type}
-                onValueChange={(value) =>
-                  setEditForm({ ...editForm, type: value as QuestionType })
-                }
-              >
-                <SelectTrigger className="mt-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="text">Free Text</SelectItem>
-                  <SelectItem value="mcq">Multiple Choice</SelectItem>
-                  <SelectItem value="slider">Slider (1-10)</SelectItem>
-                  <SelectItem value="skalaeton">Skalaeton</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {editForm.type === "mcq" && (
+          <div className="flex-1 overflow-y-auto pr-2 -mr-2">
+            <div className="space-y-4 py-2">
               <div>
-                <Label>Options</Label>
-                <div className="space-y-2 mt-1">
-                  {editForm.options.map((option, index) => (
-                    <div key={index} className="flex items-center gap-2">
-                      <Input
-                        placeholder={`Option ${index + 1}`}
-                        value={option}
-                        onChange={(e) => {
-                          const newOptions = [...editForm.options];
-                          newOptions[index] = e.target.value;
-                          setEditForm({ ...editForm, options: newOptions });
-                        }}
-                      />
-                      {editForm.options.length > 1 && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-destructive"
-                          onClick={() => {
-                            const newOptions = editForm.options.filter(
-                              (_, i) => i !== index
-                            );
+                <Label>Question Text</Label>
+                <Input
+                  placeholder="Enter your question..."
+                  value={editForm.question}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, question: e.target.value })
+                  }
+                  className="mt-1"
+                />
+              </div>
+
+              <div>
+                <Label>Question Type</Label>
+                <Select
+                  value={editForm.type}
+                  onValueChange={(value) =>
+                    setEditForm({ ...editForm, type: value as QuestionType })
+                  }
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="text">Free Text</SelectItem>
+                    <SelectItem value="mcq">Multiple Choice</SelectItem>
+                    <SelectItem value="slider">Slider (1-10)</SelectItem>
+                    <SelectItem value="skalaeton">Skalaeton</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {editForm.type === "mcq" && (
+                <div>
+                  <Label>Options</Label>
+                  <div className="space-y-2 mt-1">
+                    {editForm.options.map((option, index) => (
+                      <div key={index} className="flex items-center gap-2">
+                        <Input
+                          placeholder={`Option ${index + 1}`}
+                          value={option}
+                          onChange={(e) => {
+                            const newOptions = [...editForm.options];
+                            newOptions[index] = e.target.value;
                             setEditForm({ ...editForm, options: newOptions });
                           }}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      )}
-                    </div>
-                  ))}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() =>
-                      setEditForm({
-                        ...editForm,
-                        options: [...editForm.options, ""],
-                      })
-                    }
-                  >
-                    <Plus className="w-4 h-4 mr-1" />
-                    Add Option
-                  </Button>
+                        />
+                        {editForm.options.length > 1 && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-destructive flex-shrink-0"
+                            onClick={() => {
+                              const newOptions = editForm.options.filter(
+                                (_, i) => i !== index
+                              );
+                              setEditForm({ ...editForm, options: newOptions });
+                            }}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        setEditForm({
+                          ...editForm,
+                          options: [...editForm.options, ""],
+                        })
+                      }
+                    >
+                      <Plus className="w-4 h-4 mr-1" />
+                      Add Option
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            <div className="flex items-center justify-between">
-              <div>
-                <Label>Required</Label>
-                <p className="text-xs text-muted-foreground">
-                  Users must answer this question
-                </p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label>Required</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Users must answer this question
+                  </p>
+                </div>
+                <Switch
+                  checked={editForm.required}
+                  onCheckedChange={(checked) =>
+                    setEditForm({ ...editForm, required: checked })
+                  }
+                />
               </div>
-              <Switch
-                checked={editForm.required}
-                onCheckedChange={(checked) =>
-                  setEditForm({ ...editForm, required: checked })
-                }
-              />
             </div>
           </div>
 
-          <DialogFooter className="mt-4">
+          <DialogFooter className="mt-4 pt-4 border-t">
             {selectedQuestion && (
               <Button
                 variant="destructive"

@@ -760,43 +760,45 @@ export default function Sessions() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="all">
-            All
-            <span className="ml-1.5 px-1.5 py-0.5 text-xs bg-primary/20 text-primary rounded-full">
-              {allCount}
-            </span>
-          </TabsTrigger>
-          <TabsTrigger value="upcoming">
-            Upcoming
-            <span className="ml-1.5 px-1.5 py-0.5 text-xs bg-info/20 text-info rounded-full">
-              {upcomingCount}
-            </span>
-          </TabsTrigger>
-          <TabsTrigger value="pending">
-            Pending
-            <span className="ml-1.5 px-1.5 py-0.5 text-xs bg-warning/20 text-warning rounded-full">
-              {pendingCount}
-            </span>
-          </TabsTrigger>
-          <TabsTrigger value="scheduled">
-            Scheduled
-            <span className="ml-1.5 px-1.5 py-0.5 text-xs bg-info/20 text-info rounded-full">
-              {scheduledCount}
-            </span>
-          </TabsTrigger>
-          <TabsTrigger value="live" className="relative">
-            Live
-            {liveCount > 0 && (
-              <span className="ml-1.5 px-1.5 py-0.5 text-xs bg-success/20 text-success rounded-full animate-pulse">
-                {liveCount}
+        <div className="overflow-x-auto pb-2 -mb-2">
+          <TabsList className="inline-flex min-w-max">
+            <TabsTrigger value="all" className="whitespace-nowrap">
+              All
+              <span className="ml-1.5 px-1.5 py-0.5 text-xs bg-primary/20 text-primary rounded-full">
+                {allCount}
               </span>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="completed">Completed</TabsTrigger>
-          <TabsTrigger value="cancelled">Cancelled</TabsTrigger>
-          {/* Missed status is automatically set by backend */}
-        </TabsList>
+            </TabsTrigger>
+            <TabsTrigger value="upcoming" className="whitespace-nowrap">
+              Upcoming
+              <span className="ml-1.5 px-1.5 py-0.5 text-xs bg-info/20 text-info rounded-full">
+                {upcomingCount}
+              </span>
+            </TabsTrigger>
+            <TabsTrigger value="pending" className="whitespace-nowrap">
+              Pending
+              <span className="ml-1.5 px-1.5 py-0.5 text-xs bg-warning/20 text-warning rounded-full">
+                {pendingCount}
+              </span>
+            </TabsTrigger>
+            <TabsTrigger value="scheduled" className="whitespace-nowrap">
+              Scheduled
+              <span className="ml-1.5 px-1.5 py-0.5 text-xs bg-info/20 text-info rounded-full">
+                {scheduledCount}
+              </span>
+            </TabsTrigger>
+            <TabsTrigger value="live" className="whitespace-nowrap relative">
+              Live
+              {liveCount > 0 && (
+                <span className="ml-1.5 px-1.5 py-0.5 text-xs bg-success/20 text-success rounded-full animate-pulse">
+                  {liveCount}
+                </span>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="completed" className="whitespace-nowrap">Completed</TabsTrigger>
+            <TabsTrigger value="cancelled" className="whitespace-nowrap">Cancelled</TabsTrigger>
+            {/* Missed status is automatically set by backend */}
+          </TabsList>
+        </div>
 
         {/* Search */}
         <div className="mt-4">

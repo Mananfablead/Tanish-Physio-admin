@@ -1057,12 +1057,22 @@ const EditWhyUsForm = ({ data, onSave, onCancel }) => {
     stats: data?.stats || [],
     features: data?.features || [],
   });
+  
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
   const handleChange = (field, value) => {
     setFormData((prev) => ({
       ...prev,
       [field]: value,
     }));
+    
+    // Clear error when user starts typing
+    if (errors[field]) {
+      setErrors((prev) => ({
+        ...prev,
+        [field]: "",
+      }));
+    }
   };
 
   const handleStatChange = (index, field, value) => {
@@ -1072,6 +1082,15 @@ const EditWhyUsForm = ({ data, onSave, onCancel }) => {
       ...prev,
       stats: newStats,
     }));
+    
+    // Clear error for this specific stat field
+    const statFieldErrorKey = `stat-${index}-${field}`;
+    if (errors[statFieldErrorKey]) {
+      setErrors((prev) => ({
+        ...prev,
+        [statFieldErrorKey]: "",
+      }));
+    }
   };
 
   const addStat = () => {
@@ -1097,6 +1116,15 @@ const EditWhyUsForm = ({ data, onSave, onCancel }) => {
       ...prev,
       features: newFeatures,
     }));
+    
+    // Clear error for this specific feature field
+    const featureFieldErrorKey = `feature-${index}`;
+    if (errors[featureFieldErrorKey]) {
+      setErrors((prev) => ({
+        ...prev,
+        [featureFieldErrorKey]: "",
+      }));
+    }
   };
 
   const addFeature = () => {
@@ -1114,7 +1142,47 @@ const EditWhyUsForm = ({ data, onSave, onCancel }) => {
     }));
   };
 
+  const validateForm = () => {
+    const newErrors: { [key: string]: string } = {};
+    
+    // Validate required fields
+    if (!formData.title?.trim()) {
+      newErrors.title = "Section title is required";
+    }
+    
+    if (!formData.description?.trim()) {
+      newErrors.description = "Description is required";
+    }
+    
+    // Validate stats
+    (formData.stats || []).forEach((stat, index) => {
+      if (!stat.label?.trim()) {
+        newErrors[`stat-${index}-label`] = "Stat label is required";
+      }
+      if (!stat.value?.trim()) {
+        newErrors[`stat-${index}-value`] = "Stat value is required";
+      }
+      if (!stat.description?.trim()) {
+        newErrors[`stat-${index}-description`] = "Stat description is required";
+      }
+    });
+    
+    // Validate features
+    (formData.features || []).forEach((feature, index) => {
+      if (!feature?.trim()) {
+        newErrors[`feature-${index}`] = "Feature is required";
+      }
+    });
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = () => {
+    if (!validateForm()) {
+      return;
+    }
+    
     // Filter out stats that have empty required fields
     const cleanedStats = (formData.stats || []).filter(
       (stat) =>
@@ -1142,14 +1210,22 @@ const EditWhyUsForm = ({ data, onSave, onCancel }) => {
         <Input
           value={formData.title}
           onChange={(e) => handleChange("title", e.target.value)}
+          className={errors.title ? "border-red-500" : ""}
         />
+        {errors.title && (
+          <p className="text-red-500 text-sm mt-1">{errors.title}</p>
+        )}
       </div>
       <div>
         <Label>Short Description</Label>
         <Textarea
           value={formData.description}
           onChange={(e) => handleChange("description", e.target.value)}
+          className={errors.description ? "border-red-500" : ""}
         />
+        {errors.description && (
+          <p className="text-red-500 text-sm mt-1">{errors.description}</p>
+        )}
       </div>
       <div>
         <div className="flex items-center justify-between mb-2">
@@ -1169,7 +1245,11 @@ const EditWhyUsForm = ({ data, onSave, onCancel }) => {
                     handleStatChange(index, "label", e.target.value)
                   }
                   placeholder="Stat label"
+                  className={errors[`stat-${index}-label`] ? "border-red-500" : ""}
                 />
+                {errors[`stat-${index}-label`] && (
+                  <p className="text-red-500 text-sm mt-1">{errors[`stat-${index}-label`]}</p>
+                )}
               </div>
               <div>
                 <Label>Value</Label>
@@ -1179,7 +1259,11 @@ const EditWhyUsForm = ({ data, onSave, onCancel }) => {
                     handleStatChange(index, "value", e.target.value)
                   }
                   placeholder="Stat value"
+                  className={errors[`stat-${index}-value`] ? "border-red-500" : ""}
                 />
+                {errors[`stat-${index}-value`] && (
+                  <p className="text-red-500 text-sm mt-1">{errors[`stat-${index}-value`]}</p>
+                )}
               </div>
               <div>
                 <Label>Description</Label>
@@ -1189,7 +1273,11 @@ const EditWhyUsForm = ({ data, onSave, onCancel }) => {
                     handleStatChange(index, "description", e.target.value)
                   }
                   placeholder="Description"
+                  className={errors[`stat-${index}-description`] ? "border-red-500" : ""}
                 />
+                {errors[`stat-${index}-description`] && (
+                  <p className="text-red-500 text-sm mt-1">{errors[`stat-${index}-description`]}</p>
+                )}
               </div>
               <div className="col-span-3">
                 <Button
@@ -1225,7 +1313,11 @@ const EditWhyUsForm = ({ data, onSave, onCancel }) => {
                 value={feature}
                 onChange={(e) => handleFeatureChange(index, e.target.value)}
                 placeholder={`Feature ${index + 1}`}
+                className={errors[`feature-${index}`] ? "border-red-500" : ""}
               />
+              {errors[`feature-${index}`] && (
+                <p className="text-red-500 text-sm mt-1">{errors[`feature-${index}`]}</p>
+              )}
               <Button
                 type="button"
                 variant="outline"
@@ -1354,15 +1446,44 @@ const EditFaqForm = ({ data, onSave, onCancel, isNew }) => {
 
 const EditTermsForm = ({ data, onSave, onCancel }) => {
   const [formData, setFormData] = useState(data);
+  
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
   const handleChange = (field, value) => {
     setFormData((prev) => ({
       ...prev,
       [field]: value,
     }));
+    
+    // Clear error when user starts typing
+    if (errors[field]) {
+      setErrors((prev) => ({
+        ...prev,
+        [field]: "",
+      }));
+    }
+  };
+
+  const validateForm = () => {
+    const newErrors: { [key: string]: string } = {};
+    
+    // Validate required fields
+    if (!formData.title?.trim()) {
+      newErrors.title = "Page title is required";
+    }
+    
+    if (!formData.content?.trim()) {
+      newErrors.content = "Content is required";
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = () => {
+    if (!validateForm()) {
+      return;
+    }
     onSave(formData);
   };
 
@@ -1373,7 +1494,11 @@ const EditTermsForm = ({ data, onSave, onCancel }) => {
         <Input
           value={formData.title}
           onChange={(e) => handleChange("title", e.target.value)}
+          className={errors.title ? "border-red-500" : ""}
         />
+        {errors.title && (
+          <p className="text-red-500 text-sm mt-1">{errors.title}</p>
+        )}
       </div>
       <div>
         <Label>Version</Label>
@@ -1398,7 +1523,11 @@ const EditTermsForm = ({ data, onSave, onCancel }) => {
           value={formData.content}
           onChange={(e) => handleChange("content", e.target.value)}
           placeholder="Full page content..."
+          className={errors.content ? "border-red-500" : ""}
         />
+        {errors.content && (
+          <p className="text-red-500 text-sm mt-1">{errors.content}</p>
+        )}
       </div>
       <DialogFooter className="flex justify-between">
         <Button type="button" variant="outline" onClick={onCancel}>
@@ -1554,12 +1683,22 @@ const EditContactForm = ({ data, onSave, onCancel }) => {
     ...data,
     socialLinks: data?.socialLinks || [],
   });
+  
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
   const handleChange = (field, value) => {
     setFormData((prev) => ({
       ...prev,
       [field]: value,
     }));
+    
+    // Clear error when user starts typing
+    if (errors[field]) {
+      setErrors((prev) => ({
+        ...prev,
+        [field]: "",
+      }));
+    }
   };
 
   const handleSocialLinkChange = (index, field, value) => {
@@ -1588,7 +1727,51 @@ const EditContactForm = ({ data, onSave, onCancel }) => {
     }));
   };
 
+  const validateForm = () => {
+    const newErrors: { [key: string]: string } = {};
+    
+    // Validate required fields
+    if (!formData.title?.trim()) {
+      newErrors.title = "Section title is required";
+    }
+    
+    if (!formData.description?.trim()) {
+      newErrors.description = "Description is required";
+    }
+    
+    if (!formData.email?.trim()) {
+      newErrors.email = "Email is required";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = "Email is invalid";
+    }
+    
+    if (!formData.phone?.trim()) {
+      newErrors.phone = "Phone number is required";
+    }
+    
+    if (!formData.address?.trim()) {
+      newErrors.address = "Address is required";
+    }
+    
+    // Validate social links
+    (formData.socialLinks || []).forEach((social, index) => {
+      if ((social.platform?.trim() && !social.url?.trim()) || (!social.platform?.trim() && social.url?.trim())) {
+        if (!social.platform?.trim()) {
+          newErrors[`social-platform-${index}`] = "Platform is required when URL is provided";
+        } else {
+          newErrors[`social-url-${index}`] = "URL is required when Platform is provided";
+        }
+      }
+    });
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = () => {
+    if (!validateForm()) {
+      return;
+    }
     onSave(formData);
   };
 
@@ -1599,35 +1782,55 @@ const EditContactForm = ({ data, onSave, onCancel }) => {
         <Input
           value={formData.title}
           onChange={(e) => handleChange("title", e.target.value)}
+          className={errors.title ? "border-red-500" : ""}
         />
+        {errors.title && (
+          <p className="text-red-500 text-sm mt-1">{errors.title}</p>
+        )}
       </div>
       <div>
         <Label>Description</Label>
         <Textarea
           value={formData.description}
           onChange={(e) => handleChange("description", e.target.value)}
+          className={errors.description ? "border-red-500" : ""}
         />
+        {errors.description && (
+          <p className="text-red-500 text-sm mt-1">{errors.description}</p>
+        )}
       </div>
       <div>
         <Label>Email Address</Label>
         <Input
           value={formData.email}
           onChange={(e) => handleChange("email", e.target.value)}
+          className={errors.email ? "border-red-500" : ""}
         />
+        {errors.email && (
+          <p className="text-red-500 text-sm mt-1">{errors.email}</p>
+        )}
       </div>
       <div>
         <Label>Phone Number</Label>
         <Input
           value={formData.phone}
           onChange={(e) => handleChange("phone", e.target.value)}
+          className={errors.phone ? "border-red-500" : ""}
         />
+        {errors.phone && (
+          <p className="text-red-500 text-sm mt-1">{errors.phone}</p>
+        )}
       </div>
       <div>
         <Label>Address</Label>
         <Textarea
           value={formData.address}
           onChange={(e) => handleChange("address", e.target.value)}
+          className={errors.address ? "border-red-500" : ""}
         />
+        {errors.address && (
+          <p className="text-red-500 text-sm mt-1">{errors.address}</p>
+        )}
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div>
@@ -1691,7 +1894,11 @@ const EditContactForm = ({ data, onSave, onCancel }) => {
                     handleSocialLinkChange(index, "platform", e.target.value)
                   }
                   placeholder="Platform (e.g., Facebook)"
+                  className={errors[`social-platform-${index}`] ? "border-red-500" : ""}
                 />
+                {errors[`social-platform-${index}`] && (
+                  <p className="text-red-500 text-sm mt-1">{errors[`social-platform-${index}`]}</p>
+                )}
               </div>
               <div className="flex gap-2">
                 <Input
@@ -1700,7 +1907,11 @@ const EditContactForm = ({ data, onSave, onCancel }) => {
                     handleSocialLinkChange(index, "url", e.target.value)
                   }
                   placeholder="URL"
+                  className={errors[`social-url-${index}`] ? "border-red-500" : ""}
                 />
+                {errors[`social-url-${index}`] && (
+                  <p className="text-red-500 text-sm mt-1">{errors[`social-url-${index}`]}</p>
+                )}
                 <Button
                   type="button"
                   variant="outline"
@@ -1734,12 +1945,22 @@ const EditAboutForm = ({ data, onSave, onCancel }: { data: AboutData; onSave: (d
         values: data?.values || [],
         images: data?.images || []
     });
+    
+    const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
     const handleChange = (field, value) => {
         setFormData(prev => ({
             ...prev,
             [field]: value
         }));
+        
+        // Clear error when user starts typing
+        if (errors[field]) {
+            setErrors((prev) => ({
+                ...prev,
+                [field]: "",
+            }));
+        }
     };
 
     const handleValuesChange = (index, value) => {
@@ -1825,7 +2046,49 @@ const EditAboutForm = ({ data, onSave, onCancel }: { data: AboutData; onSave: (d
         return '';
     };
 
+    const validateForm = () => {
+        const newErrors: { [key: string]: string } = {};
+        
+        // Validate required fields
+        if (!formData.title?.trim()) {
+            newErrors.title = "Section title is required";
+        }
+        
+        if (!formData.description?.trim()) {
+            newErrors.description = "Description is required";
+        }
+        
+        if (!formData.mission?.trim()) {
+            newErrors.mission = "Mission statement is required";
+        }
+        
+        if (!formData.vision?.trim()) {
+            newErrors.vision = "Vision statement is required";
+        }
+        
+        if (!formData.foundingStory?.trim()) {
+            newErrors.foundingStory = "Founding story is required";
+        }
+        
+        if (!formData.teamInfo?.trim()) {
+            newErrors.teamInfo = "Team information is required";
+        }
+        
+        // Validate values
+        (formData.values || []).forEach((value, index) => {
+            if (!value?.trim()) {
+                newErrors[`value-${index}`] = "Value is required";
+            }
+        });
+        
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
     const handleSubmit = () => {
+        if (!validateForm()) {
+            return;
+        }
         onSave(formData);
     };
 
@@ -1836,8 +2099,11 @@ const EditAboutForm = ({ data, onSave, onCancel }: { data: AboutData; onSave: (d
                 <Input
                     value={formData.title}
                     onChange={(e) => handleChange('title', e.target.value)}
-                    className="text-sm"
+                    className={errors.title ? `border-red-500 text-sm` : "text-sm"}
                 />
+                {errors.title && (
+                  <p className="text-red-500 text-sm mt-1">{errors.title}</p>
+                )}
             </div>
             <div>
                 <Label>Description</Label>
@@ -1845,7 +2111,11 @@ const EditAboutForm = ({ data, onSave, onCancel }: { data: AboutData; onSave: (d
                     value={formData.description}
                     onChange={(e) => handleChange('description', e.target.value)}
                     rows={3}
+                    className={errors.description ? "border-red-500" : ""}
                 />
+                {errors.description && (
+                  <p className="text-red-500 text-sm mt-1">{errors.description}</p>
+                )}
             </div>
             <div>
                 <Label>Mission Statement</Label>
@@ -1853,7 +2123,11 @@ const EditAboutForm = ({ data, onSave, onCancel }: { data: AboutData; onSave: (d
                     value={formData.mission}
                     onChange={(e) => handleChange('mission', e.target.value)}
                     rows={3}
+                    className={errors.mission ? "border-red-500" : ""}
                 />
+                {errors.mission && (
+                  <p className="text-red-500 text-sm mt-1">{errors.mission}</p>
+                )}
             </div>
             <div>
                 <Label>Vision Statement</Label>
@@ -1861,7 +2135,11 @@ const EditAboutForm = ({ data, onSave, onCancel }: { data: AboutData; onSave: (d
                     value={formData.vision}
                     onChange={(e) => handleChange('vision', e.target.value)}
                     rows={3}
+                    className={errors.vision ? "border-red-500" : ""}
                 />
+                {errors.vision && (
+                  <p className="text-red-500 text-sm mt-1">{errors.vision}</p>
+                )}
             </div>
             <div>
                 <Label>Founding Story</Label>
@@ -1869,7 +2147,11 @@ const EditAboutForm = ({ data, onSave, onCancel }: { data: AboutData; onSave: (d
                     value={formData.foundingStory}
                     onChange={(e) => handleChange('foundingStory', e.target.value)}
                     rows={4}
+                    className={errors.foundingStory ? "border-red-500" : ""}
                 />
+                {errors.foundingStory && (
+                  <p className="text-red-500 text-sm mt-1">{errors.foundingStory}</p>
+                )}
             </div>
             <div>
                 <Label>Team Information</Label>
@@ -1877,7 +2159,11 @@ const EditAboutForm = ({ data, onSave, onCancel }: { data: AboutData; onSave: (d
                     value={formData.teamInfo}
                     onChange={(e) => handleChange('teamInfo', e.target.value)}
                     rows={3}
+                    className={errors.teamInfo ? "border-red-500" : ""}
                 />
+                {errors.teamInfo && (
+                  <p className="text-red-500 text-sm mt-1">{errors.teamInfo}</p>
+                )}
             </div>
             <div>
                 <div className="flex items-center justify-between mb-2">
@@ -1893,7 +2179,11 @@ const EditAboutForm = ({ data, onSave, onCancel }: { data: AboutData; onSave: (d
                                 value={value}
                                 onChange={(e) => handleValuesChange(index, e.target.value)}
                                 placeholder={`Value ${index + 1}`}
+                                className={errors[`value-${index}`] ? "border-red-500" : ""}
                             />
+                            {errors[`value-${index}`] && (
+                              <p className="text-red-500 text-sm mt-1">{errors[`value-${index}`]}</p>
+                            )}
                             <Button 
                                 type="button" 
                                 variant="outline" 

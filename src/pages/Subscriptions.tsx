@@ -274,18 +274,22 @@ const filteredSubscriptions = Array.isArray(userSubscriptions)
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <div className="flex items-center justify-between mb-4">
-          <TabsList>
-            <TabsTrigger value="plans">Subscription Plans</TabsTrigger>
-            <TabsTrigger value="subscriptions">User Subscriptions</TabsTrigger>
-          </TabsList>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+          <div className="overflow-x-auto pb-2 -mb-2">
+            <TabsList className="inline-flex min-w-max">
+              <TabsTrigger value="plans" className="whitespace-nowrap">Subscription Plans</TabsTrigger>
+              <TabsTrigger value="subscriptions" className="whitespace-nowrap">User Subscriptions</TabsTrigger>
+            </TabsList>
+          </div>
           {plans.length < 3 && (
-            <Button className="gap-2" asChild>
-              <Link to="/add-subscription">
-                <Plus className="w-4 h-4" />
-                Create Plan
-              </Link>
-            </Button>
+            <div className="sm:ml-auto">
+              <Button className="gap-2 w-full sm:w-auto" asChild>
+                <Link to="/add-subscription">
+                  <Plus className="w-4 h-4" />
+                  Create Plan
+                </Link>
+              </Button>
+            </div>
           )}
 
 
