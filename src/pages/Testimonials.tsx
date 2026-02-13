@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useDispatch, useSelector } from 'react-redux';
 import { unwrapResult } from '@reduxjs/toolkit';
 import { Search, Plus, Edit, Trash2, Star, User, Calendar, Award, Filter, CheckCircle, MessageSquare, Clock, ChevronDown, Check } from "lucide-react";
@@ -74,6 +74,7 @@ interface Testimonial {
   problem: string;
   status: "pending" | "approved" | "rejected";
   featured: boolean;
+  video?: string;
   createdAt: string;
   updatedAt: string;
   avatar?: string;
@@ -90,6 +91,7 @@ interface FormTestimonial {
   problem: string;
   status: "pending" | "approved" | "rejected";
   featured: boolean;
+  video?: string; // Video URL for existing testimonials
   createdAt: string;
   updatedAt: string;
   avatar?: string;
@@ -104,6 +106,7 @@ export default function Testimonials() {
   const { list: allUsers, loading: usersLoading, pagination } = useSelector((state: any) => state.users);
   console.log("allUsers", allUsers)
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -135,6 +138,8 @@ export default function Testimonials() {
     problem: string;
     status: "pending" | "approved" | "rejected";
     featured: boolean;
+    video: File | null;
+    videoPreview: string | null;
   }
 
   const [formData, setFormData] = useState<FormData>({
@@ -147,13 +152,24 @@ export default function Testimonials() {
     problem: "",
     status: "pending" as "pending" | "approved" | "rejected",
     featured: false,
+    video: null,
+    videoPreview: null,
   });
 
-  // Load testimonials and stats on component mount
+  // Debounce search query to prevent excessive API calls
   useEffect(() => {
-    dispatch(fetchTestimonials({ search: searchQuery, status: statusFilter }));
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 500); // 500ms debounce delay for better UX
+    
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Load testimonials and stats with debounced search
+  useEffect(() => {
+    dispatch(fetchTestimonials({ search: debouncedSearchQuery, status: statusFilter }));
     dispatch(fetchTestimonialStats());
-  }, [dispatch, searchQuery, statusFilter]);
+  }, [debouncedSearchQuery, statusFilter]);
 
   // Load first page of users when modal opens
   useEffect(() => {
@@ -169,15 +185,29 @@ export default function Testimonials() {
     }
   }, [allUsers, pagination]);
 
-  const filteredTestimonials = testimonials.filter(testimonial => {
-    const matchesSearch = (testimonial.clientName && testimonial.clientName.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (testimonial.serviceUsed && testimonial.serviceUsed.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (testimonial.content && testimonial.content.toLowerCase().includes(searchQuery.toLowerCase()));
+  // Memoize filtered testimonials to prevent unnecessary re-calculations
+  const filteredTestimonials = useMemo(() => {
+    if (!debouncedSearchQuery && statusFilter === "all") {
+      return testimonials;
+    }
+    
+    const searchLower = debouncedSearchQuery.toLowerCase().trim();
+    
+    return testimonials.filter(testimonial => {
+      const matchesSearch = !searchLower || 
+        (testimonial.clientName && testimonial.clientName.toLowerCase().includes(searchLower)) ||
+        (testimonial.serviceUsed && testimonial.serviceUsed.toLowerCase().includes(searchLower)) ||
+        (testimonial.content && testimonial.content.toLowerCase().includes(searchLower)) ||
+        (testimonial.problem && testimonial.problem.toLowerCase().includes(searchLower)) ||
+        (testimonial.userId?.name && testimonial.userId.name.toLowerCase().includes(searchLower)) ||
+        (testimonial.clientEmail && testimonial.clientEmail.toLowerCase().includes(searchLower)) ||
+        (testimonial.userId?.email && testimonial.userId.email.toLowerCase().includes(searchLower));
 
-    const matchesStatus = statusFilter === "all" || testimonial.status === statusFilter;
+      const matchesStatus = statusFilter === "all" || testimonial.status === statusFilter;
 
-    return matchesSearch && matchesStatus;
-  });
+      return matchesSearch && matchesStatus;
+    });
+  }, [testimonials, debouncedSearchQuery, statusFilter]);
 
   const pendingCount = stats.pending || 0;
   const approvedCount = stats.approved || 0;
@@ -198,6 +228,8 @@ export default function Testimonials() {
       problem: "",
       status: "pending",
       featured: false,
+      video: null,
+      videoPreview: null,
     });
     // Clear any existing errors
     setErrors({
@@ -224,6 +256,7 @@ export default function Testimonials() {
       problem: testimonial.problem,
       status: testimonial.status,
       featured: testimonial.featured,
+      video: testimonial.video || undefined,
       createdAt: testimonial.createdAt,
       updatedAt: testimonial.updatedAt,
       avatar: testimonial.avatar,
@@ -250,6 +283,8 @@ export default function Testimonials() {
       problem: testimonial.problem,
       status: testimonial.status,
       featured: testimonial.featured,
+      video: null,
+      videoPreview: testimonial.video || null,
     });
     // Clear any existing errors
     setErrors({
@@ -283,12 +318,15 @@ export default function Testimonials() {
     
     setIsSubmitting(true);
     try {
+      // Prepare data for submission
+      const submissionData = { ...formData };
+      
       if (editingTestimonial) {
         // Update existing testimonial
-        await dispatch(updateTestimonial({ id: editingTestimonial.id, data: formData })).unwrap();
+        await dispatch(updateTestimonial({ id: editingTestimonial.id, data: submissionData })).unwrap();
       } else {
         // Create new testimonial
-        await dispatch(createTestimonial(formData)).unwrap();
+        await dispatch(createTestimonial(submissionData)).unwrap();
       }
 
       // Close modal
@@ -304,13 +342,13 @@ export default function Testimonials() {
       });
 
       // Refresh testimonials to ensure the new/updated testimonial appears in the filtered list
-      dispatch(fetchTestimonials({ search: searchQuery, status: statusFilter }));
+      dispatch(fetchTestimonials({ search: debouncedSearchQuery, status: statusFilter }));
       dispatch(fetchTestimonialStats());
     } catch (error) {
       console.error('Error saving testimonial:', error);
       alert(error.message || "An error occurred while saving the testimonial");
       // Still refresh in case of error to ensure UI consistency
-      dispatch(fetchTestimonials({ search: searchQuery, status: statusFilter }));
+      dispatch(fetchTestimonials({ search: debouncedSearchQuery, status: statusFilter }));
       dispatch(fetchTestimonialStats());
     } finally {
       setIsSubmitting(false);
@@ -321,12 +359,12 @@ export default function Testimonials() {
     try {
       await dispatch(updateTestimonialStatus({ id, status: newStatus })).unwrap();
       // Refresh testimonials to ensure the updated status appears in the filtered list
-      dispatch(fetchTestimonials({ search: searchQuery, status: statusFilter }));
+      dispatch(fetchTestimonials({ search: debouncedSearchQuery, status: statusFilter }));
       dispatch(fetchTestimonialStats());
     } catch (error) {
       console.error('Error updating testimonial status:', error);
       // Still refresh in case of error to ensure UI consistency
-      dispatch(fetchTestimonials({ search: searchQuery, status: statusFilter }));
+      dispatch(fetchTestimonials({ search: debouncedSearchQuery, status: statusFilter }));
       dispatch(fetchTestimonialStats());
     }
   };
@@ -335,12 +373,12 @@ export default function Testimonials() {
     try {
       await dispatch(toggleTestimonialFeatured(id)).unwrap();
       // Refresh testimonials to ensure the updated featured status appears in the filtered list
-      dispatch(fetchTestimonials({ search: searchQuery, status: statusFilter }));
+      dispatch(fetchTestimonials({ search: debouncedSearchQuery, status: statusFilter }));
       dispatch(fetchTestimonialStats());
     } catch (error) {
       console.error('Error toggling testimonial featured status:', error);
       // Still refresh in case of error to ensure UI consistency
-      dispatch(fetchTestimonials({ search: searchQuery, status: statusFilter }));
+      dispatch(fetchTestimonials({ search: debouncedSearchQuery, status: statusFilter }));
       dispatch(fetchTestimonialStats());
     }
   };
@@ -359,14 +397,14 @@ export default function Testimonials() {
         setDeleteTestId(null);
         setIsDeleteDialogOpen(false);
         // Refresh testimonials to ensure the deleted testimonial is removed from the filtered list
-        dispatch(fetchTestimonials({ search: searchQuery, status: statusFilter }));
+        dispatch(fetchTestimonials({ search: debouncedSearchQuery, status: statusFilter }));
         dispatch(fetchTestimonialStats());
       } catch (error) {
         console.error('Error deleting testimonial:', error);
         setDeleteTestId(null);
         setIsDeleteDialogOpen(false);
         // Still refresh in case of error to ensure UI consistency
-        dispatch(fetchTestimonials({ search: searchQuery, status: statusFilter }));
+        dispatch(fetchTestimonials({ search: debouncedSearchQuery, status: statusFilter }));
         dispatch(fetchTestimonialStats());
       }
     }
@@ -437,10 +475,13 @@ export default function Testimonials() {
 
   return (
     <div className="space-y-6">
-      {/* Loading indicator */}
+      {/* Loading indicator - only show spinner in table area */}
       {loading && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10 rounded-lg">
+          <div className="flex flex-col items-center gap-2">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            <span className="text-sm text-muted-foreground">Loading...</span>
+          </div>
         </div>
       )}
 
@@ -565,7 +606,15 @@ export default function Testimonials() {
       </div>
 
       {/* Testimonials Table */}
-      <Card>
+      <Card className="relative">
+        {loading && (
+          <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10 rounded-lg">
+            <div className="flex flex-col items-center gap-2">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              <span className="text-sm text-muted-foreground">Loading...</span>
+            </div>
+          </div>
+        )}
         <CardHeader>
           <CardTitle>Testimonials</CardTitle>
           <CardDescription>
@@ -573,117 +622,128 @@ export default function Testimonials() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Client</TableHead>
-
-                <TableHead>Problem</TableHead>
-                <TableHead>Service</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Featured</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredTestimonials.map((testimonial) => (
-                <TableRow key={testimonial._id}>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
-                        {testimonial.userId?.profilePicture ? (
-                          <img
-                            src={testimonial.userId.profilePicture}
-                            alt={testimonial.userId.name || ''}
-                            className="w-10 h-10 rounded-full object-cover"
-                          />
-                        ) : (
-                          <User className="w-10 h-10 text-muted-foreground" />
-                        )}
-                      </div>
-                      <div>
-                        <div className="font-medium">
-                          {testimonial.userId?.name || testimonial.clientName || 'N/A'}
-                        </div>
-                        {(testimonial.userId?.email || testimonial.clientEmail) && (
-                          <div className="text-sm text-muted-foreground">
-                            {testimonial.userId?.email || testimonial.clientEmail}
-                          </div>
-                        )}
-                        {renderStars(testimonial.rating, false)}
-                      </div>
-                    </div>
-                  </TableCell>
-                  {/* <TableCell>
-                    <div className="flex items-center gap-1">
-                      {renderStars(testimonial.rating, false)}
-                      <span className="text-sm font-medium ml-1">
-                        {testimonial.rating}/5
-                      </span>
-                    </div>
-                  </TableCell> */}
-                  <TableCell>
-                    <span className="text-sm">{testimonial.problem || 'N/A'}</span>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="secondary">{testimonial.serviceUsed || 'N/A'}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Select
-                      value={testimonial.status}
-                      onValueChange={(value) => handleStatusChange(testimonial._id, value as any)}
-                    >
-                      <SelectTrigger className="w-[120px]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="pending">Pending</SelectItem>
-                        <SelectItem value="approved">Approved</SelectItem>
-                        <SelectItem value="rejected">Rejected</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </TableCell>
-                  <TableCell>
-                    <Select
-                      value={testimonial.featured ? "featured" : "not-featured"}
-                      onValueChange={(value) => handleFeatureToggle(testimonial._id)}
-                    >
-                      <SelectTrigger className="w-[120px]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="featured">Featured</SelectItem>
-                        <SelectItem value="not-featured">Not Featured</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </TableCell>
-                  <TableCell>
-                    {testimonial.createdAt ? new Date(testimonial.createdAt).toLocaleDateString() : 'N/A'}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleEdit(testimonial)}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDelete(testimonial._id)}
-                        className="text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Client</TableHead>
+                  <TableHead>Problem</TableHead>
+                  <TableHead>Service</TableHead>
+                  <TableHead>Video</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Featured</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {filteredTestimonials.length > 0 ? (
+                  filteredTestimonials.map((testimonial) => (
+                    <TableRow key={testimonial._id}>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          {/* <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+                            {testimonial.userId?.profilePicture ? (
+                              <img
+                                src={testimonial.userId.profilePicture}
+                                alt={testimonial.userId.name || ''}
+                                className="w-10 h-10 rounded-full object-cover"
+                              />
+                            ) : (
+                              <User className="w-10 h-10 text-muted-foreground" />
+                            )}
+                          </div> */}
+                          <div>
+                            <div className="font-medium">
+                              {testimonial.userId?.name || testimonial.clientName || 'N/A'}
+                            </div>
+                            {(testimonial.userId?.email || testimonial.clientEmail) && (
+                              <div className="text-sm text-muted-foreground">
+                                {testimonial.userId?.email || testimonial.clientEmail}
+                              </div>
+                            )}
+                            {renderStars(testimonial.rating, false)}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm">{testimonial.problem || 'N/A'}</span>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="secondary">{testimonial.serviceUsed || 'N/A'}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        {testimonial.video ? (
+                          <Badge variant="default" className="bg-green-100 text-green-800">
+                            Yes
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary">No</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Select
+                          value={testimonial.status}
+                          onValueChange={(value) => handleStatusChange(testimonial._id, value as any)}
+                        >
+                          <SelectTrigger className="w-[120px]">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="approved">Approved</SelectItem>
+                            <SelectItem value="rejected">Rejected</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                      <TableCell>
+                        <Select
+                          value={testimonial.featured ? "featured" : "not-featured"}
+                          onValueChange={(value) => handleFeatureToggle(testimonial._id)}
+                        >
+                          <SelectTrigger className="w-[120px]">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="featured">Featured</SelectItem>
+                            <SelectItem value="not-featured">Not Featured</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                      <TableCell>
+                        {testimonial.createdAt ? new Date(testimonial.createdAt).toLocaleDateString() : 'N/A'}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEdit(testimonial)}
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDelete(testimonial._id)}
+                            className="text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                      {loading ? 'Loading testimonials...' : 'No testimonials found'}
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
 
@@ -888,6 +948,77 @@ export default function Testimonials() {
               />
               {errors.content && (
                 <p className="text-sm text-red-500">Testimonial content is required</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="video">Testimonial Video (Optional)</Label>
+              <div className="flex items-center space-x-2">
+                <input
+                  type="file"
+                  id="video"
+                  accept="video/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setFormData({
+                        ...formData,
+                        video: file,
+                        videoPreview: URL.createObjectURL(file)
+                      });
+                    }
+                  }}
+                  className="hidden"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    const fileInput = document.getElementById('video') as HTMLInputElement;
+                    fileInput?.click();
+                  }}
+                >
+                  {formData.video ? 'Change Video' : 'Upload Video'}
+                </Button>
+                {formData.video && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setFormData({
+                        ...formData,
+                        video: null,
+                        videoPreview: null
+                      });
+                      const fileInput = document.getElementById('video') as HTMLInputElement;
+                      if (fileInput) fileInput.value = '';
+                    }}
+                  >
+                    Remove Video
+                  </Button>
+                )}
+              </div>
+              {formData.videoPreview && (
+                <div className="mt-2">
+                  <video
+                    src={formData.videoPreview}
+                    controls
+                    className="max-w-full h-48 rounded-lg border"
+                  />
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {formData.video?.name} ({(formData.video?.size / (1024 * 1024)).toFixed(2)} MB)
+                  </p>
+                </div>
+              )}
+              {editingTestimonial && editingTestimonial.video && !formData.video && (
+                <div className="mt-2">
+                  <p className="text-sm text-muted-foreground">Current video:</p>
+                  <video
+                    src={`${import.meta.env.VITE_API_BASE_URL}${editingTestimonial.video}`}
+                    controls
+                    className="max-w-full h-48 rounded-lg border mt-1"
+                  />
+                </div>
               )}
             </div>
 

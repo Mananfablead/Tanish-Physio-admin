@@ -7,6 +7,7 @@ import { Plus, Trash2, Upload } from "lucide-react";
 import {
   DialogFooter,
 } from "@/components/ui/dialog";
+import { ValidationError, validateForm, conditionsSectionValidationSchema } from "@/lib/validation";
 
 interface ConditionsSectionData {
   _id: string;
@@ -34,12 +35,31 @@ export default function EditConditionsForm({ data, onSave, onCancel }: EditCondi
       image: condition.image || null
     })) || []
   });
+  const [errors, setErrors] = useState<ValidationError>({});
+  const [touchedFields, setTouchedFields] = useState<Record<string, boolean>>({});
 
   const handleChange = (field: string, value: any) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
     }));
+
+    // Clear error when user starts typing
+    if (errors[field]) {
+      setErrors(prev => {
+        const newErrors = {...prev};
+        delete newErrors[field];
+        return newErrors;
+      });
+    }
+
+    // Mark field as touched
+    if (!touchedFields[field]) {
+      setTouchedFields(prev => ({
+        ...prev,
+        [field]: true
+      }));
+    }
   };
 
   const handleConditionChange = (index: number, field: string, value: any) => {
@@ -53,6 +73,23 @@ export default function EditConditionsForm({ data, onSave, onCancel }: EditCondi
       ...prev,
       conditions: newConditions
     }));
+
+    // Clear error for conditions field
+    if (errors.image) {
+      setErrors(prev => {
+        const newErrors = {...prev};
+        delete newErrors.image;
+        return newErrors;
+      });
+    }
+
+    // Mark image field as touched
+    if (!touchedFields.image) {
+      setTouchedFields(prev => ({
+        ...prev,
+        image: true
+      }));
+    }
   };
 
   const addCondition = () => {
@@ -61,6 +98,23 @@ export default function EditConditionsForm({ data, onSave, onCancel }: EditCondi
       ...prev,
       conditions: [...(prev.conditions || []), newCondition]
     }));
+
+    // Clear error for image field
+    if (errors.image) {
+      setErrors(prev => {
+        const newErrors = {...prev};
+        delete newErrors.image;
+        return newErrors;
+      });
+    }
+
+    // Mark image field as touched
+    if (!touchedFields.image) {
+      setTouchedFields(prev => ({
+        ...prev,
+        image: true
+      }));
+    }
   };
 
   const removeCondition = (index: number) => {
@@ -69,18 +123,50 @@ export default function EditConditionsForm({ data, onSave, onCancel }: EditCondi
       ...prev,
       conditions: newConditions
     }));
+
+    // Clear error for image field
+    if (errors.image) {
+      setErrors(prev => {
+        const newErrors = {...prev};
+        delete newErrors.image;
+        return newErrors;
+      });
+    }
+
+    // Mark image field as touched
+    if (!touchedFields.image) {
+      setTouchedFields(prev => ({
+        ...prev,
+        image: true
+      }));
+    }
+  };
+
+  const validate = () => {
+    const validationErrors = validateForm(formData, conditionsSectionValidationSchema);
+    setErrors(validationErrors);
+    return Object.keys(validationErrors).length === 0;
   };
 
   const handleSubmit = () => {
-    const cleanedData = {
-      ...formData,
-      conditions: formData.conditions?.map(condition => ({
-        ...condition,
-        ...(condition.image ? { image: condition.image } : {})
-      })) || []
-    };
-    
-    onSave(cleanedData);
+    if (validate()) {
+      const cleanedData = {
+        ...formData,
+        conditions: formData.conditions?.map(condition => ({
+          ...condition,
+          ...(condition.image ? { image: condition.image } : {})
+        })) || []
+      };
+      
+      onSave(cleanedData);
+    } else {
+      // Mark all fields as touched to show errors
+      setTouchedFields({
+        title: true,
+        description: true,
+        image: true
+      });
+    }
   };
 
   return (
@@ -90,7 +176,11 @@ export default function EditConditionsForm({ data, onSave, onCancel }: EditCondi
         <Input
           value={formData.title}
           onChange={(e) => handleChange('title', e.target.value)}
+          className={errors.title && touchedFields.title ? 'border-red-500' : ''}
         />
+        {errors.title && touchedFields.title && (
+          <p className="text-red-500 text-sm mt-1">{errors.title}</p>
+        )}
       </div>
       <div>
         <Label className="text-sm">Short Description</Label>
@@ -98,8 +188,11 @@ export default function EditConditionsForm({ data, onSave, onCancel }: EditCondi
           rows={3}
           value={formData.description}
           onChange={(e) => handleChange('description', e.target.value)}
-          className="text-sm"
+          className={`text-sm ${errors.description && touchedFields.description ? 'border-red-500' : ''}`}
         />
+        {errors.description && touchedFields.description && (
+          <p className="text-red-500 text-sm mt-1">{errors.description}</p>
+        )}
       </div>
       {/* <div>
         <div className="flex items-center justify-between mb-2">

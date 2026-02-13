@@ -1,11 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Trash2, Upload } from "lucide-react";
 import {
   DialogFooter,
 } from "@/components/ui/dialog";
+import { ValidationError, validateForm, conditionValidationSchema } from "@/lib/validation";
 
 interface ConditionData {
   name?: string;
@@ -28,16 +30,46 @@ interface EditConditionFormProps {
 
 export default function EditConditionForm({ data, onSave, onCancel }: EditConditionFormProps) {
   const [formData, setFormData] = useState<ConditionData>({
-    name: data?.name || data?.title || '',
-    image: data?.image || null,
-    content: data?.content || '',
+    name: '',
+    image: null,
+    content: '',
   });
+  const [errors, setErrors] = useState<ValidationError>({});
+  const [touchedFields, setTouchedFields] = useState<Record<string, boolean>>({});
+  
+  // Initialize form data when data prop changes
+  useEffect(() => {
+    if (data && Object.keys(data).length > 0) {
+      setFormData({
+        name: data?.name || data?.title || '',
+        image: data?.image || null,
+        content: data?.content || '',
+      });
+    }
+  }, [data]);
 
   const handleChange = (field: string, value: any) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
     }));
+
+    // Clear error when user starts typing
+    if (errors[field]) {
+      setErrors(prev => {
+        const newErrors = {...prev};
+        delete newErrors[field];
+        return newErrors;
+      });
+    }
+
+    // Mark field as touched
+    if (!touchedFields[field]) {
+      setTouchedFields(prev => ({
+        ...prev,
+        [field]: true
+      }));
+    }
   };
 
   const handleImageChange = (file: File | null) => {
@@ -45,16 +77,48 @@ export default function EditConditionForm({ data, onSave, onCancel }: EditCondit
       ...prev,
       image: file
     }));
+
+    // Clear error for image field
+    if (errors.image) {
+      setErrors(prev => {
+        const newErrors = {...prev};
+        delete newErrors.image;
+        return newErrors;
+      });
+    }
+
+    // Mark image field as touched
+    if (!touchedFields.image) {
+      setTouchedFields(prev => ({
+        ...prev,
+        image: true
+      }));
+    }
+  };
+
+  const validate = () => {
+    const validationErrors = validateForm(formData, conditionValidationSchema);
+    setErrors(validationErrors);
+    return Object.keys(validationErrors).length === 0;
   };
 
   const handleSubmit = () => {
-    const cleanedData = {
-      title: formData.name, // Map frontend 'name' to backend 'title'
-      content: formData.content || '',
-      ...(formData.image ? { image: formData.image } : {})
-    };
-    
-    onSave(cleanedData);
+    if (validate()) {
+      const cleanedData = {
+        title: formData.name, // Map frontend 'name' to backend 'title'
+        content: formData.content || '',
+        ...(formData.image ? { image: formData.image } : {})
+      };
+      
+      onSave(cleanedData);
+    } else {
+      // Mark all fields as touched to show errors
+      setTouchedFields({
+        name: true,
+        content: true,
+        image: true
+      });
+    }
   };
 
   return (
@@ -65,16 +129,25 @@ export default function EditConditionForm({ data, onSave, onCancel }: EditCondit
           value={formData.name}
           onChange={(e) => handleChange('name', e.target.value)}
           placeholder="Enter condition name"
+          className={errors.name && touchedFields.name ? 'border-red-500' : ''}
         />
+        {errors.name && touchedFields.name && (
+          <p className="text-red-500 text-sm mt-1">{errors.name}</p>
+        )}
       </div>
       
       <div>
         <Label>Content</Label>
-        <Input
+        <Textarea
           value={formData.content}
           onChange={(e) => handleChange('content', e.target.value)}
           placeholder="Enter condition content/description"
+          rows={4}
+          className={errors.content && touchedFields.content ? 'border-red-500' : ''}
         />
+        {errors.content && touchedFields.content && (
+          <p className="text-red-500 text-sm mt-1">{errors.content}</p>
+        )}
       </div>
       
       <div>
@@ -95,7 +168,7 @@ export default function EditConditionForm({ data, onSave, onCancel }: EditCondit
             />
             <label
               htmlFor="condition-image-upload"
-              className="flex flex-col items-center justify-center w-full h-12 border border-input rounded-md cursor-pointer bg-background hover:bg-accent transition-colors"
+              className={`flex flex-col items-center justify-center w-full h-12 border border-input rounded-md cursor-pointer bg-background hover:bg-accent transition-colors ${errors.image && touchedFields.image ? 'border-red-500' : ''}`}
             >
               <Upload className="w-4 h-4 text-muted-foreground" />
               <span className="text-xs text-muted-foreground mt-1">
@@ -129,6 +202,9 @@ export default function EditConditionForm({ data, onSave, onCancel }: EditCondit
             </div>
           )}
         </div>
+        {errors.image && touchedFields.image && (
+          <p className="text-red-500 text-sm mt-1">{errors.image}</p>
+        )}
       </div>
       
       <DialogFooter className="flex justify-between">

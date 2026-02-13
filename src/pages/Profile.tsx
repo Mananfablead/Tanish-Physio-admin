@@ -47,15 +47,48 @@ export default function Profile() {
     experience: "",
     specialization: "",
     certifications: [],
+    certificationNames: [],
     bio: "",
     education: "",
-    languages: [],
+    languages: "",
     fee: "",
     availability: "",
   });
 
   const [certificationFiles, setCertificationFiles] = useState<File[]>([]);
   const [certificationPreviews, setCertificationPreviews] = useState<string[]>([]);
+  const [newCertificationName, setNewCertificationName] = useState("");
+
+  // Helper function to flatten nested arrays and extract string values
+  const flattenCertificationNames = (names) => {
+    if (!names || !Array.isArray(names)) return [];
+    
+    const flattened = [];
+    const processItem = (item) => {
+      if (typeof item === 'string') {
+        // If it's a string, check if it needs JSON parsing
+        if (item.startsWith('[') || item.startsWith('{')) {
+          try {
+            const parsed = JSON.parse(item);
+            if (Array.isArray(parsed)) {
+              parsed.forEach(processItem);
+            } else if (typeof parsed === 'string') {
+              flattened.push(parsed);
+            }
+          } catch (e) {
+            flattened.push(item);
+          }
+        } else {
+          flattened.push(item);
+        }
+      } else if (Array.isArray(item)) {
+        item.forEach(processItem);
+      }
+    };
+    
+    names.forEach(processItem);
+    return flattened.filter(name => name && name.trim());
+  };
 
   const [passwordData, setPasswordData] = useState({
     currentPassword: "",
@@ -103,17 +136,18 @@ export default function Profile() {
           bio: user.doctorProfile.bio || prev.bio,
           education: user.doctorProfile.education || prev.education,
           languages: user.doctorProfile.languages && user.doctorProfile.languages.length > 0 
-            ? user.doctorProfile.languages 
-            : ['Hindi', 'English', 'Gujarati'],
+            ? user.doctorProfile.languages.join(', ')
+            : '',
           fee: user.doctorProfile.fee || prev.fee,
           availability: user.doctorProfile.availability || prev.availability,
           certifications: user.doctorProfile.certifications || prev.certifications,
+          certificationNames: flattenCertificationNames(user.doctorProfile.certificationNames) || prev.certificationNames,
         }));
       } else {
-        // Set default languages if no doctor profile exists
+        // Set empty languages if no doctor profile exists
         setDoctorProfile(prev => ({
           ...prev,
-          languages: ['Hindi', 'English', 'Gujarati']
+          languages: ''
         }));
       }
     }
@@ -159,15 +193,24 @@ export default function Profile() {
     formData.append('phone', profile.phone);
     formData.append('location', profile.location);
     
-    // Add doctor profile data
+    // Add doctor profile data as individual fields
     formData.append('doctorProfile[name]', doctorProfile.name);
     formData.append('doctorProfile[experience]', doctorProfile.experience);
     formData.append('doctorProfile[specialization]', doctorProfile.specialization);
     formData.append('doctorProfile[bio]', doctorProfile.bio);
     formData.append('doctorProfile[education]', doctorProfile.education);
-    formData.append('doctorProfile[languages]', JSON.stringify(doctorProfile.languages));
+    formData.append('doctorProfile[languages]', doctorProfile.languages);
     formData.append('doctorProfile[fee]', doctorProfile.fee);
     formData.append('doctorProfile[availability]', doctorProfile.availability);
+    
+    // Add certification names
+    if (doctorProfile.certificationNames.length > 0) {
+      // Ensure we send clean string array, not nested JSON
+      const cleanCertNames = doctorProfile.certificationNames.map(name => 
+        typeof name === 'string' ? name.trim() : String(name)
+      ).filter(name => name);
+      formData.append('doctorProfile[certificationNames]', JSON.stringify(cleanCertNames));
+    }
     
     // Add image if present
     if (imageFile) {
@@ -253,20 +296,29 @@ export default function Profile() {
   const handleUpdateDoctorProfile = async () => {
     const formData = new FormData();
     
-    // Add doctor profile data
-    formData.append('name', doctorProfile.name);
-    formData.append('experience', doctorProfile.experience);
-    formData.append('specialization', doctorProfile.specialization);
-    formData.append('bio', doctorProfile.bio);
-    formData.append('education', doctorProfile.education);
-    formData.append('languages', JSON.stringify(doctorProfile.languages));
-    formData.append('fee', doctorProfile.fee);
-    formData.append('availability', doctorProfile.availability);
+    // Add doctor profile data as individual fields
+    formData.append('doctorProfile[name]', doctorProfile.name);
+    formData.append('doctorProfile[experience]', doctorProfile.experience);
+    formData.append('doctorProfile[specialization]', doctorProfile.specialization);
+    formData.append('doctorProfile[bio]', doctorProfile.bio);
+    formData.append('doctorProfile[education]', doctorProfile.education);
+    formData.append('doctorProfile[languages]', doctorProfile.languages);
+    formData.append('doctorProfile[fee]', doctorProfile.fee);
+    formData.append('doctorProfile[availability]', doctorProfile.availability);
     
     // Add certification files if any
     certificationFiles.forEach((file, index) => {
       formData.append(`certifications`, file);
     });
+    
+    // Add certification names
+    if (doctorProfile.certificationNames.length > 0) {
+      // Ensure we send clean string array, not nested JSON
+      const cleanCertNames = doctorProfile.certificationNames.map(name => 
+        typeof name === 'string' ? name.trim() : String(name)
+      ).filter(name => name);
+      formData.append('doctorProfile[certificationNames]', JSON.stringify(cleanCertNames));
+    }
     
     try {
       const result = await dispatch(updateProfile(formData));
@@ -425,7 +477,7 @@ export default function Profile() {
                     setProfile({ ...profile, email: e.target.value })
                   }
                   className="pl-10"
-                  disabled={!isEditing}
+                  disabled={true}
                 />
               </div>
             </div>
@@ -544,28 +596,15 @@ export default function Profile() {
            {/* LANGUAGES */}
           <div className="space-y-2">
             <Label>Languages Spoken</Label>
-            <select
-              multiple
+            <Input
               value={doctorProfile.languages}
-              onChange={(e) => {
-                const selectedOptions = Array.from(e.target.selectedOptions, option => option.value);
-                setDoctorProfile({ ...doctorProfile, languages: selectedOptions });
-              }}
-              className="w-full p-2 border border-input rounded-md focus:ring-2 focus:ring-ring focus:border-transparent disabled:cursor-not-allowed disabled:opacity-50 min-h-[100px]"
+              onChange={(e) =>
+                setDoctorProfile({ ...doctorProfile, languages: e.target.value })
+              }
+              placeholder="e.g., English, Hindi, Gujarati"
               disabled={!isEditing}
-            >
-              <option value="Hindi">Hindi</option>
-              <option value="English">English</option>
-              <option value="Gujarati">Gujarati</option>
-              <option value="Marathi">Marathi</option>
-              <option value="Tamil">Tamil</option>
-              <option value="Telugu">Telugu</option>
-              <option value="Bengali">Bengali</option>
-              <option value="Kannada">Kannada</option>
-              <option value="Malayalam">Malayalam</option>
-              <option value="Punjabi">Punjabi</option>
-            </select>
-            <p className="text-sm text-muted-foreground">Hold Ctrl/Cmd to select multiple languages</p>
+            />
+            <p className="text-sm text-muted-foreground">Enter languages separated by commas</p>
           </div>
 
             {/* CERTIFICATIONS */}
@@ -583,36 +622,124 @@ export default function Profile() {
               />
               
               {isEditing && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => document.getElementById('certifications-upload')?.click()}
-                  className="w-full md:w-auto"
-                >
-                  Upload Certifications
-                </Button>
+                <div className="space-y-4">
+                  {/* Upload Certifications Button */}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => document.getElementById('certifications-upload')?.click()}
+                    className="w-full md:w-auto"
+                  >
+                    Upload Certification Files
+                  </Button>
+                  
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <Input
+                        value={newCertificationName}
+                        onChange={(e) => setNewCertificationName(e.target.value)}
+                        placeholder="Enter certification name"
+                        className="flex-1"
+                      />
+                      <Button
+                        type="button"
+                        onClick={() => {
+                          if (newCertificationName.trim()) {
+                            // Clean the certification name to prevent JSON nesting
+                            const cleanName = newCertificationName.trim();
+                            setDoctorProfile(prev => ({
+                              ...prev,
+                              certificationNames: [...prev.certificationNames, cleanName]
+                            }));
+                            setNewCertificationName("");
+                          }
+                        }}
+                      >
+                        Add
+                      </Button>
+                    </div>
+                   
+                    <div className="flex flex-wrap gap-2">
+                      {doctorProfile.certificationNames.map((name, index) => (
+                        <div key={`name-${index}`} className="flex items-center gap-1 bg-secondary px-2 py-1 rounded-full">
+                          <span className="text-sm">{name}</span>
+                          {isEditing && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setDoctorProfile(prev => ({
+                                  ...prev,
+                                  certificationNames: prev.certificationNames.filter((_, i) => i !== index)
+                                }));
+                              }}
+                              className="text-destructive hover:text-destructive/80"
+                            >
+                              ×
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               )}
               
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                {certificationPreviews.map((preview, index) => (
-                  <div key={index} className="relative group border rounded-lg p-2 bg-gray-50">
-                    <img 
-                      src={preview} 
-                      alt={`Certification ${index + 1}`} 
-                      className="w-full h-32 object-contain rounded"
-                    />
-                    {isEditing && (
-                      <button
-                        type="button"
-                        onClick={() => removeCertification(index)}
-                        className="absolute top-2 right-2 bg-destructive text-destructive-foreground rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        ×
-                      </button>
-                    )}
-                    <p className="text-xs text-center mt-1 truncate">Certification {index + 1}</p>
+              <div className="space-y-4">
+                {/* Uploaded Certification Files */}
+                {certificationPreviews.length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-medium mb-2">Uploaded Certifications:</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                      {certificationPreviews.map((preview, index) => (
+                        <div key={`file-${index}`} className="relative group border rounded-lg p-2 bg-gray-50">
+                          <img 
+                            src={preview} 
+                            alt={`Certification ${index + 1}`} 
+                            className="w-full h-32 object-contain rounded"
+                          />
+                          {isEditing && (
+                            <button
+                              type="button"
+                              onClick={() => removeCertification(index)}
+                              className="absolute top-2 right-2 bg-destructive text-destructive-foreground rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              ×
+                            </button>
+                          )}
+                          <p className="text-xs text-center mt-1 truncate">Certification {index + 1}</p>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                ))}
+                )}
+                
+                {/* Certification Names */}
+                {doctorProfile.certificationNames.length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-medium mb-2">Certification Names:</h4>
+                    <div className="space-y-2">
+                      {doctorProfile.certificationNames.map((name, index) => (
+                        <div key={`name-${index}`} className="flex items-center justify-between bg-secondary px-3 py-2 rounded-md">
+                          <span className="text-sm">{name}</span>
+                          {isEditing && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setDoctorProfile(prev => ({
+                                  ...prev,
+                                  certificationNames: prev.certificationNames.filter((_, i) => i !== index)
+                                }));
+                              }}
+                              className="text-destructive hover:text-destructive/80 w-6 h-6 flex items-center justify-center rounded-full"
+                            >
+                              ×
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>

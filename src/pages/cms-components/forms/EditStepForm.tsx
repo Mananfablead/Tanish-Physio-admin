@@ -7,6 +7,7 @@ import { Upload } from "lucide-react";
 import {
   DialogFooter,
 } from "@/components/ui/dialog";
+import { ValidationError, validateForm, stepValidationSchema } from "@/lib/validation";
 
 interface StepData {
   _id: string;
@@ -33,12 +34,31 @@ export default function EditStepForm({ data, onSave, onCancel, isNew }: EditStep
     image: '',
     isPublic: true 
   });
+  const [errors, setErrors] = useState<ValidationError>({});
+  const [touchedFields, setTouchedFields] = useState<Record<string, boolean>>({});
 
   const handleChange = (field: string, value: any) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
     }));
+
+    // Clear error when user starts typing
+    if (errors[field]) {
+      setErrors(prev => {
+        const newErrors = {...prev};
+        delete newErrors[field];
+        return newErrors;
+      });
+    }
+
+    // Mark field as touched
+    if (!touchedFields[field]) {
+      setTouchedFields(prev => ({
+        ...prev,
+        [field]: true
+      }));
+    }
   };
 
   // Handle image upload
@@ -49,11 +69,43 @@ export default function EditStepForm({ data, onSave, onCancel, isNew }: EditStep
         ...prev,
         image: file
       }));
+
+      // Clear error for image field
+      if (errors.image) {
+        setErrors(prev => {
+          const newErrors = {...prev};
+          delete newErrors.image;
+          return newErrors;
+        });
+      }
+
+      // Mark image field as touched
+      if (!touchedFields.image) {
+        setTouchedFields(prev => ({
+          ...prev,
+          image: true
+        }));
+      }
     }
   };
 
+  const validate = () => {
+    const validationErrors = validateForm(formData, stepValidationSchema);
+    setErrors(validationErrors);
+    return Object.keys(validationErrors).length === 0;
+  };
+
   const handleSubmit = (newItem = false) => {
-    onSave({ ...formData, isNew: newItem });
+    if (validate()) {
+      onSave({ ...formData, isNew: newItem });
+    } else {
+      // Mark all fields as touched to show errors
+      setTouchedFields({
+        title: true,
+        description: true,
+        image: true
+      });
+    }
   };
 
   return (
@@ -63,16 +115,22 @@ export default function EditStepForm({ data, onSave, onCancel, isNew }: EditStep
         <Input
           value={formData.title}
           onChange={(e) => handleChange('title', e.target.value)}
-          className="text-sm"
+          className={`text-sm ${errors.title && touchedFields.title ? 'border-red-500' : ''}`}
         />
+        {errors.title && touchedFields.title && (
+          <p className="text-red-500 text-sm mt-1">{errors.title}</p>
+        )}
       </div>
       <div>
         <Label className="text-sm">Step Description</Label>
         <Textarea
           value={formData.description}
           onChange={(e) => handleChange('description', e.target.value)}
-          className="text-sm"
+          className={`text-sm ${errors.description && touchedFields.description ? 'border-red-500' : ''}`}
         />
+        {errors.description && touchedFields.description && (
+          <p className="text-red-500 text-sm mt-1">{errors.description}</p>
+        )}
       </div>
      <div>
   <Label className="text-sm">Step Image</Label>
@@ -89,7 +147,7 @@ export default function EditStepForm({ data, onSave, onCancel, isNew }: EditStep
       />
       <label
         htmlFor={`step-${formData._id || "new"}-image-upload`}
-        className="flex flex-col items-center justify-center w-full h-full border-2 border-dashed rounded-lg cursor-pointer bg-muted hover:bg-accent transition-colors"
+        className={`flex flex-col items-center justify-center w-full h-full border-2 border-dashed rounded-lg cursor-pointer bg-muted hover:bg-accent transition-colors ${errors.image && touchedFields.image ? 'border-red-500' : ''}`}
       >
         <Upload className="w-6 h-6 sm:w-7 sm:h-7 text-muted-foreground mb-1" />
         <span className="text-xs text-muted-foreground text-center">
@@ -113,6 +171,9 @@ export default function EditStepForm({ data, onSave, onCancel, isNew }: EditStep
       </div>
     )}
   </div>
+  {errors.image && touchedFields.image && (
+    <p className="text-red-500 text-sm mt-1">{errors.image}</p>
+  )}
 </div>
     
       <DialogFooter className="flex justify-between">

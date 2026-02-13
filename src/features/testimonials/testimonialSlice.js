@@ -31,17 +31,25 @@ export const fetchTestimonialById = createAsyncThunk(
 
 export const createTestimonial = createAsyncThunk(
   'testimonials/createTestimonial',
-  async (testimonialData) => {
-    const response = await testimonialAPI.create(testimonialData);
-    return response.data.data;
+  async (testimonialData, { rejectWithValue }) => {
+    try {
+      const response = await testimonialAPI.create(testimonialData);
+      return response.data.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
   }
 );
 
 export const updateTestimonial = createAsyncThunk(
   'testimonials/updateTestimonial',
-  async ({ id, data }) => {
-    const response = await testimonialAPI.update(id, data);
-    return response.data.data;
+  async ({ id, data }, { rejectWithValue }) => {
+    try {
+      const response = await testimonialAPI.update(id, data);
+      return response.data.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
   }
 );
 

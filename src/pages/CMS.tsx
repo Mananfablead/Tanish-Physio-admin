@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useSelector, useDispatch } from 'react-redux';
 import { cn } from "@/lib/utils";
 import { fetchAllCmsData, updateHero, createStep, updateStep, deleteStep, updateConditions, updateWhyUs, createFaq, updateFaq, deleteFaq, updateTerms, updateFeaturedTherapist, updateContact, updateAbout, addSingleCondition, updateSingleCondition, deleteSingleCondition } from '@/features/cms/cmsSlice';
+import { ValidationError, validateForm, whyUsValidationSchema, faqValidationSchema, termsValidationSchema, contactValidationSchema, aboutValidationSchema } from "@/lib/validation";
 
 // Import new components
 import AboutSection from "./cms-components/AboutSection";
@@ -64,7 +65,6 @@ interface CMSData {
     whyUs: WhyUsData;
     faq: FaqData[];
     terms: TermsData;
-    featuredTherapist: TeamMemberData;
     contact: ContactData;
     about: AboutData;
 }
@@ -183,7 +183,7 @@ interface AboutData {
     values: string[];
     foundingStory: string;
     teamInfo: string;
-    image: string;
+    image: string | File;
     images: (string | File)[];
     isPublic: boolean;
 }
@@ -217,7 +217,6 @@ export default function CMS() {
         whyUs: { _id: '', title: '', description: '', stats: [], features: [], isPublic: true },
         faq: [],
         terms: { _id: '', title: '', content: '', isPublic: true },
-        featuredTherapist: { _id: '', name: '', specialty: '', experience: '', rating: '', description: '', image: '', availableToday: false, ctaText: '', viewProfileText: '', isPublic: true },
         contact: { _id: '', title: '', description: '', email: '', phone: '', address: '', hours: '', socialLinks: [], isPublic: true },
         about: { _id: '', title: '', description: '', mission: '', vision: '', values: [], foundingStory: '', teamInfo: '', image: '', images: [], isPublic: true }
     });
@@ -251,10 +250,6 @@ export default function CMS() {
                 terms: {
                     ...cmsStateData.terms,
                     isPublic: cmsStateData.terms?.isPublic ?? true
-                },
-                featuredTherapist: {
-                    ...cmsStateData.featuredTherapist,
-                    isPublic: cmsStateData.featuredTherapist?.isPublic ?? true
                 },
                 contact: {
                     ...cmsStateData.contact,
@@ -753,13 +748,6 @@ export default function CMS() {
                         onEdit={openEditModal} 
                     />
                 )}
-                
-                {activeTab === "featuredTherapist" && (
-                    <TeamSection 
-                        data={data.featuredTherapist} 
-                        onEdit={openEditModal} 
-                    />
-                )}
             </div>
 
             {/* Edit Modal */}
@@ -775,7 +763,6 @@ export default function CMS() {
                             )}
                             {modalSection === 'whyUs' && 'Edit Why Choose Us'}
                             {modalSection === 'faq' && (modalItem ? 'Edit FAQ' : 'Manage FAQs')}
-                            {modalSection === 'featuredTherapist' && 'Edit Team Member'}
                             {modalSection === 'terms' && 'Edit Terms and Conditions'}
                             {modalSection === 'contact' && 'Edit Contact Info'}
                             {modalSection === 'about' && 'Edit About Us'}
@@ -823,10 +810,6 @@ export default function CMS() {
 
                         {modalSection === 'faq' && (
                             <EditFaqForm data={modalItem} onSave={saveModalChanges} onCancel={closeEditModal} isNew={!modalItem} />
-                        )}
-
-                        {modalSection === 'featuredTherapist' && (
-                            <EditFeaturedTherapistForm data={modalItem || data.featuredTherapist} onSave={saveModalChanges} onCancel={closeEditModal} />
                         )}
 
                         {modalSection === 'terms' && (
@@ -905,21 +888,57 @@ const EditWhyUsForm = ({ data, onSave, onCancel }) => {
         stats: data?.stats || [],
         features: data?.features || []
     });
+    const [errors, setErrors] = useState<Record<string, string>>({});
+    const [touchedFields, setTouchedFields] = useState<Record<string, boolean>>({});
 
-    const handleChange = (field, value) => {
+    const handleChange = (field: string, value: any) => {
         setFormData(prev => ({
             ...prev,
             [field]: value
         }));
+
+        // Clear error when user starts typing
+        if (errors[field]) {
+            setErrors(prev => {
+                const newErrors = {...prev};
+                delete newErrors[field];
+                return newErrors;
+            });
+        }
+
+        // Mark field as touched
+        if (!touchedFields[field]) {
+            setTouchedFields(prev => ({
+                ...prev,
+                [field]: true
+            }));
+        }
     };
 
-    const handleStatChange = (index, field, value) => {
+    const handleStatChange = (index: number, field: string, value: any) => {
         const newStats = [...(formData.stats || [])];
         newStats[index][field] = value;
         setFormData(prev => ({
             ...prev,
             stats: newStats
         }));
+
+        // Clear error for stats field
+        if (errors.stats) {
+            setErrors(prev => {
+                const newErrors = {...prev};
+                delete newErrors.stats;
+                return newErrors;
+            });
+        }
+
+        // Mark stats field as touched
+        if (!touchedFields.stats) {
+            setTouchedFields(prev => ({
+                ...prev,
+                stats: true
+            }));
+        }
     };
 
     const addStat = () => {
@@ -928,23 +947,74 @@ const EditWhyUsForm = ({ data, onSave, onCancel }) => {
             ...prev,
             stats: [...(prev.stats || []), newStat]
         }));
+
+        // Clear error for stats field
+        if (errors.stats) {
+            setErrors(prev => {
+                const newErrors = {...prev};
+                delete newErrors.stats;
+                return newErrors;
+            });
+        }
+
+        // Mark stats field as touched
+        if (!touchedFields.stats) {
+            setTouchedFields(prev => ({
+                ...prev,
+                stats: true
+            }));
+        }
     };
 
-    const removeStat = (index) => {
+    const removeStat = (index: number) => {
         const newStats = (formData.stats || []).filter((_, i) => i !== index);
         setFormData(prev => ({
             ...prev,
             stats: newStats
         }));
+
+        // Clear error for stats field
+        if (errors.stats) {
+            setErrors(prev => {
+                const newErrors = {...prev};
+                delete newErrors.stats;
+                return newErrors;
+            });
+        }
+
+        // Mark stats field as touched
+        if (!touchedFields.stats) {
+            setTouchedFields(prev => ({
+                ...prev,
+                stats: true
+            }));
+        }
     };
 
-    const handleFeatureChange = (index, value) => {
+    const handleFeatureChange = (index: number, value: string) => {
         const newFeatures = [...(formData.features || [])];
         newFeatures[index] = value;
         setFormData(prev => ({
             ...prev,
             features: newFeatures
         }));
+
+        // Clear error for features field
+        if (errors.features) {
+            setErrors(prev => {
+                const newErrors = {...prev};
+                delete newErrors.features;
+                return newErrors;
+            });
+        }
+
+        // Mark features field as touched
+        if (!touchedFields.features) {
+            setTouchedFields(prev => ({
+                ...prev,
+                features: true
+            }));
+        }
     };
 
     const addFeature = () => {
@@ -952,31 +1022,110 @@ const EditWhyUsForm = ({ data, onSave, onCancel }) => {
             ...prev,
             features: [...(prev.features || []), '']
         }));
+
+        // Clear error for features field
+        if (errors.features) {
+            setErrors(prev => {
+                const newErrors = {...prev};
+                delete newErrors.features;
+                return newErrors;
+            });
+        }
+
+        // Mark features field as touched
+        if (!touchedFields.features) {
+            setTouchedFields(prev => ({
+                ...prev,
+                features: true
+            }));
+        }
     };
 
-    const removeFeature = (index) => {
+    const removeFeature = (index: number) => {
         const newFeatures = (formData.features || []).filter((_, i) => i !== index);
         setFormData(prev => ({
             ...prev,
             features: newFeatures
         }));
+
+        // Clear error for features field
+        if (errors.features) {
+            setErrors(prev => {
+                const newErrors = {...prev};
+                delete newErrors.features;
+                return newErrors;
+            });
+        }
+
+        // Mark features field as touched
+        if (!touchedFields.features) {
+            setTouchedFields(prev => ({
+                ...prev,
+                features: true
+            }));
+        }
+    };
+
+    const validate = () => {
+        const newErrors: Record<string, string> = {};
+        
+        if (!formData.title?.trim()) {
+            newErrors.title = 'Section title is required';
+        }
+        
+        if (!formData.description?.trim()) {
+            newErrors.description = 'Short description is required';
+        }
+        
+        if (!formData.stats || formData.stats.length === 0) {
+            newErrors.stats = 'At least one statistic is required';
+        } else {
+            const invalidStats = formData.stats.filter(stat => 
+                !stat.label?.trim() || !stat.value?.trim() || !stat.description?.trim()
+            );
+            if (invalidStats.length > 0) {
+                newErrors.stats = 'All statistics must have label, value, and description';
+            }
+        }
+        
+        if (!formData.features || formData.features.length === 0) {
+            newErrors.features = 'At least one feature is required';
+        } else {
+            const invalidFeatures = formData.features.filter(feature => !feature.trim());
+            if (invalidFeatures.length > 0) {
+                newErrors.features = 'All features must have content';
+            }
+        }
+        
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
     };
 
     const handleSubmit = () => {
-        // Filter out stats that have empty required fields
-        const cleanedStats = (formData.stats || []).filter(stat => 
-            stat.label && stat.label.trim() !== '' && 
-            stat.value && stat.value.trim() !== '' && 
-            stat.description && stat.description.trim() !== ''
-        );
-        
-        // Create updated form data with cleaned stats
-        const updatedFormData = {
-            ...formData,
-            stats: cleanedStats
-        };
-        
-        onSave(updatedFormData);
+        if (validate()) {
+            // Filter out stats that have empty required fields
+            const cleanedStats = (formData.stats || []).filter(stat => 
+                stat.label && stat.label.trim() !== '' && 
+                stat.value && stat.value.trim() !== '' && 
+                stat.description && stat.description.trim() !== ''
+            );
+            
+            // Create updated form data with cleaned stats
+            const updatedFormData = {
+                ...formData,
+                stats: cleanedStats
+            };
+            
+            onSave(updatedFormData);
+        } else {
+            // Mark all fields as touched to show errors
+            setTouchedFields({
+                title: true,
+                description: true,
+                stats: true,
+                features: true
+            });
+        }
     };
 
     return (
@@ -986,14 +1135,22 @@ const EditWhyUsForm = ({ data, onSave, onCancel }) => {
                 <Input
                     value={formData.title}
                     onChange={(e) => handleChange('title', e.target.value)}
+                    className={errors.title && touchedFields.title ? 'border-red-500' : ''}
                 />
+                {errors.title && touchedFields.title && (
+                    <p className="text-red-500 text-sm mt-1">{errors.title}</p>
+                )}
             </div>
             <div>
                 <Label>Short Description</Label>
                 <Textarea
                     value={formData.description}
                     onChange={(e) => handleChange('description', e.target.value)}
+                    className={errors.description && touchedFields.description ? 'border-red-500' : ''}
                 />
+                {errors.description && touchedFields.description && (
+                    <p className="text-red-500 text-sm mt-1">{errors.description}</p>
+                )}
             </div>
             <div>
                 <div className="flex items-center justify-between mb-2">
@@ -1011,6 +1168,7 @@ const EditWhyUsForm = ({ data, onSave, onCancel }) => {
                                     value={stat.label}
                                     onChange={(e) => handleStatChange(index, 'label', e.target.value)}
                                     placeholder="Stat label"
+                                    className={errors.stats && touchedFields.stats ? 'border-red-500' : ''}
                                 />
                             </div>
                             <div>
@@ -1019,6 +1177,7 @@ const EditWhyUsForm = ({ data, onSave, onCancel }) => {
                                     value={stat.value}
                                     onChange={(e) => handleStatChange(index, 'value', e.target.value)}
                                     placeholder="Stat value"
+                                    className={errors.stats && touchedFields.stats ? 'border-red-500' : ''}
                                 />
                             </div>
                             <div>
@@ -1027,6 +1186,7 @@ const EditWhyUsForm = ({ data, onSave, onCancel }) => {
                                     value={stat.description}
                                     onChange={(e) => handleStatChange(index, 'description', e.target.value)}
                                     placeholder="Description"
+                                    className={errors.stats && touchedFields.stats ? 'border-red-500' : ''}
                                 />
                             </div>
                             <div className="col-span-3">
@@ -1043,6 +1203,9 @@ const EditWhyUsForm = ({ data, onSave, onCancel }) => {
                         </div>
                     ))}
                 </div>
+                {errors.stats && touchedFields.stats && (
+                    <p className="text-red-500 text-sm mt-1">{errors.stats}</p>
+                )}
             </div>
             <div>
                 <div className="flex items-center justify-between mb-2">
@@ -1058,6 +1221,7 @@ const EditWhyUsForm = ({ data, onSave, onCancel }) => {
                                 value={feature}
                                 onChange={(e) => handleFeatureChange(index, e.target.value)}
                                 placeholder={`Feature ${index + 1}`}
+                                className={errors.features && touchedFields.features ? 'border-red-500' : ''}
                             />
                             <Button 
                                 type="button" 
@@ -1071,6 +1235,9 @@ const EditWhyUsForm = ({ data, onSave, onCancel }) => {
                         </div>
                     ))}
                 </div>
+                {errors.features && touchedFields.features && (
+                    <p className="text-red-500 text-sm mt-1">{errors.features}</p>
+                )}
             </div>
             <DialogFooter className="flex justify-between">
                 <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
@@ -1083,6 +1250,7 @@ const EditWhyUsForm = ({ data, onSave, onCancel }) => {
 const EditFaqForm = ({ data, onSave, onCancel, isNew }) => {
     const [formData, setFormData] = useState<FaqData>(data || { _id: '', question: '', answer: '' });
     const [errors, setErrors] = useState<{ [key: string]: string }>({});
+    const [touchedFields, setTouchedFields] = useState<Record<string, boolean>>({});
     const [isLoading, setIsLoading] = useState(false);
 
     const handleChange = (field, value) => {
@@ -1098,6 +1266,14 @@ const EditFaqForm = ({ data, onSave, onCancel, isNew }) => {
                 [field]: ''
             }));
         }
+
+        // Mark field as touched
+        if (!touchedFields[field]) {
+            setTouchedFields(prev => ({
+                ...prev,
+                [field]: true
+            }));
+        }
     };
 
     const validateForm = () => {
@@ -1105,10 +1281,14 @@ const EditFaqForm = ({ data, onSave, onCancel, isNew }) => {
         
         if (!formData.question.trim()) {
             newErrors.question = 'Question is required';
+        } else if (formData.question.trim().length < 5) {
+            newErrors.question = 'Question must be at least 5 characters';
         }
         
         if (!formData.answer.trim()) {
             newErrors.answer = 'Answer is required';
+        } else if (formData.answer.trim().length < 10) {
+            newErrors.answer = 'Answer must be at least 10 characters';
         }
         
         setErrors(newErrors);
@@ -1117,6 +1297,11 @@ const EditFaqForm = ({ data, onSave, onCancel, isNew }) => {
 
     const handleSubmit = (newItem = false) => {
         if (!validateForm()) {
+            // Mark all fields as touched to show errors
+            setTouchedFields({
+                question: true,
+                answer: true
+            });
             return;
         }
         setIsLoading(true);
@@ -1131,9 +1316,9 @@ const EditFaqForm = ({ data, onSave, onCancel, isNew }) => {
                     value={formData.question}
                     onChange={(e) => handleChange('question', e.target.value)}
                     placeholder="FAQ Question"
-                    className={errors.question ? 'border-red-500' : ''}
+                    className={errors.question && touchedFields.question ? 'border-red-500' : ''}
                 />
-                {errors.question && <p className="text-red-500 text-sm mt-1">{errors.question}</p>}
+                {errors.question && touchedFields.question && <p className="text-red-500 text-sm mt-1">{errors.question}</p>}
             </div>
             <div>
                 <Label>Answer</Label>
@@ -1141,9 +1326,9 @@ const EditFaqForm = ({ data, onSave, onCancel, isNew }) => {
                     value={formData.answer}
                     onChange={(e) => handleChange('answer', e.target.value)}
                     placeholder="FAQ Answer"
-                    className={errors.answer ? 'border-red-500' : ''}
+                    className={errors.answer && touchedFields.answer ? 'border-red-500' : ''}
                 />
-                {errors.answer && <p className="text-red-500 text-sm mt-1">{errors.answer}</p>}
+                {errors.answer && touchedFields.answer && <p className="text-red-500 text-sm mt-1">{errors.answer}</p>}
             </div>
             <DialogFooter className="flex justify-between">
                 <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>Cancel</Button>
@@ -1164,16 +1349,60 @@ const EditFaqForm = ({ data, onSave, onCancel, isNew }) => {
 
 const EditTermsForm = ({ data, onSave, onCancel }) => {
     const [formData, setFormData] = useState(data);
+    const [errors, setErrors] = useState<Record<string, string>>({});
+    const [touchedFields, setTouchedFields] = useState<Record<string, boolean>>({});
 
-    const handleChange = (field, value) => {
+    const handleChange = (field: string, value: any) => {
         setFormData(prev => ({
             ...prev,
             [field]: value
         }));
+
+        // Clear error when user starts typing
+        if (errors[field]) {
+            setErrors(prev => {
+                const newErrors = {...prev};
+                delete newErrors[field];
+                return newErrors;
+            });
+        }
+
+        // Mark field as touched
+        if (!touchedFields[field]) {
+            setTouchedFields(prev => ({
+                ...prev,
+                [field]: true
+            }));
+        }
+    };
+
+    const validate = () => {
+        const newErrors: Record<string, string> = {};
+        
+        if (!formData.title?.trim()) {
+            newErrors.title = 'Page title is required';
+        }
+        
+        if (!formData.content?.trim()) {
+            newErrors.content = 'Page content is required';
+        } else if (formData.content.trim().length < 50) {
+            newErrors.content = 'Page content must be at least 50 characters';
+        }
+        
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
     };
 
     const handleSubmit = () => {
-        onSave(formData);
+        if (validate()) {
+            onSave(formData);
+        } else {
+            // Mark all fields as touched to show errors
+            setTouchedFields({
+                title: true,
+                content: true
+            });
+        }
     };
 
     return (
@@ -1183,7 +1412,11 @@ const EditTermsForm = ({ data, onSave, onCancel }) => {
                 <Input
                     value={formData.title}
                     onChange={(e) => handleChange('title', e.target.value)}
+                    className={errors.title && touchedFields.title ? 'border-red-500' : ''}
                 />
+                {errors.title && touchedFields.title && (
+                    <p className="text-red-500 text-sm mt-1">{errors.title}</p>
+                )}
             </div>
             <div>
                 <Label>Version</Label>
@@ -1208,7 +1441,11 @@ const EditTermsForm = ({ data, onSave, onCancel }) => {
                     value={formData.content}
                     onChange={(e) => handleChange('content', e.target.value)}
                     placeholder="Full page content..."
+                    className={errors.content && touchedFields.content ? 'border-red-500' : ''}
                 />
+                {errors.content && touchedFields.content && (
+                    <p className="text-red-500 text-sm mt-1">{errors.content}</p>
+                )}
             </div>
             <DialogFooter className="flex justify-between">
                 <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
@@ -1222,27 +1459,120 @@ const EditTermsForm = ({ data, onSave, onCancel }) => {
 
 const EditFeaturedTherapistForm = ({ data, onSave, onCancel }) => {
     const [formData, setFormData] = useState(data);
+    const [errors, setErrors] = useState<Record<string, string>>({});
+    const [touchedFields, setTouchedFields] = useState<Record<string, boolean>>({});
 
-    const handleChange = (field, value) => {
+    const handleChange = (field: string, value: any) => {
         setFormData(prev => ({
             ...prev,
             [field]: value
         }));
+
+        // Clear error when user starts typing
+        if (errors[field]) {
+            setErrors(prev => {
+                const newErrors = {...prev};
+                delete newErrors[field];
+                return newErrors;
+            });
+        }
+
+        // Mark field as touched
+        if (!touchedFields[field]) {
+            setTouchedFields(prev => ({
+                ...prev,
+                [field]: true
+            }));
+        }
     };
 
     // Handle image upload
-    const handleImageUpload = (e) => {
-        const file = e.target.files[0];
+    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
         if (file) {
             setFormData(prev => ({
                 ...prev,
                 image: file
             }));
+
+            // Clear error for image field
+            if (errors.image) {
+                setErrors(prev => {
+                    const newErrors = {...prev};
+                    delete newErrors.image;
+                    return newErrors;
+                });
+            }
+
+            // Mark image field as touched
+            if (!touchedFields.image) {
+                setTouchedFields(prev => ({
+                    ...prev,
+                    image: true
+                }));
+            }
         }
     };
 
+    const validate = () => {
+        const newErrors: Record<string, string> = {};
+        
+        if (!formData.name?.trim()) {
+            newErrors.name = 'Name is required';
+        }
+        
+        if (!formData.specialty?.trim()) {
+            newErrors.specialty = 'Specialty is required';
+        }
+        
+        if (!formData.experience?.trim()) {
+            newErrors.experience = 'Experience is required';
+        }
+        
+        if (!formData.description?.trim()) {
+            newErrors.description = 'Description is required';
+        } else if (formData.description.trim().length < 10) {
+            newErrors.description = 'Description must be at least 10 characters';
+        }
+        
+        if (!formData.ctaText?.trim()) {
+            newErrors.ctaText = 'CTA text is required';
+        }
+        
+        if (!formData.viewProfileText?.trim()) {
+            newErrors.viewProfileText = 'View profile text is required';
+        }
+        
+        if (!formData.image) {
+            newErrors.image = 'Therapist image is required';
+        } else if (typeof formData.image !== 'string' && formData.image instanceof File) {
+            if (formData.image.size > 5 * 1024 * 1024) {
+                newErrors.image = 'Image size must be less than 5MB';
+            }
+            if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(formData.image.type)) {
+                newErrors.image = 'Only JPEG, PNG, WEBP, and GIF formats are allowed';
+            }
+        }
+        
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
     const handleSubmit = () => {
-        onSave(formData);
+        if (validate()) {
+            onSave(formData);
+        } else {
+            // Mark all fields as touched to show errors
+            setTouchedFields({
+                name: true,
+                specialty: true,
+                experience: true,
+                description: true,
+                ctaText: true,
+                viewProfileText: true,
+                image: true
+            });
+        }
     };
 
     return (
@@ -1252,21 +1582,33 @@ const EditFeaturedTherapistForm = ({ data, onSave, onCancel }) => {
                 <Input
                     value={formData.name}
                     onChange={(e) => handleChange('name', e.target.value)}
+                    className={errors.name && touchedFields.name ? 'border-red-500' : ''}
                 />
+                {errors.name && touchedFields.name && (
+                    <p className="text-red-500 text-sm mt-1">{errors.name}</p>
+                )}
             </div>
             <div>
                 <Label>Specialty</Label>
                 <Input
                     value={formData.specialty}
                     onChange={(e) => handleChange('specialty', e.target.value)}
+                    className={errors.specialty && touchedFields.specialty ? 'border-red-500' : ''}
                 />
+                {errors.specialty && touchedFields.specialty && (
+                    <p className="text-red-500 text-sm mt-1">{errors.specialty}</p>
+                )}
             </div>
             <div>
                 <Label>Experience</Label>
                 <Input
                     value={formData.experience}
                     onChange={(e) => handleChange('experience', e.target.value)}
+                    className={errors.experience && touchedFields.experience ? 'border-red-500' : ''}
                 />
+                {errors.experience && touchedFields.experience && (
+                    <p className="text-red-500 text-sm mt-1">{errors.experience}</p>
+                )}
             </div>
             <div>
                 <Label>Rating</Label>
@@ -1281,21 +1623,33 @@ const EditFeaturedTherapistForm = ({ data, onSave, onCancel }) => {
                     rows={4}
                     value={formData.description}
                     onChange={(e) => handleChange('description', e.target.value)}
+                    className={errors.description && touchedFields.description ? 'border-red-500' : ''}
                 />
+                {errors.description && touchedFields.description && (
+                    <p className="text-red-500 text-sm mt-1">{errors.description}</p>
+                )}
             </div>
             <div>
                 <Label>CTA Text</Label>
                 <Input
                     value={formData.ctaText}
                     onChange={(e) => handleChange('ctaText', e.target.value)}
+                    className={errors.ctaText && touchedFields.ctaText ? 'border-red-500' : ''}
                 />
+                {errors.ctaText && touchedFields.ctaText && (
+                    <p className="text-red-500 text-sm mt-1">{errors.ctaText}</p>
+                )}
             </div>
             <div>
                 <Label>View Profile Text</Label>
                 <Input
                     value={formData.viewProfileText}
                     onChange={(e) => handleChange('viewProfileText', e.target.value)}
+                    className={errors.viewProfileText && touchedFields.viewProfileText ? 'border-red-500' : ''}
                 />
+                {errors.viewProfileText && touchedFields.viewProfileText && (
+                    <p className="text-red-500 text-sm mt-1">{errors.viewProfileText}</p>
+                )}
             </div>
             <div className="flex items-center space-x-2">
                 <input
@@ -1320,7 +1674,7 @@ const EditFeaturedTherapistForm = ({ data, onSave, onCancel }) => {
                         />
                         <label
                             htmlFor="therapist-image-upload"
-                            className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-muted hover:bg-accent transition-colors"
+                            className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-muted hover:bg-accent transition-colors ${errors.image && touchedFields.image ? 'border-red-500' : ''}`}
                         >
                             <Upload className="w-8 h-8 text-muted-foreground mb-2" />
                             <span className="text-sm text-muted-foreground">Click to upload image</span>
@@ -1338,6 +1692,9 @@ const EditFeaturedTherapistForm = ({ data, onSave, onCancel }) => {
                         </div>
                     )}
                 </div>
+                {errors.image && touchedFields.image && (
+                    <p className="text-red-500 text-sm mt-1">{errors.image}</p>
+                )}
             </div>
             <DialogFooter className="flex justify-between">
                 <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
@@ -1352,21 +1709,57 @@ const EditContactForm = ({ data, onSave, onCancel }) => {
         ...data,
         socialLinks: data?.socialLinks || []
     });
+    const [errors, setErrors] = useState<Record<string, string>>({});
+    const [touchedFields, setTouchedFields] = useState<Record<string, boolean>>({});
 
-    const handleChange = (field, value) => {
+    const handleChange = (field: string, value: any) => {
         setFormData(prev => ({
             ...prev,
             [field]: value
         }));
+
+        // Clear error when user starts typing
+        if (errors[field]) {
+            setErrors(prev => {
+                const newErrors = {...prev};
+                delete newErrors[field];
+                return newErrors;
+            });
+        }
+
+        // Mark field as touched
+        if (!touchedFields[field]) {
+            setTouchedFields(prev => ({
+                ...prev,
+                [field]: true
+            }));
+        }
     };
 
-    const handleSocialLinkChange = (index, field, value) => {
+    const handleSocialLinkChange = (index: number, field: string, value: any) => {
         const newSocialLinks = [...(formData.socialLinks || [])];
         newSocialLinks[index][field] = value;
         setFormData(prev => ({
             ...prev,
             socialLinks: newSocialLinks
         }));
+
+        // Clear error for socialLinks field
+        if (errors.socialLinks) {
+            setErrors(prev => {
+                const newErrors = {...prev};
+                delete newErrors.socialLinks;
+                return newErrors;
+            });
+        }
+
+        // Mark socialLinks field as touched
+        if (!touchedFields.socialLinks) {
+            setTouchedFields(prev => ({
+                ...prev,
+                socialLinks: true
+            }));
+        }
     };
 
     const addSocialLink = () => {
@@ -1374,18 +1767,103 @@ const EditContactForm = ({ data, onSave, onCancel }) => {
             ...prev,
             socialLinks: [...(prev.socialLinks || []), { platform: '', url: '' }]
         }));
+
+        // Clear error for socialLinks field
+        if (errors.socialLinks) {
+            setErrors(prev => {
+                const newErrors = {...prev};
+                delete newErrors.socialLinks;
+                return newErrors;
+            });
+        }
+
+        // Mark socialLinks field as touched
+        if (!touchedFields.socialLinks) {
+            setTouchedFields(prev => ({
+                ...prev,
+                socialLinks: true
+            }));
+        }
     };
 
-    const removeSocialLink = (index) => {
+    const removeSocialLink = (index: number) => {
         const newSocialLinks = (formData.socialLinks || []).filter((_, i) => i !== index);
         setFormData(prev => ({
             ...prev,
             socialLinks: newSocialLinks
         }));
+
+        // Clear error for socialLinks field
+        if (errors.socialLinks) {
+            setErrors(prev => {
+                const newErrors = {...prev};
+                delete newErrors.socialLinks;
+                return newErrors;
+            });
+        }
+
+        // Mark socialLinks field as touched
+        if (!touchedFields.socialLinks) {
+            setTouchedFields(prev => ({
+                ...prev,
+                socialLinks: true
+            }));
+        }
+    };
+
+    const validate = () => {
+        const newErrors: Record<string, string> = {};
+        
+        if (!formData.title?.trim()) {
+            newErrors.title = 'Section title is required';
+        }
+        
+        if (!formData.description?.trim()) {
+            newErrors.description = 'Description is required';
+        }
+        
+        if (!formData.email?.trim()) {
+            newErrors.email = 'Email address is required';
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+            newErrors.email = 'Please enter a valid email address';
+        }
+        
+        if (!formData.phone?.trim()) {
+            newErrors.phone = 'Phone number is required';
+        } else if (formData.phone.trim().length < 8) {
+            newErrors.phone = 'Phone number must be at least 8 characters';
+        }
+        
+        if (!formData.address?.trim()) {
+            newErrors.address = 'Address is required';
+        } else if (formData.address.trim().length < 10) {
+            newErrors.address = 'Address must be at least 10 characters';
+        }
+        
+        if (!formData.hours?.trim()) {
+            newErrors.hours = 'Business hours are required';
+        } else if (formData.hours.trim().length < 10) {
+            newErrors.hours = 'Business hours must be at least 10 characters';
+        }
+        
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
     };
 
     const handleSubmit = () => {
-        onSave(formData);
+        if (validate()) {
+            onSave(formData);
+        } else {
+            // Mark all fields as touched to show errors
+            setTouchedFields({
+                title: true,
+                description: true,
+                email: true,
+                phone: true,
+                address: true,
+                hours: true
+            });
+        }
     };
 
     return (
@@ -1395,35 +1873,55 @@ const EditContactForm = ({ data, onSave, onCancel }) => {
                 <Input
                     value={formData.title}
                     onChange={(e) => handleChange('title', e.target.value)}
+                    className={errors.title && touchedFields.title ? 'border-red-500' : ''}
                 />
+                {errors.title && touchedFields.title && (
+                    <p className="text-red-500 text-sm mt-1">{errors.title}</p>
+                )}
             </div>
             <div>
                 <Label>Description</Label>
                 <Textarea
                     value={formData.description}
                     onChange={(e) => handleChange('description', e.target.value)}
+                    className={errors.description && touchedFields.description ? 'border-red-500' : ''}
                 />
+                {errors.description && touchedFields.description && (
+                    <p className="text-red-500 text-sm mt-1">{errors.description}</p>
+                )}
             </div>
             <div>
                 <Label>Email Address</Label>
                 <Input
                     value={formData.email}
                     onChange={(e) => handleChange('email', e.target.value)}
+                    className={errors.email && touchedFields.email ? 'border-red-500' : ''}
                 />
+                {errors.email && touchedFields.email && (
+                    <p className="text-red-500 text-sm mt-1">{errors.email}</p>
+                )}
             </div>
             <div>
                 <Label>Phone Number</Label>
                 <Input
                     value={formData.phone}
                     onChange={(e) => handleChange('phone', e.target.value)}
+                    className={errors.phone && touchedFields.phone ? 'border-red-500' : ''}
                 />
+                {errors.phone && touchedFields.phone && (
+                    <p className="text-red-500 text-sm mt-1">{errors.phone}</p>
+                )}
             </div>
             <div>
                 <Label>Address</Label>
                 <Textarea
                     value={formData.address}
                     onChange={(e) => handleChange('address', e.target.value)}
+                    className={errors.address && touchedFields.address ? 'border-red-500' : ''}
                 />
+                {errors.address && touchedFields.address && (
+                    <p className="text-red-500 text-sm mt-1">{errors.address}</p>
+                )}
             </div>
             <div>
                 <Label>Business Hours</Label>
@@ -1431,7 +1929,11 @@ const EditContactForm = ({ data, onSave, onCancel }) => {
                     value={formData.hours}
                     onChange={(e) => handleChange('hours', e.target.value)}
                     placeholder="Enter business hours (e.g., Monday-Friday: 8:00 AM - 8:00 PM)"
+                    className={errors.hours && touchedFields.hours ? 'border-red-500' : ''}
                 />
+                {errors.hours && touchedFields.hours && (
+                    <p className="text-red-500 text-sm mt-1">{errors.hours}</p>
+                )}
             </div>
             <div>
                 <div className="flex items-center justify-between mb-2">
@@ -1448,6 +1950,7 @@ const EditContactForm = ({ data, onSave, onCancel }) => {
                                     value={social.platform}
                                     onChange={(e) => handleSocialLinkChange(index, 'platform', e.target.value)}
                                     placeholder="Platform (e.g., Facebook)"
+                                    className={errors.socialLinks && touchedFields.socialLinks ? 'border-red-500' : ''}
                                 />
                             </div>
                             <div className="flex gap-2">
@@ -1455,6 +1958,7 @@ const EditContactForm = ({ data, onSave, onCancel }) => {
                                     value={social.url}
                                     onChange={(e) => handleSocialLinkChange(index, 'url', e.target.value)}
                                     placeholder="URL"
+                                    className={errors.socialLinks && touchedFields.socialLinks ? 'border-red-500' : ''}
                                 />
                                 <Button 
                                     type="button" 
@@ -1485,21 +1989,57 @@ const EditAboutForm = ({ data, onSave, onCancel }: { data: AboutData; onSave: (d
         values: data?.values || [],
         images: data?.images || []
     });
+    const [errors, setErrors] = useState<Record<string, string>>({});
+    const [touchedFields, setTouchedFields] = useState<Record<string, boolean>>({});
 
-    const handleChange = (field, value) => {
+    const handleChange = (field: string, value: any) => {
         setFormData(prev => ({
             ...prev,
             [field]: value
         }));
+
+        // Clear error when user starts typing
+        if (errors[field]) {
+            setErrors(prev => {
+                const newErrors = {...prev};
+                delete newErrors[field];
+                return newErrors;
+            });
+        }
+
+        // Mark field as touched
+        if (!touchedFields[field]) {
+            setTouchedFields(prev => ({
+                ...prev,
+                [field]: true
+            }));
+        }
     };
 
-    const handleValuesChange = (index, value) => {
+    const handleValuesChange = (index: number, value: string) => {
         const newValues = [...(formData.values || [])];
         newValues[index] = value;
         setFormData(prev => ({
             ...prev,
             values: newValues
         }));
+
+        // Clear error for values field
+        if (errors.values) {
+            setErrors(prev => {
+                const newErrors = {...prev};
+                delete newErrors.values;
+                return newErrors;
+            });
+        }
+
+        // Mark values field as touched
+        if (!touchedFields.values) {
+            setTouchedFields(prev => ({
+                ...prev,
+                values: true
+            }));
+        }
     };
 
     const addValue = () => {
@@ -1507,24 +2047,75 @@ const EditAboutForm = ({ data, onSave, onCancel }: { data: AboutData; onSave: (d
             ...prev,
             values: [...(prev.values || []), '']
         }));
+
+        // Clear error for values field
+        if (errors.values) {
+            setErrors(prev => {
+                const newErrors = {...prev};
+                delete newErrors.values;
+                return newErrors;
+            });
+        }
+
+        // Mark values field as touched
+        if (!touchedFields.values) {
+            setTouchedFields(prev => ({
+                ...prev,
+                values: true
+            }));
+        }
     };
 
-    const removeValue = (index) => {
+    const removeValue = (index: number) => {
         const newValues = (formData.values || []).filter((_, i) => i !== index);
         setFormData(prev => ({
             ...prev,
             values: newValues
         }));
+
+        // Clear error for values field
+        if (errors.values) {
+            setErrors(prev => {
+                const newErrors = {...prev};
+                delete newErrors.values;
+                return newErrors;
+            });
+        }
+
+        // Mark values field as touched
+        if (!touchedFields.values) {
+            setTouchedFields(prev => ({
+                ...prev,
+                values: true
+            }));
+        }
     };
 
     // Handle single image upload (legacy support)
-    const handleImageUpload = (e) => {
-        const file = e.target.files[0];
+    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
         if (file) {
             setFormData(prev => ({
                 ...prev,
                 image: file
             }));
+
+            // Clear error for image field
+            if (errors.image) {
+                setErrors(prev => {
+                    const newErrors = {...prev};
+                    delete newErrors.image;
+                    return newErrors;
+                });
+            }
+
+            // Mark image field as touched
+            if (!touchedFields.image) {
+                setTouchedFields(prev => ({
+                    ...prev,
+                    image: true
+                }));
+            }
         }
     };
 
@@ -1536,19 +2127,53 @@ const EditAboutForm = ({ data, onSave, onCancel }: { data: AboutData; onSave: (d
                 ...prev,
                 images: [...prev.images, ...files]
             }));
+
+            // Clear error for images field
+            if (errors.images) {
+                setErrors(prev => {
+                    const newErrors = {...prev};
+                    delete newErrors.images;
+                    return newErrors;
+                });
+            }
+
+            // Mark images field as touched
+            if (!touchedFields.images) {
+                setTouchedFields(prev => ({
+                    ...prev,
+                    images: true
+                }));
+            }
         }
     };
 
     // Remove image from array
-    const removeImage = (index) => {
+    const removeImage = (index: number) => {
         setFormData(prev => ({
             ...prev,
             images: prev.images.filter((_, i) => i !== index)
         }));
+
+        // Clear error for images field
+        if (errors.images) {
+            setErrors(prev => {
+                const newErrors = {...prev};
+                delete newErrors.images;
+                return newErrors;
+            });
+        }
+
+        // Mark images field as touched
+        if (!touchedFields.images) {
+            setTouchedFields(prev => ({
+                ...prev,
+                images: true
+            }));
+        }
     };
 
     // Set primary image (move to first position)
-    const setPrimaryImage = (index) => {
+    const setPrimaryImage = (index: number) => {
         const newImages = [...formData.images];
         const [movedImage] = newImages.splice(index, 1);
         newImages.unshift(movedImage);
@@ -1557,6 +2182,23 @@ const EditAboutForm = ({ data, onSave, onCancel }: { data: AboutData; onSave: (d
             ...prev,
             images: newImages
         }));
+
+        // Clear error for images field
+        if (errors.images) {
+            setErrors(prev => {
+                const newErrors = {...prev};
+                delete newErrors.images;
+                return newErrors;
+            });
+        }
+
+        // Mark images field as touched
+        if (!touchedFields.images) {
+            setTouchedFields(prev => ({
+                ...prev,
+                images: true
+            }));
+        }
     };
 
     // Get image source (handles both File objects and URLs)
@@ -1576,8 +2218,84 @@ const EditAboutForm = ({ data, onSave, onCancel }: { data: AboutData; onSave: (d
         return '';
     };
 
+    const validate = () => {
+        const newErrors: Record<string, string> = {};
+        
+        if (!formData.title?.trim()) {
+            newErrors.title = 'Section title is required';
+        }
+        
+        if (!formData.description?.trim()) {
+            newErrors.description = 'Description is required';
+        } else if (formData.description.trim().length < 10) {
+            newErrors.description = 'Description must be at least 10 characters';
+        }
+        
+        if (!formData.mission?.trim()) {
+            newErrors.mission = 'Mission statement is required';
+        } else if (formData.mission.trim().length < 10) {
+            newErrors.mission = 'Mission statement must be at least 10 characters';
+        }
+        
+        if (!formData.vision?.trim()) {
+            newErrors.vision = 'Vision statement is required';
+        } else if (formData.vision.trim().length < 10) {
+            newErrors.vision = 'Vision statement must be at least 10 characters';
+        }
+        
+        if (!formData.foundingStory?.trim()) {
+            newErrors.foundingStory = 'Founding story is required';
+        } else if (formData.foundingStory.trim().length < 10) {
+            newErrors.foundingStory = 'Founding story must be at least 10 characters';
+        }
+        
+        if (!formData.teamInfo?.trim()) {
+            newErrors.teamInfo = 'Team information is required';
+        } else if (formData.teamInfo.trim().length < 10) {
+            newErrors.teamInfo = 'Team information must be at least 10 characters';
+        }
+        
+        if (!formData.values || formData.values.length === 0) {
+            newErrors.values = 'At least one core value is required';
+        } else {
+            const invalidValues = formData.values.filter(value => !value.trim());
+            if (invalidValues.length > 0) {
+                newErrors.values = 'All core values must have content';
+            }
+        }
+        
+        if (!formData.images || formData.images.length === 0) {
+            newErrors.images = 'At least one image is required';
+        } else if (formData.images.some(img => img instanceof File)) {
+            const invalidFiles = formData.images.filter(img => img instanceof File && (
+                img.size > 5 * 1024 * 1024 || 
+                !['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(img.type)
+            ));
+            if (invalidFiles.length > 0) {
+                newErrors.images = 'All images must be less than 5MB and in JPEG, PNG, WEBP, or GIF format';
+            }
+        }
+        
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
     const handleSubmit = () => {
-        onSave(formData);
+        if (validate()) {
+            onSave(formData);
+        } else {
+            // Mark all fields as touched to show errors
+            setTouchedFields({
+                title: true,
+                description: true,
+                mission: true,
+                vision: true,
+                foundingStory: true,
+                teamInfo: true,
+                values: true,
+                images: true
+            });
+        }
     };
 
     return (
@@ -1587,8 +2305,11 @@ const EditAboutForm = ({ data, onSave, onCancel }: { data: AboutData; onSave: (d
                 <Input
                     value={formData.title}
                     onChange={(e) => handleChange('title', e.target.value)}
-                    className="text-sm"
+                    className={`text-sm ${errors.title && touchedFields.title ? 'border-red-500' : ''}`}
                 />
+                {errors.title && touchedFields.title && (
+                    <p className="text-red-500 text-sm mt-1">{errors.title}</p>
+                )}
             </div>
             <div>
                 <Label>Description</Label>
@@ -1596,7 +2317,11 @@ const EditAboutForm = ({ data, onSave, onCancel }: { data: AboutData; onSave: (d
                     value={formData.description}
                     onChange={(e) => handleChange('description', e.target.value)}
                     rows={3}
+                    className={errors.description && touchedFields.description ? 'border-red-500' : ''}
                 />
+                {errors.description && touchedFields.description && (
+                    <p className="text-red-500 text-sm mt-1">{errors.description}</p>
+                )}
             </div>
             <div>
                 <Label>Mission Statement</Label>
@@ -1604,7 +2329,11 @@ const EditAboutForm = ({ data, onSave, onCancel }: { data: AboutData; onSave: (d
                     value={formData.mission}
                     onChange={(e) => handleChange('mission', e.target.value)}
                     rows={3}
+                    className={errors.mission && touchedFields.mission ? 'border-red-500' : ''}
                 />
+                {errors.mission && touchedFields.mission && (
+                    <p className="text-red-500 text-sm mt-1">{errors.mission}</p>
+                )}
             </div>
             <div>
                 <Label>Vision Statement</Label>
@@ -1612,7 +2341,11 @@ const EditAboutForm = ({ data, onSave, onCancel }: { data: AboutData; onSave: (d
                     value={formData.vision}
                     onChange={(e) => handleChange('vision', e.target.value)}
                     rows={3}
+                    className={errors.vision && touchedFields.vision ? 'border-red-500' : ''}
                 />
+                {errors.vision && touchedFields.vision && (
+                    <p className="text-red-500 text-sm mt-1">{errors.vision}</p>
+                )}
             </div>
             <div>
                 <Label>Founding Story</Label>
@@ -1620,7 +2353,11 @@ const EditAboutForm = ({ data, onSave, onCancel }: { data: AboutData; onSave: (d
                     value={formData.foundingStory}
                     onChange={(e) => handleChange('foundingStory', e.target.value)}
                     rows={4}
+                    className={errors.foundingStory && touchedFields.foundingStory ? 'border-red-500' : ''}
                 />
+                {errors.foundingStory && touchedFields.foundingStory && (
+                    <p className="text-red-500 text-sm mt-1">{errors.foundingStory}</p>
+                )}
             </div>
             <div>
                 <Label>Team Information</Label>
@@ -1628,7 +2365,11 @@ const EditAboutForm = ({ data, onSave, onCancel }: { data: AboutData; onSave: (d
                     value={formData.teamInfo}
                     onChange={(e) => handleChange('teamInfo', e.target.value)}
                     rows={3}
+                    className={errors.teamInfo && touchedFields.teamInfo ? 'border-red-500' : ''}
                 />
+                {errors.teamInfo && touchedFields.teamInfo && (
+                    <p className="text-red-500 text-sm mt-1">{errors.teamInfo}</p>
+                )}
             </div>
             <div>
                 <div className="flex items-center justify-between mb-2">
@@ -1644,6 +2385,7 @@ const EditAboutForm = ({ data, onSave, onCancel }: { data: AboutData; onSave: (d
                                 value={value}
                                 onChange={(e) => handleValuesChange(index, e.target.value)}
                                 placeholder={`Value ${index + 1}`}
+                                className={errors.values && touchedFields.values ? 'border-red-500' : ''}
                             />
                             <Button 
                                 type="button" 
@@ -1657,6 +2399,9 @@ const EditAboutForm = ({ data, onSave, onCancel }: { data: AboutData; onSave: (d
                         </div>
                     ))}
                 </div>
+                {errors.values && touchedFields.values && (
+                    <p className="text-red-500 text-sm mt-1">{errors.values}</p>
+                )}
             </div>
             <div>
                 <Label>About Us Images</Label>
@@ -1673,7 +2418,7 @@ const EditAboutForm = ({ data, onSave, onCancel }: { data: AboutData; onSave: (d
                         />
                         <label
                             htmlFor="about-images-upload"
-                            className="flex flex-col items-center justify-center w-full h-24 sm:h-32 border-2 border-dashed rounded-lg cursor-pointer bg-muted hover:bg-accent transition-colors"
+                            className={`flex flex-col items-center justify-center w-full h-24 sm:h-32 border-2 border-dashed rounded-lg cursor-pointer bg-muted hover:bg-accent transition-colors ${errors.images && touchedFields.images ? 'border-red-500' : ''}`}
                         >
                             <Upload className="w-6 h-6 sm:w-8 sm:h-8 text-muted-foreground mb-1 sm:mb-2" />
                             <span className="text-xs sm:text-sm text-muted-foreground">Click to upload multiple images</span>
@@ -1740,6 +2485,9 @@ const EditAboutForm = ({ data, onSave, onCancel }: { data: AboutData; onSave: (d
                         <label htmlFor="about-image-upload">Legacy upload</label>
                     </div>
                 </div>
+                {errors.images && touchedFields.images && (
+                    <p className="text-red-500 text-sm mt-1">{errors.images}</p>
+                )}
             </div>
             <div className="flex items-center space-x-2">
                 <input
