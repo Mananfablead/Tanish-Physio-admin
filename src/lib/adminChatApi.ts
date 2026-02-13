@@ -22,7 +22,7 @@ adminChatApiClient.interceptors.request.use((config) => {
 // Define TypeScript interfaces
 export interface ChatMessage {
   _id: string;
-  sessionId: string;
+  sessionId: string | null;
   senderId: {
     _id: string;
     name: string;
@@ -64,7 +64,18 @@ export interface ActiveChat {
 // Admin Chat API Service
 export const adminChatApi = {
   // Get all chat messages for admin view
-  getChatMessages: async (params = {}) => {
+  getChatMessages: async (
+    params: {
+      page?: number;
+      limit?: number;
+      messageType?: string;
+      messageTypes?: string[];
+      senderId?: string;
+      sessionId?: string;
+      sortBy?: string;
+      sortOrder?: string;
+    } = {}
+  ) => {
     const response = await adminChatApiClient.get("/", { params });
     return response.data;
   },

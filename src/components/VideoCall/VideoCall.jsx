@@ -501,14 +501,47 @@ const VideoCall = ({
   // Load chat messages and join chat room
   useEffect(() => {
     if (sessionId && socket && (externalConnected || connected)) {
-      // Join the chat room
-      socket.emit("join-room", {
+      // Join the unified video call room for messaging
+      const videoRoomId = `video-call-${sessionId}`;
+      console.log(`📱 Admin joining video call room: ${videoRoomId}`);
+      socket.emit("join-video-session", {
         sessionId: sessionId,
+      });
+
+      // Listen for incoming messages
+      socket.on("receive-video-message", (data) => {
+        console.log("📥 Admin received video message:", data);
+
+        // Prevent duplicate processing of own messages
+        if (data.senderId === socket.user?.userId) {
+          console.log("💬 Skipping own message to prevent duplication");
+          return;
+        }
+
+        setChatMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now(),
+            text: data.message,
+            sender: "them",
+            senderId: data.senderId,
+            timestamp: data.timestamp || new Date().toISOString(),
+            senderName:
+              data.senderName ||
+              `User ${data.senderId?.substring(0, 5) || "Unknown"}`,
+          },
+        ]);
       });
 
       // Load existing messages
       loadChatMessages();
     }
+
+    return () => {
+      if (socket) {
+        socket.off("receive-video-message");
+      }
+    };
   }, [sessionId, socket, externalConnected, connected]);
 
   // Auto-scroll to bottom when new messages arrive
@@ -542,27 +575,28 @@ const VideoCall = ({
 
     try {
       const senderName = userInfo.name || user?.name || "Admin";
-      const messageData = {
-        content: newMessage.trim(),
-        senderId: socket?.id,
-        senderName: senderName,
-        timestamp: new Date().toISOString(),
-      };
 
-      // Send message via API
-      await adminChatApi.sendMessage(sessionId, newMessage.trim());
-
-      // Add to local chat messages immediately for better UX
-      setChatMessages((prev) => [...prev, messageData]);
-      setNewMessage("");
-
-      // Also broadcast via socket if available
+      // Send message ONLY via socket (no API call)
       if (socket) {
-        socket.emit("send-message", {
-          roomId,
-          roomType,
-          message: messageData,
+        socket.emit("send-video-message", {
+          sessionId: sessionId,
+          message: newMessage.trim(),
+          senderId: socket.user?.userId,
         });
+
+        // Add to local chat messages immediately for better UX
+        setChatMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now(),
+            text: newMessage.trim(),
+            sender: "me",
+            senderId: socket.user?.userId,
+            timestamp: new Date().toISOString(),
+            senderName: senderName,
+          },
+        ]);
+        setNewMessage("");
       }
     } catch (error) {
       console.error("Error sending message:", error);
@@ -1341,7 +1375,7 @@ const VideoCall = ({
     <div className="h-screen bg-black flex flex-col">
       {/* Waiting Room Notification */}
       {WaitingNotificationMemo}
-      
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-center justify-between px-4 sm:px-8 py-4 bg-slate-900 border-b border-slate-800 gap-3 sm:gap-0">
         <div className="flex items-center gap-3 sm:gap-6">
@@ -1480,21 +1514,32 @@ const VideoCall = ({
             <div className="flex-1 p-6 space-y-6">
               {loadingParticipants && (
                 <div className="text-center py-4">
-                  <p className="text-slate-500 text-sm">Loading participants...</p>
+                  <p className="text-slate-500 text-sm">
+                    Loading participants...
+                  </p>
                 </div>
               )}
               {!loadingParticipants && (
                 <>
-                  {(apiParticipants.length > 0 ? apiParticipants : participants).map((participant, index) => {
+                  {(apiParticipants.length > 0
+                    ? apiParticipants
+                    : participants
+                  ).map((participant, index) => {
                     // Convert API participant to match expected format
                     const participantData = {
                       ...participant,
-                      name: participant.name || participant.firstName + " " + participant.lastName || participant.username || `User ${participant.userId?.substring(0, 5) || index}`,
+                      name:
+                        participant.name ||
+                        participant.firstName + " " + participant.lastName ||
+                        participant.username ||
+                        `User ${participant.userId?.substring(0, 5) || index}`,
                       userId: participant.userId || participant._id,
                       role: participant.role || participant.userType,
-                      isSelf: participant.isSelf || (participant.userId === user?.userId)
+                      isSelf:
+                        participant.isSelf ||
+                        participant.userId === user?.userId,
                     };
-                    
+
                     return (
                       <div
                         key={`${participantData.userId || "unknown"}-${
@@ -1503,7 +1548,8 @@ const VideoCall = ({
                         className="flex items-center gap-4"
                       >
                         <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-300 font-semibold text-sm">
-                          {participantData.name?.charAt(0)?.toUpperCase() || "U"}
+                          {participantData.name?.charAt(0)?.toUpperCase() ||
+                            "U"}
                         </div>
                         <div className="flex-1">
                           <div className="flex items-center justify-between">
@@ -1518,7 +1564,8 @@ const VideoCall = ({
                               <Badge className="bg-slate-800 text-slate-400 border-none text-[8px] h-4">
                                 {participantData.role === "admin"
                                   ? "Admin"
-                                  : participantData.role === "therapist" || participantData.role === "staff"
+                                  : participantData.role === "therapist" ||
+                                    participantData.role === "staff"
                                   ? "Staff"
                                   : "Patient"}
                               </Badge>
@@ -1556,11 +1603,14 @@ const VideoCall = ({
                     );
                   })}
                   {/* Show message if no participants from either source */}
-                  {(apiParticipants.length === 0 && participants.length === 0) && (
-                    <div className="text-center py-4">
-                      <p className="text-slate-500 text-sm">No participants found</p>
-                    </div>
-                  )}
+                  {apiParticipants.length === 0 &&
+                    participants.length === 0 && (
+                      <div className="text-center py-4">
+                        <p className="text-slate-500 text-sm">
+                          No participants found
+                        </p>
+                      </div>
+                    )}
                 </>
               )}
 
@@ -1664,7 +1714,9 @@ const VideoCall = ({
                           ? userInfo.name || user?.name || "Admin"
                           : message.senderName || "Participant"}
                       </p>
-                      <p>{message.content || message.message}</p>
+                      <p>
+                        {message.text || message.content || message.message}
+                      </p>
                       <p
                         className={`text-[10px] mt-1 ${
                           message.senderId === socket?.id
@@ -1769,7 +1821,10 @@ const VideoCall = ({
                   try {
                     el.srcObject = localStream;
                   } catch (err) {
-                    console.error("Error assigning admin local video srcObject:", err);
+                    console.error(
+                      "Error assigning admin local video srcObject:",
+                      err
+                    );
                   }
                 }
               }

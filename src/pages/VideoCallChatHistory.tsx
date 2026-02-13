@@ -16,7 +16,7 @@ const VideoCallChatHistory = () => {
     messagesBySender: [],
   });
   const [filter, setFilter] = useState({
-    messageType: "video-call-chat",
+    messageTypes: ["video-call-chat", "live-chat"],
     page: 1,
     limit: 20,
   });
@@ -33,7 +33,11 @@ const VideoCallChatHistory = () => {
   const loadChats = async () => {
     try {
       setLoading(true);
-      const response = await adminChatApi.getChatMessages(filter);
+      // Filter for both video call chat and live chat messages
+      const response = await adminChatApi.getChatMessages({
+        ...filter,
+        messageTypes: ["video-call-chat", "live-chat"],
+      });
       setChats(response.data.messages || []);
     } catch (error) {
       console.error("Error loading video call chats:", error);
@@ -149,49 +153,6 @@ const VideoCallChatHistory = () => {
         <h1 className="text-3xl font-bold text-foreground mb-6">
           Video Call Chat History
         </h1>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-card p-4 rounded-lg shadow">
-            <h3 className="text-lg font-medium text-foreground">
-              Total Video Chat Messages
-            </h3>
-            <p className="text-2xl font-bold text-blue-600">
-              {stats.messagesByType?.find(
-                (item: any) => item._id === "video-call-chat"
-              )?.count || 0}
-            </p>
-          </div>
-          <div className="bg-card p-4 rounded-lg shadow">
-            <h3 className="text-lg font-medium text-foreground">
-              Total Messages
-            </h3>
-            <p className="text-2xl font-bold text-purple-600">
-              {stats.totalMessages || 0}
-            </p>
-          </div>
-          <div className="bg-card p-4 rounded-lg shadow">
-            <h3 className="text-lg font-medium text-foreground">
-              Live Chat Messages
-            </h3>
-            <p className="text-2xl font-bold text-green-600">
-              {stats.messagesByType?.find(
-                (item: any) => item._id === "live-chat"
-              )?.count || 0}
-            </p>
-          </div>
-          <div className="bg-card p-4 rounded-lg shadow">
-            <h3 className="text-lg font-medium text-foreground">
-              Therapist Messages
-            </h3>
-            <p className="text-2xl font-bold text-orange-600">
-              {stats.messagesBySender?.find(
-                (item: any) => item._id === "therapist"
-              )?.count || 0}
-            </p>
-          </div>
-        </div>
-
         <div className="flex gap-6">
           {/* Chat List Panel */}
           <div className="w-1/3 bg-card rounded-lg shadow">
@@ -240,13 +201,19 @@ const VideoCallChatHistory = () => {
                     </p>
                     <div className="flex justify-between text-xs text-muted-foreground mt-1">
                       <span>{formatDate(chat.createdAt)}</span>
-                      <span>Video Call</span>
+                      <span>
+                        {chat.messageType === "live-chat"
+                          ? "Live Chat"
+                          : "Video Call"}
+                      </span>
                     </div>
                   </div>
                 ))
               ) : (
                 <div className="p-4 text-center text-muted-foreground">
-                  {loading ? "Loading..." : "No video call chat history"}
+                  {loading
+                    ? "Loading..."
+                    : "No video call or live chat history"}
                 </div>
               )}
             </div>
@@ -258,11 +225,28 @@ const VideoCallChatHistory = () => {
               <>
                 <div className="p-4 border-b">
                   <h2 className="text-lg font-semibold text-foreground">
-                    Video Call Chat with {selectedChat.senderId.name}
+                    {selectedChat.messageType === "live-chat"
+                      ? "Live Chat"
+                      : "Video Call Chat"}{" "}
+                    with {selectedChat.senderId.name}
                   </h2>
                   <p className="text-sm text-muted-foreground">
-                    Session: {selectedChat.sessionId.date} at{" "}
-                    {selectedChat.sessionId.time} • Type: Video Call
+                    {selectedChat.sessionId ? (
+                      <>
+                        Session: {selectedChat.sessionId.date} at{" "}
+                        {selectedChat.sessionId.time} • Type:{" "}
+                        {selectedChat.messageType === "live-chat"
+                          ? "Live Chat"
+                          : "Video Call"}
+                      </>
+                    ) : (
+                      <>
+                        Type:{" "}
+                        {selectedChat.messageType === "live-chat"
+                          ? "Live Chat"
+                          : "Video Call"}
+                      </>
+                    )}
                   </p>
                 </div>
 
@@ -307,7 +291,7 @@ const VideoCallChatHistory = () => {
                     ))
                   ) : (
                     <div className="text-center text-muted-foreground mt-8">
-                      <p>No messages in this video call</p>
+                      <p>No messages in this chat</p>
                     </div>
                   )}
                   <div
@@ -361,12 +345,10 @@ const VideoCallChatHistory = () => {
                       d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
                     />
                   </svg>
-                  <h3 className="text-lg font-medium">
-                    Select a video call chat to view
-                  </h3>
+                  <h3 className="text-lg font-medium">Select a chat to view</h3>
                   <p className="mt-1">
-                    Choose a video call conversation from the list to view and
-                    reply
+                    Choose a video call or live chat conversation from the list
+                    to view and reply
                   </p>
                 </div>
               </div>
