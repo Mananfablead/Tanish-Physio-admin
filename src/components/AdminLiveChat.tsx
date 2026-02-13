@@ -220,38 +220,68 @@ const AdminLiveChat = () => {
   };
 
   return (
-    <div className="flex flex-col h-full bg-white rounded-lg border shadow-sm">
+    <div className="flex flex-col h-full bg-white rounded-2xl border border-gray-200 shadow-xl overflow-hidden">
       {/* Header */}
-      <div className="p-4 border-b bg-gray-50 rounded-t-lg">
+      <div className="p-5 border-b bg-gradient-to-r from-gray-50 to-blue-50 rounded-t-2xl">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="font-semibold text-gray-900">Live Support Chat</h3>
-            <div className="flex items-center space-x-2 mt-1">
-              <div
-                className={`w-2 h-2 rounded-full ${
+            <div className="flex items-center space-x-3 mb-2">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-6 w-6 text-blue-600"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                  />
+                </svg>
+              </div>
+              <div>
+                <h3 className="font-bold text-xl text-gray-900">Live Support Chat</h3>
+                <p className="text-sm text-gray-600">Manage customer conversations</p>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-3 mt-2">
+              <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                connected 
+                  ? "bg-green-100 text-green-800" 
+                  : "bg-red-100 text-red-800"
+              }`}>
+                <span className={`w-2 h-2 rounded-full mr-2 ${
                   connected ? "bg-green-500" : "bg-red-500"
-                }`}
-              ></div>
-              <span className="text-sm text-gray-600">
+                }`}></span>
                 {connected ? "Connected" : "Disconnected"}
               </span>
-              <span className="text-sm text-gray-500">•</span>
-              <span className="text-sm text-gray-600">
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
+                </svg>
                 {activeUsers.size} active users
               </span>
             </div>
           </div>
-          <button
-            onClick={loadInitialMessages}
-            className="text-sm text-blue-600 hover:text-blue-800"
-          >
-            Refresh
-          </button>
+          <div className="flex space-x-2">
+            <button
+              onClick={loadInitialMessages}
+              className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-400 transition-colors flex items-center"
+            >
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              Refresh
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Messages Container */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
+      <div className="flex-1 overflow-y-auto p-5 space-y-5 bg-gradient-to-b from-gray-50 to-white">
         {isLoading ? (
           <div className="flex justify-center items-center h-full">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -267,30 +297,38 @@ const AdminLiveChat = () => {
               key={msg._id}
               className={`flex ${
                 msg.senderType === "admin" ? "justify-end" : "justify-start"
-              }`}
+              } animate-slideIn`}
             >
               <div
-                className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+                className={`max-w-xs lg:max-w-md px-5 py-3 rounded-2xl shadow-sm transition-all duration-200 hover:shadow-md ${
                   msg.senderType === "admin"
-                    ? "bg-blue-600 text-white"
-                    : "bg-white text-gray-800 border border-gray-200"
+                    ? "bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-br-md"
+                    : "bg-white text-gray-800 border border-gray-200 rounded-bl-md shadow-sm"
                 }`}
               >
                 {msg.senderType !== "admin" && (
-                  <p className="text-xs font-medium text-gray-600 mb-1">
-                    {msg.senderName || msg.userName || "User"}
+                  <div className="flex items-center mb-2">
+                    <div className="w-6 h-6 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center mr-2">
+                      <span className="text-white text-xs font-bold">
+                        {msg.senderName?.charAt(0) || msg.userName?.charAt(0) || "U"}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-blue-600">
+                        {msg.senderName || msg.userName || "User"}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {formatTime(msg.timestamp)}
+                      </p>
+                    </div>
+                  </div>
+                )}
+                <p className="text-sm leading-relaxed">{msg.content}</p>
+                {msg.senderType === "admin" && (
+                  <p className="text-xs mt-2 text-blue-100 opacity-80">
+                    {formatTime(msg.timestamp)}
                   </p>
                 )}
-                <p className="text-sm">{msg.content}</p>
-                <p
-                  className={`text-xs mt-1 ${
-                    msg.senderType === "admin"
-                      ? "text-blue-100"
-                      : "text-gray-500"
-                  }`}
-                >
-                  {formatTime(msg.timestamp)}
-                </p>
               </div>
             </div>
           ))
