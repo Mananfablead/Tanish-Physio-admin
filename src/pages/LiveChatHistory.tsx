@@ -435,7 +435,7 @@ const LiveChatHistory = () => {
   };
 
   return (
-    <div className="p-6 bg-background min-h-screen">
+    <div className=" bg-background min-h-screen">
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold text-foreground">
