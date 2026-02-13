@@ -135,30 +135,67 @@ console.log("errer",singleBooking)
           <div className="flex justify-between items-center">
             <div>
               <h2 className="text-2xl font-bold">
-                {typeof booking.serviceName === 'string' ? booking.serviceName : booking.serviceName && typeof booking.serviceName === 'object' ? booking.serviceName.name || 'N/A' : 'N/A'}
+                {typeof booking.serviceName === "string"
+                  ? booking.serviceName
+                  : booking.serviceName &&
+                    typeof booking.serviceName === "object"
+                  ? booking.serviceName.name || "N/A"
+                  : "N/A"}
               </h2>
               <p className="text-muted-foreground">
-                Booking ID: {booking && typeof booking === 'object' ? (booking._id || booking.id || 'N/A') : 'N/A'}
+                Booking ID:{" "}
+                {booking && typeof booking === "object"
+                  ? booking._id || booking.id || "N/A"
+                  : "N/A"}
               </p>
             </div>
             <div className="flex gap-2">
-              <Badge className={getStatusBadge(typeof booking.status === 'string' ? booking.status : "")}>
-                {typeof booking.status === 'string' ? booking.status : "N/A"}
+              <Badge
+                className={getStatusBadge(
+                  typeof booking.status === "string" ? booking.status : ""
+                )}
+              >
+                {typeof booking.status === "string" ? booking.status : "N/A"}
               </Badge>
-              
             </div>
           </div>
         </CardHeader>
         <CardContent className="grid md:grid-cols-3 gap-6">
-          <Info icon={<Calendar />} label="Date">
-            {booking.date && typeof booking.date !== 'object' ? new Date(booking.date).toDateString() : "N/A"}
+          <Info icon={<Calendar />} label="Booking Date">
+            {booking.date && typeof booking.date !== "object"
+              ? new Date(booking.date).toDateString()
+              : "N/A"}
           </Info>
-          <Info icon={<Clock />} label="Time">
-            {typeof booking.time === 'string' ? booking.time : "N/A"}
+          <Info icon={<Clock />} label="Booking Time">
+            {typeof booking.time === "string" ? booking.time : "N/A"}
           </Info>
           <Info icon={<Package />} label="Duration">
-            {booking.serviceId && typeof booking.serviceId === 'object' ? booking.serviceId.duration || "N/A" : "N/A"}
+            {booking.serviceId && typeof booking.serviceId === "object"
+              ? booking.serviceId.duration || "N/A"
+              : "N/A"}
           </Info>
+
+          {/* Scheduled Session Info */}
+          {booking.scheduledDate && (
+            <>
+              <Info icon={<Calendar />} label="Scheduled Date">
+                {booking.scheduledDate &&
+                typeof booking.scheduledDate !== "object"
+                  ? new Date(booking.scheduledDate).toDateString()
+                  : "N/A"}
+              </Info>
+              <Info icon={<Clock />} label="Scheduled Time">
+                {typeof booking.scheduledTime === "string"
+                  ? booking.scheduledTime
+                  : "N/A"}
+              </Info>
+              <Info icon={<ClockIcon />} label="Schedule Type">
+                {typeof booking.scheduleType === "string"
+                  ? booking.scheduleType
+                  : "N/A"}
+              </Info>
+            </>
+          )}
         </CardContent>
       </Card>
 
@@ -173,8 +210,23 @@ console.log("errer",singleBooking)
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <Row label="Name" value={booking.clientName && typeof booking.clientName === 'object' ? booking.clientName.name || booking.clientName._id || 'N/A' : booking.clientName || 'N/A'} />
-              <Row label="User ID" value={booking.userId && typeof booking.userId === 'object' ? booking.userId._id || 'N/A' : booking.userId || 'N/A'} mono />
+              <Row
+                label="Name"
+                value={
+                  booking.clientName && typeof booking.clientName === "object"
+                    ? booking.clientName.name || booking.clientName._id || "N/A"
+                    : booking.clientName || "N/A"
+                }
+              />
+              <Row
+                label="User ID"
+                value={
+                  booking.userId && typeof booking.userId === "object"
+                    ? booking.userId._id || "N/A"
+                    : booking.userId || "N/A"
+                }
+                mono
+              />
             </CardContent>
           </Card>
 
@@ -188,11 +240,21 @@ console.log("errer",singleBooking)
             <CardContent className="space-y-3">
               <Row
                 label="Name"
-                value={booking.therapistId && typeof booking.therapistId === 'object' ? booking.therapistId.name || booking.therapistId._id || 'N/A' : booking.therapistId || 'N/A'}
+                value={
+                  booking.therapistId && typeof booking.therapistId === "object"
+                    ? booking.therapistId.name ||
+                      booking.therapistId._id ||
+                      "N/A"
+                    : booking.therapistId || "N/A"
+                }
               />
               <Row
                 label="Email"
-                value={booking.therapistId && typeof booking.therapistId === 'object' ? booking.therapistId.email || 'N/A' : booking.therapistId || 'N/A'}
+                value={
+                  booking.therapistId && typeof booking.therapistId === "object"
+                    ? booking.therapistId.email || "N/A"
+                    : booking.therapistId || "N/A"
+                }
               />
             </CardContent>
           </Card>
@@ -205,7 +267,11 @@ console.log("errer",singleBooking)
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {typeof booking.notes === 'string' ? booking.notes : booking.notes && typeof booking.notes === 'object' ? JSON.stringify(booking.notes) : "No notes"}
+              {typeof booking.notes === "string"
+                ? booking.notes
+                : booking.notes && typeof booking.notes === "object"
+                ? JSON.stringify(booking.notes)
+                : "No notes"}
             </CardContent>
           </Card>
         </div>
@@ -215,12 +281,16 @@ console.log("errer",singleBooking)
           {/* Status */}
           <Card>
             <CardHeader>
-              <CardTitle>Manage Status</CardTitle>
+              <CardTitle>Manage Booking</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               <Button
                 className="w-full"
-                disabled={typeof booking.status === 'string' ? booking.status === "confirmed" : false}
+                disabled={
+                  typeof booking.status === "string"
+                    ? booking.status === "confirmed"
+                    : false
+                }
                 onClick={() => handleStatusChange("confirmed")}
               >
                 <CheckCircle className="w-4 h-4 mr-2" />
@@ -230,7 +300,11 @@ console.log("errer",singleBooking)
               <Button
                 className="w-full"
                 variant="outline"
-                disabled={typeof booking.status === 'string' ? booking.status === "pending" : false}
+                disabled={
+                  typeof booking.status === "string"
+                    ? booking.status === "pending"
+                    : false
+                }
                 onClick={() => handleStatusChange("pending")}
               >
                 <ClockIcon className="w-4 h-4 mr-2" />
@@ -240,12 +314,32 @@ console.log("errer",singleBooking)
               <Button
                 className="w-full"
                 variant="destructive"
-                disabled={typeof booking.status === 'string' ? booking.status === "cancelled" : false}
+                disabled={
+                  typeof booking.status === "string"
+                    ? booking.status === "cancelled"
+                    : false
+                }
                 onClick={() => handleStatusChange("cancelled")}
               >
                 <XCircle className="w-4 h-4 mr-2" />
                 Cancel
               </Button>
+
+              {/* Reschedule Button */}
+              {typeof booking.status === "string" &&
+                booking.status !== "cancelled" && (
+                  <Button
+                    className="w-full"
+                    variant="secondary"
+                    onClick={() => {
+                      // Open a dialog to reschedule the booking
+                      alert("Reschedule functionality would open a modal here");
+                    }}
+                  >
+                    <Calendar className="w-4 h-4 mr-2" />
+                    Reschedule
+                  </Button>
+                )}
             </CardContent>
           </Card>
 
@@ -257,11 +351,50 @@ console.log("errer",singleBooking)
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              <Row label="Service Name" value={typeof booking.serviceName === 'string' ? booking.serviceName : booking.serviceName && typeof booking.serviceName === 'object' ? booking.serviceName.name || 'N/A' : 'N/A'} />
-              <Row label="Duration" value={booking.serviceId && typeof booking.serviceId === 'object' ? booking.serviceId.duration || 'N/A' : 'N/A'} />
-              <Row label="Price" value={`₹${booking.serviceId && typeof booking.serviceId === 'object' ? booking.serviceId.price || 0 : 0}`} />
-              <Row label="Validity" value={`${booking.serviceId && typeof booking.serviceId === 'object' ? booking.serviceId.validity || 0 : 0} days`} />
-              <Row label="Expiry Date" value={booking.serviceExpiryDate && typeof booking.serviceExpiryDate !== 'object' ? new Date(booking.serviceExpiryDate).toDateString() : "N/A"} />
+              <Row
+                label="Service Name"
+                value={
+                  typeof booking.serviceName === "string"
+                    ? booking.serviceName
+                    : booking.serviceName &&
+                      typeof booking.serviceName === "object"
+                    ? booking.serviceName.name || "N/A"
+                    : "N/A"
+                }
+              />
+              <Row
+                label="Duration"
+                value={
+                  booking.serviceId && typeof booking.serviceId === "object"
+                    ? booking.serviceId.duration || "N/A"
+                    : "N/A"
+                }
+              />
+              <Row
+                label="Price"
+                value={`₹${
+                  booking.serviceId && typeof booking.serviceId === "object"
+                    ? booking.serviceId.price || 0
+                    : 0
+                }`}
+              />
+              <Row
+                label="Validity"
+                value={`${
+                  booking.serviceId && typeof booking.serviceId === "object"
+                    ? booking.serviceId.validity || 0
+                    : 0
+                } days`}
+              />
+              <Row
+                label="Expiry Date"
+                value={
+                  booking.serviceExpiryDate &&
+                  typeof booking.serviceExpiryDate !== "object"
+                    ? new Date(booking.serviceExpiryDate).toDateString()
+                    : "N/A"
+                }
+              />
             </CardContent>
           </Card>
 
@@ -270,14 +403,39 @@ console.log("errer",singleBooking)
             <CardHeader>
               <CardTitle className="flex gap-2">
                 <CreditCard /> Payment
-                <Badge className={getPaymentBadge(typeof booking.paymentStatus === 'string' ? booking.paymentStatus : "")}>
-                {typeof booking.paymentStatus === 'string' ? booking.paymentStatus : "N/A"}
-              </Badge>
+                <Badge
+                  className={getPaymentBadge(
+                    typeof booking.paymentStatus === "string"
+                      ? booking.paymentStatus
+                      : ""
+                  )}
+                >
+                  {typeof booking.paymentStatus === "string"
+                    ? booking.paymentStatus
+                    : "N/A"}
+                </Badge>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              <Row label="Amount" value={`₹${typeof booking.amount === 'number' ? booking.amount : typeof booking.amount === 'object' ? 0 : parseFloat(booking.amount) || 0}`} />
-              <Row label="Paid On" value={booking.purchaseDate && typeof booking.purchaseDate !== 'object' ? new Date(booking.purchaseDate).toLocaleString() : "N/A"} />
+              <Row
+                label="Amount"
+                value={`₹${
+                  typeof booking.amount === "number"
+                    ? booking.amount
+                    : typeof booking.amount === "object"
+                    ? 0
+                    : parseFloat(booking.amount) || 0
+                }`}
+              />
+              <Row
+                label="Paid On"
+                value={
+                  booking.purchaseDate &&
+                  typeof booking.purchaseDate !== "object"
+                    ? new Date(booking.purchaseDate).toLocaleString()
+                    : "N/A"
+                }
+              />
             </CardContent>
           </Card>
         </div>

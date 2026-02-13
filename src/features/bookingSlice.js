@@ -67,6 +67,24 @@ export const deleteBooking = createAsyncThunk(
   }
 );
 
+// Reschedule booking
+export const rescheduleBooking = createAsyncThunk(
+  "bookings/reschedule",
+  async ({ id, scheduleData }, { rejectWithValue }) => {
+    try {
+      const res = await bookingAPI.update(id, {
+        scheduledDate: scheduleData.date,
+        scheduledTime: scheduleData.time,
+        timeSlot: scheduleData.timeSlot,
+        status: 'scheduled'
+      });
+      return res.data.data || res.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || "Booking rescheduling failed");
+    }
+  }
+);
+
 const bookingSlice = createSlice({
   name: "bookings",
   initialState: {
@@ -153,6 +171,26 @@ const bookingSlice = createSlice({
         state.loading = true;
       })
       .addCase(deleteBooking.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+
+      // Reschedule booking
+      .addCase(rescheduleBooking.fulfilled, (state, action) => {
+        state.loading = false;
+        const index = state.list.findIndex(booking => booking.id === action.payload.id);
+        if (index !== -1) {
+          state.list[index] = action.payload;
+        }
+        // Update single booking if it matches
+        if (state.singleBooking && state.singleBooking.id === action.payload.id) {
+          state.singleBooking = action.payload;
+        }
+      })
+      .addCase(rescheduleBooking.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(rescheduleBooking.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       });

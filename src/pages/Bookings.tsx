@@ -193,9 +193,7 @@ export default function Bookings() {
             Admin can update booking status, create and manage bookings
           </p>
         </div>
-        <div className="flex gap-2">
-        
-        </div>
+        <div className="flex gap-2"></div>
       </div>
       {/* Stats */}{" "}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -298,7 +296,8 @@ export default function Bookings() {
                   <tr key={booking.id}>
                     <td className="min-w-[200px]">
                       <div className="flex items-center gap-3">
-                        {booking.serviceId?.images && booking.serviceId.images.length > 0 ? (
+                        {booking.serviceId?.images &&
+                        booking.serviceId.images.length > 0 ? (
                           <img
                             src={booking.serviceId.images[0]}
                             alt={booking.serviceName}
@@ -314,27 +313,44 @@ export default function Bookings() {
                     </td>
                     <td className="min-w-[120px]">
                       <div className="flex items-center gap-3">
-                        <span className="capitalize truncate">{booking.clientName}</span>
+                        <span className="capitalize truncate">
+                          {booking.clientName}
+                        </span>
                       </div>
                     </td>
                     {/* <td>{booking.therapistName}</td> */}
-                    <td className="min-w-[150px]">
+                    <td className="min-w-[180px]">
                       <div className="flex flex-col gap-1">
-                        <span className="font-medium truncate">{booking.date}</span>
+                        <div className="flex items-center gap-1">
+                          <Calendar className="w-4 h-4 flex-shrink-0 text-muted-foreground" />
+                          <span className="font-medium truncate">
+                            {booking.scheduledDate
+                              ? booking.scheduledDate
+                              : booking.date}
+                          </span>
+                        </div>
                         <div className="flex items-center gap-1 text-sm text-muted-foreground">
                           <Clock className="w-4 h-4 flex-shrink-0" />
                           <span className="truncate">
-                            {new Date(booking.purchaseDate).toLocaleTimeString("en-IN", {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                              hour12: true,
-                            })}
+                            {booking.scheduledTime
+                              ? booking.scheduledTime
+                              : new Date(
+                                  booking.purchaseDate
+                                ).toLocaleTimeString("en-IN", {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                  hour12: true,
+                                })}
                           </span>
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {booking.scheduleType === "later"
+                            ? "Scheduled later"
+                            : "Scheduled now"}
                         </div>
                       </div>
                     </td>
 
-                   
                     <td className="min-w-[120px]">
                       {booking.isServiceExpired ? (
                         <span className="px-2 py-1 rounded-full text-xs font-semibold text-red-600 bg-red-100 whitespace-nowrap">
@@ -342,7 +358,9 @@ export default function Bookings() {
                         </span>
                       ) : booking.serviceExpiryDate ? (
                         <span className="px-2 py-1 rounded-full text-xs font-semibold text-green-600 bg-green-100 whitespace-nowrap">
-                          {new Date(booking.serviceExpiryDate).toLocaleDateString()}
+                          {new Date(
+                            booking.serviceExpiryDate
+                          ).toLocaleDateString()}
                         </span>
                       ) : (
                         <span className="px-2 py-1 rounded-full text-xs font-semibold text-blue-600 bg-blue-100 whitespace-nowrap">
@@ -350,7 +368,7 @@ export default function Bookings() {
                         </span>
                       )}
                     </td>
-                     <td className="min-w-[140px]">
+                    <td className="min-w-[140px]">
                       <Select
                         value={booking.status}
                         onValueChange={async (value) => {
@@ -368,16 +386,20 @@ export default function Bookings() {
                             });
                           } else {
                             toast({
-                              title: result.payload?.message || "Failed to update status",
+                              title:
+                                result.payload?.message ||
+                                "Failed to update status",
                               variant: "destructive",
                             });
                           }
                         }}
                       >
-                        <SelectTrigger className={cn(
-                          "w-full capitalize rounded-lg bg-transparent border-none outline-none",
-                          getStatusBadge(booking.status)
-                        )}>
+                        <SelectTrigger
+                          className={cn(
+                            "w-full capitalize rounded-lg bg-transparent border-none outline-none",
+                            getStatusBadge(booking.status)
+                          )}
+                        >
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -387,14 +409,45 @@ export default function Bookings() {
                         </SelectContent>
                       </Select>
                     </td>
-                    <td className="min-w-[100px]">
+                    <td className="min-w-[120px]">
                       <div className="flex items-center gap-2">
                         <Link to={`/bookings/${booking._id || booking.id}`}>
-                          <Button size="icon" variant="outline" className="h-8 w-8 flex-shrink-0">
+                          <Button
+                            size="icon"
+                            variant="outline"
+                            className="h-8 w-8 flex-shrink-0"
+                          >
                             <Eye className="w-4 h-4" />
                           </Button>
                         </Link>
-                        
+
+                        {/* Reschedule Button */}
+                        {booking.status !== "cancelled" && (
+                          <Button
+                            size="icon"
+                            variant="outline"
+                            className="h-8 w-8 flex-shrink-0"
+                            onClick={() => {
+                              setSelectedBooking(booking);
+                              setIsEditing(true);
+                              setNewBookingForm({
+                                serviceId:
+                                  booking.serviceId?._id ||
+                                  booking.serviceId ||
+                                  "",
+                                date:
+                                  booking.scheduledDate || booking.date || "",
+                                time:
+                                  booking.scheduledTime || booking.time || "",
+                                notes: booking.notes || "",
+                                clientName: booking.clientName || "",
+                              });
+                              setIsModalOpen(true);
+                            }}
+                          >
+                            <Calendar className="w-4 h-4" />
+                          </Button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -406,13 +459,21 @@ export default function Bookings() {
           {/* PAGINATION CONTROLS */}
           <div className="flex items-center justify-between mt-6">
             <div className="text-sm text-muted-foreground">
-              Showing <span className="font-medium">{startIndex + 1}</span> to <span className="font-medium">{Math.min(startIndex + bookingsPerPage, filteredBookings.length)}</span> of <span className="font-medium">{filteredBookings.length}</span> bookings
+              Showing <span className="font-medium">{startIndex + 1}</span> to{" "}
+              <span className="font-medium">
+                {Math.min(
+                  startIndex + bookingsPerPage,
+                  filteredBookings.length
+                )}
+              </span>{" "}
+              of <span className="font-medium">{filteredBookings.length}</span>{" "}
+              bookings
             </div>
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
                 disabled={currentPage === 1}
               >
                 Previous
@@ -439,7 +500,9 @@ export default function Bookings() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                onClick={() =>
+                  setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                }
                 disabled={currentPage === totalPages}
               >
                 Next
@@ -612,8 +675,6 @@ export default function Bookings() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-
     </div>
   );
 }
