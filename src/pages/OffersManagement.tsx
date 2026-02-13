@@ -98,7 +98,6 @@ const OffersManagement = () => {
   };
 
   const handleDeleteOffer = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this offer?')) return;
     
     try {
       const response = await offersApi.deleteOffer(id);
@@ -282,7 +281,7 @@ const OffersManagement = () => {
                     <TableHead>Code</TableHead>
                     <TableHead>Discount</TableHead>
                     <TableHead>Type</TableHead>
-                    <TableHead>Description</TableHead>
+                    {/* <TableHead>Description</TableHead> */}
                     <TableHead>Dates</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Usage</TableHead>
@@ -296,7 +295,7 @@ const OffersManagement = () => {
                         <TableCell className="font-medium">{offer.code}</TableCell>
                         <TableCell>{offer.discount}</TableCell>
                         <TableCell>{offer.type}</TableCell>
-                        <TableCell>{offer.description}</TableCell>
+                        {/* <TableCell>{offer.description}</TableCell> */}
                         <TableCell>
                           {new Date(offer.startDate).toLocaleDateString()} - {new Date(offer.endDate).toLocaleDateString()}
                         </TableCell>

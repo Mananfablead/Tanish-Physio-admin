@@ -137,7 +137,7 @@ const AdminLiveChat = () => {
         const userIds = new Set(
           response.data.messages.map((msg: any) => msg.senderId._id)
         );
-        setActiveUsers(userIds);
+        setActiveUsers(userIds as unknown as Set<string>);
       }
     } catch (error) {
       console.error("Error loading initial messages:", error);
