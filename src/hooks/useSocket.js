@@ -301,8 +301,8 @@ export const useAdminChatSocket = () => {
             console.log('Admin chat socket connected');
             setConnected(true);
 
-            // Join admin support room
-            newSocket.emit('join-default-chat');
+            // Join admin notifications room (to receive real-time messages)
+            newSocket.emit('join-room', { sessionId: 'admin_notifications' });
 
             // Request current admin status
             newSocket.emit('admin-status-request');
@@ -358,6 +358,7 @@ export const useAdminChatSocket = () => {
             socket.on(event, callback);
             return () => socket.off(event, callback);
         }
+        return () => {}; // Return no-op cleanup if socket not ready
     }, [socket]);
 
     return {

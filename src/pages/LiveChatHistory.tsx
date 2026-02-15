@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import useSocket from "@/hooks/useSocket";
+import { useAdminChatSocket } from "@/hooks/useSocket";
 import { adminChatApi } from "../lib/adminChatApi";
 
 interface Message {
@@ -80,19 +80,59 @@ const LiveChatHistory = () => {
     messagesBySender: [],
   } as ChatStats);
   const [activeChats, setActiveChats] = useState<ActiveChat[]>([]);
+  const [oneOnOneChats, setOneOnOneChats] = useState<ActiveChat[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [chatsError, setChatsError] = useState<string | null>(null);
   const [statsError, setStatsError] = useState<string | null>(null);
   const [activeChatsError, setActiveChatsError] = useState<string | null>(null);
+  const [currentRoomId, setCurrentRoomId] = useState<string | null>(null);
 
-  const { socket, connected, on } = useSocket();
+  const { socket, connected, on, emit } = useAdminChatSocket();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Helper function to get ONLY client/user name (filter out admin names)
+  const getClientNameOnly = (chat: any): string => {
+    try {
+      // First priority: always use userInfo (the client in this 1-on-1 chat)
+      if (chat.userInfo) {
+        if (Array.isArray(chat.userInfo) && chat.userInfo[0]) {
+          if (chat.userInfo[0].name) return chat.userInfo[0].name;
+          if (chat.userInfo[0].email) return chat.userInfo[0].email;
+        } else if (typeof chat.userInfo === "object" && chat.userInfo !== null) {
+          if ("name" in chat.userInfo && chat.userInfo.name) return chat.userInfo.name;
+          if ("email" in chat.userInfo && chat.userInfo.email) return chat.userInfo.email;
+        }
+      }
+      // Fallback: use senderName only if it's not from admin
+      if (chat.senderName && chat.senderType !== "admin") {
+        return chat.senderName;
+      }
+      if (chat.userName && chat.senderType !== "admin") {
+        return chat.userName;
+      }
+      return "Unknown User";
+    } catch (error) {
+      return "Unknown User";
+    }
+  };
 
   // Helper function to get user name from chat data
   const getUserName = (chat: any): string => {
     console.log("Chat data for name display:", chat);
 
     try {
+      // First check for senderName (real-time socket messages)
+      if (chat.senderName) {
+        console.log("Using senderName:", chat.senderName);
+        return chat.senderName;
+      }
+
+      // Check for userName (alternative field name)
+      if (chat.userName) {
+        console.log("Using userName:", chat.userName);
+        return chat.userName;
+      }
+
       // Handle default chat messages (no session) - userId present
       if (chat.userId && chat.userInfo) {
         console.log("Processing default chat with userId:", chat.userId);
@@ -181,17 +221,132 @@ const LiveChatHistory = () => {
 
   // Set up socket listeners for real-time updates
   useEffect(() => {
-    if (!socket || !connected) return;
+    if (!socket || !connected) {
+      console.log("Socket not ready for listeners:", { socket: !!socket, connected });
+      return;
+    }
 
+    console.log("Setting up socket listeners for LiveChatHistory");
     const cleanupFunctions = [];
 
-    // Listen for new messages from users
+    // Listen for real-time messages (message-received from socket emit)
+    const cleanupMessageReceived = on("message-received", (data) => {
+      console.log("Received message-received event in LiveChatHistory:", data);
+      console.log("senderType value:", data.senderType, "Type:", typeof data.senderType);
+
+      // Check if this message matches the currently selected chat
+      if (selectedChat && data.chatRoom) {
+        const chatRoom = selectedChat.sessionId || selectedChat._id;
+        console.log("Checking if chatRoom matches - current:", chatRoom, "data.chatRoom:", data.chatRoom);
+        
+        if (chatRoom?.toString() === data.chatRoom?.toString()) {
+          console.log("Adding message to current chat from message-received event");
+          
+          // Check for duplicate before adding
+          setMessages((prev) => {
+            // Check if message already exists by _id or messageId
+            const isDuplicate = prev.some(m => 
+              m._id === data._id || m._id === (data.messageId)
+            );
+            
+            if (isDuplicate) {
+              console.log("Duplicate message detected, skipping");
+              return prev;
+            }
+
+            // Determine correct senderType - check multiple possibilities
+            let finalSenderType = data.senderType;
+            if (!finalSenderType) {
+              // If senderType is missing, try to infer from other fields
+              if (data.senderId && typeof data.senderId === 'string' && data.senderId.includes('admin')) {
+                finalSenderType = 'admin';
+              } else {
+                finalSenderType = 'user';
+              }
+            }
+            console.log("Final senderType being set:", finalSenderType);
+            
+            return [
+              ...prev,
+              {
+                _id: data._id || data.messageId || Date.now(),
+                content: data.content || '',
+                senderId: data.senderId,
+                senderName: data.senderName || 'User',
+                timestamp: data.timestamp || new Date().toISOString(),
+                senderType: finalSenderType,
+              },
+            ];
+          });
+          
+          // Scroll to bottom after adding message
+          setTimeout(() => {
+            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+          }, 100);
+        }
+      }
+    });
+
+    // Listen for new support messages (1-on-1 chats)
+    const cleanupSupportMessage = on("new-support-message", (data) => {
+      console.log("Received new support message in LiveChatHistory:", data);
+
+      // If a message is in a support room, add it to oneOnOneChats if not already there
+      if (data.chatRoom && data.chatRoom.startsWith('support-')) {
+        setOneOnOneChats((prev) => {
+          // Check if this user already exists in oneOnOneChats
+          const existing = prev.find((c) => c.sessionId === data.chatRoom);
+          if (existing) {
+            // Update last message and time, but only update userInfo if it's from a user (not admin)
+            return prev.map((c) =>
+              c.sessionId === data.chatRoom
+                ? {
+                    ...c,
+                    lastMessage: data.content || data.message?.message || '',
+                    lastMessageTime: data.timestamp || new Date().toISOString(),
+                    // Only update userInfo if message is from user, keep existing if from admin
+                    userInfo: data.senderType === 'user' ? (data.userId ? { _id: data.userId, name: data.senderName || data.userName } : c.userInfo) : c.userInfo
+                  }
+                : c
+            );
+          } else {
+            // Add new user to oneOnOneChats - only add if message is from user
+            if (data.senderType === 'user') {
+              return [
+                ...prev,
+                {
+                  sessionId: data.chatRoom,
+                  _id: data.chatRoom,
+                  lastMessage: data.content || data.message?.message || '',
+                  lastMessageTime: data.timestamp || new Date().toISOString(),
+                  userInfo: { _id: data.userId, name: data.senderName || data.userName || 'User' },
+                  unreadCount: 1
+                }
+              ];
+            }
+            return prev;
+          }
+        });
+      }
+
+      // Skip adding to message list - let message-received listener handle it
+      // This prevents duplicate messages
+    });
+
+    // Also listen for admin-new-message for backwards compatibility
     const cleanupNewMessage = on("admin-new-message", (data) => {
-      // Refresh active chats to show new messages
+      console.log("Received admin-new-message in LiveChatHistory:", data);
+      
+      // Skip if this is a support room message - message-received already handled it
+      if (data.chatRoom && data.chatRoom.startsWith('support-')) {
+        console.log("Skipping admin-new-message for support room - message-received handles it");
+        return;
+      }
+
+      // Refresh active chats to show new messages for non-support messages
       loadActiveChats();
 
       // If this chat is currently selected, update messages
-      // Handle different possible session ID structures
       const currentSessionId =
         selectedChat?.sessionId ||
         selectedChat?._id ||
@@ -212,10 +367,17 @@ const LiveChatHistory = () => {
             senderType: data.senderType,
           },
         ]);
+        
+        // Scroll to bottom after adding message
+        setTimeout(() => {
+          messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
       }
     });
 
     // Clean up listeners on unmount
+    if (cleanupMessageReceived) cleanupFunctions.push(cleanupMessageReceived);
+    if (cleanupSupportMessage) cleanupFunctions.push(cleanupSupportMessage);
     if (cleanupNewMessage) cleanupFunctions.push(cleanupNewMessage);
 
     return () => {
@@ -228,12 +390,77 @@ const LiveChatHistory = () => {
       setLoading(true);
       setChatsError(null);
       console.log("Loading chats...");
-      const response = await adminChatApi.getChatMessages({
-        messageType: "live-chat",
-        limit: 50,
-      });
-      console.log("Chats response:", response);
-      setChats(response.data.messages || []);
+      
+      // Fetch both default-chat (support rooms) and live-chat messages
+      const [defaultResponse, liveResponse] = await Promise.all([
+        adminChatApi.getChatMessages({
+          messageType: "default-chat",
+          limit: 50,
+        }).catch(() => ({ data: { messages: [] } })),
+        adminChatApi.getChatMessages({
+          messageType: "live-chat",
+          limit: 50,
+        }).catch(() => ({ data: { messages: [] } }))
+      ]);
+      
+      // Combine all messages
+      const msgs = [
+        ...(defaultResponse.data?.messages || []),
+        ...(liveResponse.data?.messages || [])
+      ];
+      
+      console.log("Chats response:", { defaultResponse, liveResponse });
+      setChats(msgs);
+
+      // Build 1-on-1 chats (support rooms) by grouping messages with `chatRoom` or by senderId for non-session chats
+      try {
+        const groups = new Map();
+        const userInfoMap = new Map(); // Store user info separately to get client data
+
+        msgs.forEach((m: any) => {
+          // For support rooms: use chatRoom if present
+          // For default chat: group by userId
+          let key = null;
+          
+          if (m.chatRoom && m.chatRoom.startsWith('support-')) {
+            key = m.chatRoom;
+          } else if (!m.sessionId || m.sessionId === null || m.messageType === 'default-chat') {
+            // Group default-chat messages by senderId
+            key = `user-${m.senderId?._id || m.senderId}`;
+          }
+          
+          if (!key) return;
+
+          // For support rooms, store client user info only (senderType === "user")
+          if (m.chatRoom && m.chatRoom.startsWith('support-') && m.senderType === 'user' && m.senderId) {
+            userInfoMap.set(key, m.senderId);
+          }
+
+          const existing = groups.get(key) || { key, lastMessage: null, lastMessageTime: null, userInfo: null, unreadCount: 0 };
+          // pick latest message
+          const created = new Date(m.createdAt || m.timestamp || Date.now());
+          if (!existing.lastMessageTime || created > new Date(existing.lastMessageTime)) {
+            existing.lastMessage = m.message || m.content || '';
+            existing.lastMessageTime = created.toISOString();
+          }
+          groups.set(key, existing);
+        });
+
+        const oneOnOne = Array.from(groups.values()).map((g: any) => ({
+          sessionId: g.key,
+          _id: g.key,
+          unreadCount: g.unreadCount || 0,
+          lastMessage: g.lastMessage,
+          lastMessageTime: g.lastMessageTime,
+          userInfo: userInfoMap.get(g.key) || g.userInfo,
+        }));
+
+        console.log("Built 1-on-1 chats:", oneOnOne);
+        setOneOnOneChats(oneOnOne);
+      } catch (e) {
+        console.error('Error building 1-on-1 chats:', e);
+        setOneOnOneChats([]);
+      }
     } catch (error: any) {
       console.error("Error loading chats:", error);
       setChatsError(error.message || "Failed to load chats");
@@ -295,40 +522,46 @@ const LiveChatHistory = () => {
       // Fetch actual messages for this user/chat
       let response;
 
-      // Handle different data structures for chat identification
-      const sessionId = chat.sessionId || chat._id || chat.sessionId?._id;
-      const userId =
-        chat.userInfo?._id ||
-        (chat.userInfo &&
-          Array.isArray(chat.userInfo) &&
-          chat.userInfo[0]?._id) ||
-        chat.senderId?._id ||
-        (chat.senderId &&
-          typeof chat.senderId === "object" &&
-          chat.senderId._id);
+      // If this chat is a support/chatRoom entry (our one-on-one key), use support route
+      const chatRoom = chat.chatRoom || chat.sessionId || chat._id;
+      const isSupportRoom = typeof chatRoom === 'string' && chatRoom.startsWith('support-');
 
-      if (sessionId && sessionId !== "null") {
-        // Check if sessionId is not null (as string or actual null)
-        // For session-based chats
-        console.log("Fetching session messages for:", sessionId);
-        response = await adminChatApi.getChatMessages({
-          sessionId: sessionId,
-          limit: 50,
-          sortBy: "timestamp",
-          sortOrder: "asc",
-        });
-      } else {
-        // For default chat (no session)
-        console.log("Fetching default chat messages");
-        response = await adminChatApi.getChatMessages({
-          messageType: "default-chat",
-          limit: 50,
-          sortBy: "timestamp",
-          sortOrder: "asc",
-        });
+      // Join the room via socket so we can send/receive messages
+      if (socket && connected) {
+        console.log('Joining room via socket:', chatRoom);
+        emit('join-room', { sessionId: chatRoom });
+        setCurrentRoomId(chatRoom);
       }
 
-      console.log("API Response:", response);
+      if (isSupportRoom) {
+        console.log('Fetching support-room messages for:', chatRoom);
+        response = await adminChatApi.getSupportMessages(chatRoom);
+      } else {
+        // Handle different data structures for chat identification
+        const sessionId = chat.sessionId || chat._id || chat.sessionId?._id;
+
+        if (sessionId && sessionId !== 'null') {
+          // For session-based chats
+          console.log('Fetching session messages for:', sessionId);
+          response = await adminChatApi.getChatMessages({
+            sessionId: sessionId,
+            limit: 50,
+            sortBy: 'timestamp',
+            sortOrder: 'asc',
+          });
+        } else {
+          // For default chat (no session)
+          console.log('Fetching default chat messages');
+          response = await adminChatApi.getChatMessages({
+            messageType: 'default-chat',
+            limit: 50,
+            sortBy: 'timestamp',
+            sortOrder: 'asc',
+          });
+        }
+      }
+
+      console.log('API Response:', response);
 
       if (response?.success && response?.data?.messages) {
         // Format messages properly
@@ -336,21 +569,21 @@ const LiveChatHistory = () => {
           _id: msg._id,
           content: msg.message,
           senderId: msg.senderId._id || msg.senderId,
-          senderName: msg.senderId?.name || msg.senderId?.email || "User",
+          senderName: msg.senderId?.name || msg.senderId?.email || 'User',
           timestamp: msg.createdAt || msg.timestamp,
           senderType: msg.senderType,
         }));
 
-        console.log("Formatted messages:", formattedMessages);
+        console.log('Formatted messages:', formattedMessages);
         setMessages(formattedMessages);
       } else {
-        console.log("No messages found, using fallback");
+        console.log('No messages found, using fallback');
         // Fallback to mock data if API fails
         const mockMessages: Message[] = [
           {
             _id: 1,
             content: "Hello, I have a question about my therapy session.",
-            senderId: userId || "unknown",
+            senderId: "unknown",
             senderName:
               chat.userInfo?.name ||
               (chat.userInfo &&
@@ -389,6 +622,7 @@ const LiveChatHistory = () => {
 
     try {
       setLoading(true);
+      const messageToSend = newReply.trim();
 
       // Send reply to the user - handle different possible session ID structures
       const sessionId =
@@ -396,32 +630,50 @@ const LiveChatHistory = () => {
         selectedChat._id ||
         selectedChat.sessionId?._id;
 
-      // Determine messageType based on whether session exists
-      const messageType = sessionId ? "live-chat" : "default-chat";
+      // Check if this is a support room
+      const isSupportRoom = typeof sessionId === 'string' && sessionId.startsWith('support-');
 
-      await adminChatApi.sendAdminReply({
-        sessionId: sessionId || null, // Send null for default chat
-        message: newReply,
-        messageType: messageType,
-      });
-
-      // Add the reply to the message list
-      const replyMessage: Message = {
-        _id: Date.now(),
-        content: newReply,
-        senderId: "admin123", // This would be the actual admin ID
-        senderName: "Admin",
-        timestamp: new Date(),
-        senderType: "admin" as "user" | "admin" | "therapist",
-      };
-
-      setMessages((prev) => [...prev, replyMessage]);
       setNewReply("");
+
+      if (isSupportRoom && socket && connected && currentRoomId) {
+        // For support rooms, send via socket
+        const messageId = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+          const r = Math.random() * 16 | 0;
+          const v = c === 'x' ? r : (r & 0x3 | 0x8);
+          return v.toString(16);
+        });
+
+        console.log('Sending message via socket to support room:', currentRoomId);
+        
+        emit('send-message', {
+          roomId: currentRoomId,
+          roomType: 'individual',
+          message: {
+            content: messageToSend,
+            messageId
+          }
+        });
+      } else {
+        // For regular sessions, use REST API
+        const messageType = sessionId ? "live-chat" : "default-chat";
+
+        const response = await adminChatApi.sendAdminReply({
+          sessionId: sessionId || null,
+          message: messageToSend,
+          messageType: messageType,
+        });
+
+        if (!response.success) {
+          throw new Error(response.message || 'Failed to send message');
+        }
+      }
 
       // Refresh active chats
       loadActiveChats();
     } catch (error) {
       console.error("Error sending reply:", error);
+      // Remove the temporary message on error
+      setMessages((prev) => prev.slice(0, -1));
     } finally {
       setLoading(false);
     }
@@ -492,88 +744,49 @@ const LiveChatHistory = () => {
           <div className="w-1/3 bg-card rounded-lg shadow">
             <div className="p-4 border-b">
               <h2 className="text-lg font-semibold text-foreground">
-                Active Chats
+                  1-on-1 Chats
               </h2>
             </div>
             <div className="overflow-y-auto max-h-[calc(100vh-250px)]">
-              {activeChats.length > 0 ? (
-                activeChats.map((chat) => (
-                  <div
-                    key={chat.sessionId || JSON.stringify(chat)}
-                    className={`p-4 border-b cursor-pointer hover:bg-accent ${
-                      selectedChat &&
-                      selectedChat.sessionId?.toString() ===
-                        chat.sessionId?.toString()
-                        ? "bg-blue-50 border-l-4 border-l-blue-500"
-                        : ""
-                    }`}
-                    onClick={() => loadChatMessages(chat)}
-                  >
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h3 className="font-medium text-foreground">
-                          {getUserName(chat)}
-                        </h3>
-                        <p className="text-sm text-muted-foreground truncate">
-                          {chat.lastMessage}
-                        </p>
-                      </div>
-                      <span className="bg-red-100 text-red-800 text-xs px-2 py-1 rounded-full">
-                        {chat.unreadCount} new
-                      </span>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {new Date(chat.lastMessageTime).toLocaleString()}
-                    </p>
-                  </div>
-                ))
-              ) : (
-                <div className="p-4 text-center text-muted-foreground">
-                  No active chats
-                </div>
-              )}
-
-              <div className="p-4 border-t">
-                <h3 className="text-lg font-semibold text-foreground mb-2">
-                  All Chats
-                </h3>
-                {chats.length > 0 ? (
-                  chats.map((chat) => (
+                {oneOnOneChats.length > 0 ? (
+                  oneOnOneChats.map((chat) => (
                     <div
-                      key={
-                        typeof chat._id === "string"
-                          ? chat._id
-                          : JSON.stringify(chat)
-                      }
-                      className={`p-3 border-b cursor-pointer hover:bg-accent ${
+                      key={chat.sessionId || JSON.stringify(chat)}
+                      className={`p-4 border-b cursor-pointer hover:bg-accent ${
                         selectedChat &&
                         String(selectedChat.sessionId || selectedChat._id) ===
                           String(chat.sessionId || chat._id)
-                          ? "bg-blue-50"
+                          ? "bg-blue-50 border-l-4 border-l-blue-500"
                           : ""
                       }`}
-                      onClick={async () => {
-                        // Load actual messages for this chat
-                        await loadChatMessages(chat);
-                      }}
+                      onClick={() => loadChatMessages(chat)}
                     >
-                      <h4 className="font-medium text-foreground">
-                        {getUserName(chat)}
-                      </h4>
-                      <p className="text-sm text-muted-foreground truncate">
-                        {chat.message}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(chat.createdAt).toLocaleString()}
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <h3 className="font-medium text-foreground">
+                            {getClientNameOnly(chat)}
+                          </h3>
+                          <p className="text-sm text-muted-foreground truncate">
+                            {chat.lastMessage || "No messages yet"}
+                          </p>
+                        </div>
+                        {chat.unreadCount > 0 && (
+                          <span className="bg-red-100 text-red-800 text-xs px-2 py-1 rounded-full ml-2">
+                            {chat.unreadCount}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {chat.lastMessageTime ? new Date(chat.lastMessageTime).toLocaleString() : "—"}
                       </p>
                     </div>
                   ))
                 ) : (
                   <div className="p-4 text-center text-muted-foreground">
-                    No chat history
+                    <p>No 1-on-1 chats yet</p>
+                    <p className="text-xs mt-1">Messages from users will appear here</p>
                   </div>
                 )}
-              </div>
             </div>
           </div>
 
@@ -583,7 +796,7 @@ const LiveChatHistory = () => {
               <>
                 <div className="p-4 border-b">
                   <h2 className="text-lg font-semibold text-foreground">
-                    Chat with {getUserName(selectedChat)}
+                    Chat with {getClientNameOnly(selectedChat)}
                   </h2>
                   <p className="text-sm text-muted-foreground">
                     Session:{" "}
@@ -606,19 +819,19 @@ const LiveChatHistory = () => {
                 </div>
 
                 {/* Messages Area */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-muted max-h-[calc(100vh-300px)]">
+                <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-muted max-h-[calc(100vh-300px)] flex flex-col">
                   {messages.length > 0 ? (
                     messages.map((msg) => (
                       <div
                         key={msg._id}
-                        className={`flex ${
+                        className={`flex w-full ${
                           msg.senderType === "admin"
                             ? "justify-end"
                             : "justify-start"
                         }`}
                       >
                         <div
-                          className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+                          className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg flex flex-col ${
                             msg.senderType === "admin"
                               ? "bg-primary text-primary-foreground"
                               : msg.senderType === "user"
@@ -626,6 +839,11 @@ const LiveChatHistory = () => {
                               : "bg-secondary text-secondary-foreground"
                           }`}
                         >
+                          {msg.senderType !== "admin" && msg.senderName && (
+                            <p className="text-xs font-semibold mb-1">
+                              {msg.senderName}
+                            </p>
+                          )}
                           <p className="text-sm">{msg.content}</p>
                           <p
                             className={`text-xs mt-1 ${

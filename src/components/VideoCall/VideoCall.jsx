@@ -99,6 +99,15 @@ const VideoCall = ({
     setInitError,
   } = useWebRTC(roomId, socket, userRole);
 
+  const stopMediaStreams = () => {
+    if (localStream) {
+      localStream.getTracks().forEach(track => {
+        track.stop();
+        console.log("Stopped media track:", track.kind);
+      });
+    }
+  };
+
   // Debug: Log session info
   useEffect(() => {
     console.log("🎬 VideoCall - Admin session info:", {
@@ -642,6 +651,7 @@ const VideoCall = ({
         setCallStartTime(null);
         setIncomingCall(false);
         setCallDuration(0);
+        stopMediaStreams();
         if (onEndCall) onEndCall();
       } else {
         setCallStatus("ended");
@@ -883,6 +893,7 @@ const VideoCall = ({
           setCallStartTime(null);
           setIncomingCall(false);
           setCallDuration(0);
+          stopMediaStreams();
           if (onEndCall) onEndCall();
         } else {
           setParticipants((prev) =>
@@ -1958,7 +1969,11 @@ const VideoCall = ({
               className="rounded-2xl md:w-16 md:h-14 w-14 h-12 bg-rose-500 hover:bg-rose-600 shadow-lg shadow-rose-500/20 min-w-[56px]"
               onClick={
                 userRole === "admin" || isTherapist
-                  ? endCall
+                  ? () => {
+                      endCall();
+                      stopMediaStreams();
+                      if (onEndCall) onEndCall();
+                    }
                   : () => emit("leave-room", { roomId, roomType })
               }
             >

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import useSocket from "@/hooks/useSocket";
+import { useAdminChatSocket } from "@/hooks/useSocket";
 import { adminChatApi } from "@/lib/adminChatApi";
 
 interface Message {
@@ -18,10 +18,12 @@ const AdminLiveChat = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedChatRoom, setSelectedChatRoom] = useState<string | null>(null);
+  const [selectedUserName, setSelectedUserName] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
   const [activeUsers, setActiveUsers] = useState<Set<string>>(new Set());
 
-  const { socket, emit, on } = useSocket("admin-support-room", "support");
+  const { socket, emit, on } = useAdminChatSocket();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Load initial messages
@@ -31,13 +33,21 @@ const AdminLiveChat = () => {
 
   // Set up socket listeners for real-time messages
   useEffect(() => {
-    if (!socket) return;
+    if (!socket || !connected) {
+      console.log('AdminLiveChat: Waiting for socket connection...', { socketReady: !!socket, connected });
+      return;
+    }
 
     const cleanupFunctions: (() => void)[] = [];
 
     // Listen for new support messages from users
     const cleanupNewMessage = on("admin-new-message", (data: any) => {
       console.log("Received new message for admin:", data);
+
+      // If admin is viewing a specific support room, ignore messages for other rooms
+      if (selectedChatRoom && data.chatRoom && data.chatRoom !== selectedChatRoom) {
+        return;
+      }
 
       const newMsg: Message = {
         _id: data.message?._id || Date.now().toString(),
@@ -65,6 +75,11 @@ const AdminLiveChat = () => {
     // Listen for new support messages in admin room
     const cleanupSupportMessage = on("new-support-message", (data: any) => {
       console.log("Received support message:", data);
+
+      // If admin is viewing a specific support room, ignore messages for other rooms
+      if (selectedChatRoom && data.chatRoom && data.chatRoom !== selectedChatRoom) {
+        return;
+      }
 
       const newMsg: Message = {
         _id: data.message?._id || Date.now().toString(),
@@ -104,7 +119,7 @@ const AdminLiveChat = () => {
     return () => {
       cleanupFunctions.forEach((cleanup) => cleanup());
     };
-  }, [socket, on, emit]);
+  }, [socket, on, emit, selectedChatRoom, connected]);
 
   const loadInitialMessages = async () => {
     try {
@@ -146,6 +161,39 @@ const AdminLiveChat = () => {
     }
   };
 
+  // Select a user to open a 1-on-1 support chat
+  const selectUser = async (userId: string, userName?: string) => {
+    try {
+      const chatRoom = `support-${userId}`;
+      setSelectedChatRoom(chatRoom);
+      setSelectedUserName(userName || null);
+
+      // Join the support room over socket
+      emit('join-room', { sessionId: chatRoom });
+
+      // Fetch history for this support room via admin API helper
+      setIsLoading(true);
+      const resp = await adminChatApi.getSupportMessages(chatRoom);
+      if (resp?.success && resp?.data?.messages) {
+        const formatted = resp.data.messages.map((msg: any) => ({
+          _id: msg._id,
+          content: msg.message,
+          senderId: msg.senderId?._id || msg.senderId,
+          senderName: msg.senderId?.name || msg.senderId?.email || 'User',
+          timestamp: msg.createdAt,
+          senderType: msg.senderType,
+          userId: msg.senderId?._id || msg.senderId
+        }));
+        setMessages(formatted);
+      }
+    } catch (error) {
+      console.error('Error selecting user chat:', error);
+    } finally {
+      setIsLoading(false);
+      scrollToBottom();
+    }
+  };
+
   const handleSendMessage = async () => {
     if (!newMessage.trim()) return;
 
@@ -165,32 +213,51 @@ const AdminLiveChat = () => {
 
       setMessages((prev) => [...prev, tempMessage]);
 
-      // Send via API
-      const response = await adminChatApi.sendAdminReply({
-        sessionId: null, // For default chat
-        message: messageToSend,
-        messageType: "default-chat",
-      });
+      // If admin is in a selected support room, send via socket to that room
+      if (selectedChatRoom) {
+        // Generate a UUID-like id for deduplication
+        const messageId = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+          const r = Math.random() * 16 | 0;
+          const v = c === 'x' ? r : (r & 0x3 | 0x8);
+          return v.toString(16);
+        });
 
-      if (response.success) {
-        // Replace temp message with actual message
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg._id === tempMessage._id
-              ? {
-                  ...msg,
-                  _id: response.data.message._id,
-                  timestamp: response.data.message.createdAt,
-                }
-              : msg
-          )
-        );
+        socket?.emit('send-message', {
+          roomId: selectedChatRoom,
+          roomType: 'individual',
+          message: {
+            content: messageToSend,
+            messageId
+          }
+        });
       } else {
-        // Remove temp message if failed
-        setMessages((prev) =>
-          prev.filter((msg) => msg._id !== tempMessage._id)
-        );
-        throw new Error(response.message);
+        // Fallback: send to default chat via existing API
+        const response = await adminChatApi.sendAdminReply({
+          sessionId: null, // For default chat
+          message: messageToSend,
+          messageType: "default-chat",
+        });
+
+        if (response.success) {
+          // Replace temp message with actual message
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg._id === tempMessage._id
+                ? {
+                    ...msg,
+                    _id: response.data.message._id,
+                    timestamp: response.data.message.createdAt,
+                  }
+                : msg
+            )
+          );
+        } else {
+          // Remove temp message if failed
+          setMessages((prev) =>
+            prev.filter((msg) => msg._id !== tempMessage._id)
+          );
+          throw new Error(response.message);
+        }
       }
 
       scrollToBottom();
@@ -246,6 +313,18 @@ const AdminLiveChat = () => {
                 <h3 className="font-bold text-xl text-gray-900">Live Support Chat</h3>
                 <p className="text-sm text-gray-600">Manage customer conversations</p>
               </div>
+            </div>
+            <div className="mt-3 flex space-x-2">
+              {/* List of active users (click to open 1-on-1) */}
+              {Array.from(new Map(messages.filter(m => m.userId).map(m => [m.userId, { userId: m.userId, userName: m.senderName || m.userName }]))).map(([, u]: any) => (
+                <button
+                  key={u.userId}
+                  onClick={() => selectUser(u.userId, u.userName)}
+                  className={`px-3 py-1 text-xs rounded-full border ${selectedChatRoom === `support-${u.userId}` ? 'bg-blue-600 text-white' : 'bg-white text-gray-700'}`}
+                >
+                  {u.userName || 'User'}
+                </button>
+              ))}
             </div>
             <div className="flex flex-wrap items-center gap-3 mt-2">
               <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
