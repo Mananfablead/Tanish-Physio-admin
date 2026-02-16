@@ -24,6 +24,13 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -996,243 +1003,235 @@ export default function Notifications() {
       )}
 
       {/* Send Notification Modal */}
-      {showSendModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-card rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold">Send Notification</h3>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowSendModal(false)}
+      <Dialog open={showSendModal} onOpenChange={setShowSendModal}>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto hide-scrollbar">
+          <DialogHeader>
+            <DialogTitle>Send Notification</DialogTitle>
+            <DialogDescription>
+              Enter the details for the new notification.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div>
+              <label className="text-sm font-medium mb-1 block">
+                Title *
+              </label>
+              <Input
+                value={newNotification.title}
+                onChange={(e) =>
+                  setNewNotification({
+                    ...newNotification,
+                    title: e.target.value,
+                  })
+                }
+                placeholder="Enter notification title"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium mb-1 block">
+                Message *
+              </label>
+              <textarea
+                value={newNotification.message}
+                onChange={(e) =>
+                  setNewNotification({
+                    ...newNotification,
+                    message: e.target.value,
+                  })
+                }
+                placeholder="Enter notification message"
+                className="w-full p-2 border rounded-md bg-background min-h-[100px]"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium mb-1 block">
+                Type *
+              </label>
+              <Select
+                value={newNotification.type}
+                onValueChange={(value) =>
+                  setNewNotification({ ...newNotification, type: value })
+                }
+                required
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {notificationTypes.map((type) => (
+                    <SelectItem key={type.value} value={type.value}>
+                      {type.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium mb-1 block">
+                Recipient *
+              </label>
+              <Select
+                value={newNotification.recipientType}
+                onValueChange={(value) =>
+                  setNewNotification({
+                    ...newNotification,
+                    recipientType: value,
+                    userId:
+                      value === "specific" ? newNotification.userId : "",
+                  })
+                }
+                required
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {recipientTypes.map((type) => (
+                    <SelectItem key={type.value} value={type.value}>
+                      {type.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {newNotification.recipientType === "specific" && (
+              <div>
+                <label className="text-sm font-medium mb-1 block">
+                  Select User *
+                </label>
+                <Select
+                  value={newNotification.userId}
+                  onValueChange={(value) =>
+                    setNewNotification({
+                      ...newNotification,
+                      userId: value,
+                    })
+                  }
+                  required
                 >
-                  <X className="w-4 h-4" />
-                </Button>
-              </div>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium mb-1 block">
-                    Title *
-                  </label>
-                  <Input
-                    value={newNotification.title}
-                    onChange={(e) =>
-                      setNewNotification({
-                        ...newNotification,
-                        title: e.target.value,
-                      })
-                    }
-                    placeholder="Enter notification title"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium mb-1 block">
-                    Message *
-                  </label>
-                  <textarea
-                    value={newNotification.message}
-                    onChange={(e) =>
-                      setNewNotification({
-                        ...newNotification,
-                        message: e.target.value,
-                      })
-                    }
-                    placeholder="Enter notification message"
-                    className="w-full p-2 border rounded-md bg-background min-h-[100px]"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium mb-1 block">
-                    Type *
-                  </label>
-                  <Select
-                    value={newNotification.type}
-                    onValueChange={(value) =>
-                      setNewNotification({ ...newNotification, type: value })
-                    }
-                    required
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {notificationTypes.map((type) => (
-                        <SelectItem key={type.value} value={type.value}>
-                          {type.label}
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a user" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {loadingUsers ? (
+                      <SelectItem value="" disabled>
+                        Loading users...
+                      </SelectItem>
+                    ) : users.length > 0 ? (
+                      users.map((user) => (
+                        <SelectItem key={user._id} value={user._id}>
+                          {user.name} ({user.email})
                         </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                      ))
+                    ) : (
+                      <SelectItem value="" disabled>
+                        No users found
+                      </SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
-                <div>
-                  <label className="text-sm font-medium mb-1 block">
-                    Recipient *
-                  </label>
-                  <Select
-                    value={newNotification.recipientType}
-                    onValueChange={(value) =>
-                      setNewNotification({
-                        ...newNotification,
-                        recipientType: value,
-                        userId:
-                          value === "specific" ? newNotification.userId : "",
+            {/* Notification Channels */}
+            <div>
+              <label className="text-sm font-medium mb-1 block">
+                Send Via (Select Channels)
+              </label>
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="email-channel"
+                    checked={notificationChannels.email}
+                    onChange={(e) =>
+                      setNotificationChannels({
+                        ...notificationChannels,
+                        email: e.target.checked,
                       })
                     }
-                    required
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {recipientTypes.map((type) => (
-                        <SelectItem key={type.value} value={type.value}>
-                          {type.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {newNotification.recipientType === "specific" && (
-                  <div>
-                    <label className="text-sm font-medium mb-1 block">
-                      Select User *
-                    </label>
-                    <Select
-                      value={newNotification.userId}
-                      onValueChange={(value) =>
-                        setNewNotification({
-                          ...newNotification,
-                          userId: value,
-                        })
-                      }
-                      required
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a user" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {loadingUsers ? (
-                          <SelectItem value="" disabled>
-                            Loading users...
-                          </SelectItem>
-                        ) : users.length > 0 ? (
-                          users.map((user) => (
-                            <SelectItem key={user._id} value={user._id}>
-                              {user.name} ({user.email})
-                            </SelectItem>
-                          ))
-                        ) : (
-                          <SelectItem value="" disabled>
-                            No users found
-                          </SelectItem>
-                        )}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
-                {/* Notification Channels */}
-                <div>
-                  <label className="text-sm font-medium mb-1 block">
-                    Send Via (Select Channels)
+                    className="rounded border-gray-300 text-primary focus:ring-primary"
+                  />
+                  <label htmlFor="email-channel" className="text-sm">
+                    Email Notification
                   </label>
-                  <div className="space-y-2">
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        id="email-channel"
-                        checked={notificationChannels.email}
-                        onChange={(e) =>
-                          setNotificationChannels({
-                            ...notificationChannels,
-                            email: e.target.checked,
-                          })
-                        }
-                        className="rounded border-gray-300 text-primary focus:ring-primary"
-                      />
-                      <label htmlFor="email-channel" className="text-sm">
-                        Email Notification
-                      </label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        id="whatsapp-channel"
-                        checked={notificationChannels.whatsapp}
-                        onChange={(e) =>
-                          setNotificationChannels({
-                            ...notificationChannels,
-                            whatsapp: e.target.checked,
-                          })
-                        }
-                        className="rounded border-gray-300 text-primary focus:ring-primary"
-                      />
-                      <label htmlFor="whatsapp-channel" className="text-sm">
-                        WhatsApp Notification
-                      </label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        id="inapp-channel"
-                        checked={notificationChannels.inApp}
-                        onChange={(e) =>
-                          setNotificationChannels({
-                            ...notificationChannels,
-                            inApp: e.target.checked,
-                          })
-                        }
-                        className="rounded border-gray-300 text-primary focus:ring-primary"
-                      />
-                      <label htmlFor="inapp-channel" className="text-sm">
-                        In-App Notification
-                      </label>
-                    </div>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Select one or more channels to send the notification through
-                  </p>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="whatsapp-channel"
+                    checked={notificationChannels.whatsapp}
+                    onChange={(e) =>
+                      setNotificationChannels({
+                        ...notificationChannels,
+                        whatsapp: e.target.checked,
+                      })
+                    }
+                    className="rounded border-gray-300 text-primary focus:ring-primary"
+                  />
+                  <label htmlFor="whatsapp-channel" className="text-sm">
+                    WhatsApp Notification
+                  </label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="inapp-channel"
+                    checked={notificationChannels.inApp}
+                    onChange={(e) =>
+                      setNotificationChannels({
+                        ...notificationChannels,
+                        inApp: e.target.checked,
+                      })
+                    }
+                    className="rounded border-gray-300 text-primary focus:ring-primary"
+                  />
+                  <label htmlFor="inapp-channel" className="text-sm">
+                    In-App Notification
+                  </label>
                 </div>
               </div>
-
-              <div className="flex gap-3 justify-end mt-6">
-                <Button
-                  variant="outline"
-                  onClick={() => setShowSendModal(false)}
-                  disabled={isSending}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleSendNotification}
-                  disabled={isSending}
-                  className="flex items-center gap-2"
-                >
-                  {isSending ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      Sending...
-                    </>
-                  ) : (
-                    <>
-                      <Send className="w-4 h-4" />
-                      Send Notification
-                    </>
-                  )}
-                </Button>
-              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Select one or more channels to send the notification through
+              </p>
             </div>
           </div>
-        </div>
-      )}
+
+          <div className="flex gap-3 justify-end mt-6">
+            <Button
+              variant="outline"
+              onClick={() => setShowSendModal(false)}
+              disabled={isSending}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSendNotification}
+              disabled={isSending}
+              className="flex items-center gap-2"
+            >
+              {isSending ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <Send className="w-4 h-4" />
+                  Send Notification
+                </>
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Loading Overlay */}
       {loading && (

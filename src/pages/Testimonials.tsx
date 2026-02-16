@@ -749,7 +749,7 @@ export default function Testimonials() {
 
       {/* Testimonial Modal */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto ">
           <DialogHeader>
             <DialogTitle>
               {editingTestimonial ? "Edit Testimonial" : "Add New Testimonial"}

@@ -371,6 +371,7 @@ export default function Bookings() {
                     <td className="min-w-[140px]">
                       <Select
                         value={booking.status}
+                        disabled={booking.status === "cancelled"}
                         onValueChange={async (value) => {
                           const result = await dispatch(
                             updateBooking({
@@ -422,7 +423,7 @@ export default function Bookings() {
                         </Link>
 
                         {/* Reschedule Button */}
-                        {booking.status !== "cancelled" && (
+                        {/* {booking.status !== "cancelled" && (
                           <Button
                             size="icon"
                             variant="outline"
@@ -447,7 +448,7 @@ export default function Bookings() {
                           >
                             <Calendar className="w-4 h-4" />
                           </Button>
-                        )}
+                        )} */}
                       </div>
                     </td>
                   </tr>
