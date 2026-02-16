@@ -142,14 +142,14 @@ const OffersManagement = () => {
               <DialogTrigger asChild>
                 <Button>Create Offer</Button>
               </DialogTrigger>
-              <DialogContent className="max-w-2xl">
+              <DialogContent className="max-w-2xl max-h-[100vh]">
                 <DialogHeader>
                   <DialogTitle>Create New Offer</DialogTitle>
                   <DialogDescription>
                     Add a new promotional offer for customers
                   </DialogDescription>
                 </DialogHeader>
-                <div className="grid grid-cols-2 gap-4 py-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-4 max-h-[60vh] overflow-y-auto pr-2">
                   <div className="space-y-2">
                     <Label htmlFor="code">Offer Code</Label>
                     <Input

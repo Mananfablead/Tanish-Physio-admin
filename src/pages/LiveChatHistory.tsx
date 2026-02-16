@@ -706,7 +706,7 @@ const LiveChatHistory = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        {/* <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <div className="bg-card p-4 rounded-lg shadow">
             <h3 className="text-lg font-medium text-foreground">
               Total Messages
@@ -737,17 +737,17 @@ const LiveChatHistory = () => {
               {activeChats.length}
             </p>
           </div>
-        </div>
+        </div> */}
 
-        <div className="flex gap-6">
+        <div className="flex flex-col md:flex-row gap-6">
           {/* Chat List Panel */}
-          <div className="w-1/3 bg-card rounded-lg shadow">
+          <div className="w-full md:w-1/3 bg-card rounded-lg shadow">
             <div className="p-4 border-b">
               <h2 className="text-lg font-semibold text-foreground">
                   1-on-1 Chats
               </h2>
             </div>
-            <div className="overflow-y-auto max-h-[calc(100vh-250px)]">
+            <div className="overflow-y-auto max-h-[50vh] md:max-h-[calc(100vh-250px)]">
                 {oneOnOneChats.length > 0 ? (
                   oneOnOneChats.map((chat) => (
                     <div
@@ -791,7 +791,7 @@ const LiveChatHistory = () => {
           </div>
 
           {/* Chat Conversation Panel */}
-          <div className="flex-1 bg-card rounded-lg shadow flex flex-col">
+          <div className="w-full md:flex-1 bg-card rounded-lg shadow flex flex-col">
             {selectedChat ? (
               <>
                 <div className="p-4 border-b">
@@ -819,7 +819,7 @@ const LiveChatHistory = () => {
                 </div>
 
                 {/* Messages Area */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-muted max-h-[calc(100vh-300px)] flex flex-col">
+                <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-muted max-h-[50vh] md:max-h-[calc(100vh-300px)] flex flex-col">
                   {messages.length > 0 ? (
                     messages.map((msg) => (
                       <div

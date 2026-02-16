@@ -367,9 +367,9 @@ const VideoCallChatHistory = () => {
           </div>
         </div>
 
-        <div className="flex gap-6">
+        <div className="flex flex-col md:flex-row gap-6">
           {/* Chat List Panel */}
-          <div className="w-1/3 bg-card rounded-lg shadow">
+          <div className="w-full md:w-1/3 bg-card rounded-lg shadow">
             <div className="p-4 border-b">
               <h2 className="text-lg font-semibold text-foreground">
                 Live Chats
@@ -382,7 +382,7 @@ const VideoCallChatHistory = () => {
                 />
               </div>
             </div>
-            <div className="overflow-y-auto max-h-[calc(100vh-250px)]">
+            <div className="overflow-y-auto max-h-[50vh] md:max-h-[calc(100vh-250px)]">
               {chats.length > 0 ? (
                 chats.map((chat) => (
                   <div
@@ -451,7 +451,7 @@ const VideoCallChatHistory = () => {
           </div>
 
           {/* Chat Conversation Panel */}
-          <div className="flex-1 bg-card rounded-lg shadow flex flex-col">
+          <div className="w-full md:flex-1 bg-card rounded-lg shadow flex flex-col">
             {selectedSession ? (
               <>
                 <div className="p-4 border-b">
@@ -467,7 +467,7 @@ const VideoCallChatHistory = () => {
                 </div>
 
                 {/* Messages Area - WhatsApp-like display */}
-                <div className="flex-1 overflow-y-auto p-4 bg-muted max-h-[calc(100vh-300px)]">
+                <div className="flex-1 overflow-y-auto p-4 bg-muted max-h-[50vh] md:max-h-[calc(100vh-300px)]">
                   {messages.length > 0 ? (
                     <div className="space-y-3">
                       {messages.map((msg) => (
@@ -536,20 +536,20 @@ const VideoCallChatHistory = () => {
 
                 {/* Reply Area */}
                 <div className="border-t p-4">
-                  <div className="flex items-end space-x-2">
+                  <div className="flex flex-col md:flex-row items-end md:items-end space-x-0 md:space-x-2 gap-2">
                     <textarea
                       value={newReply}
                       onChange={(e) => setNewReply(e.target.value)}
                       onKeyDown={handleKeyPress}
                       placeholder="Type your reply (will be sent as admin message in live chat)..."
-                      className="flex-1 border border-input rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-primary"
+                      className="w-full flex-1 border border-input rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-primary"
                       rows={2}
                       style={{ minHeight: "60px", maxHeight: "120px" }}
                     />
                     <button
                       onClick={handleSendReply}
                       disabled={!newReply.trim() || loading}
-                      className={`px-4 py-2 rounded-lg ${
+                      className={`w-full md:w-auto px-4 py-2 rounded-lg ${
                         newReply.trim() && !loading
                           ? "bg-primary text-primary-foreground hover:bg-primary/90"
                           : "bg-muted text-muted-foreground cursor-not-allowed"
