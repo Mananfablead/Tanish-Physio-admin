@@ -760,7 +760,30 @@ export const cmsAPI = {
   // Why Us section
   getWhyUsPublic: () => apiClient.get(API.CMS_WHY_US_PUBLIC),
   getWhyUsAdmin: () => apiClient.get(API.CMS_WHY_US_ADMIN),
-  updateWhyUs: (data) => apiClient.put(API.CMS_WHY_US_ADMIN, data),
+  updateWhyUs: (data) => {
+    // Check if image data contains actual file objects (not just URLs)
+    if (data.image && typeof data.image !== 'string') {
+      const formData = new FormData();
+      formData.append('image', data.image);
+      
+      // Add other fields except image, serializing objects and arrays to JSON
+      Object.keys(data).forEach(key => {
+        if (key !== 'image') {
+          if (typeof data[key] === 'object' && data[key] !== null) {
+            formData.append(key, JSON.stringify(data[key]));
+          } else {
+            formData.append(key, data[key]);
+          }
+        }
+      });
+      
+      return apiClient.put(API.CMS_WHY_US_ADMIN, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+    } else {
+      return apiClient.put(API.CMS_WHY_US_ADMIN, data);
+    }
+  },
 
   // FAQ section
   getFaqsPublic: () => apiClient.get(API.CMS_FAQ_PUBLIC),

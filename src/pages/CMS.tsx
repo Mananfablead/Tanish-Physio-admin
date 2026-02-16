@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import ReactQuill from "react-quill";
+import "react-quill/dist/quill.snow.css";
 import { useSelector, useDispatch } from 'react-redux';
 import { cn } from "@/lib/utils";
 import { fetchAllCmsData, updateHero, createStep, updateStep, deleteStep, updateConditions, updateWhyUs, createFaq, updateFaq, deleteFaq, updateTerms, updateFeaturedTherapist, updateContact, updateAbout, addSingleCondition, updateSingleCondition, deleteSingleCondition } from '@/features/cms/cmsSlice';
@@ -122,6 +124,7 @@ interface WhyUsData {
     _id: string;
     title: string;
     description: string;
+    image: string | File;
     stats: StatData[];
     features: string[];
     isPublic: boolean;
@@ -180,12 +183,9 @@ interface AboutData {
   _id: string;
   title: string;
   description: string;
-  mission: string;
-  vision: string;
-  values: string[];
-  foundingStory: string;
-  teamInfo: string;
-  image: string;
+  aboutheadline: string;
+  aboutheadlDescription: string;
+  image: string | File;
   images: (string | File)[];
   isPublic: boolean;
 }
@@ -244,6 +244,7 @@ export default function CMS() {
       _id: "",
       title: "",
       description: "",
+      image: "",
       stats: [],
       features: [],
       isPublic: true,
@@ -280,11 +281,8 @@ export default function CMS() {
       _id: "",
       title: "",
       description: "",
-      mission: "",
-      vision: "",
-      values: [],
-      foundingStory: "",
-      teamInfo: "",
+      aboutheadline: "",
+      aboutheadlDescription: "",
       image: "",
       images: [],
       isPublic: true,
@@ -334,7 +332,6 @@ export default function CMS() {
         },
         about: {
           ...cmsStateData.about,
-          values: cmsStateData.about?.values || [],
           isPublic: cmsStateData.about?.isPublic ?? true,
         },
       });
@@ -1060,6 +1057,27 @@ const EditWhyUsForm = ({ data, onSave, onCancel }) => {
   
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
+  // Handle image upload
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setFormData((prev) => ({
+        ...prev,
+        image: file,
+      }));
+    }
+  };
+
+  // Get image source (handles both File objects and URLs)
+  const getImageSrc = (image: string | File) => {
+    if (typeof image === 'string') {
+      return image;
+    } else if (image instanceof File) {
+      return URL.createObjectURL(image);
+    }
+    return '';
+  };
+
   const handleChange = (field, value) => {
     setFormData((prev) => ({
       ...prev,
@@ -1226,6 +1244,40 @@ const EditWhyUsForm = ({ data, onSave, onCancel }) => {
         {errors.description && (
           <p className="text-red-500 text-sm mt-1">{errors.description}</p>
         )}
+      </div>
+      <div>
+        <Label>Section Image</Label>
+        <div className="flex flex-col sm:flex-row gap-4 mt-2">
+          <div className="flex-1">
+            <Input
+              type="file"
+              accept="image/*"
+              onChange={handleImageUpload}
+              className="hidden"
+              id="why-us-image-upload"
+            />
+            <label
+              htmlFor="why-us-image-upload"
+              className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-muted hover:bg-accent transition-colors"
+            >
+              <Upload className="w-8 h-8 text-muted-foreground mb-2" />
+              <span className="text-sm text-muted-foreground">
+                Click to upload image
+              </span>
+            </label>
+          </div>
+          {formData.image && (
+            <div className="flex-1">
+              <div className="aspect-video bg-muted rounded-lg border flex items-center justify-center overflow-hidden">
+                <img
+                  src={getImageSrc(formData.image)}
+                  alt="Preview"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            </div>
+          )}
+        </div>
       </div>
       <div>
         <div className="flex items-center justify-between mb-2">
@@ -1518,12 +1570,20 @@ const EditTermsForm = ({ data, onSave, onCancel }) => {
       </div>
       <div>
         <Label>Full page content...</Label>
-        <Textarea
-          rows={10}
-          value={formData.content}
-          onChange={(e) => handleChange("content", e.target.value)}
-          placeholder="Full page content..."
-          className={errors.content ? "border-red-500" : ""}
+        <ReactQuill
+          value={formData.content || ""}
+          onChange={(content) => handleChange("content", content)}
+          className={`${errors.content ? "border-red-500" : ""}`}
+          modules={{
+            toolbar: [
+              [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+              ['bold', 'italic', 'underline', 'strike'],
+              [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+              ['link'],
+              ['clean']
+            ],
+          }}
+          theme="snow"
         />
         {errors.content && (
           <p className="text-red-500 text-sm mt-1">{errors.content}</p>
@@ -1942,7 +2002,6 @@ const EditContactForm = ({ data, onSave, onCancel }) => {
 const EditAboutForm = ({ data, onSave, onCancel }: { data: AboutData; onSave: (data: any) => void; onCancel: () => void }) => {
     const [formData, setFormData] = useState({
         ...data,
-        values: data?.values || [],
         images: data?.images || []
     });
     
@@ -1963,85 +2022,34 @@ const EditAboutForm = ({ data, onSave, onCancel }: { data: AboutData; onSave: (d
         }
     };
 
-    const handleValuesChange = (index, value) => {
-        const newValues = [...(formData.values || [])];
-        newValues[index] = value;
-        setFormData(prev => ({
-            ...prev,
-            values: newValues
-        }));
-    };
-
-    const addValue = () => {
-        setFormData(prev => ({
-            ...prev,
-            values: [...(prev.values || []), '']
-        }));
-    };
-
-    const removeValue = (index) => {
-        const newValues = (formData.values || []).filter((_, i) => i !== index);
-        setFormData(prev => ({
-            ...prev,
-            values: newValues
-        }));
-    };
-
-    // Handle single image upload (legacy support)
-    const handleImageUpload = (e) => {
+    // Handle image1 upload
+    const handleImage1Upload = (e) => {
         const file = e.target.files[0];
         if (file) {
             setFormData(prev => ({
                 ...prev,
-                image: file
+                image1: file
             }));
         }
     };
 
-    // Handle multiple images upload
-    const handleMultipleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const files = Array.from(e.target.files || []);
-        if (files.length > 0) {
+    // Handle image2 upload
+    const handleImage2Upload = (e) => {
+        const file = e.target.files[0];
+        if (file) {
             setFormData(prev => ({
                 ...prev,
-                images: [...prev.images, ...files]
+                image2: file
             }));
         }
-    };
-
-    // Remove image from array
-    const removeImage = (index) => {
-        setFormData(prev => ({
-            ...prev,
-            images: prev.images.filter((_, i) => i !== index)
-        }));
-    };
-
-    // Set primary image (move to first position)
-    const setPrimaryImage = (index) => {
-        const newImages = [...formData.images];
-        const [movedImage] = newImages.splice(index, 1);
-        newImages.unshift(movedImage);
-        
-        setFormData(prev => ({
-            ...prev,
-            images: newImages
-        }));
     };
 
     // Get image source (handles both File objects and URLs)
-    const getImageSrc = (image: string | File | Blob) => {
+    const getImageSrc = (image: string | File) => {
         if (typeof image === 'string') {
             return image;
-        } else if (image && typeof image === 'object' && 'type' in image && 
-                   typeof image.type === 'string' && image.type.startsWith('image/')) {
-            // Check if it's a File-like object without using instanceof
-            try {
-                return URL.createObjectURL(image as Blob);
-            } catch (error) {
-                console.warn('Failed to create object URL:', error);
-                return '';
-            }
+        } else if (image instanceof File) {
+            return URL.createObjectURL(image);
         }
         return '';
     };
@@ -2058,28 +2066,17 @@ const EditAboutForm = ({ data, onSave, onCancel }: { data: AboutData; onSave: (d
             newErrors.description = "Description is required";
         }
         
-        if (!formData.mission?.trim()) {
-            newErrors.mission = "Mission statement is required";
+        if (!formData.aboutheadline?.trim()) {
+            newErrors.aboutheadline = "About headline is required";
         }
         
-        if (!formData.vision?.trim()) {
-            newErrors.vision = "Vision statement is required";
+        if (!formData.aboutheadlDescription?.trim()) {
+            newErrors.aboutheadlDescription = "About headline description is required";
         }
         
-        if (!formData.foundingStory?.trim()) {
-            newErrors.foundingStory = "Founding story is required";
-        }
-        
-        if (!formData.teamInfo?.trim()) {
-            newErrors.teamInfo = "Team information is required";
-        }
-        
-        // Validate values
-        (formData.values || []).forEach((value, index) => {
-            if (!value?.trim()) {
-                newErrors[`value-${index}`] = "Value is required";
-            }
-        });
+        // if (!formData.) {
+        //     newErrors.image = "Main image is required";
+        // }
         
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
@@ -2118,166 +2115,129 @@ const EditAboutForm = ({ data, onSave, onCancel }: { data: AboutData; onSave: (d
                 )}
             </div>
             <div>
-                <Label>Mission Statement</Label>
+                <Label>About Headline</Label>
+                <Input
+                    value={formData.aboutheadline}
+                    onChange={(e) => handleChange('aboutheadline', e.target.value)}
+                    className={errors.aboutheadline ? "border-red-500" : ""}
+                />
+                {errors.aboutheadline && (
+                  <p className="text-red-500 text-sm mt-1">{errors.aboutheadline}</p>
+                )}
+            </div>
+            <div>
+                <Label>About Headline Description</Label>
                 <Textarea
-                    value={formData.mission}
-                    onChange={(e) => handleChange('mission', e.target.value)}
+                    value={formData.aboutheadlDescription}
+                    onChange={(e) => handleChange('aboutheadlDescription', e.target.value)}
                     rows={3}
-                    className={errors.mission ? "border-red-500" : ""}
+                    className={errors.aboutheadlDescription ? "border-red-500" : ""}
                 />
-                {errors.mission && (
-                  <p className="text-red-500 text-sm mt-1">{errors.mission}</p>
+                {errors.aboutheadlDescription && (
+                  <p className="text-red-500 text-sm mt-1">{errors.aboutheadlDescription}</p>
                 )}
             </div>
-            <div>
-                <Label>Vision Statement</Label>
-                <Textarea
-                    value={formData.vision}
-                    onChange={(e) => handleChange('vision', e.target.value)}
-                    rows={3}
-                    className={errors.vision ? "border-red-500" : ""}
-                />
-                {errors.vision && (
-                  <p className="text-red-500 text-sm mt-1">{errors.vision}</p>
-                )}
-            </div>
-            <div>
-                <Label>Founding Story</Label>
-                <Textarea
-                    value={formData.foundingStory}
-                    onChange={(e) => handleChange('foundingStory', e.target.value)}
-                    rows={4}
-                    className={errors.foundingStory ? "border-red-500" : ""}
-                />
-                {errors.foundingStory && (
-                  <p className="text-red-500 text-sm mt-1">{errors.foundingStory}</p>
-                )}
-            </div>
-            <div>
-                <Label>Team Information</Label>
-                <Textarea
-                    value={formData.teamInfo}
-                    onChange={(e) => handleChange('teamInfo', e.target.value)}
-                    rows={3}
-                    className={errors.teamInfo ? "border-red-500" : ""}
-                />
-                {errors.teamInfo && (
-                  <p className="text-red-500 text-sm mt-1">{errors.teamInfo}</p>
-                )}
-            </div>
-            <div>
-                <div className="flex items-center justify-between mb-2">
-                    <Label>Core Values</Label>
-                    <Button type="button" variant="outline" size="sm" onClick={addValue}>
-                        <Plus className="h-4 w-4 mr-2" /> Add Value
-                    </Button>
-                </div>
-                <div className="space-y-2">
-                    {(formData.values || []).map((value, index) => (
-                        <div key={index} className="flex items-center gap-2">
-                            <Input
-                                value={value}
-                                onChange={(e) => handleValuesChange(index, e.target.value)}
-                                placeholder={`Value ${index + 1}`}
-                                className={errors[`value-${index}`] ? "border-red-500" : ""}
-                            />
-                            {errors[`value-${index}`] && (
-                              <p className="text-red-500 text-sm mt-1">{errors[`value-${index}`]}</p>
-                            )}
-                            <Button 
-                                type="button" 
-                                variant="outline" 
-                                size="sm" 
-                                onClick={() => removeValue(index)}
-                                disabled={(formData.values || []).length <= 1}
-                            >
-                                <Trash2 className="h-4 w-4" />
-                            </Button>
-                        </div>
-                    ))}
-                </div>
-            </div>
-            <div>
-                <Label>About Us Images</Label>
+            {/* <div>
+                <Label>Main Image</Label>
                 <div className="space-y-4 mt-2">
-                    {/* Multiple Image Upload */}
                     <div>
                         <Input
                             type="file"
                             accept="image/*"
-                            onChange={handleMultipleImageUpload}
-                            multiple
+                            onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                    setFormData(prev => ({
+                                        ...prev,
+                                        image: file
+                                    }));
+                                }
+                            }}
                             className="hidden"
-                            id="about-images-upload"
+                            id="about-main-image-upload"
                         />
                         <label
-                            htmlFor="about-images-upload"
-                            className="flex flex-col items-center justify-center w-full h-24 sm:h-32 border-2 border-dashed rounded-lg cursor-pointer bg-muted hover:bg-accent transition-colors"
+                            htmlFor="about-main-image-upload"
+                            className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-muted hover:bg-accent transition-colors"
                         >
-                            <Upload className="w-6 h-6 sm:w-8 sm:h-8 text-muted-foreground mb-1 sm:mb-2" />
-                            <span className="text-xs sm:text-sm text-muted-foreground">Click to upload multiple images</span>
-                            <span className="text-xs text-muted-foreground mt-1">Supports JPG, PNG, GIF (Max 5MB each)</span>
+                            <Upload className="w-8 h-8 text-muted-foreground mb-2" />
+                            <span className="text-sm text-muted-foreground">Click to upload main image</span>
                         </label>
                     </div>
-                    
-                    {/* Image Gallery Preview */}
+                    {formData.image && (
+                        <div>
+                            <h4 className="text-sm font-medium mb-2">Main Image Preview</h4>
+                            <div className="aspect-video bg-muted rounded-lg border overflow-hidden">
+                                <img
+                                    src={getImageSrc(formData.image)}
+                                    alt="Main Image Preview"
+                                    className="w-full h-full object-cover"
+                                />
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div> */}
+            <div>
+                <Label>Additional Images</Label>
+                <div className="space-y-4 mt-2">
+                    <div>
+                        <Input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => {
+                                const files = Array.from(e.target.files || []);
+                                if (files.length > 0) {
+                                    setFormData(prev => ({
+                                        ...prev,
+                                        images: [...prev.images, ...files]
+                                    }));
+                                }
+                            }}
+                            multiple
+                            className="hidden"
+                            id="about-additional-images-upload"
+                        />
+                        <label
+                            htmlFor="about-additional-images-upload"
+                            className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-muted hover:bg-accent transition-colors"
+                        >
+                            <Upload className="w-8 h-8 text-muted-foreground mb-2" />
+                            <span className="text-sm text-muted-foreground">Click to upload additional images</span>
+                        </label>
+                    </div>
                     {formData.images && formData.images.length > 0 && (
                         <div>
                             <h4 className="text-sm font-medium mb-2">Uploaded Images ({formData.images.length})</h4>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                                {formData.images.map((image, index) => (
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                {formData.images.map((img, index) => (
                                     <div key={index} className="relative group">
                                         <div className="aspect-square bg-muted rounded-lg border overflow-hidden">
                                             <img
-                                                src={getImageSrc(image)}
-                                                alt={`Preview ${index + 1}`}
+                                                src={getImageSrc(img)}
+                                                alt={`Image ${index + 1}`}
                                                 className="w-full h-full object-cover"
                                             />
                                         </div>
-                                        <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-2 p-2">
-                                            <Button
-                                                type="button"
-                                                variant="secondary"
-                                                size="sm"
-                                                onClick={() => setPrimaryImage(index)}
-                                                className="h-8 w-8 p-0"
-                                                title="Set as primary image"
-                                            >
-                                                <Star className="h-4 w-4" />
-                                            </Button>
-                                            <Button
-                                                type="button"
-                                                variant="destructive"
-                                                size="sm"
-                                                onClick={() => removeImage(index)}
-                                                className="h-8 w-8 p-0"
-                                                title="Remove image"
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                        </div>
-                                        {index === 0 && (
-                                            <Badge className="absolute top-2 left-2 bg-primary text-primary-foreground text-xs">
-                                                Primary
-                                            </Badge>
-                                        )}
+                                        <Button
+                                            type="button"
+                                            variant="destructive"
+                                            size="sm"
+                                            onClick={() => {
+                                                setFormData(prev => ({
+                                                    ...prev,
+                                                    images: prev.images.filter((_, i) => i !== index)
+                                                }));
+                                            }}
+                                            className="absolute top-1 right-1 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                        >
+                                            <Trash2 className="h-3 w-3" />
+                                        </Button>
                                     </div>
                                 ))}
                             </div>
                         </div>
                     )}
-                    
-                    {/* Legacy Single Image Upload (Hidden but kept for backward compatibility) */}
-                    <div className="hidden">
-                        <Input
-                            type="file"
-                            accept="image/*"
-                            onChange={handleImageUpload}
-                            className="hidden"
-                            id="about-image-upload"
-                        />
-                        <label htmlFor="about-image-upload">Legacy upload</label>
-                    </div>
                 </div>
             </div>
             <div className="flex items-center space-x-2">

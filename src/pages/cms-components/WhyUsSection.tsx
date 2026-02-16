@@ -12,6 +12,7 @@ interface WhyUsData {
     _id: string;
     title: string;
     description: string;
+    image: string;
     stats: StatData[];
     features: string[];
 }
@@ -50,6 +51,17 @@ export default function WhyUsSection({ data, onEdit, loading = false }: WhyUsSec
                     <div>
                         <h3 className="text-xl sm:text-2xl font-bold">{data.title}</h3>
                         <p className="text-muted-foreground mt-3 text-base sm:text-lg">{data.description}</p>
+                        {data.image && (
+                            <div className="mt-4">
+                                <div className="aspect-video bg-muted rounded-lg border overflow-hidden max-w-md">
+                                    <img
+                                        src={data.image}
+                                        alt="Why Us Section"
+                                        className="w-full h-full object-cover"
+                                    />
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">

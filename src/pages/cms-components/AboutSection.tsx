@@ -14,11 +14,8 @@ interface AboutData {
   _id: string;
   title: string;
   description: string;
-  mission: string;
-  vision: string;
-  values: string[];
-  foundingStory: string;
-  teamInfo: string;
+  aboutheadline: string;
+  aboutheadlDescription: string;
   image: string | File;
   images: (string | File)[];
   isPublic: boolean;
@@ -30,28 +27,7 @@ interface AboutSectionProps {
   loading?: boolean;
 }
 
-// Helper function to get correct values array
-const getCorrectValues = (data: AboutData) => {
-  if (data.values && Array.isArray(data.values)) {
-    // If it's already an array of strings
-    let cmsValues = [...data.values];
-    
-    // Check if the first element is a JSON string (incorrectly stored)
-    if (cmsValues.length === 1 && typeof cmsValues[0] === 'string') {
-      try {
-        const parsedValue = JSON.parse(cmsValues[0]);
-        if (Array.isArray(parsedValue)) {
-          cmsValues = parsedValue;
-        }
-      } catch {
-        // If parsing fails, return empty array
-        return [];
-      }
-    }
-    return cmsValues;
-  }
-  return [];
-};
+// No helper functions needed for simplified model
 
 // Helper function to get image source (handles both File objects and URLs)
 const getImageSrc = (image: string | File) => {
@@ -91,34 +67,41 @@ export default function AboutSection({ data, onEdit, loading = false }: AboutSec
                   <p className="text-gray-600">{data.description}</p>
                 </div>
                 <div>
-                  <h4 className="text-sm font-medium text-gray-700">Mission:</h4>
-                  <p className="text-gray-600">{data.mission}</p>
+                  <h4 className="text-sm font-medium text-gray-700">About Headline:</h4>
+                  <p className="text-gray-600">{data.aboutheadline}</p>
                 </div>
                 <div>
-                  <h4 className="text-sm font-medium text-gray-700">Vision:</h4>
-                  <p className="text-gray-600">{data.vision}</p>
-                </div>
-                <div>
-                  <h4 className="text-sm font-medium text-gray-700">Core Values:</h4>
-                  <div className="flex flex-wrap gap-2 mt-1">
-                    {getCorrectValues(data)?.map((value, index) => (
-                      <span 
-                        key={index} 
-                        className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full"
-                      >
-                        {value}
-                      </span>
-                    ))}
-                  </div>
+                  <h4 className="text-sm font-medium text-gray-700">About Headline Description:</h4>
+                  <p className="text-gray-600">{data.aboutheadlDescription}</p>
                 </div>
                 {data.image && (
                   <div>
-                    <h4 className="text-sm font-medium text-gray-700 mb-2">Primary Image:</h4>
+                    <h4 className="text-sm font-medium text-gray-700 mb-2">Main Image:</h4>
                     <img 
                       src={getImageSrc(data.image)} 
-                      alt="About Us" 
+                      alt="Main Image" 
                       className="w-full h-auto rounded-lg"
                     />
+                  </div>
+                )}
+                {data.images && data.images.length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-700 mb-2">Additional Images ({data.images.length}):</h4>
+                    <div className="grid grid-cols-2 gap-2">
+                      {data.images.slice(0, 4).map((img, index) => (
+                        <img 
+                          key={index}
+                          src={getImageSrc(img)} 
+                          alt={`Additional Image ${index + 1}`} 
+                          className="w-full h-24 object-cover rounded-lg border"
+                        />
+                      ))}
+                      {data.images.length > 4 && (
+                        <div className="flex items-center justify-center bg-muted rounded-lg border">
+                          <span className="text-muted-foreground">+{data.images.length - 4} more</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
@@ -157,12 +140,8 @@ export default function AboutSection({ data, onEdit, loading = false }: AboutSec
               <p className="text-gray-600 line-clamp-3">{data.description}</p>
             </div>
             <div>
-              <h4 className="text-sm font-medium text-gray-700">Mission:</h4>
-              <p className="text-gray-600 line-clamp-2">{data.mission}</p>
-            </div>
-            <div>
-              <h4 className="text-sm font-medium text-gray-700">Vision:</h4>
-              <p className="text-gray-600 line-clamp-2">{data.vision}</p>
+              <h4 className="text-sm font-medium text-gray-700">About Headline:</h4>
+              <p className="text-gray-600 line-clamp-2">{data.aboutheadline}</p>
             </div>
           </CardContent>
         </Card>
@@ -173,33 +152,11 @@ export default function AboutSection({ data, onEdit, loading = false }: AboutSec
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <h4 className="text-sm font-medium text-gray-700">Founding Story:</h4>
-              <p className="text-gray-600 line-clamp-2">{data.foundingStory}</p>
+              <h4 className="text-sm font-medium text-gray-700">Main Image:</h4>
+              <p className="text-gray-600">{data.image ? "Uploaded" : "Not uploaded"}</p>
             </div>
             <div>
-              <h4 className="text-sm font-medium text-gray-700">Team Info:</h4>
-              <p className="text-gray-600 line-clamp-2">{data.teamInfo}</p>
-            </div>
-            <div>
-              <h4 className="text-sm font-medium text-gray-700">Core Values:</h4>
-              <div className="flex flex-wrap gap-2 mt-1">
-                {getCorrectValues(data)?.slice(0, 3).map((value, index) => (
-                  <span 
-                    key={index} 
-                    className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full"
-                  >
-                    {value}
-                  </span>
-                ))}
-                {getCorrectValues(data)?.length > 3 && (
-                  <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
-                    +{getCorrectValues(data).length - 3} more
-                  </span>
-                )}
-              </div>
-            </div>
-            <div>
-              <h4 className="text-sm font-medium text-gray-700">Images:</h4>
+              <h4 className="text-sm font-medium text-gray-700">Additional Images:</h4>
               <p className="text-gray-600">{data.images?.length || 0} images uploaded</p>
             </div>
           </CardContent>
@@ -209,15 +166,35 @@ export default function AboutSection({ data, onEdit, loading = false }: AboutSec
       {data.image && (
         <Card>
           <CardHeader>
-            <CardTitle>Primary Image</CardTitle>
+            <CardTitle>Main Image</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="aspect-video bg-muted rounded-lg border overflow-hidden">
               <img
                 src={getImageSrc(data.image)}
-                alt="About Us"
+                alt="Main Image"
                 className="w-full h-full object-cover"
               />
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      {data.images && data.images.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Additional Images</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+              {data.images.map((img, index) => (
+                <div key={index} className="aspect-square bg-muted rounded-lg border overflow-hidden">
+                  <img
+                    src={getImageSrc(img)}
+                    alt={`Additional Image ${index + 1}`}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
