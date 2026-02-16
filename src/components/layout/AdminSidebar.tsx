@@ -24,6 +24,7 @@ import {
   Quote,
   AlertCircle,
   Mail,
+  Key,
 } from "lucide-react";
 import logo from "../../assets/logo.webp";
 import { cn } from "@/lib/utils";
@@ -70,6 +71,7 @@ const navItems = [
   // { icon: BarChart3, label: "Reports", path: "/reports" },
   { icon: Bell, label: "Notifications", path: "/notifications" },
   { icon: CreditCard, label: "Offers & Coupons", path: "/offers" },
+  { icon: Key, label: "Credentials", path: "/credentials" },
   // { icon: MessageSquare, label: "Chat Monitor", path: "/chat" },
   // { icon: Star, label: "Feedback", path: "/feedback" },
 ];
