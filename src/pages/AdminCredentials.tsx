@@ -240,36 +240,63 @@ export default function AdminCredentials() {
     }
   };
 
-  const handleEdit = (credential: Credential) => {
+  const handleEdit = async (credential: Credential) => {
+    // When editing, fetch the single credential (expecting decrypted fields)
+    // then populate the appropriate form and switch tab.
     setEditingId(credential._id);
-    if (credential.credentialType === "whatsapp") {
-      const wc = credential as WhatsAppCredential;
-      setWhatsappForm({
-        name: credential.name,
-        description: credential.description || "",
-        whatsappAccessToken: wc.whatsappAccessToken || "",
-        whatsappPhoneNumberId: wc.whatsappPhoneNumberId || "",
-        whatsappBusinessId: wc.whatsappBusinessId || "",
-      });
-    } else if (credential.credentialType === "email") {
-      const ec = credential as EmailCredential;
-      setEmailForm({
-        name: credential.name,
-        description: credential.description || "",
-        emailHost: ec.emailHost || "",
-        emailPort: ec.emailPort || 587,
-        emailUser: ec.emailUser || "",
-        emailPassword: ec.emailPassword || "",
-        adminEmail: ec.adminEmail || "",
-      });
-    } else if (credential.credentialType === "razorpay") {
-      const rc = credential as RazorpayCredential;
-      setRazorpayForm({
-        name: credential.name,
-        description: credential.description || "",
-        razorpayKeyId: rc.razorpayKeyId || "",
-        razorpayKeySecret: rc.razorpayKeySecret || "",
-      });
+    setActiveTab(credential.credentialType);
+
+    try {
+      setLoading(true);
+      // Attempt to fetch full/decrypted credential from API.
+      // Backend should return decrypted sensitive fields for editing.
+      const resp = await apiClient.get(`/credentials/${credential._id}`);
+      const full: any = resp.data?.data || resp.data || resp;
+
+      if (credential.credentialType === "whatsapp") {
+        const wc: any = full;
+        setWhatsappForm({
+          name: wc.name || credential.name || "",
+          description: wc.description || credential.description || "",
+          whatsappAccessToken:
+            wc.whatsappAccessToken || wc.accessToken || wc.token || "",
+          whatsappPhoneNumberId:
+            wc.whatsappPhoneNumberId || wc.phoneNumberId || "",
+          whatsappBusinessId: wc.whatsappBusinessId || wc.businessId || "",
+        });
+      } else if (credential.credentialType === "email") {
+        const ec: any = full;
+        setEmailForm({
+          name: ec.name || credential.name || "",
+          description: ec.description || credential.description || "",
+          emailHost: ec.emailHost || ec.host || "",
+          emailPort:
+            typeof ec.emailPort !== "undefined"
+              ? ec.emailPort
+              : typeof ec.port !== "undefined"
+              ? ec.port
+              : 587,
+          emailUser: ec.emailUser || ec.user || ec.username || "",
+          emailPassword: ec.emailPassword || ec.password || "",
+          adminEmail: ec.adminEmail || ec.adminEmailAddress || ec.adminEmail || "",
+        });
+      } else if (credential.credentialType === "razorpay") {
+        const rc: any = full;
+        setRazorpayForm({
+          name: rc.name || credential.name || "",
+          description: rc.description || credential.description || "",
+          razorpayKeyId: rc.razorpayKeyId || rc.keyId || rc.key || "",
+          razorpayKeySecret:
+            rc.razorpayKeySecret || rc.keySecret || rc.secret || "",
+        });
+      }
+    } catch (error: any) {
+      setErrorMessage(
+        error.response?.data?.message ||
+          "Failed to fetch credential details for editing"
+      );
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -469,13 +496,22 @@ export default function AdminCredentials() {
                   </div>
 
                   <div className="flex gap-3 pt-4">
-                    <Button type="submit" disabled={loading}>
-                      {loading
-                        ? "Saving..."
-                        : editingId
-                          ? "Update Credential"
-                          : "Add Credential"}
-                    </Button>
+                    {!editingId && getCredentialsByType("whatsapp").length > 0 ? (
+                      <Button
+                        type="button"
+                        onClick={() => handleEdit(getCredentialsByType("whatsapp")[0])}
+                      >
+                        Already exists — Edit
+                      </Button>
+                    ) : (
+                      <Button type="submit" disabled={loading}>
+                        {loading
+                          ? "Saving..."
+                          : editingId
+                            ? "Update Credential"
+                            : "Add Credential"}
+                      </Button>
+                    )}
                     {editingId && (
                       <Button
                         type="button"
@@ -494,7 +530,7 @@ export default function AdminCredentials() {
             </Card>
 
             {/* WhatsApp Credentials List */}
-            <div className="space-y-4">
+            {/* <div className="space-y-4">
               <h3 className="text-lg font-semibold">Saved Credentials</h3>
               {getCredentialsByType("whatsapp").length === 0 ? (
                 <Card>
@@ -559,7 +595,7 @@ export default function AdminCredentials() {
                   </Card>
                 ))
               )}
-            </div>
+            </div> */}
           </TabsContent>
 
           {/* Email Tab */}
@@ -703,13 +739,22 @@ export default function AdminCredentials() {
                   </div>
 
                   <div className="flex gap-3 pt-4">
-                    <Button type="submit" disabled={loading}>
-                      {loading
-                        ? "Saving..."
-                        : editingId
-                          ? "Update Credential"
-                          : "Add Credential"}
-                    </Button>
+                    {!editingId && getCredentialsByType("email").length > 0 ? (
+                      <Button
+                        type="button"
+                        onClick={() => handleEdit(getCredentialsByType("email")[0])}
+                      >
+                        Already exists — Edit
+                      </Button>
+                    ) : (
+                      <Button type="submit" disabled={loading}>
+                        {loading
+                          ? "Saving..."
+                          : editingId
+                            ? "Update Credential"
+                            : "Add Credential"}
+                      </Button>
+                    )}
                     {editingId && (
                       <Button
                         type="button"
@@ -728,7 +773,7 @@ export default function AdminCredentials() {
             </Card>
 
             {/* Email Credentials List */}
-            <div className="space-y-4">
+            {/* <div className="space-y-4">
               <h3 className="text-lg font-semibold">Saved Credentials</h3>
               {getCredentialsByType("email").length === 0 ? (
                 <Card>
@@ -793,7 +838,7 @@ export default function AdminCredentials() {
                   </Card>
                 ))
               )}
-            </div>
+            </div> */}
           </TabsContent>
 
           {/* Razorpay Tab */}
@@ -892,13 +937,22 @@ export default function AdminCredentials() {
                   </div>
 
                   <div className="flex gap-3 pt-4">
-                    <Button type="submit" disabled={loading}>
-                      {loading
-                        ? "Saving..."
-                        : editingId
-                          ? "Update Credential"
-                          : "Add Credential"}
-                    </Button>
+                    {!editingId && getCredentialsByType("razorpay").length > 0 ? (
+                      <Button
+                        type="button"
+                        onClick={() => handleEdit(getCredentialsByType("razorpay")[0])}
+                      >
+                        Already exists — Edit
+                      </Button>
+                    ) : (
+                      <Button type="submit" disabled={loading}>
+                        {loading
+                          ? "Saving..."
+                          : editingId
+                            ? "Update Credential"
+                            : "Add Credential"}
+                      </Button>
+                    )}
                     {editingId && (
                       <Button
                         type="button"
@@ -917,7 +971,7 @@ export default function AdminCredentials() {
             </Card>
 
             {/* Razorpay Credentials List */}
-            <div className="space-y-4">
+            {/* <div className="space-y-4">
               <h3 className="text-lg font-semibold">Saved Credentials</h3>
               {getCredentialsByType("razorpay").length === 0 ? (
                 <Card>
@@ -982,7 +1036,7 @@ export default function AdminCredentials() {
                   </Card>
                 ))
               )}
-            </div>
+            </div> */}
           </TabsContent>
         </Tabs>
       </div>
