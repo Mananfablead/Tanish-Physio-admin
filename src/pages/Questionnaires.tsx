@@ -51,7 +51,7 @@ import {
 } from "@/features/questionnaires/questionnaireSlice";
 import PageLoader from "@/components/PageLoader";
 
-type QuestionType = "text" | "mcq" | "slider";
+type QuestionType = "text" | "mcq" | "slider" | "upload";
 
 interface Question {
   _id?: string;
@@ -424,6 +424,8 @@ export default function Questionnaires() {
         return "Multiple Choice";
       case "slider":
         return "Slider";
+      case "upload":
+        return "File Upload";
       default:
         return type;
     }
@@ -435,6 +437,8 @@ export default function Questionnaires() {
         return "bg-info/15 text-info";
       case "mcq":
         return "bg-success/15 text-success";
+      case "upload":
+        return "bg-purple/15 text-purple";
       case "slider":
         return "bg-warning/15 text-warning";
       default:
@@ -625,6 +629,7 @@ export default function Questionnaires() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="upload">File Upload</SelectItem>
                     <SelectItem value="text">Free Text</SelectItem>
                     <SelectItem value="mcq">Multiple Choice</SelectItem>
                     <SelectItem value="slider">Slider (1-10)</SelectItem>

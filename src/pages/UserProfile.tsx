@@ -16,6 +16,7 @@ import {
   UserCog,
   PlusCircle,
   Loader2,
+  FileText,
 } from "lucide-react";
 import { Calendar as CalendarIcon } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -368,6 +369,20 @@ const toggleUserStatus = async () => {
     return new Date(dateString).toLocaleString();
   };
 
+  // Check if answer is a file URL
+  const isFileUrl = (answer) => {
+    if (typeof answer !== 'string') return false;
+    return answer.includes('/uploads/questionnaire-responses/');
+  };
+
+  // Extract filename from URL
+  const getFileNameFromUrl = (url) => {
+    if (!url) return 'Document';
+    const parts = url.split('/');
+    const filename = parts[parts.length - 1];
+    return filename || 'Document';
+  };
+
   // Format answer based on question type
   const formatAnswer = (answer, questionType) => {
     if (!answer) return "Not answered";
@@ -718,14 +733,32 @@ const toggleUserStatus = async () => {
                             </div>
                             
                             <div className="ml-6 space-y-1">
-                              <p className="text-muted-foreground">
+                              <p className="text-muted-foreground flex items-center gap-2">
                                 <span className="font-medium">Answer:</span>{' '}
-                                <span className="font-medium text-foreground">
-                                  {hasResponse 
-                                    ? formatAnswer(userResponse.answer, question.type || userResponse.questionType)
-                                    : 'Not answered'
-                                  }
-                                </span>
+                                {hasResponse ? (
+                                  isFileUrl(userResponse.answer) ? (
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-medium text-foreground text-sm">
+                                        {getFileNameFromUrl(userResponse.answer)}
+                                      </span>
+                                      <a
+                                        href={userResponse.answer}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-1 px-3 py-1 bg-primary text-white text-xs font-semibold rounded-full hover:bg-primary/90 transition-colors"
+                                      >
+                                        <FileText className="w-3 h-3" />
+                                        View
+                                      </a>
+                                    </div>
+                                  ) : (
+                                    <span className="font-medium text-foreground">
+                                      {formatAnswer(userResponse.answer, question.type || userResponse.questionType)}
+                                    </span>
+                                  )
+                                ) : (
+                                  <span className="font-medium text-foreground">Not answered</span>
+                                )}
                               </p>
                               {userResponse?.timestamp && (
                                 <p className="text-xs text-muted-foreground">
@@ -773,11 +806,28 @@ const toggleUserStatus = async () => {
                             </div>
                             
                             <div className="ml-6">
-                              <p className="text-muted-foreground">
+                              <p className="text-muted-foreground flex items-center gap-2">
                                 <span className="font-medium">Answer:</span>{' '}
-                                <span className="font-medium text-foreground">
-                                  {response.answer}
-                                </span>
+                                {isFileUrl(response.answer) ? (
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-medium text-foreground text-sm">
+                                      {getFileNameFromUrl(response.answer)}
+                                    </span>
+                                    <a
+                                      href={response.answer}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center gap-1 px-3 py-1 bg-primary text-white text-xs font-semibold rounded-full hover:bg-primary/90 transition-colors"
+                                    >
+                                      <FileText className="w-3 h-3" />
+                                      View
+                                    </a>
+                                  </div>
+                                ) : (
+                                  <span className="font-medium text-foreground">
+                                    {response.answer}
+                                  </span>
+                                )}
                               </p>
                               {response.timestamp && (
                                 <p className="text-xs text-muted-foreground mt-1">
