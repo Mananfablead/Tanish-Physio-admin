@@ -4,18 +4,18 @@ import path from "path";
 import { componentTagger } from "lovable-tagger";
 
 export default defineConfig(({ mode }) => ({
-  base: "/physio-admin",
+  base: "/admin",
   server: {
     host: "::",
     port: 8080,
-    // proxy: {
-    //   "/api": {
-    //     target: "http://localhost:5000",
-    //     changeOrigin: true,
-    //     secure: false,
-    //     rewrite: (path) => path.replace(/^\/api/, "/api"),
-    //   },
-    // },
+    proxy: {
+      "/api": {
+        target: "http://localhost:5000",
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/api/, "/api"),
+      },
+    },
   },
 
   plugins: [react(), mode === "development" && componentTagger()].filter(

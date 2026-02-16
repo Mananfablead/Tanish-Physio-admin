@@ -64,7 +64,7 @@ const App = () => (
       <Toaster />
       <Sonner />
 
-      <BrowserRouter basename="/physio-admin">
+      <BrowserRouter basename="/admin">
         <Routes>
           {/* ================= PUBLIC ================= */}
           <Route
