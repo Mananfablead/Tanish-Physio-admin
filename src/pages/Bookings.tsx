@@ -420,34 +420,6 @@ export default function Bookings() {
                             <Eye className="w-4 h-4" />
                           </Button>
                         </Link>
-
-                        {/* Reschedule Button */}
-                        {booking.status !== "cancelled" && (
-                          <Button
-                            size="icon"
-                            variant="outline"
-                            className="h-8 w-8 flex-shrink-0"
-                            onClick={() => {
-                              setSelectedBooking(booking);
-                              setIsEditing(true);
-                              setNewBookingForm({
-                                serviceId:
-                                  booking.serviceId?._id ||
-                                  booking.serviceId ||
-                                  "",
-                                date:
-                                  booking.scheduledDate || booking.date || "",
-                                time:
-                                  booking.scheduledTime || booking.time || "",
-                                notes: booking.notes || "",
-                                clientName: booking.clientName || "",
-                              });
-                              setIsModalOpen(true);
-                            }}
-                          >
-                            <Calendar className="w-4 h-4" />
-                          </Button>
-                        )}
                       </div>
                     </td>
                   </tr>

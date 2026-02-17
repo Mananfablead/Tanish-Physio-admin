@@ -279,69 +279,6 @@ console.log("errer",singleBooking)
         {/* Right */}
         <div className="space-y-6">
           {/* Status */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Manage Booking</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <Button
-                className="w-full"
-                disabled={
-                  typeof booking.status === "string"
-                    ? booking.status === "confirmed"
-                    : false
-                }
-                onClick={() => handleStatusChange("confirmed")}
-              >
-                <CheckCircle className="w-4 h-4 mr-2" />
-                Confirm
-              </Button>
-
-              <Button
-                className="w-full"
-                variant="outline"
-                disabled={
-                  typeof booking.status === "string"
-                    ? booking.status === "pending"
-                    : false
-                }
-                onClick={() => handleStatusChange("pending")}
-              >
-                <ClockIcon className="w-4 h-4 mr-2" />
-                Pending
-              </Button>
-
-              <Button
-                className="w-full"
-                variant="destructive"
-                disabled={
-                  typeof booking.status === "string"
-                    ? booking.status === "cancelled"
-                    : false
-                }
-                onClick={() => handleStatusChange("cancelled")}
-              >
-                <XCircle className="w-4 h-4 mr-2" />
-                Cancel
-              </Button>
-
-              {/* Reschedule Button */}
-              {typeof booking.status === "string" &&
-                booking.status !== "cancelled" && (
-                  <Button
-                    className="w-full"
-                    variant="secondary"
-                    onClick={() => {
-                      // Open a dialog to reschedule the booking
-                      alert("Reschedule functionality would open a modal here");
-                    }}
-                  >
-                    <Calendar className="w-4 h-4 mr-2" />
-                    Reschedule
-                  </Button>
-                )}
-            </CardContent>
-          </Card>
 
           {/* Service Details */}
           <Card>
