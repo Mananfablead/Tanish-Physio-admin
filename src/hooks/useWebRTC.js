@@ -618,12 +618,44 @@ const useWebRTC = (roomId, socket, userRole = 'admin') => {
         });
 
         peer.on('close', () => {
-            setRemoteStreams(prev => {
-                const newState = { ...prev };
-                delete newState[userId];
-                return newState;
-            });
-            delete peerRefs.current[userId];
+            // Stop and remove remote stream tracks for this peer
+            try {
+                setRemoteStreams(prev => {
+                    const newState = { ...prev };
+                    const stream = newState[userId];
+                    if (stream) {
+                        try {
+                            stream.getTracks().forEach(t => { try { t.stop(); } catch (e) {} });
+                        } catch (e) {
+                            console.warn('Error stopping tracks for closed peer stream', userId, e);
+                        }
+                        delete newState[userId];
+                    }
+                    return newState;
+                });
+            } catch (e) {
+                console.warn('Error cleaning remoteStreams on close for', userId, e);
+            }
+
+            // Clear any attached video/audio element refs
+            try {
+                if (remoteVideoRefs.current[userId]) {
+                    try { remoteVideoRefs.current[userId].srcObject = null; } catch (e) {}
+                    delete remoteVideoRefs.current[userId];
+                }
+                if (remoteAudioRefs.current[userId]) {
+                    try { remoteAudioRefs.current[userId].srcObject = null; } catch (e) {}
+                    delete remoteAudioRefs.current[userId];
+                }
+            } catch (e) {
+                console.warn('Error clearing media element refs on close for', userId, e);
+            }
+
+            // Remove peer reference
+            if (peerRefs.current[userId]) {
+                try { peerRefs.current[userId].destroy(); } catch (e) {}
+                delete peerRefs.current[userId];
+            }
         });
 
         peer.on('error', (err) => {
@@ -1202,10 +1234,56 @@ const useWebRTC = (roomId, socket, userRole = 'admin') => {
 
         const handleParticipantLeft = (data) => {
             console.log('ADMIN: Participant left:', data);
+            const leftSocketId = data.socketId || data.senderId || data.socket || data.id;
+
+            // Destroy peer connection if exists
+            if (leftSocketId && peerRefs.current[leftSocketId]) {
+                try {
+                    peerRefs.current[leftSocketId].destroy();
+                } catch (err) {
+                    console.error('Error destroying peer for left participant', leftSocketId, err);
+                }
+                delete peerRefs.current[leftSocketId];
+            }
+
+            // Stop and remove remote stream
+            if (leftSocketId) {
+                try {
+                    setRemoteStreams(prev => {
+                        const newState = { ...prev };
+                        const stream = newState[leftSocketId];
+                        if (stream) {
+                            try {
+                                stream.getTracks().forEach(t => { try { t.stop(); } catch (e) {} });
+                            } catch (e) {
+                                console.warn('Error stopping tracks for remote stream', leftSocketId, e);
+                            }
+                            delete newState[leftSocketId];
+                        }
+                        return newState;
+                    });
+                } catch (e) {
+                    console.warn('Error removing remote stream for left participant', leftSocketId, e);
+                }
+
+                // Clear media element refs
+                try {
+                    if (remoteVideoRefs.current[leftSocketId]) {
+                        try { remoteVideoRefs.current[leftSocketId].srcObject = null; } catch (e) {}
+                        delete remoteVideoRefs.current[leftSocketId];
+                    }
+                    if (remoteAudioRefs.current[leftSocketId]) {
+                        try { remoteAudioRefs.current[leftSocketId].srcObject = null; } catch (e) {}
+                        delete remoteAudioRefs.current[leftSocketId];
+                    }
+                } catch (e) {
+                    console.warn('Error clearing media element refs for', leftSocketId, e);
+                }
+            }
+
+            // Finally remove participant from list
             setParticipants(prev => {
-                const filtered = prev.filter(p =>
-                    p.userId !== data.userId && p.socketId !== data.socketId
-                );
+                const filtered = prev.filter(p => p.socketId !== leftSocketId && p.userId !== data.userId);
                 console.log('ADMIN: Participants after removal:', filtered);
                 return filtered;
             });

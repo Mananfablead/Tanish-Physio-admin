@@ -64,9 +64,11 @@ export default function TermsSection({ data, onEdit, loading = false }: TermsSec
                     </div>
                     
                     <div className="prose prose-sm max-w-none border rounded-xl p-4 sm:p-6 bg-muted/5 border-border">
-                        <div className="whitespace-pre-line leading-relaxed text-sm sm:text-base text-foreground/90">
-                            {data.content}
-                        </div>
+                       <div
+  className="whitespace-pre-line leading-relaxed text-sm sm:text-base text-foreground/90"
+  dangerouslySetInnerHTML={{ __html: data.content }}
+/>
+
                     </div>
                 </div>
             </div>

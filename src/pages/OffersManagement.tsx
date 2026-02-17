@@ -136,13 +136,13 @@ const OffersManagement = () => {
         </div>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
+          <CardHeader className="flex flex-row items-center justify-between ">
             <CardTitle>Active Offers</CardTitle>
             <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
               <DialogTrigger asChild>
                 <Button>Create Offer</Button>
               </DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[100vh]">
+              <DialogContent className="max-w-2xl max-h-[100vh] ">
                 <DialogHeader>
                   <DialogTitle>Create New Offer</DialogTitle>
                   <DialogDescription>

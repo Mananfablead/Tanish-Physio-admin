@@ -1142,187 +1142,97 @@ const VideoCall = ({
       );
     }
 
-    // Single participant (1-on-1 session)
-    if (streamKeys.length === 1) {
-      const userId = streamKeys[0];
-      const stream = remoteStreams[userId];
-      const participant = participants.find((p) => p.userId === userId) || {};
+    // Show only the most recent remote stream (latest socket) in the UI
+    const latestKey = streamKeys[streamKeys.length - 1];
+    const latestStream = remoteStreams[latestKey];
+    const latestParticipant = participants.find((p) => p.userId === latestKey) || {};
 
-      return (
-        <div className="relative w-full h-full bg-black rounded-xl overflow-hidden">
-          {/* Hidden audio element for remote audio */}
-          <audio
-            ref={(el) => {
-              if (el && stream) {
-                remoteAudioRefs.current[userId] = el;
-                if (el.srcObject !== stream) {
-                  try {
-                    el.srcObject = stream;
-                    el.muted = false;
-                    el.autoplay = true;
-                    const playPromise = el.play();
-                    if (playPromise !== undefined) {
-                      playPromise.catch((error) => {
-                        el.muted = false;
-                        el.play().catch(() => {});
-                      });
-                    }
-                  } catch (err) {
-                    console.error(
-                      `Error assigning audio for ${
-                        participant.name || "Participant"
-                      }:`,
-                      err
-                    );
+    // Clear any non-latest refs to avoid stale media showing
+    Object.keys(remoteStreams).forEach((k) => {
+      if (k !== latestKey) {
+        try {
+          if (remoteVideoRefs.current[k]) {
+            try { remoteVideoRefs.current[k].srcObject = null; } catch (e) {}
+            delete remoteVideoRefs.current[k];
+          }
+          if (remoteAudioRefs.current[k]) {
+            try { remoteAudioRefs.current[k].srcObject = null; } catch (e) {}
+            delete remoteAudioRefs.current[k];
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
+    });
+
+    return (
+      <div className="relative w-full h-full bg-black rounded-xl overflow-hidden">
+        {/* Hidden audio element for remote audio */}
+        <audio
+          ref={(el) => {
+            if (el && latestStream) {
+              remoteAudioRefs.current[latestKey] = el;
+              if (el.srcObject !== latestStream) {
+                try {
+                  el.srcObject = latestStream;
+                  el.muted = false;
+                  el.autoplay = true;
+                  const playPromise = el.play();
+                  if (playPromise !== undefined) {
+                    playPromise.catch((error) => {
+                      el.muted = false;
+                      el.play().catch(() => {});
+                    });
                   }
+                } catch (err) {
+                  console.error(`Error assigning audio for ${latestParticipant.name || 'Participant'}:`, err);
                 }
               }
-            }}
-            autoPlay
-            className="hidden"
-          />
-          <video
-            ref={(el) => {
-              if (el && stream) {
-                remoteVideoRefs.current[userId] = el;
-                // Only assign srcObject if it's different to prevent blinking
-                if (el.srcObject !== stream) {
-                  try {
-                    el.srcObject = stream;
-                    el.muted = true;
-                    el.autoplay = true;
-                    el.playsInline = true;
+            }
+          }}
+          autoPlay
+          className="hidden"
+        />
+        <video
+          ref={(el) => {
+            if (el && latestStream) {
+              remoteVideoRefs.current[latestKey] = el;
+              // Only assign srcObject if it's different to prevent blinking
+              if (el.srcObject !== latestStream) {
+                try {
+                  el.srcObject = latestStream;
+                  el.muted = true;
+                  el.autoplay = true;
+                  el.playsInline = true;
 
-                    const playPromise = el.play();
-                    if (playPromise !== undefined) {
-                      playPromise.catch((error) => {
-                        el.muted = true;
-                        el.play().catch(() => {});
-                      });
-                    }
-                  } catch (err) {
-                    console.error(
-                      `Error assigning video for ${
-                        participant.name || "Participant"
-                      }:`,
-                      err
-                    );
+                  const playPromise = el.play();
+                  if (playPromise !== undefined) {
+                    playPromise.catch((error) => {
+                      el.muted = true;
+                      el.play().catch(() => {});
+                    });
                   }
+                } catch (err) {
+                  console.error(`Error assigning video for ${latestParticipant.name || 'Participant'}:`, err);
                 }
               }
-            }}
-            autoPlay
-            playsInline
-            className="w-full h-full object-cover"
-            muted
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent pointer-events-none"></div>
-          <div className="absolute bottom-4 left-4 bg-black/70 backdrop-blur-sm rounded-lg p-3">
-            {/* <div className="flex items-center gap-2">
-              <div className="w-3 h-3 bg-emerald-500 rounded-full animate-pulse"></div>
-              <div>
-                <p className="text-white font-medium text-sm">
-                  {participant.name || "Participant"}
-                </p>
-                <p className="text-slate-300 text-xs">
-                  {participant.role === "therapist" ? "Therapist" : "Patient"}
-                </p>
-              </div>
-            </div> */}
+            }
+          }}
+          autoPlay
+          playsInline
+          className="w-full h-full object-cover"
+          muted
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent pointer-events-none"></div>
+        <div className="absolute bottom-4 left-4 bg-black/70 backdrop-blur-sm rounded-lg p-3">
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 bg-emerald-500 rounded-full animate-pulse"></div>
+            <div>
+              <p className="text-white font-medium text-sm">{latestParticipant.name || 'Participant'}</p>
+              <p className="text-slate-300 text-xs">{latestParticipant.role === 'therapist' ? 'Therapist' : 'Patient'}</p>
+            </div>
           </div>
         </div>
-      );
-    }
-
-    // Multiple participants (group session) - Grid layout
-    return (
-      <div className="grid grid-cols-2 gap-3 w-full h-full p-3">
-        {streamKeys.map((userId, index) => {
-          const stream = remoteStreams[userId];
-          const participant =
-            participants.find((p) => p.userId === userId) || {};
-
-          return (
-            <div
-              key={userId}
-              className="relative bg-black rounded-xl overflow-hidden border border-slate-700"
-            >
-              {/* Hidden audio element for remote audio */}
-              <audio
-                ref={(el) => {
-                  if (el && stream) {
-                    remoteAudioRefs.current[userId] = el;
-                    if (el.srcObject !== stream) {
-                      try {
-                        el.srcObject = stream;
-                        el.muted = false;
-                        el.autoplay = true;
-                        const playPromise = el.play();
-                        if (playPromise !== undefined) {
-                          playPromise.catch((error) => {
-                            el.muted = false;
-                            el.play().catch(() => {});
-                          });
-                        }
-                      } catch (err) {
-                        console.error(
-                          `Error with group audio ${index + 1}:`,
-                          err
-                        );
-                      }
-                    }
-                  }
-                }}
-                autoPlay
-                className="hidden"
-              />
-              <video
-                ref={(el) => {
-                  if (el && stream) {
-                    remoteVideoRefs.current[userId] = el;
-                    // Only assign srcObject if it's different to prevent blinking
-                    if (el.srcObject !== stream) {
-                      try {
-                        el.srcObject = stream;
-                        el.muted = true;
-                        el.autoplay = true;
-                        el.playsInline = true;
-
-                        const playPromise = el.play();
-                        if (playPromise !== undefined) {
-                          playPromise.catch((error) => {
-                            el.muted = true;
-                            el.play().catch(() => {});
-                          });
-                        }
-                      } catch (err) {
-                        console.error(
-                          `Error with group video ${index + 1}:`,
-                          err
-                        );
-                      }
-                    }
-                  }
-                }}
-                autoPlay
-                playsInline
-                className="w-full h-full object-cover"
-                muted
-              />
-              <div className="absolute top-2 left-2 bg-black/70 backdrop-blur-sm rounded-lg px-2 py-1">
-                <p className="text-white text-xs font-medium">
-                  {participant.name || `Participant ${index + 1}`}
-                </p>
-                <p className="text-slate-300 text-[10px]">
-                  {participant.role === "therapist" ? "Therapist" : "Patient"}
-                </p>
-              </div>
-              <div className="absolute bottom-2 right-2">
-                <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-              </div>
-            </div>
-          );
-        })}
       </div>
     );
   };
