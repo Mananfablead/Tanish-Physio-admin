@@ -18,23 +18,23 @@ import { createTokenExpirationWatcher, createTokenExpirationInterceptor } from "
 import apiClient from "@/api/apiClient";
 
 export const store = configureStore({
-  reducer: {
-    auth: authReducer,
-    dashboard: dashboardReducer,
-    users: userReducer,
-    sessions: sessionReducer,
-    services: serviceReducer,
-    questionnaires: questionnaireReducer,
-    subscriptions: subscriptionReducer,
-    availability: availabilityReducer,
-    therapists: therapistReducer,
-    notifications: notificationReducer,
-    bookings: bookingReducer,
-    payments: paymentReducer,
-    testimonials: testimonialReducer,
-    cms: cmsReducer,
-    offers: offerReducer,
-  },
+    reducer: {
+        auth: authReducer,
+        dashboard: dashboardReducer,
+        users: userReducer,
+        sessions: sessionReducer,
+        services: serviceReducer,
+        questionnaires: questionnaireReducer,
+        subscriptions: subscriptionReducer,
+        availability: availabilityReducer,
+        therapists: therapistReducer,
+        notifications: notificationReducer,
+        bookings: bookingReducer,
+        payments: paymentReducer,
+        testimonials: testimonialReducer,
+        cms: cmsReducer,
+        offers: offerReducer,
+    },
 });
 
 // Setup token expiration handling
@@ -42,55 +42,55 @@ let tokenWatcherCleanup = null;
 
 // Function to setup token expiration watcher
 const setupTokenExpirationWatcher = (token) => {
-  // Clean up previous watcher
-  if (tokenWatcherCleanup) {
-    tokenWatcherCleanup();
-    tokenWatcherCleanup = null;
-  }
+    // Clean up previous watcher
+    if (tokenWatcherCleanup) {
+        tokenWatcherCleanup();
+        tokenWatcherCleanup = null;
+    }
 
-  // Set up new watcher if we have a token
-  if (token) {
-    tokenWatcherCleanup = createTokenExpirationWatcher(token, () => {
-      console.log('Token expired, logging out automatically');
-      store.dispatch({ type: 'auth/logout' });
-    });
-  }
+    // Set up new watcher if we have a token
+    if (token) {
+        tokenWatcherCleanup = createTokenExpirationWatcher(token, () => {
+            console.log('Token expired, logging out automatically');
+            store.dispatch({ type: 'auth/logout' });
+        });
+    }
 };
 
 // Listen for token changes in auth state
 let currentToken = null;
 store.subscribe(() => {
-  const state = store.getState();
-  const newToken = state.auth.token;
+    const state = store.getState();
+    const newToken = state.auth.token;
 
-  if (newToken !== currentToken) {
-    currentToken = newToken;
-    setupTokenExpirationWatcher(currentToken);
-  }
+    if (newToken !== currentToken) {
+        currentToken = newToken;
+        setupTokenExpirationWatcher(currentToken);
+    }
 });
 
 // Setup API interceptor for token expiration
 const interceptor = createTokenExpirationInterceptor(() => {
-  console.log('API 401 error - token expired, logging out automatically');
-  store.dispatch({ type: 'auth/logout' });
+    console.log('API 401 error - token expired, logging out automatically');
+    store.dispatch({ type: 'auth/logout' });
 });
 
 // Add interceptor to API client
 const requestInterceptor = apiClient.interceptors.response.use(
-  (response) => response,
-  interceptor
+    (response) => response,
+    interceptor
 );
 
 // Listen for token expiration event and dispatch logout
 window.addEventListener('tokenExpired', () => {
-  store.dispatch({ type: 'auth/logout' });
+    store.dispatch({ type: 'auth/logout' });
 });
 
 // Cleanup function for when store is destroyed
 export const cleanupTokenExpiration = () => {
-  if (tokenWatcherCleanup) {
-    tokenWatcherCleanup();
-    tokenWatcherCleanup = null;
-  }
-  apiClient.interceptors.response.eject(requestInterceptor);
+    if (tokenWatcherCleanup) {
+        tokenWatcherCleanup();
+        tokenWatcherCleanup = null;
+    }
+    apiClient.interceptors.response.eject(requestInterceptor);
 };

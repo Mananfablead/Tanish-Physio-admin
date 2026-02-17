@@ -223,7 +223,7 @@ export default function Dashboard() {
       <UserGrowthChart userGrowthData={stats?.userGrowthChart ?? []} />
 
       {/* Expiration Overview Section */}
-      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+      {/* <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
         <div className="flex items-center gap-2 mb-3">
           <AlertCircle className="h-5 w-5 text-yellow-600" />
           <h3 className="font-bold text-yellow-800 text-lg">
@@ -247,7 +247,7 @@ export default function Dashboard() {
             <p className="text-xs text-slate-500">All time</p>
           </div>
         </div>
-      </div>
+      </div> */}
 
       {/* Expired Items Dashboard */}
       <div className="space-y-4">
