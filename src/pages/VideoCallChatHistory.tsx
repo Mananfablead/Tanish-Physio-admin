@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import useSocket from "@/hooks/useSocket";
 import { adminChatApi } from "../lib/adminChatApi";
+import { renderTextWithLinks } from "../utils/linkUtils";
 
 interface ChatMessage {
   _id: string;
@@ -511,7 +512,7 @@ const VideoCallChatHistory = () => {
                                 })}
                               </span>
                             </div>
-                            <p className="text-sm">{msg.message}</p>
+                            <p className="text-sm">{renderTextWithLinks(msg.message)}</p>
                           </div>
                         </div>
                       ))}

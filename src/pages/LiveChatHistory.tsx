@@ -1,6 +1,16 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useAdminChatSocket } from "@/hooks/useSocket";
 import { adminChatApi } from "../lib/adminChatApi";
+import { renderTextWithLinks } from "../utils/linkUtils";
+import axios from 'axios';
+
+interface Attachment {
+  type: string;
+  url: string;
+  originalName: string;
+  size: number;
+  mimeType: string;
+}
 
 interface Message {
   _id: string | number;
@@ -9,6 +19,7 @@ interface Message {
   senderName: string;
   timestamp: string | Date;
   senderType: "user" | "admin" | "therapist";
+  attachments?: Attachment[];
 }
 
 interface ChatStats {
@@ -64,6 +75,7 @@ interface ChatMessage {
   messageType: "live-chat" | "video-call-chat" | "default-chat";
   createdAt: string;
   updatedAt: string;
+  attachments?: Attachment[];
 }
 
 const LiveChatHistory = () => {
@@ -72,6 +84,9 @@ const LiveChatHistory = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newReply, setNewReply] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [uploading, setUploading] = useState<boolean>(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [stats, setStats] = useState<ChatStats>({
     totalMessages: 0,
     unreadMessages: 0,
@@ -275,6 +290,7 @@ const LiveChatHistory = () => {
                 senderName: data.senderName || 'User',
                 timestamp: data.timestamp || new Date().toISOString(),
                 senderType: finalSenderType,
+                attachments: data.attachments || [],
               },
             ];
           });
@@ -365,6 +381,7 @@ const LiveChatHistory = () => {
             senderName: data.senderName,
             timestamp: data.timestamp || new Date(),
             senderType: data.senderType,
+            attachments: data.attachments || [],
           },
         ]);
         
@@ -572,6 +589,7 @@ const LiveChatHistory = () => {
           senderName: msg.senderId?.name || msg.senderId?.email || 'User',
           timestamp: msg.createdAt || msg.timestamp,
           senderType: msg.senderType,
+          attachments: msg.attachments || [],
         }));
 
         console.log('Formatted messages:', formattedMessages);
@@ -683,6 +701,123 @@ const LiveChatHistory = () => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSendReply();
+    }
+  };
+
+  // Handle file selection
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files) {
+      const validFiles = Array.from(files).filter(file => 
+        file.type.startsWith('image/') || file.type.startsWith('video/')
+      );
+      
+      if (validFiles.length !== files.length) {
+        alert('Only image and video files are allowed!');
+      }
+      
+      setSelectedFiles(prev => [...prev, ...validFiles]);
+    }
+  };
+
+  // Remove selected file
+  const removeFile = (index: number) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // Upload files to server
+  const uploadFiles = async (files: File[]) => {
+    const uploadedAttachments = [];
+    
+    for (const file of files) {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      try {
+        const token = localStorage.getItem('token');
+        const response = await axios.post('/api/chat/upload-file', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (response.data.success) {
+          uploadedAttachments.push(response.data.data.file);
+        }
+      } catch (error) {
+        console.error('Error uploading file:', error);
+      }
+    }
+    
+    return uploadedAttachments;
+  };
+
+  // Handle send reply with files
+  const handleSendReplyWithFiles = async () => {
+    if ((!newReply.trim() && selectedFiles.length === 0) || !selectedChat) return;
+
+    try {
+      setUploading(true);
+      
+      // Upload files first
+      let attachments = [];
+      if (selectedFiles.length > 0) {
+        attachments = await uploadFiles(selectedFiles);
+      }
+      
+      // Send reply to the user - handle different possible session ID structures
+      const sessionId =
+        selectedChat.sessionId ||
+        selectedChat._id ||
+        selectedChat.sessionId?._id;
+
+      // Check if this is a support room
+      const isSupportRoom = typeof sessionId === 'string' && sessionId.startsWith('support-');
+
+      setNewReply("");
+      setSelectedFiles([]);
+
+      if (isSupportRoom && socket && connected && currentRoomId) {
+        // For support rooms, send via socket
+        const messageId = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+          const r = Math.random() * 16 | 0;
+          const v = c === 'x' ? r : (r & 0x3 | 0x8);
+          return v.toString(16);
+        });
+
+        console.log('Sending message via socket to support room:', currentRoomId);
+        
+        emit('send-message', {
+          roomId: currentRoomId,
+          roomType: 'individual',
+          message: {
+            content: newReply.trim(),
+            messageId,
+            attachments
+          }
+        });
+      } else {
+        // For regular sessions, use REST API
+        const messageType = sessionId ? "live-chat" : "default-chat";
+
+        const response = await adminChatApi.sendAdminReply({
+          sessionId: sessionId || null,
+          message: newReply.trim(),
+          messageType: messageType,
+        });
+
+        if (!response.success) {
+          throw new Error(response.message || 'Failed to send message');
+        }
+      }
+
+      // Refresh active chats
+      loadActiveChats();
+    } catch (error) {
+      console.error("Error sending reply:", error);
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -844,7 +979,56 @@ const LiveChatHistory = () => {
                               {msg.senderName}
                             </p>
                           )}
-                          <p className="text-sm">{msg.content}</p>
+                          <p className="text-sm">{renderTextWithLinks(msg.content)}</p>
+                          {msg.attachments && msg.attachments.length > 0 && (
+                            <div className="mt-2 space-y-2">
+                              {msg.attachments.map((attachment, index) => (
+                                <div key={index} className="relative">
+                                  {attachment.type === 'image' ? (
+                                    <img 
+                                      src={attachment.url} 
+                                      alt={attachment.originalName}
+                                      className="max-w-full h-auto rounded-lg cursor-pointer max-h-48"
+                                      onClick={() => window.open(attachment.url, '_blank')}
+                                    />
+                                  ) : attachment.type === 'video' ? (
+                                    <div className="flex flex-col">
+                                      <video 
+                                        src={attachment.url} 
+                                        controls
+                                        className="max-w-full max-h-64 rounded-lg"
+                                      >
+                                        Your browser does not support the video tag.
+                                      </video>
+                                      <div className="mt-1 text-xs text-muted-foreground">
+                                        {attachment.originalName} ({(attachment.size / 1024 / 1024).toFixed(2)} MB)
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center space-x-2 p-2 bg-gray-100 rounded-lg">
+                                      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                      </svg>
+                                      <div>
+                                        <p className="text-sm font-medium text-gray-800">{attachment.originalName}</p>
+                                        <p className="text-xs text-gray-500">
+                                          {(attachment.size / 1024 / 1024).toFixed(2)} MB
+                                        </p>
+                                      </div>
+                                      <button 
+                                        onClick={() => window.open(attachment.url, '_blank')}
+                                        className="ml-auto text-blue-500 hover:text-blue-700"
+                                      >
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                        </svg>
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
                           <p
                             className={`text-xs mt-1 ${
                               msg.senderType === "admin"
@@ -870,7 +1054,52 @@ const LiveChatHistory = () => {
 
                 {/* Reply Area */}
                 <div className="border-t p-4">
+                  {/* Selected files preview */}
+                  {selectedFiles.length > 0 && (
+                    <div className="mb-2 p-2 bg-gray-50 rounded-lg">
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-sm font-medium text-gray-700">Selected files:</span>
+                        <button 
+                          onClick={() => setSelectedFiles([])}
+                          className="text-xs text-red-500 hover:text-red-700"
+                        >
+                          Clear all
+                        </button>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedFiles.map((file, index) => (
+                          <div key={index} className="flex items-center bg-white px-2 py-1 rounded border text-xs">
+                            <span className="truncate max-w-[120px]">{file.name}</span>
+                            <button 
+                              onClick={() => removeFile(index)}
+                              className="ml-2 text-red-500 hover:text-red-700"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
                   <div className="flex items-end space-x-2">
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleFileSelect}
+                      accept="image/*,video/*"
+                      multiple
+                      className="hidden"
+                    />
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600"
+                      title="Upload files"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                      </svg>
+                    </button>
                     <textarea
                       value={newReply}
                       onChange={(e) => setNewReply(e.target.value)}
@@ -881,15 +1110,15 @@ const LiveChatHistory = () => {
                       style={{ minHeight: "60px", maxHeight: "120px" }}
                     />
                     <button
-                      onClick={handleSendReply}
-                      disabled={!newReply.trim() || loading}
+                      onClick={handleSendReplyWithFiles}
+                      disabled={(!newReply.trim() && selectedFiles.length === 0) || loading || uploading}
                       className={`px-4 py-2 rounded-lg ${
-                        newReply.trim() && !loading
+                        (newReply.trim() || selectedFiles.length > 0) && !loading && !uploading
                           ? "bg-primary text-primary-foreground hover:bg-primary/90"
                           : "bg-muted text-muted-foreground cursor-not-allowed"
                       }`}
                     >
-                      {loading ? "Sending..." : "Send"}
+                      {uploading ? "Uploading..." : loading ? "Sending..." : "Send"}
                     </button>
                   </div>
                 </div>

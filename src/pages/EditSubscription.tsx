@@ -25,6 +25,9 @@ interface SubscriptionPlan {
   duration?: string;
   autoRenew?: boolean;
   subscriberCount?: number;
+  session_type?: string;
+  price_inr?: number;
+  price_usd?: number;
 }
 
 export default function EditSubscription() {
@@ -43,6 +46,9 @@ export default function EditSubscription() {
     duration: "",
     autoRenew: true,
     sessions: 0,
+    session_type: "individual", // New field
+    price_inr: 0, // New field
+    price_usd: 0, // New field
   });
 
   const [initialPlan, setInitialPlan] = useState<SubscriptionPlan | null>(null);
@@ -87,6 +93,9 @@ export default function EditSubscription() {
       duration: plan.duration || plan.period || "",
       autoRenew: plan.autoRenew !== undefined ? plan.autoRenew : true,
       sessions: plan.sessions || 0,
+      session_type: (plan as any).session_type || "individual",
+      price_inr: (plan as any).price_inr || 0,
+      price_usd: (plan as any).price_usd || 0,
     });
   };
 
@@ -167,6 +176,9 @@ export default function EditSubscription() {
         duration: planForm.duration,
         features: planForm.features,
         autoRenew: planForm.autoRenew,
+        session_type: planForm.session_type,
+        price_inr: planForm.price_inr,
+        price_usd: planForm.price_usd,
       };
 
       // Only allow price update if the plan doesn't have subscribers
@@ -250,24 +262,54 @@ export default function EditSubscription() {
             />
           </div>
 
+          <div>
+            <Label htmlFor="session_type">Session Type</Label>
+            <select
+              id="session_type"
+              name="session_type"
+              value={planForm.session_type}
+              onChange={handleInputChange}
+              className="w-full mt-1 p-2 border rounded"
+            >
+              <option value="individual">Individual (1-on-1)</option>
+              <option value="group">Group</option>
+            </select>
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="price">Price (₹)</Label>
+              <Label htmlFor="price_inr">Price INR (₹)</Label>
               <Input
-                id="price"
-                name="price"
+                id="price_inr"
+                name="price_inr"
                 type="number"
-                placeholder="49.99"
-                value={planForm.price}
-                onChange={handleInputChange}
+                placeholder="2000"
+                value={planForm.price_inr || ''}
+                onChange={(e) =>
+                  setPlanForm((p) => ({
+                    ...p,
+                    price_inr: Number(e.target.value),
+                  }))
+                }
                 className="mt-1"
-                disabled={planHasSubscribers}
               />
-              {planHasSubscribers && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  Price cannot be modified for plans with active subscribers
-                </p>
-              )}
+            </div>
+            <div>
+              <Label htmlFor="price_usd">Price USD ($)</Label>
+              <Input
+                id="price_usd"
+                name="price_usd"
+                type="number"
+                placeholder="800"
+                value={planForm.price_usd || ''}
+                onChange={(e) =>
+                  setPlanForm((p) => ({
+                    ...p,
+                    price_usd: Number(e.target.value),
+                  }))
+                }
+                className="mt-1"
+              />
             </div>
           </div>
 

@@ -281,18 +281,14 @@ const filteredSubscriptions = Array.isArray(userSubscriptions)
               <TabsTrigger value="subscriptions" className="whitespace-nowrap">User Subscriptions</TabsTrigger>
             </TabsList>
           </div>
-          {plans.length < 3 && (
-            <div className="sm:ml-auto">
-              <Button className="gap-2 w-full sm:w-auto" asChild>
-                <Link to="/add-subscription">
-                  <Plus className="w-4 h-4" />
-                  Create Plan
-                </Link>
-              </Button>
-            </div>
-          )}
-
-
+          <div className="sm:ml-auto">
+            <Button className="gap-2 w-full sm:w-auto" asChild>
+              <Link to="/add-subscription">
+                <Plus className="w-4 h-4" />
+                Create Plan
+              </Link>
+            </Button>
+          </div>
         </div>
 
         {/* Plans Tab */}

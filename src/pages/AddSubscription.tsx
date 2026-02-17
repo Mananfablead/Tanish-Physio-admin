@@ -10,20 +10,16 @@ import { Link, useNavigate } from "react-router-dom";
 
 /* ---------------- CONSTANTS ---------------- */
 
-const planOptions = [
 
-  { label: "Monthly", value: "monthly", months: 1 },
-  { label: "Quarterly", value: "quarterly", months: 3 },
-  { label: "Yearly", value: "yearly", months: 12 },
-
-];
 
 const durationOptions = [
-
+  { label: "One-time", value: "one-time" },
+  { label: "Daily", value: "daily" },
+  { label: "Weekly", value: "weekly" },
   { label: "Monthly", value: "monthly" },
   { label: "Quarterly", value: "quarterly" },
+  { label: "Half-yearly", value: "half-yearly" },
   { label: "Yearly", value: "yearly" },
-
 ];
 
 /* ---------------- COMPONENT ---------------- */
@@ -42,8 +38,11 @@ export default function AddSubscription() {
     discountPercent: "",
     duration: "monthly",
     validityInMonths: "",
-    sessions: "", // 0 = Unlimited
+    sessions: "",
     sessionDuration: "",
+    session_type: "individual",
+    price_inr: "",
+    price_usd: "",
     features: [""],
     benefits: [""],
     services: ["Physiotherapy"],
@@ -52,6 +51,28 @@ export default function AddSubscription() {
     popular: false,
     autoRenew: true,
     status: "active",
+  } as {
+    planId: string;
+    name: string;
+    description: string;
+    price: string;
+    originalPrice: number;
+    discountPercent: string;
+    duration: string;
+    validityInMonths: string;
+    sessions: string;
+    sessionDuration: string;
+    session_type: string;
+    price_inr: string;
+    price_usd: string;
+    features: string[];
+    benefits: string[];
+    services: string[];
+    maxBookingsPerDay: string;
+    cancellationWindow: string;
+    popular: boolean;
+    autoRenew: boolean;
+    status: string;
   });
 
   /* ---------------- HANDLERS ---------------- */
@@ -60,12 +81,49 @@ export default function AddSubscription() {
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
-    setPlanForm((p) => ({
-      ...p,
-      [name]: ["price", "originalPrice", "discountPercent"].includes(name)
-        ? Number(value)
-        : value,
-    }));
+    
+    // Update the form state
+    setPlanForm(prev => {
+      let newState = {
+        ...prev,
+        [name]: ["price_inr", "price_usd", "originalPrice", "discountPercent", "sessions", "sessionDuration", "validityInMonths", "maxBookingsPerDay", "cancellationWindow"].includes(name)
+          ? Number(value) || ""
+          : value,
+      };
+
+      // Auto-populate validityInMonths based on duration
+      if (name === 'duration') {
+        let validityValue;
+        switch(value) {
+          case 'one-time': 
+            validityValue = 1; // One day validity
+            break;
+          case 'daily': 
+            validityValue = 0.03; // Approx 1 day in months
+            break;
+          case 'weekly': 
+            validityValue = 0.25; // Approx 1 week in months
+            break;
+          case 'monthly': 
+            validityValue = 1;
+            break;
+          case 'quarterly': 
+            validityValue = 3;
+            break;
+          case 'half-yearly': 
+            validityValue = 6;
+            break;
+          case 'yearly': 
+            validityValue = 12;
+            break;
+          default:
+            validityValue = 1;
+        }
+        newState = {...newState, validityInMonths: validityValue};
+      }
+
+      return newState;
+    });
   };
 
   const updateArrayField = (
@@ -88,10 +146,16 @@ export default function AddSubscription() {
     }));
 
   const handleSave = async () => {
-    if (!planForm.planId || !planForm.name || !planForm.price) {
+    const missingFields = [];
+    if (!planForm.planId) missingFields.push('Plan ID');
+    if (!planForm.name) missingFields.push('Name');
+    if (!planForm.price_inr || Number(planForm.price_inr) <= 0) missingFields.push('Price INR');
+    if (!planForm.price_usd || Number(planForm.price_usd) <= 0) missingFields.push('Price USD');
+    
+    if (missingFields.length > 0) {
       toast({
         title: "Validation Error",
-        description: "Plan Type, Name and Price are required",
+        description: `Missing required fields: ${missingFields.join(', ')}`,
         variant: "destructive",
       });
       return;
@@ -99,7 +163,7 @@ export default function AddSubscription() {
 
     const payload = {
       ...planForm,
-      price: Number(planForm.price),
+      price: Number(planForm.price_inr),
       originalPrice: Number(planForm.originalPrice),
       discountPercent: Number(planForm.discountPercent),
       sessions: Number(planForm.sessions),
@@ -107,6 +171,9 @@ export default function AddSubscription() {
       validityInMonths: Number(planForm.validityInMonths),
       maxBookingsPerDay: Number(planForm.maxBookingsPerDay),
       cancellationWindow: Number(planForm.cancellationWindow),
+      session_type: planForm.session_type,
+      price_inr: Number(planForm.price_inr) || 0,
+      price_usd: Number(planForm.price_usd) || 0,
     };
 
     const result = await dispatch(createSubscriptionPlan(payload));
@@ -149,28 +216,16 @@ export default function AddSubscription() {
         {/* LEFT COLUMN */}
         <div className="border rounded-lg p-6 space-y-4 bg-card">
           <div>
-            <Label>Plan Type</Label>
-            <select
-              className="w-full mt-1 p-2 border rounded"
+            <Label>Plan ID</Label>
+            <Input
+              name="planId"
               value={planForm.planId}
-              onChange={(e) => {
-                const plan = planOptions.find(
-                  (p) => p.value === e.target.value
-                );
-                setPlanForm((p) => ({
-                  ...p,
-                  planId: e.target.value,
-                  validityInMonths: plan?.months || 1,
-                }));
-              }}
-            >
-              <option value="">Select Plan</option>
-              {planOptions.map((p) => (
-                <option key={p.value} value={p.value}>
-                  {p.label}
-                </option>
-              ))}
-            </select>
+              onChange={handleChange}
+              placeholder="Enter unique plan ID (e.g., premium-monthly-2023)"
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Enter a unique identifier for this plan. Plan IDs must be unique across all plans.
+            </p>
           </div>
 
           <div>
@@ -178,14 +233,38 @@ export default function AddSubscription() {
             <Input name="name" value={planForm.name} onChange={handleChange} />
           </div>
 
+          <div>
+            <Label>Session Type</Label>
+            <select
+              name="session_type"
+              value={planForm.session_type}
+              onChange={handleChange}
+              className="w-full mt-1 p-2 border rounded"
+            >
+              <option value="individual">Individual (1-on-1)</option>
+              <option value="group">Group</option>
+            </select>
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label>Price (₹)</Label>
+              <Label>Price INR (₹)</Label>
               <Input
-                name="price"
+                name="price_inr"
                 type="number"
-                value={planForm.price}
+                value={planForm.price_inr}
                 onChange={handleChange}
+                placeholder="2000"
+              />
+            </div>
+            <div>
+              <Label>Price USD ($)</Label>
+              <Input
+                name="price_usd"
+                type="number"
+                value={planForm.price_usd}
+                onChange={handleChange}
+                placeholder="800"
               />
             </div>
           </div>
@@ -206,7 +285,17 @@ export default function AddSubscription() {
             </select>
           </div>
 
-
+          <div>
+            <Label>Validity Period (months)</Label>
+            <Input
+              type="number"
+              value={planForm.validityInMonths}
+              onChange={handleChange}
+              name="validityInMonths"
+              placeholder="Enter validity period in months"
+              min="0"
+            />
+          </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -214,12 +303,8 @@ export default function AddSubscription() {
               <Input
                 type="number"
                 value={planForm.sessions}
-                onChange={(e) =>
-                  setPlanForm((p) => ({
-                    ...p,
-                    sessions: Number(e.target.value),
-                  }))
-                }
+                onChange={handleChange}
+                name="sessions"
                 placeholder="Enter the number of sessions"
                 min="0"
               />
@@ -234,12 +319,8 @@ export default function AddSubscription() {
             <select
               className="w-full mt-1 p-2 border rounded"
               value={planForm.sessionDuration}
-              onChange={(e) =>
-                setPlanForm((p) => ({
-                  ...p,
-                  sessionDuration: Number(e.target.value),
-                }))
-              }
+              onChange={handleChange}
+              name="sessionDuration"
             >
               <option value={15}>15 min</option>
               <option value={30}>30 min</option>
@@ -313,7 +394,22 @@ export default function AddSubscription() {
         <Button variant="outline" asChild>
           <Link to="/subscriptions">Cancel</Link>
         </Button>
-        <Button disabled={!planForm.name || !planForm.price || !planForm.validityInMonths || !planForm.sessionDuration || !planForm.features.length || !planForm.description || !planForm.planId || !planForm.duration || !planForm.validityInMonths || !planForm.validityInMonths} onClick={handleSave}>Create Plan</Button>
+        <Button 
+          disabled={
+            !planForm.name || 
+            !planForm.price_inr || Number(planForm.price_inr) <= 0 || 
+            !planForm.price_usd || Number(planForm.price_usd) <= 0 || 
+            !planForm.validityInMonths || 
+            !planForm.sessionDuration || 
+            !planForm.features.length || 
+            !planForm.description || 
+            !planForm.planId || 
+            !planForm.duration
+          } 
+          onClick={handleSave}
+        >
+          Create Plan
+        </Button>
       </div>
     </div>
   );
