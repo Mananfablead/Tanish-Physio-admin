@@ -48,6 +48,7 @@ const navItems = [
   // { icon: BookOpen, label: "Courses", path: "/courses" },
   { icon: ClipboardList, label: "Questionnaires", path: "/questionnaires" },
   { icon: Clock, label: "Schedule", path: "/availability" },
+  { icon: CreditCard, label: "Offers & Coupons", path: "/offers" },
   { icon: Calendar, label: "Bookings", path: "/bookings" },
   { icon: Calendar, label: "Sessions", path: "/sessions" },
   { icon: Video, label: "Live & Upcoming", path: "/live-sessions" },
@@ -70,10 +71,7 @@ const navItems = [
   { icon: Quote, label: "Testimonials", path: "/testimonials" },
   // { icon: BarChart3, label: "Reports", path: "/reports" },
   { icon: Bell, label: "Notifications", path: "/notifications" },
-  { icon: CreditCard, label: "Offers & Coupons", path: "/offers" },
   { icon: Key, label: "Credentials", path: "/credentials" },
-  // { icon: MessageSquare, label: "Chat Monitor", path: "/chat" },
-  // { icon: Star, label: "Feedback", path: "/feedback" },
 ];
 
 export function AdminSidebar({ isMobileOpen, onMobileClose, collapsed: propCollapsed, onCollapseToggle }: { isMobileOpen: boolean; onMobileClose: () => void; collapsed?: boolean; onCollapseToggle?: () => void }) {

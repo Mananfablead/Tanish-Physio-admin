@@ -29,7 +29,6 @@ export default function Profile() {
   const dispatch = useDispatch<any>();
   const { user, loading } = useSelector((state: any) => state.auth);
   const { toast } = useToast();
-  console.log("object", user)
   const [isEditing, setIsEditing] = useState(false);
 
   const [profile, setProfile] = useState({
