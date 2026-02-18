@@ -237,9 +237,18 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                       {user?.email}
                     </p>
                   </div>
-                  <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
-                    <User className="w-5 h-5 text-primary" />
+                  <div className="w-9 h-9 rounded-full overflow-hidden bg-primary/10 flex items-center justify-center">
+                    {user?.profilePicture ? (
+                      <img
+                        src={user.profilePicture}
+                        alt="Profile"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <User className="w-5 h-5 text-primary" />
+                    )}
                   </div>
+
                 </div>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
