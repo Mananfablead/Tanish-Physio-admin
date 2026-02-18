@@ -219,10 +219,10 @@ console.log("errer",singleBooking)
                 }
               />
               <Row
-                label="User ID"
+                label="User Email"
                 value={
                   booking.userId && typeof booking.userId === "object"
-                    ? booking.userId._id || "N/A"
+                    ? booking.userId.email || "N/A"
                     : booking.userId || "N/A"
                 }
                 mono
@@ -231,7 +231,7 @@ console.log("errer",singleBooking)
           </Card>
 
           {/* Therapist */}
-          <Card>
+          {/* <Card>
             <CardHeader>
               <CardTitle className="flex gap-2">
                 <User /> Therapist Info
@@ -257,7 +257,7 @@ console.log("errer",singleBooking)
                 }
               />
             </CardContent>
-          </Card>
+          </Card> */}
 
           {/* Notes */}
           <Card>

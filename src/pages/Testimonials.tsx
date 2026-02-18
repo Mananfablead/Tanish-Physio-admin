@@ -46,6 +46,7 @@ import {
   clearSelectedTestimonial
 } from '@/features/testimonials/testimonialSlice';
 import { fetchUsers } from '@/features/users/userSlice';
+import { fetchServices } from '@/features/services/serviceSlice';
 import {
   Command,
   CommandEmpty,
@@ -104,6 +105,7 @@ export default function Testimonials() {
 
   const { testimonials, stats, loading, error } = useSelector((state: any) => state.testimonials);
   const { list: allUsers, loading: usersLoading, pagination } = useSelector((state: any) => state.users);
+  const { list: allServices, loading: servicesLoading } = useSelector((state: any) => state.services);
   console.log("allUsers", allUsers)
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
@@ -165,18 +167,30 @@ export default function Testimonials() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
+  // Load services initially when component mounts
+  useEffect(() => {
+    dispatch(fetchServices()); // Load all services for the dropdown
+  }, [dispatch]);
+
   // Load testimonials and stats with debounced search
   useEffect(() => {
     dispatch(fetchTestimonials({ search: debouncedSearchQuery, status: statusFilter }));
     dispatch(fetchTestimonialStats());
-  }, [debouncedSearchQuery, statusFilter]);
+  }, [debouncedSearchQuery, statusFilter, dispatch]);
 
-  // Load first page of users when modal opens
+  // Load first page of users when modal opens for new testimonials
   useEffect(() => {
     if (isModalOpen && !editingTestimonial) {
       dispatch(fetchUsers({ page: 1, limit: usersPerPage }));
     }
   }, [isModalOpen, editingTestimonial, dispatch]);
+
+  // Load services when modal opens (both for creating and editing)
+  useEffect(() => {
+    if (isModalOpen) {
+      dispatch(fetchServices()); // Ensure services are loaded when modal opens
+    }
+  }, [isModalOpen, dispatch]);
 
   // Update hasMoreUsers based on pagination data
   useEffect(() => {
@@ -871,6 +885,7 @@ export default function Testimonials() {
                   </SelectTrigger>
 
                   <SelectContent>
+                    {/* Include all services from users' bookings */}
                     {Array.from(
                       new Set(
                         allUsers.flatMap((user: any) =>
@@ -880,10 +895,31 @@ export default function Testimonials() {
                     )
                     .filter((serviceName: string) => serviceName && serviceName.trim() !== "")
                     .map((serviceName: string) => (
-                      <SelectItem key={serviceName} value={serviceName}>
+                      <SelectItem key={`user-${serviceName}`} value={serviceName}>
                         {serviceName}
                       </SelectItem>
                     ))}
+                    
+                    {/* Include all available services from the services API */}
+                    {allServices && allServices.length > 0 && allServices.map((service: any) => (
+                      <SelectItem key={`service-${service._id}`} value={service.title || service.name || service.serviceName}>
+                        {service.title || service.name || service.serviceName}
+                      </SelectItem>
+                    ))}
+                    
+                    {/* Show loading state if services are still loading */}
+                    {servicesLoading && allServices?.length === 0 && (
+                      <SelectItem value="" disabled>
+                        Loading services...
+                      </SelectItem>
+                    )}
+                    
+                    {/* Show message if no services available */}
+                    {!servicesLoading && allServices && allServices.length === 0 && (
+                      <SelectItem value="" disabled>
+                        No services available
+                      </SelectItem>
+                    )}
                   </SelectContent>
                 </Select>
                 {errors.serviceUsed && (

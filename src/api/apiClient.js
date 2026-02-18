@@ -205,6 +205,10 @@ export const questionnaireAPI = {
           required: Boolean(q.required !== undefined ? q.required : true),
           active: Boolean(q.active !== undefined ? q.active : true),
           options: q.options || [],
+          // Add common field properties
+          hasCommonField: Boolean(q.hasCommonField !== undefined ? q.hasCommonField : false),
+          commonFieldLabel: String(q.commonFieldLabel || "Additional Information"),
+          commonFieldPlaceholder: String(q.commonFieldPlaceholder || "Enter additional details...")
         }))
       : [];
 
@@ -234,6 +238,10 @@ export const questionnaireAPI = {
           options: q.options || [],
           min: q.min,
           max: q.max,
+          // Add common field properties
+          hasCommonField: Boolean(q.hasCommonField),
+          commonFieldLabel: String(q.commonFieldLabel || "Additional Information"),
+          commonFieldPlaceholder: String(q.commonFieldPlaceholder || "Enter additional details...")
         }))
       : [];
 

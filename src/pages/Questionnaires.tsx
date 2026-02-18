@@ -51,7 +51,7 @@ import {
 } from "@/features/questionnaires/questionnaireSlice";
 import PageLoader from "@/components/PageLoader";
 
-type QuestionType = "text" | "mcq" | "slider" | "upload";
+type QuestionType = "text" | "mcq" | "slider" | "upload" | "skalaeton" | "age";
 
 interface Question {
   _id?: string;
@@ -64,6 +64,10 @@ interface Question {
   options?: string[];
   createdAt?: string;
   updatedAt?: string;
+  // New fields for common text field
+  hasCommonField?: boolean;
+  commonFieldLabel?: string;
+  commonFieldPlaceholder?: string;
 }
 
 interface Questionnaire {
@@ -96,9 +100,29 @@ export default function Questionnaires() {
     type: "text" as QuestionType,
     required: true,
     options: [""],
+    // New fields for common text field
+    hasCommonField: false,
+    commonFieldLabel: "Additional Information",
+    commonFieldPlaceholder: "Enter additional details..."
   });
   const [saving, setSaving] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+
+  // Reset edit form when modal closes
+  useEffect(() => {
+    if (!isEditModalOpen) {
+      setEditForm({
+        question: "",
+        type: "text" as QuestionType,
+        required: true,
+        options: [""],
+        hasCommonField: false,
+        commonFieldLabel: "Additional Information",
+        commonFieldPlaceholder: "Enter additional details..."
+      });
+      setSelectedQuestion(null);
+    }
+  }, [isEditModalOpen]);
 
   // Load questionnaires on component mount
   useEffect(() => {
@@ -129,7 +153,9 @@ export default function Questionnaires() {
       // Use questions from the active questionnaire only
       const activeQuestions = [...currentQuestionnaire.questions].map((q, index) => ({
         ...q,
-        id: q._id || `temp-${index}`
+        id: q._id || `temp-${index}`,
+        // Ensure boolean values are properly handled
+        hasCommonField: q.hasCommonField === true
       }));
       
       // Sort by order
@@ -148,22 +174,31 @@ export default function Questionnaires() {
   }, [currentQuestionnaire]);
 
   const openEditModal = (question?: Question) => {
+    const baseForm = {
+      question: "",
+      type: "text" as QuestionType,
+      required: true,
+      options: [""],
+      hasCommonField: false,
+      commonFieldLabel: "Additional Information",
+      commonFieldPlaceholder: "Enter additional details..."
+    };
+    
     if (question) {
       setSelectedQuestion(question);
       setEditForm({
+        ...baseForm,
         question: question.question,
         type: question.type as QuestionType,
         required: question.required,
         options: question.options || [""],
+        hasCommonField: question.hasCommonField === true, // Explicit boolean check
+        commonFieldLabel: question.commonFieldLabel || "Additional Information",
+        commonFieldPlaceholder: question.commonFieldPlaceholder || "Enter additional details..."
       });
     } else {
       setSelectedQuestion(null);
-      setEditForm({
-        question: "",
-        type: "text",
-        required: true,
-        options: [""],
-      });
+      setEditForm(baseForm);
     }
     setIsEditModalOpen(true);
   };
@@ -244,6 +279,9 @@ export default function Questionnaires() {
                 editForm.type === "mcq"
                   ? editForm.options.filter((opt) => opt.trim())
                   : [],
+              hasCommonField: editForm.hasCommonField,
+              commonFieldLabel: editForm.commonFieldLabel,
+              commonFieldPlaceholder: editForm.commonFieldPlaceholder
             }
           : q
       );
@@ -279,6 +317,9 @@ export default function Questionnaires() {
           editForm.type === "mcq"
             ? editForm.options.filter((opt) => opt.trim())
             : [],
+        hasCommonField: editForm.hasCommonField,
+        commonFieldLabel: editForm.commonFieldLabel,
+        commonFieldPlaceholder: editForm.commonFieldPlaceholder
       };
 
       // Add the new question to the active questionnaire
@@ -544,6 +585,11 @@ export default function Questionnaires() {
                                 Required
                               </span>
                             )}
+                            {question.hasCommonField && (
+                              <span className="status-badge bg-info/15 text-info">
+                                Common Field
+                              </span>
+                            )}
                           </div>
                           {question.type === "mcq" && question.options && (
                             <div className="flex flex-wrap gap-1 mt-2">
@@ -629,11 +675,12 @@ export default function Questionnaires() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="upload">File Upload</SelectItem>
                     <SelectItem value="text">Free Text</SelectItem>
+                    <SelectItem value="age">Age</SelectItem>
                     <SelectItem value="mcq">Multiple Choice</SelectItem>
                     <SelectItem value="slider">Slider (1-10)</SelectItem>
                     <SelectItem value="skalaeton">Skalaeton</SelectItem>
+                    <SelectItem value="upload">File Upload</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -700,6 +747,51 @@ export default function Questionnaires() {
                     setEditForm({ ...editForm, required: checked })
                   }
                 />
+              </div>
+
+              {/* Common Field Configuration */}
+              <div className="pt-4 border-t border-slate-200">
+                <div className="flex items-center justify-between mb-4">
+                  <Label className="text-base font-bold">Common Text Field</Label>
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      checked={editForm.hasCommonField}
+                      onCheckedChange={(checked) =>
+                        setEditForm({ ...editForm, hasCommonField: !!checked })
+                      }
+                    />
+                    <Label htmlFor="hasCommonField" className={editForm.hasCommonField ? "text-success font-medium" : "text-muted-foreground"}>
+                      {editForm.hasCommonField ? "Enabled" : "Disabled"}
+                    </Label>
+                  </div>
+                </div>
+                
+                {editForm.hasCommonField && (
+                  <div className="space-y-4 bg-slate-50 p-4 rounded-lg">
+                    <div>
+                      <Label>Field Label</Label>
+                      <Input
+                        placeholder="Additional Information"
+                        value={editForm.commonFieldLabel}
+                        onChange={(e) =>
+                          setEditForm({ ...editForm, commonFieldLabel: e.target.value })
+                        }
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label>Placeholder Text</Label>
+                      <Input
+                        placeholder="Enter additional details..."
+                        value={editForm.commonFieldPlaceholder}
+                        onChange={(e) =>
+                          setEditForm({ ...editForm, commonFieldPlaceholder: e.target.value })
+                        }
+                        className="mt-1"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
