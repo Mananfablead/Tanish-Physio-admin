@@ -420,6 +420,7 @@ export default function Bookings() {
                         <SelectContent>
                           {booking.bookingType === 'free-consultation' ? (
                             <>
+                              <SelectItem value="pending">Pending</SelectItem>
                               <SelectItem value="confirmed">Accept</SelectItem>
                               <SelectItem value="scheduled">Schedule</SelectItem>
                               <SelectItem value="completed">Completed</SelectItem>
