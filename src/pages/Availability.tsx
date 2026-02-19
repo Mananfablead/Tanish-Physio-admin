@@ -27,7 +27,7 @@ const Availability = () => {
 
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
    const [startTime, setStartTime] = useState('10:00');
-  const [endTime, setEndTime] = useState('11:00');
+  const [endTime, setEndTime] = useState('10:45'); // Default to 45-minute slot
   const [viewMode, setViewMode] = useState<'day' | 'week' | 'month'>('month');
   
   // State for managing custom time slots
@@ -152,9 +152,11 @@ const Availability = () => {
           // Set custom slots to all existing slots
           setCustomSlots(allSlots);
           
-          // Use first slot start time and last slot end time as defaults
+          // Use first slot start time and calculate 45 minutes after as end time
           setStartTime(allSlots[0].start);
-          setEndTime(allSlots[allSlots.length - 1].end);
+          const startDate = new Date(`1970-01-01T${allSlots[0].start}`);
+          startDate.setMinutes(startDate.getMinutes() + 45);
+          setEndTime(startDate.toTimeString().substring(0, 5));
         } else {
       
           setCustomSlots([]);
@@ -164,6 +166,11 @@ const Availability = () => {
       } else {
    
         setCustomSlots([]);
+        // Initialize with 45-minute default slot
+        setStartTime('10:00');
+        const startDate = new Date('1970-01-01T10:00');
+        startDate.setMinutes(startDate.getMinutes() + 45);
+        setEndTime(startDate.toTimeString().substring(0, 5));
       }
     }
   };
@@ -185,6 +192,46 @@ const Availability = () => {
             end: endTime,
             status: "available",
           }];
+          
+      // Validate time slots before saving
+      if (customSlots.length === 0) {
+        // Validate time intervals (15, 30, 45, 60 minutes)
+        const startParts = startTime.split(':');
+        const endParts = endTime.split(':');
+        const startMinutes = parseInt(startParts[0]) * 60 + parseInt(startParts[1]);
+        const endMinutes = parseInt(endParts[0]) * 60 + parseInt(endParts[1]);
+        const duration = endMinutes - startMinutes;
+        
+        // Check if duration is a valid interval (15, 30, 45, 60, 75, 90, etc. minutes)
+        if (duration % 15 !== 0) {
+          toast({
+            title: "Error",
+            description: "Time slots must be in 15-minute increments (e.g., 15, 30, 45, 60, 75, 90 minutes)",
+            variant: "destructive",
+          });
+          setSaving(false);
+          return;
+        }
+      } else {
+        // Validate each custom slot
+        for (const slot of customSlots) {
+          const startParts = slot.start.split(':');
+          const endParts = slot.end.split(':');
+          const startMinutes = parseInt(startParts[0]) * 60 + parseInt(startParts[1]);
+          const endMinutes = parseInt(endParts[0]) * 60 + parseInt(endParts[1]);
+          const duration = endMinutes - startMinutes;
+          
+          if (duration % 15 !== 0) {
+            toast({
+              title: "Error",
+              description: `Slot ${slot.start}-${slot.end} must be in 15-minute increments`,
+              variant: "destructive",
+            });
+            setSaving(false);
+            return;
+          }
+        }
+      }
 
 
       const payload = {
@@ -268,6 +315,44 @@ const Availability = () => {
       setBulkSaving(true);
 
       // For bulk update, use custom slots logic
+      // Validate time slots before bulk update
+      if (customSlots.length === 0) {
+        // Validate time intervals (15, 30, 45, 60 minutes)
+        const startParts = startTime.split(':');
+        const endParts = endTime.split(':');
+        const startMinutes = parseInt(startParts[0]) * 60 + parseInt(startParts[1]);
+        const endMinutes = parseInt(endParts[0]) * 60 + parseInt(endParts[1]);
+        const duration = endMinutes - startMinutes;
+        
+        // Check if duration is a valid interval (15, 30, 45, 60, 75, 90, etc. minutes)
+        if (duration % 15 !== 0) {
+          toast({
+            title: "Error",
+            description: "Time slots must be in 15-minute increments (e.g., 15, 30, 45, 60, 75, 90 minutes)",
+            variant: "destructive",
+          });
+          return;
+        }
+      } else {
+        // Validate each custom slot
+        for (const slot of customSlots) {
+          const startParts = slot.start.split(':');
+          const endParts = slot.end.split(':');
+          const startMinutes = parseInt(startParts[0]) * 60 + parseInt(startParts[1]);
+          const endMinutes = parseInt(endParts[0]) * 60 + parseInt(endParts[1]);
+          const duration = endMinutes - startMinutes;
+          
+          if (duration % 15 !== 0) {
+            toast({
+              title: "Error",
+              description: `Slot ${slot.start}-${slot.end} must be in 15-minute increments`,
+              variant: "destructive",
+            });
+            return;
+          }
+        }
+      }
+      
       const timeSlots = customSlots.length > 0
         ? [...customSlots]
         : [{
@@ -840,6 +925,23 @@ const Availability = () => {
                                         return;
                                       }
                                       
+                                      // Validate time intervals (15, 30, 45, 60 minutes)
+                                      const startParts = editSlotStart.split(':');
+                                      const endParts = editSlotEnd.split(':');
+                                      const startMinutes = parseInt(startParts[0]) * 60 + parseInt(startParts[1]);
+                                      const endMinutes = parseInt(endParts[0]) * 60 + parseInt(endParts[1]);
+                                      const duration = endMinutes - startMinutes;
+                                      
+                                      // Check if duration is a valid interval (15, 30, 45, 60, 75, 90, etc. minutes)
+                                      if (duration % 15 !== 0) {
+                                        toast({
+                                          title: "Error",
+                                          description: "Time slots must be in 15-minute increments (e.g., 15, 30, 45, 60, 75, 90 minutes)",
+                                          variant: "destructive",
+                                        });
+                                        return;
+                                      }
+                                      
                                       // Check for overlapping slots (excluding current slot)
                                       const isOverlapping = customSlots.some((s, i) => {
                                         if (i === index) return false;
@@ -1004,6 +1106,23 @@ const Availability = () => {
                               return;
                             }
                             
+                            // Validate time intervals (15, 30, 45, 60 minutes)
+                            const startParts = startTime.split(':');
+                            const endParts = endTime.split(':');
+                            const startMinutes = parseInt(startParts[0]) * 60 + parseInt(startParts[1]);
+                            const endMinutes = parseInt(endParts[0]) * 60 + parseInt(endParts[1]);
+                            const duration = endMinutes - startMinutes;
+                            
+                            // Check if duration is a valid interval (15, 30, 45, 60, 75, 90, etc. minutes)
+                            if (duration % 15 !== 0) {
+                              toast({
+                                title: "Error",
+                                description: "Time slots must be in 15-minute increments (e.g., 15, 30, 45, 60, 75, 90 minutes)",
+                                variant: "destructive",
+                              });
+                              return;
+                            }
+                            
                             // Check for overlapping slots
                             const isOverlapping = customSlots.some(slot => {
                               return (
@@ -1031,10 +1150,10 @@ const Availability = () => {
                               }
                             ]);
                             
-                            // Reset form
+                            // Reset form with 15-minute increment validation
                             setStartTime(endTime);
                             const newEnd = new Date(`1970-01-01T${endTime}`);
-                            newEnd.setMinutes(newEnd.getMinutes() + 60);
+                            newEnd.setMinutes(newEnd.getMinutes() + 45); // Default to 45-min increment
                             setEndTime(newEnd.toTimeString().substring(0, 5));
                             
                             // toast({

@@ -166,12 +166,16 @@ export default function Bookings() {
   =========================== */
 
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string, bookingType?: string) => {
     switch (status) {
       case "confirmed":
-        return "bg-success/15 text-success";
+        return bookingType === 'free-consultation' ? "bg-blue-500/15 text-blue-600" : "bg-success/15 text-success";
       case "pending":
         return "bg-warning/15 text-warning";
+      case "scheduled":
+        return "bg-purple-500/15 text-purple-600";
+      case "completed":
+        return "bg-green-500/15 text-green-600";
       case "cancelled":
         return "bg-destructive/15 text-destructive";
       default:
@@ -283,6 +287,7 @@ export default function Bookings() {
               <thead>
                 <tr>
                   <th className="whitespace-nowrap">Service</th>
+                  <th className="whitespace-nowrap">Type</th>
                   <th className="whitespace-nowrap">Client</th>
                   {/* <th>Therapist</th> */}
                   <th className="whitespace-nowrap">Date & Time</th>
@@ -310,6 +315,15 @@ export default function Bookings() {
                         )}
                         <span className="truncate">{booking.serviceName}</span>
                       </div>
+                    </td>
+                    <td className="min-w-[100px]">
+                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                        booking.bookingType === 'free-consultation' 
+                          ? 'bg-blue-100 text-blue-600' 
+                          : 'bg-gray-100 text-gray-600'
+                      }`}>
+                        {booking.bookingType === 'free-consultation' ? 'Free Consultation' : 'Regular'}
+                      </span>
                     </td>
                     <td className="min-w-[120px]">
                       <div className="flex items-center gap-3">
@@ -398,15 +412,26 @@ export default function Bookings() {
                         <SelectTrigger
                           className={cn(
                             "w-full capitalize rounded-lg bg-transparent border-none outline-none",
-                            getStatusBadge(booking.status)
+                            getStatusBadge(booking.status, booking.bookingType)
                           )}
                         >
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="confirmed">Confirmed</SelectItem>
-                          <SelectItem value="pending">Pending</SelectItem>
-                          <SelectItem value="cancelled">Cancelled</SelectItem>
+                          {booking.bookingType === 'free-consultation' ? (
+                            <>
+                              <SelectItem value="confirmed">Accept</SelectItem>
+                              <SelectItem value="scheduled">Schedule</SelectItem>
+                              <SelectItem value="completed">Completed</SelectItem>
+                              <SelectItem value="cancelled">Cancelled</SelectItem>
+                            </>
+                          ) : (
+                            <>
+                              <SelectItem value="confirmed">Confirmed</SelectItem>
+                              <SelectItem value="pending">Pending</SelectItem>
+                              <SelectItem value="cancelled">Cancelled</SelectItem>
+                            </>
+                          )}
                         </SelectContent>
                       </Select>
                     </td>
