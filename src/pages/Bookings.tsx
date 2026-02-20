@@ -357,16 +357,32 @@ export default function Bookings() {
                                 })}
                           </span>
                         </div>
-                        <div className="text-xs text-muted-foreground">
+                        {/* <div className="text-xs text-muted-foreground">
                           {booking.scheduleType === "later"
                             ? "Scheduled later"
                             : "Scheduled now"}
-                        </div>
+                        </div> */}
                       </div>
                     </td>
 
                     <td className="min-w-[120px]">
-                      {booking.isServiceExpired ? (
+                      {booking.bookingType === 'free-consultation' ? (
+                        booking.isServiceExpired ? (
+                          <span className="px-2 py-1 rounded-full text-xs font-semibold text-red-600 bg-red-100 whitespace-nowrap">
+                            Expired
+                          </span>
+                        ) : booking.serviceExpiryDate ? (
+                          <span className="px-2 py-1 rounded-full text-xs font-semibold text-purple-600 bg-purple-100 whitespace-nowrap">
+                            {new Date(
+                              booking.serviceExpiryDate
+                            ).toLocaleDateString()}
+                          </span>
+                        ) : (
+                          <span className="px-2 py-1 rounded-full text-xs font-semibold text-purple-600 bg-purple-100 whitespace-nowrap">
+                            Free Consultation
+                          </span>
+                        )
+                      ) : booking.isServiceExpired ? (
                         <span className="px-2 py-1 rounded-full text-xs font-semibold text-red-600 bg-red-100 whitespace-nowrap">
                           Expired
                         </span>
