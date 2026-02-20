@@ -1266,11 +1266,7 @@ export default function Sessions() {
                                           onClick={async () => {
                                             try {
                                               const response = await fetch(
-                                                `${
-                                                  import.meta.env
-                                                    .VITE_API_BASE_URL ||
-                                                  "http://localhost:5000"
-                                                }/video-call/generate-google-meet`,
+                                                `/api/video-call/generate-google-meet`,
                                                 {
                                                   method: "POST",
                                                   headers: {

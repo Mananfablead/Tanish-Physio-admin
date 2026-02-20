@@ -387,23 +387,39 @@ export default function Bookings() {
                         value={booking.status}
                         disabled={booking.status === "cancelled"}
                         onValueChange={async (value) => {
-                          const result = await dispatch(
-                            updateBooking({
-                              id: booking._id || booking.id,
-                              bookingData: { status: value },
-                            })
-                          );
-
-                          if (updateBooking.fulfilled.match(result)) {
+                          try {
+                            // Use the dedicated status update endpoint for proper session creation
+                            // Using proxy path instead of full URL
+                            const res = await fetch(`/api/bookings/${booking._id || booking.id}/status`, {
+                              method: 'PUT',
+                              headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${localStorage.getItem('token')}`
+                              },
+                              body: JSON.stringify({ status: value })
+                            });
+                            
+                            if (!res.ok) {
+                              // Handle error response safely
+                              let errorMessage = 'Failed to update status';
+                              try {
+                                const errorData = await res.json();
+                                errorMessage = errorData.message || errorData.error || errorMessage;
+                              } catch (parseError) {
+                                // If JSON parsing fails, use status text
+                                errorMessage = res.statusText || errorMessage;
+                              }
+                              throw new Error(errorMessage);
+                            }
+                            
+                            // Refresh the bookings list
                             dispatch(fetchBookings());
                             toast({
                               title: "Booking status updated successfully",
                             });
-                          } else {
+                          } catch (error: any) {
                             toast({
-                              title:
-                                result.payload?.message ||
-                                "Failed to update status",
+                              title: error.message || "Failed to update status",
                               variant: "destructive",
                             });
                           }

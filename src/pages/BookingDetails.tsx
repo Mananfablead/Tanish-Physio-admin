@@ -52,16 +52,37 @@ console.log("errer",singleBooking)
 
     setStatusLoading(true);
     try {
-      await dispatch(
-        updateBooking({
-          id: booking._id || booking.id,
-          bookingData: { status: newStatus },
-        })
-      );
+      // Use the dedicated status update endpoint for proper session creation
+      // Using proxy path instead of full URL
+      const res = await fetch(`/api/bookings/${booking._id || booking.id}/status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ status: newStatus })
+      });
+      
+      if (!res.ok) {
+        // Handle error response safely
+        let errorMessage = 'Failed to update status';
+        try {
+          const errorData = await res.json();
+          errorMessage = errorData.message || errorData.error || errorMessage;
+        } catch (parseError) {
+          // If JSON parsing fails, use status text
+          errorMessage = res.statusText || errorMessage;
+        }
+        throw new Error(errorMessage);
+      }
+      
+      // Refresh the booking data
+      dispatch(fetchBookingById(id));
       toast({ title: "Status updated successfully" });
-    } catch (err) {
+    } catch (err: any) {
       toast({
         title: "Failed to update status",
+        description: err.message,
         variant: "destructive",
       });
     } finally {
