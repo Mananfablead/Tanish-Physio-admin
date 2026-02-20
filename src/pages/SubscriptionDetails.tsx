@@ -29,6 +29,7 @@ interface SubscriptionPlan {
   features: string[];
   status: string;
   duration?: string;
+  totalService?: number;
   autoRenew?: boolean;
   subscribers?: number;
   subscriberCount?: number;
@@ -176,7 +177,7 @@ useEffect(() => {
             <CardTitle className="text-sm font-medium text-muted-foreground">Total Subscribers</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{plan.subscriberCount || plan.subscribers || 0}</div>
+            <div className="text-2xl font-bold">{plan.subscriberCount || 0}</div>
             <p className="text-xs text-muted-foreground">All subscribers</p>
           </CardContent>
         </Card>
@@ -258,6 +259,10 @@ useEffect(() => {
                   </p>
                 </div>
                 <div>
+                  <h3 className="text-sm font-medium text-muted-foreground">Total Services</h3>
+                  <p className="font-medium">{plan.totalService || 0}</p>
+                </div>
+                <div>
                   <h3 className="text-sm font-medium text-muted-foreground">Auto Renew</h3>
                   <p className="font-medium">{plan.autoRenew ? 'Enabled' : 'Disabled'}</p>
                 </div>
@@ -310,7 +315,7 @@ useEffect(() => {
               <CardTitle>Subscribers ({plan.subscriberCount || 0})</CardTitle>
             </CardHeader>
             <CardContent>
-              {plan.subscribers && plan.subscribers?.length > 0 ? (
+              {plan.subscribersList && plan.subscribersList?.length > 0 ? (
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
@@ -324,7 +329,7 @@ useEffect(() => {
                       </tr>
                     </thead>
                     <tbody>
-                      {plan.subscribers && plan.subscribers.length > 0 && plan.subscribers.map((subscriber) => (
+                      {plan.subscribersList && plan.subscribersList.length > 0 && plan.subscribersList.map((subscriber) => (
                         <tr key={subscriber.id} className="border-b hover:bg-muted/50">
                           <td className="py-3 px-4">
                             <div className="font-medium">{subscriber.userId?.name}</div>
@@ -381,7 +386,7 @@ useEffect(() => {
               <div className="text-center py-8">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                   <div className="text-center">
-                    <div className="text-3xl font-bold text-primary">{plan.subscriberCount || plan.subscribers || 0}</div>
+                    <div className="text-3xl font-bold text-primary">{plan.subscriberCount || 0}</div>
                     <div className="text-sm text-muted-foreground">Total Subscribers</div>
                   </div>
                   <div className="text-center">

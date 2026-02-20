@@ -20,6 +20,7 @@ interface SubscriptionPlan {
   features: string[];
   status?: string;
   sessions?: number;
+  totalService?: number;
   validity?: number;
   period?: string;
   duration?: string;
@@ -46,6 +47,7 @@ export default function EditSubscription() {
     duration: "",
     autoRenew: true,
     sessions: 0,
+    totalService: 0,
     session_type: "individual", // New field
     price_inr: 0, // New field
     price_usd: 0, // New field
@@ -93,6 +95,7 @@ export default function EditSubscription() {
       duration: plan.duration || plan.period || "",
       autoRenew: plan.autoRenew !== undefined ? plan.autoRenew : true,
       sessions: plan.sessions || 0,
+      totalService: plan.totalService || 0,
       session_type: (plan as any).session_type || "individual",
       price_inr: (plan as any).price_inr || 0,
       price_usd: (plan as any).price_usd || 0,
@@ -130,7 +133,7 @@ export default function EditSubscription() {
     } else {
       setPlanForm((prev) => ({
         ...prev,
-        [name]: name === "price" || name === "sessions" ? Number(value) : value,
+        [name]: name === "price" || name === "sessions" || name === "totalService" ? Number(value) : value,
       }));
     }
   };
@@ -176,6 +179,9 @@ export default function EditSubscription() {
         duration: planForm.duration,
         features: planForm.features,
         autoRenew: planForm.autoRenew,
+        sessions: planForm.sessions,
+        
+        totalService: planForm.totalService,
         session_type: planForm.session_type,
         price_inr: planForm.price_inr,
         price_usd: planForm.price_usd,
@@ -357,6 +363,30 @@ export default function EditSubscription() {
               {planHasSubscribers && (
                 <p className="text-xs text-muted-foreground mt-1">
                   Number of sessions cannot be modified for plans with active subscribers
+                </p>
+              )}
+            </div>
+            
+            <div>
+              <Label htmlFor="totalService">Total Services</Label>
+              <Input
+                id="totalService"
+                name="totalService"
+                type="number"
+                placeholder="5"
+                value={planForm.totalService || ''}
+                onChange={(e) =>
+                  setPlanForm((p) => ({
+                    ...p,
+                    totalService: Number(e.target.value),
+                  }))
+                }
+                className="mt-1"
+                disabled={planHasSubscribers}
+              />
+              {planHasSubscribers && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Total services cannot be modified for plans with active subscribers
                 </p>
               )}
             </div>

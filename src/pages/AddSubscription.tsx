@@ -61,6 +61,7 @@ export default function AddSubscription() {
     duration: string;
     validityInMonths: string;
     sessions: string;
+    totalService: string;
     sessionDuration: string;
     session_type: string;
     price_inr: string;
@@ -86,7 +87,7 @@ export default function AddSubscription() {
     setPlanForm(prev => {
       let newState = {
         ...prev,
-        [name]: ["price_inr", "price_usd", "originalPrice", "discountPercent", "sessions", "sessionDuration", "validityInMonths", "maxBookingsPerDay", "cancellationWindow"].includes(name)
+        [name]: ["price_inr", "price_usd", "originalPrice", "discountPercent", "sessions", "totalService", "sessionDuration", "validityInMonths", "maxBookingsPerDay", "cancellationWindow"].includes(name)
           ? Number(value) || ""
           : value,
       };
@@ -167,6 +168,7 @@ export default function AddSubscription() {
       originalPrice: Number(planForm.originalPrice),
       discountPercent: Number(planForm.discountPercent),
       sessions: Number(planForm.sessions),
+      totalService: Number(planForm.totalService),
       sessionDuration: Number(planForm.sessionDuration),
       validityInMonths: Number(planForm.validityInMonths),
       maxBookingsPerDay: Number(planForm.maxBookingsPerDay),
@@ -313,6 +315,17 @@ export default function AddSubscription() {
               </p> */}
             </div>
             
+            <div>
+              <Label>Total Services</Label>
+              <Input
+                type="number"
+                value={planForm.totalService}
+                onChange={handleChange}
+                name="totalService"
+                placeholder="Enter the number of total services"
+                min="0"
+              />
+            </div>
           </div>
           <div>
             <Label>Session Duration (min)</Label>

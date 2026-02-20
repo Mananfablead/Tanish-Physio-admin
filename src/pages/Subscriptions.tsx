@@ -70,6 +70,7 @@ interface SubscriptionPlan {
   status?: string;
   active?: boolean;
   sessions?: number;
+  totalService?: number;
   validity?: number;
   period?: string;
   duration?: string;
@@ -351,6 +352,10 @@ const filteredSubscriptions = Array.isArray(userSubscriptions)
                       <span className="text-muted-foreground">Sessions</span>
                       <span className="font-medium">{plan.sessions || 'Unlimited'}</span>
                     </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Total Services</span>
+                      <span className="font-medium">{plan.totalService || 0}</span>
+                    </div>
                     {/* <div className="flex items-center justify-between">
                       <span className="text-muted-foreground">Duration</span>
                       <span className="font-medium">{plan.duration || 'N/A'}</span>
@@ -435,6 +440,7 @@ const filteredSubscriptions = Array.isArray(userSubscriptions)
                     <tr>
                       <th>User</th>
                       <th>Plan</th>
+                      <th>Total Services</th>
                       <th>Start Date</th>
                       <th>End Date</th>
                       <th>Subscription Sessions</th>
@@ -462,6 +468,11 @@ const filteredSubscriptions = Array.isArray(userSubscriptions)
 
                           {/* PLAN NAME */}
                           <td className="font-medium">{sub.planName}</td>
+
+                          {/* TOTAL SERVICES */}
+                          <td className="font-medium">
+                            {sub.planId?.totalService || sub.totalService || 0}
+                          </td>
 
                           {/* START DATE */}
                           <td className="text-muted-foreground">
