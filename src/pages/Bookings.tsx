@@ -169,8 +169,14 @@ export default function Bookings() {
   const getStatusBadge = (status: string, bookingType?: string) => {
     switch (status) {
       case "confirmed":
+        if (bookingType === 'subscription-covered') {
+          return "bg-emerald-500/15 text-emerald-600"; // Green for subscription confirmed
+        }
         return bookingType === 'free-consultation' ? "bg-blue-500/15 text-blue-600" : "bg-success/15 text-success";
       case "pending":
+        if (bookingType === 'subscription-covered') {
+          return "bg-amber-500/15 text-amber-600"; // Amber for subscription pending
+        }
         return "bg-warning/15 text-warning";
       case "scheduled":
         return "bg-purple-500/15 text-purple-600";
@@ -366,7 +372,11 @@ export default function Bookings() {
                     </td>
 
                     <td className="min-w-[120px]">
-                      {booking.bookingType === 'free-consultation' ? (
+                      {booking.bookingType === 'subscription-covered' ? (
+                        <span className="px-2 py-1 rounded-full text-xs font-semibold text-emerald-600 bg-emerald-100 whitespace-nowrap">
+                          Subscription
+                        </span>
+                      ) : booking.bookingType === 'free-consultation' ? (
                         booking.isServiceExpired ? (
                           <span className="px-2 py-1 rounded-full text-xs font-semibold text-red-600 bg-red-100 whitespace-nowrap">
                             Expired
