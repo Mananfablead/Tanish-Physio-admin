@@ -872,10 +872,10 @@ const toggleUserStatus = async () => {
                     <span className="font-medium text-muted-foreground">Total Responses:</span>
                     <span className="ml-2">{getResponseCount()}</span>
                   </div>
-                  <div>
+                  {/* <div>
                     <span className="font-medium text-muted-foreground">Questionnaire ID:</span>
                     <span className="ml-2 font-mono text-xs">{getQuestionnaireInfo()?.questionnaireId || 'N/A'}</span>
-                  </div>
+                  </div> */}
                   <div>
                     <span className="font-medium text-muted-foreground">Completion Date:</span>
                     <span className="ml-2">{getQuestionnaireInfo()?.completedAt ? formatDateTime(getQuestionnaireInfo()?.completedAt) : 'Not completed'}</span>

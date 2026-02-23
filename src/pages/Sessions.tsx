@@ -1016,10 +1016,10 @@ export default function Sessions() {
                                   <p className="font-medium">
                                     {booking?.serviceName || "N/A"}
                                   </p>
-                                  <p className="text-xs text-muted-foreground">
+                                  {/* <p className="text-xs text-muted-foreground">
                                     Booking ID:{" "}
                                     {booking?._id?.slice(0, 8) || "N/A"}
-                                  </p>
+                                  </p> */}
                                   <Badge variant="secondary" className="mt-1">
                                     Booking Session
                                   </Badge>

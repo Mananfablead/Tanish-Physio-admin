@@ -16,6 +16,9 @@ import {
   ArrowLeft,
   FileText,
   AlertTriangle,
+  Activity,
+  ClipboardList,
+  Star,
 } from "lucide-react";
 import {
   fetchBookingById,
@@ -32,10 +35,179 @@ export default function BookingDetails() {
   const { singleBooking, loading, error } = useSelector(
     (state: any) => state.bookings
   );
-console.log("errer",singleBooking)
+console.log("Booking data:", singleBooking);
+console.log("Booking object:", singleBooking?.booking);
+console.log("User data:", singleBooking?.booking?.userId);
+console.log("Health profile:", singleBooking?.booking?.userId?.healthProfile);
   // Get the booking from Redux state - it's already extracted from the API response
-  const booking = singleBooking?.booking
-;
+  const booking = singleBooking?.booking;
+  
+  // Get user health profile from booking data
+  const userHealthProfile = booking?.userId?.healthProfile || {};
+  
+  console.log("User health profile extracted:", userHealthProfile);
+  
+  // Helper functions for health profile display
+  const getQuestionnaireResponses = () => {
+    const responses = [];
+    
+    // Check structured questionnaire responses first
+    if (userHealthProfile?.questionnaireResponses) {
+      const respObj = userHealthProfile.questionnaireResponses;
+      Object.entries(respObj).forEach(([questionId, answer]) => {
+        if (answer) {
+          responses.push({
+            questionId,
+            question: `Question ID: ${questionId}`,
+            answer: answer as string,
+            source: 'structured'
+          });
+        }
+      });
+    }
+    
+    // Check questionnaire metadata for detailed responses
+    if (userHealthProfile?.questionnaireMetadata?.responses) {
+      userHealthProfile.questionnaireMetadata.responses.forEach((resp: any) => {
+        if (resp.answer) {
+          responses.push({
+            questionId: resp.questionId,
+            question: resp.questionText,
+            answer: resp.answer,
+            questionType: resp.questionType,
+            timestamp: resp.timestamp,
+            source: 'metadata'
+          });
+        }
+      });
+    }
+    
+    // Fallback to parsing additionalNotes for legacy data
+    if (userHealthProfile?.additionalNotes && responses.length === 0) {
+      const lines = userHealthProfile.additionalNotes.split('\n');
+      lines.forEach(line => {
+        if (line.trim()) {
+          const separatorIndex = line.indexOf(':');
+          if (separatorIndex > 0) {
+            const question = line.substring(0, separatorIndex).trim();
+            const answer = line.substring(separatorIndex + 1).trim();
+            if (question && answer) {
+              responses.push({
+                question,
+                answer,
+                source: 'legacy'
+              });
+            }
+          }
+        }
+      });
+    }
+    
+    return responses;
+  };
+  
+  const getResponseCount = () => {
+    return getQuestionnaireResponses().length;
+  };
+  
+  const hasCompletedQuestionnaire = () => {
+    return getResponseCount() > 0 || 
+           (userHealthProfile?.questionnaireMetadata?.responses?.length > 0);
+  };
+  
+  const getQuestionnaireStatus = () => {
+    if (hasCompletedQuestionnaire()) {
+      if (userHealthProfile?.questionnaireMetadata?.completedAt) {
+        return `Completed on ${new Date(userHealthProfile.questionnaireMetadata.completedAt).toLocaleDateString()}`;
+      }
+      return 'Completed';
+    }
+    return 'Not completed';
+  };
+  
+  const getQuestionnaireSummary = () => {
+    const responses = getQuestionnaireResponses();
+    const totalQuestions = 10; // Default assumption
+    
+    return {
+      totalResponses: responses.length,
+      totalQuestions,
+      completionRate: totalQuestions > 0 
+        ? Math.round((responses.length / totalQuestions) * 100) 
+        : 0,
+      status: getQuestionnaireStatus(),
+      completedAt: userHealthProfile?.questionnaireMetadata?.completedAt 
+        ? new Date(userHealthProfile.questionnaireMetadata.completedAt).toLocaleDateString() 
+        : null,
+      hasData: responses.length > 0
+    };
+  };
+  
+  const isFileUrl = (answer) => {
+    if (typeof answer !== 'string') return false;
+    return answer.includes('/uploads/questionnaire-responses/');
+  };
+  
+  const getFileNameFromUrl = (url) => {
+    if (!url) return 'Document';
+    const parts = url.split('/');
+    const filename = parts[parts.length - 1];
+    return filename || 'Document';
+  };
+  
+  const formatAnswer = (answer, questionType) => {
+    if (!answer) return "Not answered";
+    
+    if (questionType === 'slider') {
+      return `${answer}/10`;
+    }
+    
+    if (questionType === 'mcq') {
+      return answer;
+    }
+    
+    return answer;
+  };
+  
+  const getQuestionTypeBadge = (questionType) => {
+    const typeMap = {
+      'text': 'bg-blue-100 text-blue-800',
+      'mcq': 'bg-green-100 text-green-800',
+      'slider': 'bg-purple-100 text-purple-800',
+      'skalaeton': 'bg-orange-100 text-orange-800'
+    };
+    return typeMap[questionType] || 'bg-gray-100 text-gray-800';
+  };
+  
+  const getSourceBadge = (source) => {
+    const sourceMap = {
+      'structured': 'bg-indigo-100 text-indigo-800',
+      'metadata': 'bg-cyan-100 text-cyan-800',
+      'legacy': 'bg-yellow-100 text-yellow-800'
+    };
+    return sourceMap[source] || 'bg-gray-100 text-gray-800';
+  };
+  
+  const getResponseStatusBadge = (hasResponse) => {
+    return hasResponse 
+      ? 'text-emerald-600 bg-emerald-100' 
+      : 'text-destructive bg-destructive/10';
+  };
+  
+  const getResponseStatusText = (hasResponse) => {
+    return hasResponse ? 'Answered' : 'Not answered';
+  };
+  
+  const getResponseStatusIndicator = (hasResponse) => {
+    return hasResponse 
+      ? 'bg-emerald-600' 
+      : 'bg-destructive';
+  };
+  
+  const formatDateTime = (dateString) => {
+    if (!dateString) return 'Unknown';
+    return new Date(dateString).toLocaleString();
+  };
 
   const [statusLoading, setStatusLoading] = useState(false);
 
@@ -252,6 +424,171 @@ console.log("errer",singleBooking)
                 }
                 mono
               />
+              <Row
+                label="Phone"
+                value={
+                  booking.userId && typeof booking.userId === "object"
+                    ? booking.userId.phone || "N/A"
+                    : "N/A"
+                }
+              />
+              <Row
+                label="Join Date"
+                value={
+                  booking.userId && typeof booking.userId === "object" && booking.userId.joinDate
+                    ? new Date(booking.userId.joinDate).toLocaleDateString()
+                    : "N/A"
+                }
+              />
+            </CardContent>
+          </Card>
+
+          {/* Health Profile */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex gap-2">
+                <Activity /> Health Profile
+                {hasCompletedQuestionnaire() && (
+                  <span className="text-sm text-muted-foreground ml-2">
+                    ({getResponseCount()} responses)
+                  </span>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {/* Questionnaire Summary */}
+              {hasCompletedQuestionnaire() && (
+                <div className="mb-6 p-4 bg-primary/5 rounded-lg border border-primary/20">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-primary">{getResponseCount()}</div>
+                      <div className="text-sm text-muted-foreground">Responses</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-primary">{getQuestionnaireSummary().completionRate}%</div>
+                      <div className="text-sm text-muted-foreground">Completion</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-sm font-medium">{getQuestionnaireSummary().status}</div>
+                      <div className="text-xs text-muted-foreground">Status</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-sm font-medium">{getQuestionnaireSummary().completedAt || 'N/A'}</div>
+                      <div className="text-xs text-muted-foreground">Completed</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {/* Questionnaire Responses Display */}
+              <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
+                {getQuestionnaireResponses().length > 0 ? (
+                  getQuestionnaireResponses().map((response, index) => (
+                    <div 
+                      key={index}
+                      className="p-4 border rounded-lg bg-muted/20 hover:bg-muted/30 transition-colors"
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2 flex-wrap">
+                            <span className="text-sm font-semibold text-primary">
+                              Q{index + 1}:
+                            </span>
+                            <h4 className="font-medium text-foreground">
+                              {response.question}
+                            </h4>
+                            {response.questionType && (
+                              <span className={`text-xs px-2 py-1 rounded-full ${getQuestionTypeBadge(response.questionType || 'text')}`}>
+                                {response.questionType || 'text'}
+                              </span>
+                            )}
+                            <span className={`text-xs px-2 py-1 rounded-full ${getSourceBadge(response.source || 'unknown')}`}>
+                              {response.source || 'unknown'}
+                            </span>
+                          </div>
+                          
+                          <div className="ml-6">
+                            <p className="text-muted-foreground flex items-center gap-2">
+                              <span className="font-medium">Answer:</span>{' '}
+                              {isFileUrl(response.answer) ? (
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium text-foreground text-sm">
+                                    {getFileNameFromUrl(response.answer)}
+                                  </span>
+                                  <a
+                                    href={response.answer}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1 px-3 py-1 bg-primary text-white text-xs font-semibold rounded-full hover:bg-primary/90 transition-colors"
+                                  >
+                                    <FileText className="w-3 h-3" />
+                                    View
+                                  </a>
+                                </div>
+                              ) : (
+                                <span className="font-medium text-foreground">
+                                  {formatAnswer(response.answer, response.questionType)}
+                                </span>
+                              )}
+                            </p>
+                            {response.timestamp && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Answered: {formatDateTime(response.timestamp)}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                          <span className={`flex items-center gap-1 text-sm px-2 py-1 rounded-full ${getResponseStatusBadge(!!response.answer)}`}>
+                            <div className={`w-2 h-2 rounded-full ${getResponseStatusIndicator(!!response.answer)}`}></div>
+                            {getResponseStatusText(!!response.answer)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  // No responses found - show raw health profile data
+                  <div className="space-y-4">
+                    <div className="text-center py-4 text-muted-foreground">
+                      <ClipboardList className="w-12 h-12 mx-auto mb-4 text-muted-foreground/50" />
+                      <p className="font-medium mb-1">No structured questionnaire responses found</p>
+                      <p className="text-sm">Showing raw health profile data instead.</p>
+                    </div>
+                    
+                    {/* Raw Health Profile Data */}
+                    <div className="bg-muted/10 p-4 rounded-lg border">
+                      <h4 className="font-semibold mb-3 text-foreground">Raw Health Profile Data</h4>
+                      <pre className="text-xs whitespace-pre-wrap text-muted-foreground font-mono bg-background/50 p-3 rounded">
+                        {JSON.stringify(userHealthProfile, null, 2)}
+                      </pre>
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              {/* Questionnaire Info Panel */}
+              <div className="mt-6 p-4 bg-muted/10 rounded-lg border border-dashed">
+                <h4 className="font-semibold mb-3 text-foreground flex items-center gap-2">
+                  <ClipboardList className="w-4 h-4" />
+                  Questionnaire Information
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="font-medium text-muted-foreground">Status:</span>
+                    <span className="ml-2">{getQuestionnaireStatus()}</span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-muted-foreground">Total Responses:</span>
+                    <span className="ml-2">{getResponseCount()}</span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-muted-foreground">Completion Date:</span>
+                    <span className="ml-2">{getQuestionnaireSummary().completedAt || 'Not completed'}</span>
+                  </div>
+                </div>
+              </div>
             </CardContent>
           </Card>
 

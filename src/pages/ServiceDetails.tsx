@@ -603,7 +603,7 @@ export default function ServiceDetails() {
               <CardTitle>Service Info</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
-              <InfoRow label="Service ID" value={service?._id} />
+            
               <InfoRow label="Category" value={service?.category} />
               <InfoRow label="Duration" value={service?.duration} />
               <InfoRow label="Sessions" value={service?.sessions} />
