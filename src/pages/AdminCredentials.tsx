@@ -34,7 +34,9 @@ interface EmailCredential extends Credential {
   emailHost?: string;
   emailPort?: number;
   emailUser?: string;
+  emailUsername?: string;
   emailPassword?: string;
+  emailEncryption?: string;
   adminEmail?: string;
 }
 
@@ -51,7 +53,9 @@ export default function AdminCredentials() {
   const [loading, setLoading] = useState(false);
   const [credentials, setCredentials] = useState<Credential[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [showPasswords, setShowPasswords] = useState<{ [key: string]: boolean }>({});
+  const [showPasswords, setShowPasswords] = useState<{
+    [key: string]: boolean;
+  }>({});
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -70,7 +74,9 @@ export default function AdminCredentials() {
     emailHost: "",
     emailPort: 587,
     emailUser: "",
+    emailUsername: "",
     emailPassword: "",
+    emailEncryption: "",
     adminEmail: "",
   });
 
@@ -99,17 +105,33 @@ export default function AdminCredentials() {
           const existingWhatsapp = getCredentialsByType("whatsapp");
           if (existingWhatsapp.length > 0) {
             try {
-              const resp = await apiClient.get(`/credentials/${existingWhatsapp[0]._id}`);
+              const resp = await apiClient.get(
+                `/credentials/${existingWhatsapp[0]._id}`
+              );
               const credential = resp.data?.data || resp.data || resp;
               setWhatsappForm({
                 name: credential.name || existingWhatsapp[0].name || "",
-                description: credential.description || existingWhatsapp[0].description || "",
-                whatsappAccessToken: credential.whatsappAccessToken || credential.accessToken || credential.token || "",
-                whatsappPhoneNumberId: credential.whatsappPhoneNumberId || credential.phoneNumberId || "",
-                whatsappBusinessId: credential.whatsappBusinessId || credential.businessId || "",
+                description:
+                  credential.description ||
+                  existingWhatsapp[0].description ||
+                  "",
+                whatsappAccessToken:
+                  credential.whatsappAccessToken ||
+                  credential.accessToken ||
+                  credential.token ||
+                  "",
+                whatsappPhoneNumberId:
+                  credential.whatsappPhoneNumberId ||
+                  credential.phoneNumberId ||
+                  "",
+                whatsappBusinessId:
+                  credential.whatsappBusinessId || credential.businessId || "",
               });
             } catch (error) {
-              console.error("Failed to load decrypted WhatsApp credential:", error);
+              console.error(
+                "Failed to load decrypted WhatsApp credential:",
+                error
+              );
               // Fallback to existing data
               const credential = existingWhatsapp[0] as WhatsAppCredential;
               setWhatsappForm({
@@ -125,23 +147,43 @@ export default function AdminCredentials() {
           const existingEmail = getCredentialsByType("email");
           if (existingEmail.length > 0) {
             try {
-              const resp = await apiClient.get(`/credentials/${existingEmail[0]._id}`);
+              const resp = await apiClient.get(
+                `/credentials/${existingEmail[0]._id}`
+              );
               const credential = resp.data?.data || resp.data || resp;
               setEmailForm({
                 name: credential.name || existingEmail[0].name || "",
-                description: credential.description || existingEmail[0].description || "",
+                description:
+                  credential.description || existingEmail[0].description || "",
                 emailHost: credential.emailHost || credential.host || "",
-                emailPort: typeof credential.emailPort !== "undefined"
-                  ? credential.emailPort
-                  : typeof credential.port !== "undefined"
-                  ? credential.port
-                  : 587,
-                emailUser: credential.emailUser || credential.user || credential.username || "",
-                emailPassword: credential.emailPassword || credential.password || "",
-                adminEmail: credential.adminEmail || credential.adminEmailAddress || credential.adminEmail || "",
+                emailPort:
+                  typeof credential.emailPort !== "undefined"
+                    ? credential.emailPort
+                    : typeof credential.port !== "undefined"
+                    ? credential.port
+                    : 587,
+                emailUser:
+                  credential.emailUser ||
+                  credential.user ||
+                  credential.username ||
+                  "",
+                emailUsername:
+                  credential.emailUsername || credential.username || "",
+                emailPassword:
+                  credential.emailPassword || credential.password || "",
+                emailEncryption:
+                  credential.emailEncryption || credential.encryption || "",
+                adminEmail:
+                  credential.adminEmail ||
+                  credential.adminEmailAddress ||
+                  credential.adminEmail ||
+                  "",
               });
             } catch (error) {
-              console.error("Failed to load decrypted Email credential:", error);
+              console.error(
+                "Failed to load decrypted Email credential:",
+                error
+              );
               // Fallback to existing data
               const credential = existingEmail[0] as EmailCredential;
               setEmailForm({
@@ -150,7 +192,9 @@ export default function AdminCredentials() {
                 emailHost: credential.emailHost || "",
                 emailPort: credential.emailPort || 587,
                 emailUser: credential.emailUser || "",
+                emailUsername: credential.emailUsername || "",
                 emailPassword: credential.emailPassword || "",
+                emailEncryption: credential.emailEncryption || "",
                 adminEmail: credential.adminEmail || "",
               });
             }
@@ -159,16 +203,32 @@ export default function AdminCredentials() {
           const existingRazorpay = getCredentialsByType("razorpay");
           if (existingRazorpay.length > 0) {
             try {
-              const resp = await apiClient.get(`/credentials/${existingRazorpay[0]._id}`);
+              const resp = await apiClient.get(
+                `/credentials/${existingRazorpay[0]._id}`
+              );
               const credential = resp.data?.data || resp.data || resp;
               setRazorpayForm({
                 name: credential.name || existingRazorpay[0].name || "",
-                description: credential.description || existingRazorpay[0].description || "",
-                razorpayKeyId: credential.razorpayKeyId || credential.keyId || credential.key || "",
-                razorpayKeySecret: credential.razorpayKeySecret || credential.keySecret || credential.secret || "",
+                description:
+                  credential.description ||
+                  existingRazorpay[0].description ||
+                  "",
+                razorpayKeyId:
+                  credential.razorpayKeyId ||
+                  credential.keyId ||
+                  credential.key ||
+                  "",
+                razorpayKeySecret:
+                  credential.razorpayKeySecret ||
+                  credential.keySecret ||
+                  credential.secret ||
+                  "",
               });
             } catch (error) {
-              console.error("Failed to load decrypted Razorpay credential:", error);
+              console.error(
+                "Failed to load decrypted Razorpay credential:",
+                error
+              );
               // Fallback to existing data
               const credential = existingRazorpay[0] as RazorpayCredential;
               setRazorpayForm({
@@ -215,7 +275,9 @@ export default function AdminCredentials() {
         emailHost: "",
         emailPort: 587,
         emailUser: "",
+        emailUsername: "",
         emailPassword: "",
+        emailEncryption: "",
         adminEmail: "",
       });
     } else if (type === "razorpay") {
@@ -244,7 +306,7 @@ export default function AdminCredentials() {
 
       // Check if there's already an existing credential
       const existingWhatsapp = getCredentialsByType("whatsapp");
-      
+
       if (editingId) {
         // Update existing credential
         await apiClient.put(`/credentials/${editingId}`, payload);
@@ -264,7 +326,9 @@ export default function AdminCredentials() {
       loadCredentials();
       setTimeout(() => setSuccessMessage(""), 3000);
     } catch (error: any) {
-      setErrorMessage(error.response?.data?.message || "Failed to save credential");
+      setErrorMessage(
+        error.response?.data?.message || "Failed to save credential"
+      );
     } finally {
       setLoading(false);
     }
@@ -286,7 +350,7 @@ export default function AdminCredentials() {
 
       // Check if there's already an existing credential
       const existingEmail = getCredentialsByType("email");
-      
+
       if (editingId) {
         // Update existing credential
         await apiClient.put(`/credentials/${editingId}`, payload);
@@ -306,7 +370,9 @@ export default function AdminCredentials() {
       loadCredentials();
       setTimeout(() => setSuccessMessage(""), 3000);
     } catch (error: any) {
-      setErrorMessage(error.response?.data?.message || "Failed to save credential");
+      setErrorMessage(
+        error.response?.data?.message || "Failed to save credential"
+      );
     } finally {
       setLoading(false);
     }
@@ -328,7 +394,7 @@ export default function AdminCredentials() {
 
       // Check if there's already an existing credential
       const existingRazorpay = getCredentialsByType("razorpay");
-      
+
       if (editingId) {
         // Update existing credential
         await apiClient.put(`/credentials/${editingId}`, payload);
@@ -348,7 +414,9 @@ export default function AdminCredentials() {
       loadCredentials();
       setTimeout(() => setSuccessMessage(""), 3000);
     } catch (error: any) {
-      setErrorMessage(error.response?.data?.message || "Failed to save credential");
+      setErrorMessage(
+        error.response?.data?.message || "Failed to save credential"
+      );
     } finally {
       setLoading(false);
     }
@@ -391,8 +459,11 @@ export default function AdminCredentials() {
               ? ec.port
               : 587,
           emailUser: ec.emailUser || ec.user || ec.username || "",
+          emailUsername: ec.emailUsername || ec.username || "",
           emailPassword: ec.emailPassword || ec.password || "",
-          adminEmail: ec.adminEmail || ec.adminEmailAddress || ec.adminEmail || "",
+          emailEncryption: ec.emailEncryption || ec.encryption || "",
+          adminEmail:
+            ec.adminEmail || ec.adminEmailAddress || ec.adminEmail || "",
         });
       } else if (credential.credentialType === "razorpay") {
         const rc: any = full;
@@ -424,7 +495,9 @@ export default function AdminCredentials() {
       loadCredentials();
       setTimeout(() => setSuccessMessage(""), 3000);
     } catch (error: any) {
-      setErrorMessage(error.response?.data?.message || "Failed to delete credential");
+      setErrorMessage(
+        error.response?.data?.message || "Failed to delete credential"
+      );
     } finally {
       setLoading(false);
     }
@@ -438,7 +511,9 @@ export default function AdminCredentials() {
       });
       loadCredentials();
     } catch (error: any) {
-      setErrorMessage(error.response?.data?.message || "Failed to update status");
+      setErrorMessage(
+        error.response?.data?.message || "Failed to update status"
+      );
     } finally {
       setLoading(false);
     }
@@ -460,7 +535,9 @@ export default function AdminCredentials() {
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
           <h2 className="text-2xl font-bold mb-4">Authentication Required</h2>
-          <p className="text-muted-foreground mb-6">Please log in to manage credentials</p>
+          <p className="text-muted-foreground mb-6">
+            Please log in to manage credentials
+          </p>
           <Button onClick={() => navigate("/login")}>Go to Login</Button>
         </div>
       </div>
@@ -493,7 +570,11 @@ export default function AdminCredentials() {
           </div>
         )}
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <Tabs
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className="space-y-6"
+        >
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="whatsapp">WhatsApp</TabsTrigger>
             <TabsTrigger value="email">Email</TabsTrigger>
@@ -519,10 +600,16 @@ export default function AdminCredentials() {
                         placeholder="e.g., WhatsApp Production"
                         value={whatsappForm.name}
                         onChange={(e) =>
-                          setWhatsappForm({ ...whatsappForm, name: e.target.value })
+                          setWhatsappForm({
+                            ...whatsappForm,
+                            name: e.target.value,
+                          })
                         }
                         required
-                        disabled={!editingId && getCredentialsByType("whatsapp").length > 0}
+                        disabled={
+                          !editingId &&
+                          getCredentialsByType("whatsapp").length > 0
+                        }
                       />
                     </div>
 
@@ -538,7 +625,10 @@ export default function AdminCredentials() {
                             description: e.target.value,
                           })
                         }
-                        disabled={!editingId && getCredentialsByType("whatsapp").length > 0}
+                        disabled={
+                          !editingId &&
+                          getCredentialsByType("whatsapp").length > 0
+                        }
                       />
                     </div>
                   </div>
@@ -561,13 +651,19 @@ export default function AdminCredentials() {
                             })
                           }
                           required
-                          disabled={!editingId && getCredentialsByType("whatsapp").length > 0}
+                          disabled={
+                            !editingId &&
+                            getCredentialsByType("whatsapp").length > 0
+                          }
                         />
                         <button
                           type="button"
                           onClick={() => togglePasswordVisibility("wa-token")}
                           className="absolute right-3 top-1/2 -translate-y-1/2"
-                          disabled={!editingId && getCredentialsByType("whatsapp").length > 0}
+                          disabled={
+                            !editingId &&
+                            getCredentialsByType("whatsapp").length > 0
+                          }
                         >
                           {showPasswords["wa-token"] ? (
                             <EyeOff className="w-4 h-4" />
@@ -593,7 +689,10 @@ export default function AdminCredentials() {
                           })
                         }
                         required
-                        disabled={!editingId && getCredentialsByType("whatsapp").length > 0}
+                        disabled={
+                          !editingId &&
+                          getCredentialsByType("whatsapp").length > 0
+                        }
                       />
                     </div>
 
@@ -610,17 +709,22 @@ export default function AdminCredentials() {
                           })
                         }
                         required
-                        disabled={!editingId && getCredentialsByType("whatsapp").length > 0}
+                        disabled={
+                          !editingId &&
+                          getCredentialsByType("whatsapp").length > 0
+                        }
                       />
                     </div>
                   </div>
 
                   <div className="flex gap-3 pt-4">
-                    {!editingId && getCredentialsByType("whatsapp").length > 0 ? (
+                    {!editingId &&
+                    getCredentialsByType("whatsapp").length > 0 ? (
                       <Button
                         type="button"
                         onClick={() => {
-                          const existingWhatsapp = getCredentialsByType("whatsapp");
+                          const existingWhatsapp =
+                            getCredentialsByType("whatsapp");
                           if (existingWhatsapp.length > 0) {
                             setEditingId(existingWhatsapp[0]._id);
                             handleEdit(existingWhatsapp[0]);
@@ -634,8 +738,8 @@ export default function AdminCredentials() {
                         {loading
                           ? "Saving..."
                           : editingId
-                            ? "Update Credential"
-                            : "Add Credential"}
+                          ? "Update Credential"
+                          : "Add Credential"}
                       </Button>
                     )}
                     {editingId && (
@@ -645,29 +749,56 @@ export default function AdminCredentials() {
                         onClick={() => {
                           setEditingId(null);
                           // Reset form to existing credential values
-                          const existingWhatsapp = getCredentialsByType("whatsapp");
+                          const existingWhatsapp =
+                            getCredentialsByType("whatsapp");
                           if (existingWhatsapp.length > 0) {
                             const loadAndDecryptCredential = async () => {
                               try {
-                                const resp = await apiClient.get(`/credentials/${existingWhatsapp[0]._id}`);
-                                const credential = resp.data?.data || resp.data || resp;
+                                const resp = await apiClient.get(
+                                  `/credentials/${existingWhatsapp[0]._id}`
+                                );
+                                const credential =
+                                  resp.data?.data || resp.data || resp;
                                 setWhatsappForm({
-                                  name: credential.name || existingWhatsapp[0].name || "",
-                                  description: credential.description || existingWhatsapp[0].description || "",
-                                  whatsappAccessToken: credential.whatsappAccessToken || credential.accessToken || credential.token || "",
-                                  whatsappPhoneNumberId: credential.whatsappPhoneNumberId || credential.phoneNumberId || "",
-                                  whatsappBusinessId: credential.whatsappBusinessId || credential.businessId || "",
+                                  name:
+                                    credential.name ||
+                                    existingWhatsapp[0].name ||
+                                    "",
+                                  description:
+                                    credential.description ||
+                                    existingWhatsapp[0].description ||
+                                    "",
+                                  whatsappAccessToken:
+                                    credential.whatsappAccessToken ||
+                                    credential.accessToken ||
+                                    credential.token ||
+                                    "",
+                                  whatsappPhoneNumberId:
+                                    credential.whatsappPhoneNumberId ||
+                                    credential.phoneNumberId ||
+                                    "",
+                                  whatsappBusinessId:
+                                    credential.whatsappBusinessId ||
+                                    credential.businessId ||
+                                    "",
                                 });
                               } catch (error) {
-                                console.error("Failed to load decrypted WhatsApp credential:", error);
+                                console.error(
+                                  "Failed to load decrypted WhatsApp credential:",
+                                  error
+                                );
                                 // Fallback to existing data
-                                const credential = existingWhatsapp[0] as WhatsAppCredential;
+                                const credential =
+                                  existingWhatsapp[0] as WhatsAppCredential;
                                 setWhatsappForm({
                                   name: credential.name || "",
                                   description: credential.description || "",
-                                  whatsappAccessToken: credential.whatsappAccessToken || "",
-                                  whatsappPhoneNumberId: credential.whatsappPhoneNumberId || "",
-                                  whatsappBusinessId: credential.whatsappBusinessId || "",
+                                  whatsappAccessToken:
+                                    credential.whatsappAccessToken || "",
+                                  whatsappPhoneNumberId:
+                                    credential.whatsappPhoneNumberId || "",
+                                  whatsappBusinessId:
+                                    credential.whatsappBusinessId || "",
                                 });
                               }
                             };
@@ -759,7 +890,9 @@ export default function AdminCredentials() {
             <Card>
               <CardHeader>
                 <CardTitle>Add/Edit Email Credential</CardTitle>
-                <CardDescription>Configure your SMTP email settings</CardDescription>
+                <CardDescription>
+                  Configure your SMTP email settings
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleSaveEmail} className="space-y-4">
@@ -774,7 +907,9 @@ export default function AdminCredentials() {
                           setEmailForm({ ...emailForm, name: e.target.value })
                         }
                         required
-                        disabled={!editingId && getCredentialsByType("email").length > 0}
+                        disabled={
+                          !editingId && getCredentialsByType("email").length > 0
+                        }
                       />
                     </div>
 
@@ -790,7 +925,9 @@ export default function AdminCredentials() {
                             description: e.target.value,
                           })
                         }
-                        disabled={!editingId && getCredentialsByType("email").length > 0}
+                        disabled={
+                          !editingId && getCredentialsByType("email").length > 0
+                        }
                       />
                     </div>
                   </div>
@@ -805,10 +942,15 @@ export default function AdminCredentials() {
                         placeholder="e.g., smtp.gmail.com"
                         value={emailForm.emailHost}
                         onChange={(e) =>
-                          setEmailForm({ ...emailForm, emailHost: e.target.value })
+                          setEmailForm({
+                            ...emailForm,
+                            emailHost: e.target.value,
+                          })
                         }
                         required
-                        disabled={!editingId && getCredentialsByType("email").length > 0}
+                        disabled={
+                          !editingId && getCredentialsByType("email").length > 0
+                        }
                       />
                     </div>
 
@@ -826,7 +968,9 @@ export default function AdminCredentials() {
                           })
                         }
                         required
-                        disabled={!editingId && getCredentialsByType("email").length > 0}
+                        disabled={
+                          !editingId && getCredentialsByType("email").length > 0
+                        }
                       />
                     </div>
                   </div>
@@ -839,21 +983,48 @@ export default function AdminCredentials() {
                       placeholder="your-email@gmail.com"
                       value={emailForm.emailUser}
                       onChange={(e) =>
-                        setEmailForm({ ...emailForm, emailUser: e.target.value })
+                        setEmailForm({
+                          ...emailForm,
+                          emailUser: e.target.value,
+                        })
                       }
                       required
-                      disabled={!editingId && getCredentialsByType("email").length > 0}
+                      disabled={
+                        !editingId && getCredentialsByType("email").length > 0
+                      }
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="email-password">Password/App Password *</Label>
+                    <Label htmlFor="email-username">Username</Label>
+                    <Input
+                      id="email-username"
+                      placeholder="SMTP username (if different from email)"
+                      value={emailForm.emailUsername}
+                      onChange={(e) =>
+                        setEmailForm({
+                          ...emailForm,
+                          emailUsername: e.target.value,
+                        })
+                      }
+                      disabled={
+                        !editingId && getCredentialsByType("email").length > 0
+                      }
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="email-password">
+                      Password/App Password *
+                    </Label>
                     <div className="flex gap-2">
                       <div className="relative flex-1">
                         <Input
                           id="email-password"
                           type={
-                            showPasswords["email-password"] ? "text" : "password"
+                            showPasswords["email-password"]
+                              ? "text"
+                              : "password"
                           }
                           placeholder="Your app password or email password"
                           value={emailForm.emailPassword}
@@ -864,7 +1035,10 @@ export default function AdminCredentials() {
                             })
                           }
                           required
-                          disabled={!editingId && getCredentialsByType("email").length > 0}
+                          disabled={
+                            !editingId &&
+                            getCredentialsByType("email").length > 0
+                          }
                         />
                         <button
                           type="button"
@@ -872,7 +1046,10 @@ export default function AdminCredentials() {
                             togglePasswordVisibility("email-password")
                           }
                           className="absolute right-3 top-1/2 -translate-y-1/2"
-                          disabled={!editingId && getCredentialsByType("email").length > 0}
+                          disabled={
+                            !editingId &&
+                            getCredentialsByType("email").length > 0
+                          }
                         >
                           {showPasswords["email-password"] ? (
                             <EyeOff className="w-4 h-4" />
@@ -882,6 +1059,30 @@ export default function AdminCredentials() {
                         </button>
                       </div>
                     </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="email-encryption">Encryption</Label>
+                    <select
+                      id="email-encryption"
+                      value={emailForm.emailEncryption}
+                      onChange={(e) =>
+                        setEmailForm({
+                          ...emailForm,
+                          emailEncryption: e.target.value,
+                        })
+                      }
+                      disabled={
+                        !editingId && getCredentialsByType("email").length > 0
+                      }
+                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <option value="">Select Encryption Type</option>
+                      <option value="TLS">TLS</option>
+                      <option value="SSL">SSL</option>
+                      <option value="STARTTLS">STARTTLS</option>
+                      <option value="None">None</option>
+                    </select>
                   </div>
 
                   <div className="space-y-2">
@@ -898,7 +1099,9 @@ export default function AdminCredentials() {
                         })
                       }
                       required
-                      disabled={!editingId && getCredentialsByType("email").length > 0}
+                      disabled={
+                        !editingId && getCredentialsByType("email").length > 0
+                      }
                     />
                   </div>
 
@@ -921,8 +1124,8 @@ export default function AdminCredentials() {
                         {loading
                           ? "Saving..."
                           : editingId
-                            ? "Update Credential"
-                            : "Add Credential"}
+                          ? "Update Credential"
+                          : "Add Credential"}
                       </Button>
                     )}
                     {editingId && (
@@ -936,32 +1139,71 @@ export default function AdminCredentials() {
                           if (existingEmail.length > 0) {
                             const loadAndDecryptCredential = async () => {
                               try {
-                                const resp = await apiClient.get(`/credentials/${existingEmail[0]._id}`);
-                                const credential = resp.data?.data || resp.data || resp;
+                                const resp = await apiClient.get(
+                                  `/credentials/${existingEmail[0]._id}`
+                                );
+                                const credential =
+                                  resp.data?.data || resp.data || resp;
                                 setEmailForm({
-                                  name: credential.name || existingEmail[0].name || "",
-                                  description: credential.description || existingEmail[0].description || "",
-                                  emailHost: credential.emailHost || credential.host || "",
-                                  emailPort: typeof credential.emailPort !== "undefined"
-                                    ? credential.emailPort
-                                    : typeof credential.port !== "undefined"
-                                    ? credential.port
-                                    : 587,
-                                  emailUser: credential.emailUser || credential.user || credential.username || "",
-                                  emailPassword: credential.emailPassword || credential.password || "",
-                                  adminEmail: credential.adminEmail || credential.adminEmailAddress || credential.adminEmail || "",
+                                  name:
+                                    credential.name ||
+                                    existingEmail[0].name ||
+                                    "",
+                                  description:
+                                    credential.description ||
+                                    existingEmail[0].description ||
+                                    "",
+                                  emailHost:
+                                    credential.emailHost ||
+                                    credential.host ||
+                                    "",
+                                  emailPort:
+                                    typeof credential.emailPort !== "undefined"
+                                      ? credential.emailPort
+                                      : typeof credential.port !== "undefined"
+                                      ? credential.port
+                                      : 587,
+                                  emailUser:
+                                    credential.emailUser ||
+                                    credential.user ||
+                                    credential.username ||
+                                    "",
+                                  emailUsername:
+                                    credential.emailUsername ||
+                                    credential.username ||
+                                    "",
+                                  emailPassword:
+                                    credential.emailPassword ||
+                                    credential.password ||
+                                    "",
+                                  emailEncryption:
+                                    credential.emailEncryption ||
+                                    credential.encryption ||
+                                    "",
+                                  adminEmail:
+                                    credential.adminEmail ||
+                                    credential.adminEmailAddress ||
+                                    credential.adminEmail ||
+                                    "",
                                 });
                               } catch (error) {
-                                console.error("Failed to load decrypted Email credential:", error);
+                                console.error(
+                                  "Failed to load decrypted Email credential:",
+                                  error
+                                );
                                 // Fallback to existing data
-                                const credential = existingEmail[0] as EmailCredential;
+                                const credential =
+                                  existingEmail[0] as EmailCredential;
                                 setEmailForm({
                                   name: credential.name || "",
                                   description: credential.description || "",
                                   emailHost: credential.emailHost || "",
                                   emailPort: credential.emailPort || 587,
                                   emailUser: credential.emailUser || "",
+                                  emailUsername: credential.emailUsername || "",
                                   emailPassword: credential.emailPassword || "",
+                                  emailEncryption:
+                                    credential.emailEncryption || "",
                                   adminEmail: credential.adminEmail || "",
                                 });
                               }
@@ -1068,10 +1310,16 @@ export default function AdminCredentials() {
                         placeholder="e.g., Razorpay Production"
                         value={razorpayForm.name}
                         onChange={(e) =>
-                          setRazorpayForm({ ...razorpayForm, name: e.target.value })
+                          setRazorpayForm({
+                            ...razorpayForm,
+                            name: e.target.value,
+                          })
                         }
                         required
-                        disabled={!editingId && getCredentialsByType("razorpay").length > 0}
+                        disabled={
+                          !editingId &&
+                          getCredentialsByType("razorpay").length > 0
+                        }
                       />
                     </div>
 
@@ -1087,7 +1335,10 @@ export default function AdminCredentials() {
                             description: e.target.value,
                           })
                         }
-                        disabled={!editingId && getCredentialsByType("razorpay").length > 0}
+                        disabled={
+                          !editingId &&
+                          getCredentialsByType("razorpay").length > 0
+                        }
                       />
                     </div>
                   </div>
@@ -1107,7 +1358,10 @@ export default function AdminCredentials() {
                         })
                       }
                       required
-                      disabled={!editingId && getCredentialsByType("razorpay").length > 0}
+                      disabled={
+                        !editingId &&
+                        getCredentialsByType("razorpay").length > 0
+                      }
                     />
                   </div>
 
@@ -1129,7 +1383,10 @@ export default function AdminCredentials() {
                             })
                           }
                           required
-                          disabled={!editingId && getCredentialsByType("razorpay").length > 0}
+                          disabled={
+                            !editingId &&
+                            getCredentialsByType("razorpay").length > 0
+                          }
                         />
                         <button
                           type="button"
@@ -1137,7 +1394,10 @@ export default function AdminCredentials() {
                             togglePasswordVisibility("rp-key-secret")
                           }
                           className="absolute right-3 top-1/2 -translate-y-1/2"
-                          disabled={!editingId && getCredentialsByType("razorpay").length > 0}
+                          disabled={
+                            !editingId &&
+                            getCredentialsByType("razorpay").length > 0
+                          }
                         >
                           {showPasswords["rp-key-secret"] ? (
                             <EyeOff className="w-4 h-4" />
@@ -1150,11 +1410,13 @@ export default function AdminCredentials() {
                   </div>
 
                   <div className="flex gap-3 pt-4">
-                    {!editingId && getCredentialsByType("razorpay").length > 0 ? (
+                    {!editingId &&
+                    getCredentialsByType("razorpay").length > 0 ? (
                       <Button
                         type="button"
                         onClick={() => {
-                          const existingRazorpay = getCredentialsByType("razorpay");
+                          const existingRazorpay =
+                            getCredentialsByType("razorpay");
                           if (existingRazorpay.length > 0) {
                             setEditingId(existingRazorpay[0]._id);
                             handleEdit(existingRazorpay[0]);
@@ -1168,8 +1430,8 @@ export default function AdminCredentials() {
                         {loading
                           ? "Saving..."
                           : editingId
-                            ? "Update Credential"
-                            : "Add Credential"}
+                          ? "Update Credential"
+                          : "Add Credential"}
                       </Button>
                     )}
                     {editingId && (
@@ -1179,27 +1441,50 @@ export default function AdminCredentials() {
                         onClick={() => {
                           setEditingId(null);
                           // Reset form to existing credential values
-                          const existingRazorpay = getCredentialsByType("razorpay");
+                          const existingRazorpay =
+                            getCredentialsByType("razorpay");
                           if (existingRazorpay.length > 0) {
                             const loadAndDecryptCredential = async () => {
                               try {
-                                const resp = await apiClient.get(`/credentials/${existingRazorpay[0]._id}`);
-                                const credential = resp.data?.data || resp.data || resp;
+                                const resp = await apiClient.get(
+                                  `/credentials/${existingRazorpay[0]._id}`
+                                );
+                                const credential =
+                                  resp.data?.data || resp.data || resp;
                                 setRazorpayForm({
-                                  name: credential.name || existingRazorpay[0].name || "",
-                                  description: credential.description || existingRazorpay[0].description || "",
-                                  razorpayKeyId: credential.razorpayKeyId || credential.keyId || credential.key || "",
-                                  razorpayKeySecret: credential.razorpayKeySecret || credential.keySecret || credential.secret || "",
+                                  name:
+                                    credential.name ||
+                                    existingRazorpay[0].name ||
+                                    "",
+                                  description:
+                                    credential.description ||
+                                    existingRazorpay[0].description ||
+                                    "",
+                                  razorpayKeyId:
+                                    credential.razorpayKeyId ||
+                                    credential.keyId ||
+                                    credential.key ||
+                                    "",
+                                  razorpayKeySecret:
+                                    credential.razorpayKeySecret ||
+                                    credential.keySecret ||
+                                    credential.secret ||
+                                    "",
                                 });
                               } catch (error) {
-                                console.error("Failed to load decrypted Razorpay credential:", error);
+                                console.error(
+                                  "Failed to load decrypted Razorpay credential:",
+                                  error
+                                );
                                 // Fallback to existing data
-                                const credential = existingRazorpay[0] as RazorpayCredential;
+                                const credential =
+                                  existingRazorpay[0] as RazorpayCredential;
                                 setRazorpayForm({
                                   name: credential.name || "",
                                   description: credential.description || "",
                                   razorpayKeyId: credential.razorpayKeyId || "",
-                                  razorpayKeySecret: credential.razorpayKeySecret || "",
+                                  razorpayKeySecret:
+                                    credential.razorpayKeySecret || "",
                                 });
                               }
                             };
