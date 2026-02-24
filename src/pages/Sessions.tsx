@@ -1030,11 +1030,11 @@ export default function Sessions() {
                                   <p className="font-medium">
                                     {session.subscriptionId?.planName || "N/A"}
                                   </p>
-                                  <p className="text-xs text-muted-foreground">
+                                  {/* <p className="text-xs text-muted-foreground">
                                     Subscription ID:{" "}
                                     {session.subscriptionId?._id?.slice(0, 8) ||
                                       "N/A"}
-                                  </p>
+                                  </p> */}
                                   <div className="flex items-center gap-2 mt-1">
                                     <Badge
                                       variant="default"

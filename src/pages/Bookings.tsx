@@ -328,7 +328,7 @@ export default function Bookings() {
                           ? 'bg-blue-100 text-blue-600' 
                           : 'bg-gray-100 text-gray-600'
                       }`}>
-                        {booking.bookingType === 'free-consultation' ? 'Free Consultation' : 'Regular'}
+                        {booking.bookingType === 'free-consultation' ? 'Free' : 'Regular'}
                       </span>
                     </td>
                     <td className="min-w-[120px]">
@@ -464,8 +464,8 @@ export default function Bookings() {
                             <>
                               <SelectItem value="pending">Pending</SelectItem>
                               <SelectItem value="confirmed">Accept</SelectItem>
-                              <SelectItem value="scheduled">Schedule</SelectItem>
-                              <SelectItem value="completed">Completed</SelectItem>
+                              {/* <SelectItem value="scheduled">Schedule</SelectItem>
+                              <SelectItem value="completed">Completed</SelectItem> */}
                               <SelectItem value="cancelled">Cancelled</SelectItem>
                             </>
                           ) : (

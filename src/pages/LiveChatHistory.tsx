@@ -933,7 +933,7 @@ const LiveChatHistory = () => {
                   <h2 className="text-lg font-semibold text-foreground">
                     Chat with {getClientNameOnly(selectedChat)}
                   </h2>
-                  <p className="text-sm text-muted-foreground">
+                  {/* <p className="text-sm text-muted-foreground">
                     Session:{" "}
                     {(selectedChat.sessionInfo &&
                       typeof selectedChat.sessionInfo === "object" &&
@@ -950,7 +950,7 @@ const LiveChatHistory = () => {
                         Array.isArray(selectedChat.sessionInfo) &&
                         selectedChat.sessionInfo[0]?.time) ||
                       "N/A"}
-                  </p>
+                  </p> */}
                 </div>
 
                 {/* Messages Area */}
