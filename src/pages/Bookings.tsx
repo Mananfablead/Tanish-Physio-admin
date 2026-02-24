@@ -5,12 +5,11 @@ import {
   MoreHorizontal,
   Calendar,
   Clock,
-  
   CheckCircle,
   XCircle,
   Clock as ClockIcon,
-
   Eye,
+  LoaderCircle,
 } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
@@ -68,6 +67,7 @@ export default function Bookings() {
   const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false);
   const [newStatus, setNewStatus] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
   const bookingsPerPage = 10;
   console.log("isEditing", isEditing);
   useEffect(() => {
@@ -411,12 +411,15 @@ export default function Bookings() {
                     <td className="min-w-[140px]">
                       <Select
                         value={booking.status}
-                        disabled={booking.status === "cancelled"}
+                        disabled={booking.status === "cancelled" || updatingStatusId === (booking._id || booking.id)}
                         onValueChange={async (value) => {
+                          const bookingId = booking._id || booking.id;
+                          setUpdatingStatusId(bookingId);
+                          
                           try {
                             // Use the dedicated status update endpoint for proper session creation
                             // Using proxy path instead of full URL
-                            const res = await fetch(`/api/bookings/${booking._id || booking.id}/status`, {
+                            const res = await fetch(`/api/bookings/${bookingId}/status`, {
                               method: 'PUT',
                               headers: {
                                 'Content-Type': 'application/json',
@@ -448,6 +451,8 @@ export default function Bookings() {
                               title: error.message || "Failed to update status",
                               variant: "destructive",
                             });
+                          } finally {
+                            setUpdatingStatusId(null);
                           }
                         }}
                       >
@@ -457,7 +462,14 @@ export default function Bookings() {
                             getStatusBadge(booking.status, booking.bookingType)
                           )}
                         >
-                          <SelectValue />
+                          {updatingStatusId === (booking._id || booking.id) ? (
+                            <div className="flex items-center gap-2">
+                              <LoaderCircle className="w-4 h-4 animate-spin" />
+                              <span>Updating...</span>
+                            </div>
+                          ) : (
+                            <SelectValue />
+                          )}
                         </SelectTrigger>
                         <SelectContent>
                           {booking.bookingType === 'free-consultation' ? (

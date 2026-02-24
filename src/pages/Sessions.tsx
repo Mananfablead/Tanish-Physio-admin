@@ -53,6 +53,7 @@ export default function Sessions() {
   } = useSelector((state: any) => state.sessions);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("all");
+  const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
     
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -166,6 +167,9 @@ export default function Sessions() {
     dispatch(fetchBookings());
     dispatch(getAllAvailability());
   }, [dispatch, activeTab]);
+
+  // Calculate total pages for pagination
+  const totalPages = Math.ceil(filteredSessions.length / itemsPerPage);
 
   // Function to change page
   const goToPage = (pageNumber: number) => {
@@ -1107,11 +1111,17 @@ export default function Sessions() {
                             {isEditableStatus(session.status) ? (
                               <Select
                                 value={session.status}
+                                disabled={updatingStatusId === session._id}
                                 onValueChange={async (value) => {
-                                  await handleUpdateSessionStatus(
-                                    session._id,
-                                    value
-                                  );
+                                  setUpdatingStatusId(session._id);
+                                  try {
+                                    await handleUpdateSessionStatus(
+                                      session._id,
+                                      value
+                                    );
+                                  } finally {
+                                    setUpdatingStatusId(null);
+                                  }
                                 }}
                               >
                                 <SelectTrigger
@@ -1119,7 +1129,14 @@ export default function Sessions() {
                                     statusStyles[session.status]
                                   }`}
                                 >
-                                  <SelectValue />
+                                  {updatingStatusId === session._id ? (
+                                    <div className="flex items-center gap-2">
+                                      <Loader2 className="w-3 h-3 animate-spin" />
+                                      <span>Updating...</span>
+                                    </div>
+                                  ) : (
+                                    <SelectValue />
+                                  )}
                                 </SelectTrigger>
 
                                 <SelectContent>
