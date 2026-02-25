@@ -42,6 +42,7 @@ import { fetchServices } from "@/features/services/serviceSlice";
 import { fetchUsers } from "@/features/users/userSlice";
 import { toast } from "@/hooks/use-toast";
 import PageLoader from "@/components/PageLoader";
+import { availabilityAPI } from "@/api/apiClient";
 
 export default function Bookings() {
   const dispatch: any = useDispatch();
@@ -67,14 +68,57 @@ export default function Bookings() {
   const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false);
   const [newStatus, setNewStatus] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [isCreating, setIsCreating] = useState(false);
   const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
+  const [availability, setAvailability] = useState<any[]>([]);
+  const [availableTimeSlots, setAvailableTimeSlots] = useState<any[]>([]);
+  const [selectedDate, setSelectedDate] = useState<string>('');
+  const [isLoadingAvailability, setIsLoadingAvailability] = useState(false);
   const bookingsPerPage = 10;
   console.log("isEditing", isEditing);
   useEffect(() => {
     dispatch(fetchBookings());
     dispatch(fetchServices());
     dispatch(fetchUsers());
+    fetchAvailability();
   }, [dispatch]);
+
+  // Fetch availability data
+  const fetchAvailability = async () => {
+    try {
+      setIsLoadingAvailability(true);
+      const response = await availabilityAPI.getAll();
+      setAvailability(response.data?.data?.availability || []);
+    } catch (error) {
+      console.error("Failed to fetch availability:", error);
+      toast({
+        title: "Failed to load availability",
+        description: "Could not load available time slots. Using manual time entry.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingAvailability(false);
+    }
+  };
+
+  // Get available time slots for selected date
+  useEffect(() => {
+    if (selectedDate && availability.length > 0) {
+      const dateAvailability = availability.filter(avail => avail.date === selectedDate);
+      const slots = dateAvailability.flatMap(avail => 
+        avail.timeSlots
+          .filter((slot: any) => slot.status === 'available')
+          .map((slot: any) => ({
+            ...slot,
+            therapistId: avail.therapistId._id || avail.therapistId,
+            therapistName: avail.therapistId.name
+          }))
+      );
+      setAvailableTimeSlots(slots);
+    } else {
+      setAvailableTimeSlots([]);
+    }
+  }, [selectedDate, availability]);
 
   // Reset to first page when search changes
   useEffect(() => {
@@ -99,6 +143,22 @@ export default function Bookings() {
     clientName: "",
   });
 
+  // Reset form when modal opens/closes
+  useEffect(() => {
+    if (!isModalOpen) {
+      setBookingForm({
+        status: "pending" as "confirmed" | "pending" | "cancelled",
+        serviceId: "",
+        date: "",
+        time: "",
+        notes: "",
+        clientName: "",
+      });
+      setSelectedDate("");
+      setAvailableTimeSlots([]);
+    }
+  }, [isModalOpen]);
+
   /* ===========================
      FILTER
   =========================== */
@@ -121,12 +181,25 @@ export default function Bookings() {
      CREATE BOOKING
   =========================== */
   const handleCreateBooking = async () => {
+    setIsCreating(true);
     try {
-      await dispatch(createBooking(bookingForm));
+      // Find the selected user by name to get their ID
+      const selectedUser = users.find(user => 
+        (user.name || user.email) === bookingForm.clientName
+      );
+      
+      // Prepare booking data with user ID for admin booking creation
+      const bookingData = {
+        ...bookingForm,
+        userId: selectedUser?._id || selectedUser?.id, // Pass the user ID
+        clientName: selectedUser?.name || selectedUser?.email || bookingForm.clientName, // Use actual user name/email
+      };
+      
+      await dispatch(createBooking(bookingData));
       setIsModalOpen(false);
       // Reset form
       setBookingForm({
-        status: "confirmed" as "confirmed" | "pending" | "cancelled",
+        status: "pending" as "confirmed" | "pending" | "cancelled",
         serviceId: "",
         date: "",
         time: "",
@@ -135,8 +208,19 @@ export default function Bookings() {
       });
       // Refresh the bookings list
       dispatch(fetchBookings());
+      toast({
+        title: "Booking created successfully",
+        description: "The new booking has been created and added to the system.",
+      });
     } catch (error) {
       console.error("Failed to create booking:", error);
+      toast({
+        title: "Failed to create booking",
+        description: "There was an error creating the booking. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCreating(false);
     }
   };
 
@@ -147,10 +231,22 @@ export default function Bookings() {
     if (!selectedBooking) return;
 
     try {
+      // Find the selected user by name to get their ID (for potential updates)
+      const selectedUser = users.find(user => 
+        (user.name || user.email) === bookingForm.clientName
+      );
+      
+      // Prepare booking data with user ID if updating user
+      const bookingData = {
+        ...bookingForm,
+        userId: selectedUser?._id || selectedUser?.id, // Pass the user ID if available
+        clientName: selectedUser?.name || selectedUser?.email || bookingForm.clientName, // Use actual user name/email
+      };
+
       await dispatch(
         updateBooking({
           id: selectedBooking._id,
-          bookingData: { ...bookingForm },
+          bookingData: bookingData,
         })
       );
       setIsModalOpen(false);
@@ -203,7 +299,25 @@ export default function Bookings() {
             Admin can update booking status, create and manage bookings
           </p>
         </div>
-        <div className="flex gap-2"></div>
+        <div className="flex gap-2">
+          <Button 
+            onClick={() => {
+              setIsEditing(false);
+              setBookingForm({
+                status: "pending", // Admin-created bookings should start as pending
+                serviceId: "",
+                date: "",
+                time: "",
+                notes: "",
+                clientName: "",
+              });
+              setIsModalOpen(true);
+            }}
+          >
+            <Calendar className="w-4 h-4 mr-2" />
+            Create New Booking
+          </Button>
+        </div>
       </div>
       {/* Stats */}{" "}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -632,7 +746,7 @@ export default function Bookings() {
                     serviceId: e.target.value,
                   })
                 }
-                disabled={servicesLoading || isEditing}
+                disabled={servicesLoading}
               >
                 <option value="">Select a service</option>
 
@@ -641,7 +755,7 @@ export default function Bookings() {
                     key={service._id || service.id}
                     value={service._id || service.id}
                   >
-                    {service.name}
+                    {service.name} - {service.duration} mins - ₹{service.price}
                   </option>
                 ))}
               </select>
@@ -653,27 +767,89 @@ export default function Bookings() {
                 <Input
                   type="date"
                   value={bookingForm.date}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    const dateValue = e.target.value;
                     setBookingForm({
                       ...bookingForm,
-                      date: e.target.value,
-                    })
-                  }
+                      date: dateValue,
+                    });
+                    setSelectedDate(dateValue);
+                  }}
+                  min={new Date().toISOString().split('T')[0]}
                 />
               </div>
 
               <div className="space-y-2 w-full">
-                <label className="text-sm font-medium">Time</label>
-                <Input
-                  type="time"
-                  value={bookingForm.time}
-                  onChange={(e) =>
-                    setBookingForm({
-                      ...bookingForm,
-                      time: e.target.value,
-                    })
-                  }
-                />
+                <label className="text-sm font-medium">Time Slot</label>
+                {availableTimeSlots.length > 0 ? (
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto">
+                      {availableTimeSlots.map((slot, index) => (
+                        <button
+                          key={index}
+                          type="button"
+                          onClick={() => {
+                            setBookingForm({
+                              ...bookingForm,
+                              time: `${slot.start}-${slot.end}`,
+                            });
+                          }}
+                          className={cn(
+                            "p-2 rounded-lg border text-sm font-medium transition-all",
+                            bookingForm.time === `${slot.start}-${slot.end}`
+                              ? "bg-primary text-primary-foreground border-primary"
+                              : "border-gray-200 hover:bg-gray-50"
+                          )}
+                        >
+                          <div>{slot.start} - {slot.end}</div>
+                          <div className="text-xs text-muted-foreground mt-1">
+                            {slot.duration} min {slot.bookingType === 'free-consultation' ? '(Free)' : '(Regular)'}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                    {isLoadingAvailability && (
+                      <div className="text-sm text-muted-foreground flex items-center gap-2">
+                        <LoaderCircle className="w-4 h-4 animate-spin" />
+                        Loading available slots...
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <Input
+                      type="time"
+                      value={bookingForm.time.split('-')[0] || ''}
+                      onChange={(e) => {
+                        const startTime = e.target.value;
+                        const endTime = new Date(`2000-01-01T${startTime}`);
+                        endTime.setMinutes(endTime.getMinutes() + 45); // Default 45 min duration
+                        const endTimeString = endTime.toTimeString().substring(0, 5);
+                        setBookingForm({
+                          ...bookingForm,
+                          time: `${startTime}-${endTimeString}`,
+                        });
+                      }}
+                      placeholder="Start time"
+                    />
+                    {bookingForm.time && (
+                      <div className="text-sm text-muted-foreground">
+                        Duration: 45 minutes (ends at {bookingForm.time.split('-')[1]})
+                      </div>
+                    )}
+                    {selectedDate && !isLoadingAvailability && availableTimeSlots.length === 0 && (
+                      <div className="text-sm text-yellow-600 bg-yellow-50 p-2 rounded">
+                        No available time slots found for this date. You can still create a booking with manual time entry.
+                      </div>
+                    )}
+                    {isLoadingAvailability && (
+                      <div className="text-sm text-muted-foreground flex items-center gap-2">
+                        <LoaderCircle className="w-4 h-4 animate-spin" />
+                        Checking availability...
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -689,15 +865,16 @@ export default function Bookings() {
                     clientName: e.target.value,
                   })
                 }
-                disabled={usersLoading || isEditing}
+                disabled={usersLoading}
               >
                 <option value="">Select a client</option>
 
                 {(users ?? []).map((user) => {
                   const displayName = user.name || user.email;
+                  const userId = user._id || user.id;
                   return (
-                    <option key={user.id} value={displayName}>
-                      {displayName}
+                    <option key={userId} value={displayName}>
+                      {displayName} ({user.email})
                     </option>
                   );
                 })}
@@ -748,10 +925,20 @@ export default function Bookings() {
               disabled={
                 !bookingForm.clientName ||
                 !bookingForm.date ||
-                !bookingForm.time
+                !bookingForm.time ||
+                isCreating
               }
             >
-              {isEditing ? "Update Booking" : "Create Booking"}
+              {isCreating ? (
+                <>
+                  <LoaderCircle className="w-4 h-4 mr-2 animate-spin" />
+                  Creating...
+                </>
+              ) : isEditing ? (
+                "Update Booking"
+              ) : (
+                "Create Booking"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

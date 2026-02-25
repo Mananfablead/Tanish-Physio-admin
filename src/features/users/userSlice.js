@@ -68,6 +68,22 @@ export const updateUser = createAsyncThunk(
 );
 
 /**
+ * Create user
+ * API → data (CREATED USER OBJECT)
+ */
+export const createUser = createAsyncThunk(
+  "users/create",
+  async (userData, { rejectWithValue }) => {
+    try {
+      const res = await apiClient.post(API.USERS, userData);
+      return res.data?.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || "User creation failed");
+    }
+  }
+);
+
+/**
  * Delete user
  * Return deleted user ID
  */
@@ -174,10 +190,33 @@ const userSlice = createSlice({
   state.error = action.payload;
 })
 
+      /* ---------- CREATE USER ---------- */
+      .addCase(createUser.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(createUser.fulfilled, (state, action) => {
+        state.loading = false;
+        const newUser = action.payload;
+        if (newUser) {
+          state.list.unshift(newUser); // Add to beginning of list
+          if (state.pagination) {
+            state.pagination.total += 1;
+          }
+        }
+      })
+      .addCase(createUser.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+
       /* ---------- DELETE USER ---------- */
       .addCase(deleteUser.fulfilled, (state, action) => {
         const userId = action.payload;
         state.list = state.list.filter((user) => user._id !== userId);
+        if (state.pagination) {
+          state.pagination.total -= 1;
+        }
       });
   },
 });

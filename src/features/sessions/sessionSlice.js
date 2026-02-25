@@ -58,10 +58,13 @@ export const createSession = createAsyncThunk(
   "sessions/create",
   async (sessionData, { rejectWithValue }) => {
     try {
-      const res = await sessionAPI.create(sessionData);
+      // Use admin session creation if subscriptionId is provided
+      const res = sessionData.subscriptionId 
+        ? await sessionAPI.createAdminSession(sessionData)
+        : await sessionAPI.create(sessionData);
       return res.data.data;
     } catch (err) {
-      return rejectWithValue("Session creation failed");
+      return rejectWithValue(err.response?.data?.message || "Session creation failed");
     }
   }
 );

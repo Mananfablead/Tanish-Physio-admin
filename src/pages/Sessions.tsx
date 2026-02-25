@@ -23,6 +23,7 @@ import {
 } from '@/features/availability/availabilitySlice';
 import { toast } from "@/hooks/use-toast";
 import GenerateGoogleMeetModal from "@/components/VideoCall/GenerateGoogleMeetModal";
+import { subscriptionAPI } from "@/api/apiClient";
 type SessionStatus =
   | "pending"
   | "scheduled"
@@ -208,6 +209,13 @@ export default function Sessions() {
   const [selectedSessionForMeet, setSelectedSessionForMeet] = useState(null);
   const [isGoogleMeetModalOpen, setIsGoogleMeetModalOpen] = useState(false);
 
+  // State for users and subscriptions
+  const [usersWithActiveSubscriptions, setUsersWithActiveSubscriptions] = useState([]);
+  const [selectedUserSubscriptions, setSelectedUserSubscriptions] = useState([]);
+  const [selectedUser, setSelectedUser] = useState("");
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [loadingSubscriptions, setLoadingSubscriptions] = useState(false);
+
   // Setup admin notification socket
   useEffect(() => {
     const setupAdminNotifications = async () => {
@@ -272,6 +280,78 @@ export default function Sessions() {
     };
   }, []);
 
+  const fetchUsersWithActiveSubscriptions = async () => {
+    try {
+      setLoadingUsers(true);
+      const response = await fetch('/api/users?subscription=active', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      const data = await response.json();
+      
+      if (data.success) {
+        setUsersWithActiveSubscriptions(data.data.users || []);
+      } else {
+        console.error('Failed to fetch users with active subscriptions:', data.message);
+        // As fallback, get all users and their subscription info separately
+        const allUsersResponse = await fetch('/api/users', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        const allUsersData = await allUsersResponse.json();
+        
+        if (allUsersData.success) {
+          // Filter for users with active subscriptions by checking their subscription data
+          const usersWithActiveSubs = allUsersData.data.users.filter(user => 
+            user.subscriptionInfo && 
+            user.subscriptionInfo.status === 'active' && 
+            !user.subscriptionInfo.isExpired
+          );
+          setUsersWithActiveSubscriptions(usersWithActiveSubs);
+        } else {
+          setUsersWithActiveSubscriptions([]);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching users with active subscriptions:', error);
+      setUsersWithActiveSubscriptions([]);
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
+
+
+
+  const fetchUserSubscriptions = async (userId) => {
+    try {
+      setLoadingSubscriptions(true);
+      // Use the admin endpoint to get all subscriptions for a specific user
+      const response = await subscriptionAPI.getAllSubscriptions();
+      const data = response.data;
+      
+      if (data.success) {
+        // Filter for active subscriptions for the specific user
+        const userSubs = (data.data.subscriptions || []).filter(sub => 
+          sub.userId && sub.userId._id === userId && 
+          sub.status === 'active' && !sub.isExpired
+        );
+        setSelectedUserSubscriptions(userSubs);
+      } else {
+        console.error('Failed to fetch user subscriptions:', data.message);
+        setSelectedUserSubscriptions([]);
+      }
+    } catch (error) {
+      console.error('Error fetching user subscriptions:', error);
+      setSelectedUserSubscriptions([]);
+    } finally {
+      setLoadingSubscriptions(false);
+    }
+  };
+
   // State for rescheduling
   const [rescheduleDate, setRescheduleDate] = useState("");
   const [rescheduleTime, setRescheduleTime] = useState("");
@@ -282,6 +362,25 @@ export default function Sessions() {
   const [selectedSession, setSelectedSession] = useState<any>(null);
   const [isCreateSessionModalOpen, setIsCreateSessionModalOpen] =
     useState(false);
+
+  // Fetch users with active subscriptions when modal opens
+  useEffect(() => {
+    if (isCreateSessionModalOpen) {
+      fetchUsersWithActiveSubscriptions();
+      
+      // Set default therapist to admin when modal opens
+      const adminTherapist = availability.find(item => 
+        item.therapistId && item.therapistId.role === 'admin'
+      );
+      
+      if (adminTherapist) {
+        setNewSession(prev => ({
+          ...prev,
+          therapistId: adminTherapist.therapistId._id
+        }));
+      }
+    }
+  }, [isCreateSessionModalOpen, availability]);
 
   // Calendar state variables
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -433,25 +532,31 @@ export default function Sessions() {
 
   const handleCreateSession = async () => {
     try {
-      // Validate that either bookingId or subscriptionId is provided
-      if (!newSession.bookingId && !newSession.subscriptionId) {
+      // Validate required fields for subscription sessions
+      if (
+        !newSession.userId || 
+        !newSession.subscriptionId || 
+        !newSession.therapistId ||
+        !newSession.date ||
+        !newSession.time
+      ) {
         toast({
           title: "Error",
-          description: "Please select either a booking or subscription",
+          description: "Please fill all required fields: user, subscription, therapist, date, and time",
           variant: "destructive",
         });
         return;
       }
 
-      // Validate required fields for subscription sessions
-      if (
-        newSession.subscriptionId &&
-        (!newSession.userId || !newSession.therapistId)
-      ) {
+      // Validate date is not in the past
+      const selectedDate = new Date(newSession.date);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      if (selectedDate < today) {
         toast({
           title: "Error",
-          description:
-            "User ID and Therapist ID are required for subscription sessions",
+          description: "Cannot select a date in the past",
           variant: "destructive",
         });
         return;
@@ -459,21 +564,30 @@ export default function Sessions() {
 
       // Prepare the session data for API submission
       const sessionData = {
-        ...newSession,
-        // Ensure optional fields are undefined if empty
-        bookingId: newSession.bookingId || undefined,
-        subscriptionId: newSession.subscriptionId || undefined,
-        userId: newSession.userId || undefined,
-        therapistId: newSession.therapistId || undefined,
+        subscriptionId: newSession.subscriptionId,
+        userId: newSession.userId,
+        therapistId: newSession.therapistId,
+        date: newSession.date,
+        time: newSession.time,
+        type: newSession.type,
+        status: newSession.status,
+        notes: newSession.notes || "",
       };
 
+      // Use the createSession action which should call the admin endpoint
       await dispatch(createSession(sessionData));
       setIsCreateSessionModalOpen(false);
+      
+      // Reset form with admin as default therapist
+      const adminTherapist = availability.find(item => 
+        item.therapistId && item.therapistId.role === 'admin'
+      );
+      
       setNewSession({
         bookingId: "",
         subscriptionId: "",
         userId: "",
-        therapistId: "",
+        therapistId: adminTherapist ? adminTherapist.therapistId._id : "",
         date: "",
         time: "",
         type: "1-on-1",
@@ -492,7 +606,7 @@ export default function Sessions() {
       console.error("Failed to create session:", error);
       toast({
         title: "Error",
-        description: "Failed to create session",
+        description: error.message || "Failed to create session",
         variant: "destructive",
       });
     }
@@ -688,6 +802,13 @@ export default function Sessions() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <Button
+            onClick={() => setIsCreateSessionModalOpen(true)}
+            className="flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            Create Session
+          </Button>
           {activeTab !== "live" && activeTab !== "upcoming" && (
             <Select defaultValue="today">
               <SelectTrigger className="w-[140px]">
@@ -1165,8 +1286,10 @@ export default function Sessions() {
                                   </>
                                 ) : (
                                   <>
-                                    {session.status.charAt(0).toUpperCase() +
-                                      session.status.slice(1)}
+                                    {session.status && typeof session.status === 'string' 
+                                      ? session.status.charAt(0).toUpperCase() +
+                                        session.status.slice(1)
+                                      : 'Unknown'}
                                   </>
                                 )}
                               </span>
@@ -1791,86 +1914,219 @@ export default function Sessions() {
         open={isCreateSessionModalOpen}
         onOpenChange={setIsCreateSessionModalOpen}
       >
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
+        <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle>Create New Session</DialogTitle>
             <DialogDescription>
               Schedule a new session for a user with a therapist.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
-            <div className="grid grid-cols-1 gap-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Session Type</label>
-                <div className="flex gap-4">
-                  <button
-                    type="button"
-                    className={`flex-1 p-3 border rounded-md text-center ${
-                      !newSession.subscriptionId
-                        ? "border-primary bg-primary/10"
-                        : "border-gray-200"
-                    }`}
-                    onClick={() =>
-                      setNewSession({
-                        ...newSession,
-                        subscriptionId: "",
-                        userId: "",
-                        therapistId: "",
-                      })
-                    }
-                  >
-                    Booking Session
-                  </button>
-                  <button
-                    type="button"
-                    className={`flex-1 p-3 border rounded-md text-center ${
-                      newSession.subscriptionId
-                        ? "border-primary bg-primary/10"
-                        : "border-gray-200"
-                    }`}
-                    onClick={() =>
-                      setNewSession({ ...newSession, bookingId: "" })
-                    }
-                  >
-                    Subscription Session
-                  </button>
-                </div>
-              </div>
+          <div className="flex-1 overflow-y-auto space-y-4 py-4">
+            {/* USER SELECTION */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">User</label>
+              <Select 
+                value={newSession.userId}
+                onValueChange={(value) => {
+                  setNewSession({ ...newSession, userId: value });
+                  fetchUserSubscriptions(value); // Fetch subscriptions for the selected user
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a user with active subscription" />
+                </SelectTrigger>
+                <SelectContent>
+                  {usersWithActiveSubscriptions && usersWithActiveSubscriptions.length > 0 ? (
+                    usersWithActiveSubscriptions.map((user) => (
+                      <SelectItem key={user._id} value={user._id}>
+                        {user.name} ({user.email})
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="__no_users__" disabled>
+                      {loadingUsers ? "Loading users..." : "No users with active subscriptions"}
+                    </SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
             </div>
 
-            {/* BOOKING SESSION FIELDS */}
-            {!newSession.subscriptionId && (
+            {/* SUBSCRIPTION SELECTION */}
+            {newSession.userId && (
               <div className="space-y-2">
-                <label className="text-sm font-medium">Booking</label>
-                <select
-                  className="w-full p-2 border rounded-md"
-                  value={newSession.bookingId || ""}
-                  onChange={(e) =>
-                    setNewSession({
-                      ...newSession,
-                      bookingId: e.target.value,
-                    })
-                  }
+                <label className="text-sm font-medium">Subscription Plan</label>
+                <Select
+                  value={newSession.subscriptionId}
+                  onValueChange={(value) => {
+                    setNewSession({ ...newSession, subscriptionId: value });
+                  }}
                 >
-                  <option value="">Select Booking</option>
-                  {bookings && Array.isArray(bookings)
-                    ? bookings.map((booking) => (
-                        <option
-                          key={booking?._id || booking?.id}
-                          value={booking?._id || booking?.id}
-                        >
-                          {booking?.serviceName ||
-                            booking?.name ||
-                            "Unnamed Booking"}
-                        </option>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select an active subscription" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {selectedUserSubscriptions && selectedUserSubscriptions.length > 0 ? (
+                      selectedUserSubscriptions.map((sub) => (
+                        <SelectItem key={sub._id} value={sub._id}>
+                          {sub.planName} - {sub.availableSessions?.remaining} sessions remaining
+                        </SelectItem>
                       ))
-                    : null}
-                </select>
+                    ) : (
+                      <SelectItem value="__no_subscriptions__" disabled>
+                        {loadingSubscriptions ? "Loading subscriptions..." : "No active subscriptions"}
+                      </SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
               </div>
             )}
 
-            {/* COMMON FIELDS */}
+            {/* THERAPIST INFORMATION - FIXED TO ADMIN */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Therapist</label>
+              <div className="w-full p-3 border rounded-md bg-muted/50">
+                <div className="flex items-center gap-2">
+                  <User className="h-4 w-4 text-blue-600" />
+                  <span className="font-medium">
+                    {availability && Array.isArray(availability) 
+                      ? availability
+                          .find(item => item.therapistId && item.therapistId.role === 'admin')
+                          ?.therapistId?.name || 'Admin Therapist'
+                      : 'Admin Therapist'}
+                  </span>
+                  <Badge variant="default" className="ml-2">
+                    Admin
+                  </Badge>
+                </div>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Sessions will be assigned to the admin therapist by default
+                </p>
+              </div>
+            </div>
+
+            {/* DATE AND TIME WITH AVAILABILITY */}
+            <div className="space-y-6">
+              {/* DATE SELECTION */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-primary" />
+                  <label className="text-sm font-medium">Select Date</label>
+                </div>
+                <div className="relative">
+                  <Input
+                    type="date"
+                    value={newSession.date}
+                    onChange={(e) =>
+                      setNewSession({ ...newSession, date: e.target.value })
+                    }
+                    min={new Date().toISOString().split('T')[0]} // Prevent past dates
+                    className="w-full pr-10"
+                  />
+                  {/* Date availability indicator */}
+                  {newSession.date && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                      {availability.some(item => 
+                        item.date === newSession.date && 
+                        item.therapistId._id === newSession.therapistId &&
+                        item.timeSlots.some(slot => slot.status === true || slot.status === "available")
+                      ) ? (
+                        <div className="w-3 h-3 rounded-full bg-green-500" title="Available slots"></div>
+                      ) : (
+                        <div className="w-3 h-3 rounded-full bg-red-500" title="No available slots"></div>
+                      )}
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {newSession.date && availability.some(item => 
+                    item.date === newSession.date && 
+                    item.therapistId._id === newSession.therapistId &&
+                    item.timeSlots.some(slot => slot.status === true || slot.status === "available")
+                  ) 
+                    ? "✓ Available time slots found for this date"
+                    : newSession.date 
+                      ? "⚠ No available time slots for this date"
+                      : "Select a date to check availability"}
+                </p>
+              </div>
+
+              {/* TIME SLOT SELECTION */}
+              {newSession.date && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-primary" />
+                    <label className="text-sm font-medium">Available Time Slots</label>
+                    <Badge variant="secondary" className="ml-2">
+                      {availability
+                        .filter(
+                          (item) =>
+                            item.date === newSession.date &&
+                            item.therapistId._id === newSession.therapistId
+                        )
+                        .flatMap((item) =>
+                          item.timeSlots.filter((slot) => slot.status === true || slot.status === "available")
+                        ).length
+                      } slots
+                    </Badge>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-60 overflow-y-auto p-2 border rounded-lg bg-muted/10">
+                    {availability
+                      .filter(
+                        (item) =>
+                          item.date === newSession.date &&
+                          item.therapistId._id === newSession.therapistId
+                      )
+                      .flatMap((item) =>
+                        item.timeSlots
+                          .filter((slot) => slot.status === true || slot.status === "available")
+                          .map((slot) => (
+                            <button
+                              key={`${item.date}-${slot.start}`}
+                              type="button"
+                              onClick={() => 
+                                setNewSession({ ...newSession, time: slot.start })
+                              }
+                              className={`
+                                p-3 text-center rounded-lg border transition-all
+                                ${newSession.time === slot.start
+                                  ? 'border-primary bg-primary text-primary-foreground shadow-md'
+                                  : 'border-border hover:border-primary hover:bg-primary/5'
+                                }
+                                ${!slot.status === "available" ? 'opacity-50 cursor-not-allowed' : ''}
+                              `}
+                            >
+                              <div className="font-medium text-sm">
+                                {formatTime(slot.start)}
+                              </div>
+                              <div className="text-xs text-black mt-1">
+                                {slot.duration} min
+                              </div>
+                            </button>
+                          ))
+                      )}
+                    
+                    {availability
+                      .filter(
+                        (item) =>
+                          item.date === newSession.date &&
+                          item.therapistId._id === newSession.therapistId
+                      )
+                      .flatMap((item) =>
+                        item.timeSlots.filter((slot) => slot.status === true || slot.status === "available")
+                      ).length === 0 && (
+                        <div className="col-span-full text-center py-8 text-muted-foreground">
+                          <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                          <p className="text-sm">No available time slots for this date</p>
+                        </div>
+                      )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* SESSION TYPE */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Session Type</label>
@@ -1912,30 +2168,6 @@ export default function Sessions() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Date</label>
-                <Input
-                  type="date"
-                  value={newSession.date}
-                  onChange={(e) =>
-                    setNewSession({ ...newSession, date: e.target.value })
-                  }
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Time</label>
-                <Input
-                  type="time"
-                  value={newSession.time}
-                  onChange={(e) =>
-                    setNewSession({ ...newSession, time: e.target.value })
-                  }
-                />
-              </div>
-            </div>
-
             {/* <div className="space-y-2">
               <label className="text-sm font-medium">Notes</label>
               <Textarea
@@ -1947,14 +2179,25 @@ export default function Sessions() {
             </div> */}
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="flex-shrink-0 mt-4">
             <Button
               variant="outline"
               onClick={() => setIsCreateSessionModalOpen(false)}
             >
               Cancel
             </Button>
-            <Button onClick={handleCreateSession}>Create Session</Button>
+            <Button 
+              onClick={handleCreateSession}
+              disabled={
+                !newSession.userId || 
+                !newSession.subscriptionId || 
+                !newSession.therapistId || 
+                !newSession.date || 
+                !newSession.time
+              }
+            >
+              Create Session
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

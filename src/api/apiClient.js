@@ -104,7 +104,8 @@ export const API = {
   NOTIFICATION_MARK_READ: "/notifications/:id/read",
 
   // bookings
-  BOOKINGS: "/bookings/admin/all",
+  BOOKINGS: "/bookings",
+  BOOKINGS_ADMIN_ALL: "/bookings/admin/all",
   BOOKING_BY_ID: "/bookings/:id",
 
   // questionnaires
@@ -302,6 +303,9 @@ export const subscriptionAPI = {
   
   // Get all user subscriptions (admin)
   getAllUserSubscriptions: () => apiClient.get(API.SUBSCRIPTIONS_ADMIN_ALL),
+  
+  // Get all subscriptions (admin)
+  getAllSubscriptions: () => apiClient.get(`${API.SUBSCRIPTIONS}/admin/all`),
 };
 
 // Service API endpoints
@@ -346,6 +350,9 @@ export const sessionAPI = {
 
   // Create session
   create: (data) => apiClient.post(API.SESSIONS, data),
+
+  // Create admin session
+  createAdminSession: (data) => apiClient.post('/sessions/admin', data),
 
   // Update session
   update: (id, data) =>
@@ -426,8 +433,8 @@ export const notificationAPI = {
 
 // Booking API endpoints
 export const bookingAPI = {
-  // Get all bookings
-  getAll: () => apiClient.get(API.BOOKINGS),
+  // Get all bookings (admin)
+  getAll: () => apiClient.get(API.BOOKINGS_ADMIN_ALL),
 
   // Get booking by ID
   getById: (id) => apiClient.get(`${API.BOOKING_BY_ID.replace(":id", id)}`),

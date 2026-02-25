@@ -6,12 +6,14 @@ import {
   Eye,
   UserX,
   Download,
-
+  Plus,
   Trash,
+  Mail,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,10 +30,18 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchUsers, deleteUser, updateUser } from "@/features/users/userSlice";
+import { fetchUsers, deleteUser, updateUser, createUser } from "@/features/users/userSlice";
 import PageLoader from "@/components/PageLoader";
+import { toast } from "@/hooks/use-toast";
 
 const filters = ["All", "Active Subscription", "Expired", "No Subscription"];
 
@@ -47,6 +57,14 @@ export default function Users() {
   const [currentPage, setCurrentPage] = useState(1);
   const [deleteUserId, setDeleteUserId] = useState(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [newUser, setNewUser] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    role: "patient",
+    status: "active"
+  });
 
   /* ---------------- FETCH USERS ---------------- */
   useEffect(() => {
@@ -166,6 +184,62 @@ export default function Users() {
     );
   };
 
+  const handleCreateUser = () => {
+    if (!newUser.name || !newUser.email) {
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields (Name, Email)",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(newUser.email)) {
+      toast({
+        title: "Error",
+        description: "Please enter a valid email address",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    dispatch(createUser(newUser))
+      .unwrap()
+      .then(() => {
+        toast({
+          title: "Success",
+          description: "User created successfully! Welcome email with credentials sent to user's email.",
+        });
+        setIsCreateDialogOpen(false);
+        // Reset form
+        setNewUser({
+          name: "",
+          email: "",
+          phone: "",
+          role: "client",
+          status: "active"
+        });
+        // Refresh user list
+        dispatch(fetchUsers({ page: currentPage, limit: 10, search: searchQuery }));
+      })
+      .catch((error) => {
+        toast({
+          title: "Error",
+          description: error || "Failed to create user",
+          variant: "destructive"
+        });
+      });
+  };
+
+  const handleInputChange = (field, value) => {
+    setNewUser(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
   if (loading && users.length === 0) {
     return <PageLoader text="Loading users..." />;
   }
@@ -179,10 +253,16 @@ export default function Users() {
           <h1 className="page-title">User Management</h1>
           <p className="page-subtitle">Manage and monitor platform users</p>
         </div>
-        <Button variant="outline" onClick={exportToExcel}>
-          <Download className="w-4 h-4 mr-2" />
-          Export Users
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={exportToExcel}>
+            <Download className="w-4 h-4 mr-2" />
+            Export Users
+          </Button>
+          <Button onClick={() => setIsCreateDialogOpen(true)}>
+            <Plus className="w-4 h-4 mr-2" />
+            Create User
+          </Button>
+        </div>
       </div>
 
       {/* SEARCH & FILTER */}
@@ -383,6 +463,79 @@ export default function Users() {
           </p>
         </div>
       )}
+
+      {/* CREATE USER DIALOG */}
+      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create New User</DialogTitle>
+            <DialogDescription>
+              Create a new patient account. A welcome email with auto-generated credentials will be sent to the user's email.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Full Name *</Label>
+              <Input
+                id="name"
+                value={newUser.name}
+                onChange={(e) => handleInputChange("name", e.target.value)}
+                placeholder="Enter user's full name"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="email">Email Address *</Label>
+              <Input
+                id="email"
+                type="email"
+                value={newUser.email}
+                onChange={(e) => handleInputChange("email", e.target.value)}
+                placeholder="Enter user's email address"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="phone">Phone Number</Label>
+              <Input
+                id="phone"
+                value={newUser.phone}
+                onChange={(e) => handleInputChange("phone", e.target.value)}
+                placeholder="Enter user's phone number"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="status">Status</Label>
+              <select
+                id="status"
+                value={newUser.status}
+                onChange={(e) => handleInputChange("status", e.target.value)}
+                className="w-full p-2 border rounded-md bg-background"
+              >
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            </div>
+          </div>
+          
+          <div className="flex justify-end gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => setIsCreateDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleCreateUser}
+              disabled={loading}
+            >
+              {loading ? "Creating..." : "Create User"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* DELETE DIALOG */}
       <AlertDialog
