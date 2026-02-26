@@ -11,8 +11,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import apiClient from "@/api/apiClient";
+import {
+  fetchProfile,
+} from "@/features/auth/authSlice";
+
 
 interface Credential {
   _id: string;
@@ -47,6 +51,8 @@ interface RazorpayCredential extends Credential {
 
 export default function AdminCredentials() {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+   const { user } = useSelector((state: any) => state.auth);
   const { isAuthenticated, token } = useSelector((state: any) => state.auth);
 
   const [activeTab, setActiveTab] = useState("whatsapp");
@@ -86,7 +92,9 @@ export default function AdminCredentials() {
     razorpayKeyId: "",
     razorpayKeySecret: "",
   });
-
+  useEffect(() => {
+    dispatch(fetchProfile());
+  }, [dispatch]);
   // Check authentication and populate existing credentials
   useEffect(() => {
     if (!isAuthenticated || !token) {
@@ -709,6 +717,25 @@ export default function AdminCredentials() {
                           })
                         }
                         required
+                        disabled={
+                          !editingId &&
+                          getCredentialsByType("whatsapp").length > 0
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="wa-number">WhatsApp Number *</Label>
+                      <Input
+                        id="wa-number"
+                        placeholder="e.g., +1234567890"
+                        value={user?.phone}
+                        // onChange={(e) =>
+                        //   setWhatsappForm({
+                        //     ...whatsappForm,
+                        //     whatsappNumber: e.target.value,
+                        //   })
+                        // }
+                        // required
                         disabled={
                           !editingId &&
                           getCredentialsByType("whatsapp").length > 0
