@@ -1982,28 +1982,7 @@ export default function Sessions() {
               </div>
             )}
 
-            {/* THERAPIST INFORMATION - FIXED TO ADMIN */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Therapist</label>
-              <div className="w-full p-3 border rounded-md bg-muted/50">
-                <div className="flex items-center gap-2">
-                  <User className="h-4 w-4 text-blue-600" />
-                  <span className="font-medium">
-                    {availability && Array.isArray(availability) 
-                      ? availability
-                          .find(item => item.therapistId && item.therapistId.role === 'admin')
-                          ?.therapistId?.name || 'Admin Therapist'
-                      : 'Admin Therapist'}
-                  </span>
-                  <Badge variant="default" className="ml-2">
-                    Admin
-                  </Badge>
-                </div>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Sessions will be assigned to the admin therapist by default
-                </p>
-              </div>
-            </div>
+          
 
             {/* DATE AND TIME WITH AVAILABILITY */}
             <div className="space-y-6">
