@@ -73,7 +73,7 @@ const OffersManagement = () => {
       }
     } catch (error) {
       console.error('Error fetching offers:', error);
-      toast.error('Failed to load offers');
+      // toast.error('Failed to load offers');
     } finally {
       setLoading(false);
     }
