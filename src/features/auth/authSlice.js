@@ -8,7 +8,10 @@ export const loginUser = createAsyncThunk(
   "auth/login",
   async (credentials, { rejectWithValue }) => {
     try {
-      const res = await apiClient.post(API.LOGIN, credentials);
+      const res = await apiClient.post(API.LOGIN, {
+        ...credentials,
+        appType: 'admin'
+      });
 
       // Ensure we have the token in the response
       const token = res.data.token || res.data.data?.token;
