@@ -516,9 +516,15 @@ export default function Bookings() {
                             booking.serviceExpiryDate
                           ).toLocaleDateString()}
                         </span>
-                      ) : (
+                      ) : booking.serviceValidityDays && (booking.scheduledDate || booking.purchaseDate) ? (
                         <span className="px-2 py-1 rounded-full text-xs font-semibold text-blue-600 bg-blue-100 whitespace-nowrap">
-                          Unlimited
+                          {new Date(
+                            new Date(booking.scheduledDate || booking.purchaseDate).getTime() + (booking.serviceValidityDays * 24 * 60 * 60 * 1000)
+                          ).toLocaleDateString()}
+                        </span>
+                      ) : (
+                        <span className="px-2 py-1 rounded-full text-xs font-semibold text-gray-600 bg-gray-100 whitespace-nowrap">
+                          No Expiry
                         </span>
                       )}
                     </td>

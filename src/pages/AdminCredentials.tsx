@@ -717,7 +717,7 @@ export default function AdminCredentials() {
                     </div>
                   </div>
 
-                  <div className="flex gap-3 pt-4">
+                  <div className="flex flex-wrap gap-3 pt-4">
                     {!editingId &&
                     getCredentialsByType("whatsapp").length > 0 ? (
                       <Button
@@ -809,6 +809,24 @@ export default function AdminCredentials() {
                         }}
                       >
                         Cancel
+                      </Button>
+                    )}
+                    {getCredentialsByType("whatsapp").length > 0 && (
+                      <Button
+                        type="button"
+                        variant={
+                          getCredentialsByType("whatsapp")[0].isActive
+                            ? "destructive"
+                            : "default"
+                        }
+                        onClick={() => {
+                          const whatsappCred = getCredentialsByType("whatsapp")[0];
+                          handleToggleStatus(whatsappCred._id, whatsappCred.isActive);
+                        }}
+                      >
+                        {getCredentialsByType("whatsapp")[0].isActive
+                          ? "Disable WhatsApp"
+                          : "Enable WhatsApp"}
                       </Button>
                     )}
                   </div>
