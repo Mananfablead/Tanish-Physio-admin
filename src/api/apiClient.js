@@ -54,7 +54,6 @@ export const API = {
   // auth
   LOGIN: "/auth/login",
   LOGOUT: "/auth/logout",
-  VALIDATE_TOKEN: "/auth/validate-token",
   PROFILE: "/auth/profile",
   PUBLIC_PROFILE: "/auth/profile/:userId",
   FORGOT_PASSWORD: "/auth/forgot-password",
