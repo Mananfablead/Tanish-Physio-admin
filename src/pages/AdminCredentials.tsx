@@ -2,7 +2,7 @@
 // Manage external service credentials: WhatsApp, Email, Razorpay
 
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Eye, EyeOff, Key, Trash2, Plus, Check, X, AlertCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -724,24 +724,31 @@ export default function AdminCredentials() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="wa-number">WhatsApp Number *</Label>
-                      <Input
-                        id="wa-number"
-                        placeholder="e.g., +1234567890"
-                        value={user?.phone}
-                        // onChange={(e) =>
-                        //   setWhatsappForm({
-                        //     ...whatsappForm,
-                        //     whatsappNumber: e.target.value,
-                        //   })
-                        // }
-                        // required
-                        disabled={
-                          !editingId &&
-                          getCredentialsByType("whatsapp").length > 0
-                        }
-                      />
-                    </div>
+  <Label htmlFor="wa-number">WhatsApp Number *</Label>
+
+  <Input
+    id="wa-number"
+    placeholder="e.g., +1234567890"
+    value={user?.phone}
+    readOnly
+    disabled={
+      !editingId &&
+      getCredentialsByType("whatsapp").length > 0
+    }
+  />
+
+  {editingId && (
+    <p className="text-sm text-gray-500">
+      If you would like to change your WhatsApp number, please update it from the{" "}
+      <Link
+        to="/profile"
+        className="text-blue-600 hover:underline font-medium"
+      >
+        Profile Page
+      </Link>.
+    </p>
+  )}
+</div>
                   </div>
 
                   <div className="flex flex-wrap gap-3 pt-4">

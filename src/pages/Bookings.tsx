@@ -411,7 +411,7 @@ export default function Bookings() {
                   <th className="whitespace-nowrap">Client</th>
                   {/* <th>Therapist</th> */}
                   <th className="whitespace-nowrap">Date & Time</th>
-                  <th className="whitespace-nowrap">Expiration</th>
+                  {/* <th className="whitespace-nowrap">Expiration</th> */}
                   <th className="whitespace-nowrap">Status</th>
                   <th className="whitespace-nowrap">Actions</th>
                 </tr>
@@ -485,7 +485,7 @@ export default function Bookings() {
                       </div>
                     </td>
 
-                    <td className="min-w-[120px]">
+                    {/* <td className="min-w-[120px]">
                       {booking.bookingType === 'subscription-covered' ? (
                         <span className="px-2 py-1 rounded-full text-xs font-semibold text-emerald-600 bg-emerald-100 whitespace-nowrap">
                           Subscription
@@ -527,7 +527,7 @@ export default function Bookings() {
                           No Expiry
                         </span>
                       )}
-                    </td>
+                    </td> */}
                     <td className="min-w-[140px]">
                       <Select
                         value={booking.status}
