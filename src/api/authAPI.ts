@@ -70,86 +70,108 @@ clientApiClient.interceptors.response.use(
 export const adminAuthAPI = {
   // Admin login - only works with admin credentials
   login: (credentials: { email: string; password: string }) => {
-    return adminApiClient.post('/auth/admin/login', credentials);
+    return adminApiClient.post("/auth/admin/login", credentials);
   },
 
   // Admin logout
   logout: () => {
-    return adminApiClient.post('/auth/admin/logout');
+    return adminApiClient.post("/auth/admin/logout");
   },
 
   // Get admin profile
   getProfile: () => {
-    return adminApiClient.get('/auth/admin/profile');
+    return adminApiClient.get("/auth/admin/profile");
   },
 
   // Update admin profile
   updateProfile: (userData: any) => {
-    return adminApiClient.put('/auth/admin/profile', userData);
+    return adminApiClient.put("/auth/admin/profile", userData);
   },
 
   // Change admin password
-  changePassword: (passwordData: { oldPassword: string; newPassword: string }) => {
-    return adminApiClient.put('/auth/admin/change-password', passwordData);
+  changePassword: (passwordData: {
+    oldPassword: string;
+    newPassword: string;
+  }) => {
+    return adminApiClient.put("/auth/admin/change-password", passwordData);
   },
 
   // Forgot password
   forgotPassword: (email: string) => {
-    return adminApiClient.post('/auth/admin/forgot-password', { email });
+    return adminApiClient.post("/auth/admin/forgot-password", { email });
   },
 
   // Reset password
   resetPassword: (token: string, password: string) => {
-    return adminApiClient.post(`/auth/admin/reset-password/${token}`, { password });
+    return adminApiClient.post(`/auth/admin/reset-password/${token}`, {
+      password,
+    });
   },
 
   // Verify admin token
   verifyToken: () => {
-    return adminApiClient.get('/auth/admin/verify-token');
-  }
+    return adminApiClient.get("/auth/admin/verify-token");
+  },
+
+  // Validate admin token with app type checking
+  validateToken: (appType?: "admin") => {
+    const data = appType ? { appType } : {};
+    return adminApiClient.post("/auth/validate-token", data);
+  },
 };
 
 // Client Authentication APIs
 export const clientAuthAPI = {
   // Client login - only works with client credentials
   login: (credentials: { email: string; password: string }) => {
-    return clientApiClient.post('/auth/client/login', credentials);
+    return clientApiClient.post("/auth/client/login", credentials);
   },
 
   // Client logout
   logout: () => {
-    return clientApiClient.post('/auth/client/logout');
+    return clientApiClient.post("/auth/client/logout");
   },
 
   // Get client profile
   getProfile: () => {
-    return clientApiClient.get('/auth/client/profile');
+    return clientApiClient.get("/auth/client/profile");
   },
 
   // Update client profile
   updateProfile: (userData: any) => {
-    return clientApiClient.put('/auth/client/profile', userData);
+    return clientApiClient.put("/auth/client/profile", userData);
   },
 
   // Change client password
-  changePassword: (passwordData: { oldPassword: string; newPassword: string }) => {
-    return clientApiClient.put('/auth/client/change-password', passwordData);
+  changePassword: (passwordData: {
+    oldPassword: string;
+    newPassword: string;
+  }) => {
+    return clientApiClient.put("/auth/client/change-password", passwordData);
   },
 
   // Forgot password
   forgotPassword: (email: string) => {
-    return clientApiClient.post('/auth/client/forgot-password', { email });
+    return clientApiClient.post("/auth/client/forgot-password", { email });
   },
 
   // Reset password
   resetPassword: (token: string, password: string) => {
-    return clientApiClient.post(`/auth/client/reset-password/${token}`, { password });
+    return clientApiClient.post(`/auth/client/reset-password/${token}`, {
+      password,
+    });
   },
 
   // Verify client token
   verifyToken: () => {
-    return clientApiClient.get('/auth/client/verify-token');
-  }
+    return clientApiClient.get("/auth/client/verify-token");
+  },
+
+  // Validate client token with app type checking
+  validateToken: (appType?: "client") => {
+    const data = appType ? { appType } : {};
+    return clientApiClient.post("/auth/validate-token", data);
+  },
 };
 
 // Token utility functions

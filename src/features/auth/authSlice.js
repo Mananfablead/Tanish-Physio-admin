@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import apiClient, { API } from "@/api/apiClient";
+import { adminApiClient, API } from "@/api/apiClient";
 
 /* =========================
    LOGIN
@@ -8,7 +8,7 @@ export const loginUser = createAsyncThunk(
   "auth/login",
   async (credentials, { rejectWithValue }) => {
     try {
-      const res = await apiClient.post(API.LOGIN, {
+      const res = await adminApiClient.post(API.LOGIN, {
         ...credentials,
         appType: 'admin'
       });
@@ -19,7 +19,7 @@ export const loginUser = createAsyncThunk(
       console.log("token", token);
       if (token) {
         // token save
-        localStorage.setItem("token", token);
+        localStorage.setItem("admin_token", token);
       }
       console.log(res.data);
       return {
@@ -39,7 +39,7 @@ export const changePassword = createAsyncThunk(
   "auth/changePassword",
   async (passwordData, { rejectWithValue }) => {
     try {
-      const res = await apiClient.put(API.UPDATE_PASSWORD, passwordData);
+      const res = await adminApiClient.put(API.UPDATE_PASSWORD, passwordData);
       return res.data;
     } catch (err) {
       return rejectWithValue(err.response?.data?.message || "Password update failed");
@@ -54,7 +54,7 @@ export const forgotPassword = createAsyncThunk(
   "auth/forgotPassword",
   async (email, { rejectWithValue }) => {
     try {
-      const res = await apiClient.post(API.FORGOT_PASSWORD, { email });
+      const res = await adminApiClient.post(API.FORGOT_PASSWORD, { email });
       return res.data;
     } catch (err) {
       return rejectWithValue(err.response?.data?.message || "Failed to send reset link");
@@ -66,7 +66,7 @@ export const resetPassword = createAsyncThunk(
   "auth/resetPassword",
   async ({ token, password }, { rejectWithValue }) => {
     try {
-      const res = await apiClient.post(`${API.RESET_PASSWORD}/${token}`, { password });
+      const res = await adminApiClient.post(`${API.RESET_PASSWORD}/${token}`, { password });
       return res.data;
     } catch (err) {
       return rejectWithValue(err.response?.data?.message || "Failed to reset password");
@@ -78,7 +78,7 @@ export const logoutUser = createAsyncThunk(
   "auth/logout",
   async (_, { dispatch, rejectWithValue }) => {
     try {
-      const res = await apiClient.post(API.LOGOUT);
+      const res = await adminApiClient.post(API.LOGOUT);
       // Also dispatch the local logout action to clear the state
       dispatch(logout());
       return res.data;
@@ -96,7 +96,7 @@ export const fetchProfile = createAsyncThunk(
   "auth/fetchProfile",
   async (_, { rejectWithValue }) => {
     try {
-      const res = await apiClient.get(API.PROFILE);
+      const res = await adminApiClient.get(API.PROFILE);
       return res.data.data;
     } catch (err) {
       return rejectWithValue(err.response?.data?.message || "Unauthorized");
@@ -116,7 +116,7 @@ export const updateProfile = createAsyncThunk(
         },
       };
       
-      const res = await apiClient.put(API.UPDATE_PROFILE, profileData, config);
+      const res = await adminApiClient.put(API.UPDATE_PROFILE, profileData, config);
       return res.data;
     } catch (err) {
       return rejectWithValue(
@@ -130,7 +130,7 @@ export const getPublicProfile = createAsyncThunk(
   "auth/getPublicProfile",
   async (userId, { rejectWithValue }) => {
     try {
-      const res = await apiClient.get(API.PUBLIC_PROFILE.replace(':userId', userId));
+      const res = await adminApiClient.get(API.PUBLIC_PROFILE.replace(':userId', userId));
       return res.data.data;
     } catch (err) {
       return rejectWithValue(err.response?.data?.message || "Failed to fetch public profile");
@@ -144,8 +144,8 @@ export const getPublicProfile = createAsyncThunk(
 const initialState = {
   user: null,
   role: null,
-  token: localStorage.getItem("token"), // ✅ IMPORTANT
-  isAuthenticated: !!localStorage.getItem("token"),
+  token: localStorage.getItem("admin_token"), // ✅ IMPORTANT
+  isAuthenticated: !!localStorage.getItem("admin_token"),
   loading: false,
   error: null,
   forgotPasswordSuccess: null,
