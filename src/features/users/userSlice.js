@@ -11,22 +11,10 @@ import apiClient, { API } from "@/api/apiClient";
  */
 export const fetchUsers = createAsyncThunk(
   "users/fetch",
-  async (params = {}, { rejectWithValue }) => {
+  async (_, { rejectWithValue }) => {
     try {
-      // Build query string from params
-      const queryParams = new URLSearchParams();
-      if (params.page) queryParams.append('page', params.page);
-      if (params.limit) queryParams.append('limit', params.limit);
-      
-      const queryString = queryParams.toString();
-      const url = queryString ? `${API.USERS}?${queryString}` : API.USERS;
-      
-      const res = await apiClient.get(url);
-      // Return both users and pagination info
-      return {
-        users: res.data?.data?.users || [],
-        pagination: res.data?.data?.pagination || null
-      };
+      const res = await apiClient.get(API.USERS);
+      return res.data?.data?.users || [];
     } catch (err) {
       return rejectWithValue("Users fetch failed");
     }
@@ -109,7 +97,6 @@ const userSlice = createSlice({
   initialState: {
     list: [],
     selectedUser: null, // User object when selected, null when none
-    pagination: null,
     loading: false,
     error: null,
   },
@@ -123,18 +110,10 @@ const userSlice = createSlice({
         state.error = null;
       })
       .addCase(fetchUsers.fulfilled, (state, action) => {
-  state.loading = false;
-
-  const page = action.meta.arg?.page ?? 1;
-
-  if (page === 1) {
-    state.list = action.payload.users;
-  } else {
-    state.list.push(...action.payload.users);
-  }
-
-  state.pagination = action.payload.pagination;
-})
+        state.loading = false;
+        state.list = action.payload;
+        state.pagination = null; // No pagination
+      })
 
       .addCase(fetchUsers.rejected, (state, action) => {
         state.loading = false;
@@ -200,9 +179,6 @@ const userSlice = createSlice({
         const newUser = action.payload;
         if (newUser) {
           state.list.unshift(newUser); // Add to beginning of list
-          if (state.pagination) {
-            state.pagination.total += 1;
-          }
         }
       })
       .addCase(createUser.rejected, (state, action) => {
@@ -214,9 +190,6 @@ const userSlice = createSlice({
       .addCase(deleteUser.fulfilled, (state, action) => {
         const userId = action.payload;
         state.list = state.list.filter((user) => user._id !== userId);
-        if (state.pagination) {
-          state.pagination.total -= 1;
-        }
       });
   },
 });

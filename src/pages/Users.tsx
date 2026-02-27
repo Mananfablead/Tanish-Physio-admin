@@ -48,7 +48,7 @@ const filters = ["All", "Active Subscription", "Expired", "No Subscription"];
 export default function Users() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { list: users = [], loading, pagination } = useSelector(
+  const { list: users = [], loading } = useSelector(
     (state: any) => state.users
   );
 
@@ -58,6 +58,7 @@ export default function Users() {
   const [deleteUserId, setDeleteUserId] = useState(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const itemsPerPage = 10;
   const [newUser, setNewUser] = useState({
     name: "",
     email: "",
@@ -68,14 +69,8 @@ export default function Users() {
 
   /* ---------------- FETCH USERS ---------------- */
   useEffect(() => {
-    dispatch(
-      fetchUsers({
-        page: currentPage,
-        limit: 10,
-        search: searchQuery,
-      })
-    );
-  }, [dispatch, currentPage, searchQuery]);
+    dispatch(fetchUsers());
+  }, [dispatch]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -93,7 +88,7 @@ export default function Users() {
     );
   };
 
-  /* ---------------- FILTER LOGIC (FIX) ---------------- */
+  /* ---------------- FILTER LOGIC ---------------- */
   const filteredUsers = useMemo(() => {
     return users.filter((user) => {
       // 🔍 SEARCH FILTER
@@ -119,6 +114,15 @@ export default function Users() {
       return true;
     });
   }, [users, activeFilter, searchQuery]);
+
+  // Client-side pagination
+  const paginatedUsers = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filteredUsers.slice(startIndex, endIndex);
+  }, [filteredUsers, currentPage]);
+
+  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
 
 
   /* ---------------- HELPERS ---------------- */
@@ -222,7 +226,7 @@ export default function Users() {
           status: "active"
         });
         // Refresh user list
-        dispatch(fetchUsers({ page: currentPage, limit: 10, search: searchQuery }));
+        dispatch(fetchUsers());
       })
       .catch((error) => {
         toast({
@@ -310,7 +314,7 @@ export default function Users() {
                 </tr>
               </thead>
               <tbody>
-                {filteredUsers.map((user) => (
+                {paginatedUsers.map((user) => (
                   <tr key={user._id}>
                     <td>
                       <div className="flex items-center gap-3">
@@ -405,50 +409,48 @@ export default function Users() {
           </div>
 
           {/* PAGINATION CONTROLS */}
-          {pagination && (
-            <div className="flex items-center justify-between mt-6">
-              <div className="text-sm text-muted-foreground">
-                Showing {(currentPage - 1) * 10 + 1} to {Math.min(currentPage * 10, pagination.total)} of {pagination.total} users
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                  disabled={currentPage === 1}
-                >
-                  Previous
-                </Button>
-                <div className="flex items-center gap-1">
-                  {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
-                    const pageNum = i + 1;
-                    return (
-                      <Button
-                        key={pageNum}
-                        variant={currentPage === pageNum ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setCurrentPage(pageNum)}
-                        className="w-10 h-10 p-0"
-                      >
-                        {pageNum}
-                      </Button>
-                    );
-                  })}
-                  {pagination.totalPages > 5 && (
-                    <span className="px-2 text-muted-foreground">...</span>
-                  )}
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, pagination.totalPages))}
-                  disabled={currentPage === pagination.totalPages}
-                >
-                  Next
-                </Button>
-              </div>
+          <div className="flex items-center justify-between mt-6">
+            <div className="text-sm text-muted-foreground">
+              Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, filteredUsers.length)} of {filteredUsers.length} users
             </div>
-          )}
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+              >
+                Previous
+              </Button>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  const pageNum = i + 1;
+                  return (
+                    <Button
+                      key={pageNum}
+                      variant={currentPage === pageNum ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setCurrentPage(pageNum)}
+                      className="w-10 h-10 p-0"
+                    >
+                      {pageNum}
+                    </Button>
+                  );
+                })}
+                {totalPages > 5 && (
+                  <span className="px-2 text-muted-foreground">...</span>
+                )}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
         </>
       ) : (
         <div className="border rounded-lg p-12 text-center">

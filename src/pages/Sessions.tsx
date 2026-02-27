@@ -304,7 +304,13 @@ export default function Sessions() {
       const data = await response.json();
 
       if (data.success) {
-        setUsersWithActiveSubscriptions(data.data.users || []);
+        // Filter for users with active subscriptions by checking their subscription data
+        const usersWithActiveSubs = data.data.users.filter(user =>
+          user.subscriptionInfo &&
+          user.subscriptionInfo.status === 'active' &&
+          !user.subscriptionInfo.isExpired
+        );
+        setUsersWithActiveSubscriptions(usersWithActiveSubs);
       } else {
         console.error(
           "Failed to fetch users with active subscriptions:",
