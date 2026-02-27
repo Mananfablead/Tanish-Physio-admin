@@ -1471,7 +1471,7 @@ const useWebRTC = (roomId, socket, userRole = 'admin') => {
                         const verifyResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}/video-call/${callLogId}`, {
                             method: 'GET',
                             headers: {
-                                'Authorization': `Bearer ${localStorage.getItem('token')}`
+                                'Authorization': `Bearer ${localStorage.getItem('admin_token')}`
                             }
                         });
 
@@ -1492,7 +1492,7 @@ const useWebRTC = (roomId, socket, userRole = 'admin') => {
                         method: 'POST',
                         body: formData,
                         headers: {
-                            'Authorization': `Bearer ${localStorage.getItem('token')}`
+                            'Authorization': `Bearer ${localStorage.getItem('admin_token')}`
                         }
                     });
 

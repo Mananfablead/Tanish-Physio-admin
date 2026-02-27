@@ -539,14 +539,19 @@ export default function Bookings() {
                           try {
                             // Use the dedicated status update endpoint for proper session creation
                             // Using proxy path instead of full URL
-                            const res = await fetch(`/api/bookings/${bookingId}/status`, {
-                              method: 'PUT',
-                              headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': `Bearer ${localStorage.getItem('token')}`
-                              },
-                              body: JSON.stringify({ status: value })
-                            });
+                            const res = await fetch(
+                              `/api/bookings/${bookingId}/status`,
+                              {
+                                method: "PUT",
+                                headers: {
+                                  "Content-Type": "application/json",
+                                  Authorization: `Bearer ${localStorage.getItem(
+                                    "admin_token"
+                                  )}`,
+                                },
+                                body: JSON.stringify({ status: value }),
+                              }
+                            );
                             
                             if (!res.ok) {
                               // Handle error response safely

@@ -12,7 +12,7 @@ const adminChatApiClient = axios.create({
 
 // Add auth token to requests
 adminChatApiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
+  const token = localStorage.getItem("admin_token");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -90,13 +90,19 @@ export const adminChatApi = {
 
   // Get support/private chat messages by chatRoom
   getSupportMessages: async (chatRoom: string) => {
-    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
-    const response = await fetch(`${API_BASE_URL}/chat/support/${encodeURIComponent(chatRoom)}`, {
-      headers: {
-        Authorization: localStorage.getItem('token') ? `Bearer ${localStorage.getItem('token')}` : undefined,
-        'Content-Type': 'application/json'
+    const API_BASE_URL =
+      import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+    const response = await fetch(
+      `${API_BASE_URL}/chat/support/${encodeURIComponent(chatRoom)}`,
+      {
+        headers: {
+          Authorization: localStorage.getItem("admin_token")
+            ? `Bearer ${localStorage.getItem("admin_token")}`
+            : undefined,
+          "Content-Type": "application/json",
+        },
       }
-    });
+    );
     return response.json();
   },
 

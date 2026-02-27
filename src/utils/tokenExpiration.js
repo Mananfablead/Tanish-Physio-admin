@@ -96,7 +96,7 @@ export const createTokenExpirationInterceptor = (logoutCallback) => {
     return (error) => {
         // Check if error is 401 Unauthorized
         if (error.response?.status === 401) {
-            const token = localStorage.getItem('token');
+            const token = localStorage.getItem('admin_token');
 
             // If we have a token but got 401, it's likely expired
             if (token) {

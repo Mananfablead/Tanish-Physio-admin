@@ -734,7 +734,7 @@ const LiveChatHistory = () => {
       formData.append('file', file);
       
       try {
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem("admin_token");
         const response = await axios.post('/api/chat/upload-file', formData, {
           headers: {
             'Content-Type': 'multipart/form-data',

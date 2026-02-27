@@ -5,7 +5,7 @@ const apiClient = axios.create({
 });
 
 apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
+  const token = localStorage.getItem("admin_token");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -18,7 +18,7 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
-// Response interceptor to handle token expiration
+// Response interceptor to handle token expiration and app type validation
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -27,16 +27,18 @@ apiClient.interceptors.response.use(
       const isTokenError =
         error.response?.data?.message?.includes("Invalid or expired token") ||
         error.response?.data?.message?.includes("Access token required") ||
-        error.response?.data?.message?.includes("User not found");
+        error.response?.data?.message?.includes("User not found") ||
+        error.response?.data?.message?.includes("Access denied");
 
       if (isTokenError) {
-        // Remove token from localStorage
+        // Remove admin token from localStorage
+        localStorage.removeItem("admin_token");
+        // Also remove any client token that might be present
         localStorage.removeItem("token");
 
-        // Update the Redux store by dispatching logout
         // Dispatch logout action to clear the auth state
         const event = new CustomEvent("tokenExpired", {
-          detail: { message: "Token expired" },
+          detail: { message: "Token invalid or expired" },
         });
         window.dispatchEvent(event);
 
@@ -54,6 +56,7 @@ export const API = {
   // auth
   LOGIN: "/auth/login",
   LOGOUT: "/auth/logout",
+  VALIDATE_TOKEN: "/auth/validate-token",
   PROFILE: "/auth/profile",
   PUBLIC_PROFILE: "/auth/profile/:userId",
   FORGOT_PASSWORD: "/auth/forgot-password",

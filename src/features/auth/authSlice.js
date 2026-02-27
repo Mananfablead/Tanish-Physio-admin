@@ -18,8 +18,10 @@ export const loginUser = createAsyncThunk(
 
       console.log("token", token);
       if (token) {
-        // token save
-        localStorage.setItem("token", token);
+        // Save admin-specific token
+        localStorage.setItem("admin_token", token);
+        // Remove any client token that might be present
+        localStorage.removeItem("token");
       }
       console.log(res.data);
       return {
@@ -138,14 +140,55 @@ export const getPublicProfile = createAsyncThunk(
   }
 );
 
+// Validate token app type compatibility
+export const validateTokenAppType = createAsyncThunk(
+  "auth/validateTokenAppType",
+  async (_, { rejectWithValue, dispatch }) => {
+    try {
+      // First check if we have an admin token
+      const adminToken = localStorage.getItem("admin_token");
+      const clientToken = localStorage.getItem("token");
+
+      // If we have a client token but no admin token, this is wrong
+      if (clientToken && !adminToken) {
+        console.warn("❌ Client token found in admin app - forcing logout");
+        dispatch(logout());
+        return rejectWithValue("Client token detected in admin application");
+      }
+
+      // If we have no token at all
+      if (!adminToken) {
+        return rejectWithValue("No authentication token found");
+      }
+
+      // Validate the admin token with app type checking
+      const res = await apiClient.post(API.VALIDATE_TOKEN, { appType: "admin" });
+
+      // Check if the token is valid for admin app
+      if (res.data.success && res.data.data?.appTypeCompatible === true) {
+        console.log("✅ Admin token validated successfully");
+        return res.data.data;
+      } else {
+        console.warn("❌ Token not valid for admin application");
+        dispatch(logout());
+        return rejectWithValue("Token not authorized for admin application");
+      }
+    } catch (err) {
+      console.error("❌ Token validation failed:", err);
+      dispatch(logout());
+      return rejectWithValue(err.response?.data?.message || "Token validation failed");
+    }
+  }
+);
+
 /* =========================
    INITIAL STATE
 ========================= */
 const initialState = {
   user: null,
   role: null,
-  token: localStorage.getItem("token"), // ✅ IMPORTANT
-  isAuthenticated: !!localStorage.getItem("token"),
+  token: localStorage.getItem("admin_token"), //✅ Use admin-specific token
+  isAuthenticated: !!localStorage.getItem("admin_token"),
   loading: false,
   error: null,
   forgotPasswordSuccess: null,
@@ -159,7 +202,8 @@ const authSlice = createSlice({
   initialState,
   reducers: {
     logout: (state) => {
-      localStorage.removeItem("token");
+      localStorage.removeItem("admin_token");
+      localStorage.removeItem("token"); // Remove any client token too
       state.user = null;
       state.role = null;
       state.token = null;
@@ -273,6 +317,21 @@ const authSlice = createSlice({
       .addCase(resetPassword.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
+      })
+
+      // TOKEN VALIDATION
+      .addCase(validateTokenAppType.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(validateTokenAppType.fulfilled, (state, action) => {
+        state.loading = false;
+        // Token is valid, no state changes needed
+      })
+      .addCase(validateTokenAppType.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+        state.isAuthenticated = false;
       });
   },
 });

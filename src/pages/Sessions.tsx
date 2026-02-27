@@ -295,33 +295,37 @@ export default function Sessions() {
   const fetchUsersWithActiveSubscriptions = async () => {
     try {
       setLoadingUsers(true);
-      const response = await fetch('/api/users?subscription=active', {
+      const response = await fetch("/api/users?subscription=active", {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        }
+          Authorization: `Bearer ${localStorage.getItem("admin_token")}`,
+          "Content-Type": "application/json",
+        },
       });
       const data = await response.json();
 
       if (data.success) {
         setUsersWithActiveSubscriptions(data.data.users || []);
       } else {
-        console.error('Failed to fetch users with active subscriptions:', data.message);
+        console.error(
+          "Failed to fetch users with active subscriptions:",
+          data.message
+        );
         // As fallback, get all users and their subscription info separately
-        const allUsersResponse = await fetch('/api/users', {
+        const allUsersResponse = await fetch("/api/users", {
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
-            'Content-Type': 'application/json'
-          }
+            Authorization: `Bearer ${localStorage.getItem("admin_token")}`,
+            "Content-Type": "application/json",
+          },
         });
         const allUsersData = await allUsersResponse.json();
 
         if (allUsersData.success) {
           // Filter for users with active subscriptions by checking their subscription data
-          const usersWithActiveSubs = allUsersData.data.users.filter(user =>
-            user.subscriptionInfo &&
-            user.subscriptionInfo.status === 'active' &&
-            !user.subscriptionInfo.isExpired
+          const usersWithActiveSubs = allUsersData.data.users.filter(
+            (user) =>
+              user.subscriptionInfo &&
+              user.subscriptionInfo.status === "active" &&
+              !user.subscriptionInfo.isExpired
           );
           setUsersWithActiveSubscriptions(usersWithActiveSubs);
         } else {
