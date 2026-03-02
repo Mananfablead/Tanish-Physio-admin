@@ -336,12 +336,12 @@ export default function AddSubscription() {
               name="sessionDuration"
             >
               <option value={15}>15 min</option>
-              <option value={30}>30 min</option>
+              {/* <option value={30}>30 min</option> */}
               <option value={45}>45 min</option>
-              <option value={60}>60 min</option>
+              {/* <option value={60}>60 min</option>
               <option value={75}>75 min</option>
               <option value={90}>90 min</option>
-              <option value={120}>120 min</option>
+              <option value={120}>120 min</option> */}
             </select>
           </div>
         </div>
