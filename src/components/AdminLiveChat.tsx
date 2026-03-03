@@ -34,7 +34,6 @@ const AdminLiveChat = () => {
   // Set up socket listeners for real-time messages
   useEffect(() => {
     if (!socket || !connected) {
-      console.log('AdminLiveChat: Waiting for socket connection...', { socketReady: !!socket, connected });
       return;
     }
 
@@ -42,8 +41,6 @@ const AdminLiveChat = () => {
 
     // Listen for new support messages from users
     const cleanupNewMessage = on("admin-new-message", (data: any) => {
-      console.log("Received new message for admin:", data);
-
       // If admin is viewing a specific support room, ignore messages for other rooms
       if (selectedChatRoom && data.chatRoom && data.chatRoom !== selectedChatRoom) {
         return;
@@ -74,7 +71,6 @@ const AdminLiveChat = () => {
 
     // Listen for new support messages in admin room
     const cleanupSupportMessage = on("new-support-message", (data: any) => {
-      console.log("Received support message:", data);
 
       // If admin is viewing a specific support room, ignore messages for other rooms
       if (selectedChatRoom && data.chatRoom && data.chatRoom !== selectedChatRoom) {
@@ -100,14 +96,14 @@ const AdminLiveChat = () => {
 
     // Connection status
     const cleanupConnect = on("connect", () => {
-      console.log("Admin socket connected");
+     
       setConnected(true);
       // Join admin support room
       emit("join-room", { sessionId: "admin-support-room" });
     });
 
     const cleanupDisconnect = on("disconnect", () => {
-      console.log("Admin socket disconnected");
+    
       setConnected(false);
     });
 

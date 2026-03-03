@@ -51,7 +51,6 @@ const setupTokenExpirationWatcher = (token) => {
   // Set up new watcher if we have a token
   if (token) {
     tokenWatcherCleanup = createTokenExpirationWatcher(token, () => {
-      console.log('Token expired, logging out automatically');
       store.dispatch({ type: 'auth/logout' });
     });
   }
@@ -71,7 +70,6 @@ store.subscribe(() => {
 
 // Setup API interceptor for token expiration
 const interceptor = createTokenExpirationInterceptor(() => {
-  console.log('API 401 error - token expired, logging out automatically');
   store.dispatch({ type: 'auth/logout' });
 });
 

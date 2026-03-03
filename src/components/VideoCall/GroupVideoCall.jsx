@@ -213,8 +213,7 @@ const GroupVideoCall = ({
     };
 
     const participantScreenSharingListener = (data) => {
-      // Handle screen sharing updates
-      console.log("Participant screen sharing:", data);
+
     };
 
     // Add listeners

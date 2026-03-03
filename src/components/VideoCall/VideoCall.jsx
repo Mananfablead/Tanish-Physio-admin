@@ -103,7 +103,7 @@ const VideoCall = ({
     if (localStream) {
       localStream.getTracks().forEach(track => {
         track.stop();
-        console.log("Stopped media track:", track.kind);
+      
       });
     }
   };
@@ -250,9 +250,7 @@ const VideoCall = ({
       if (!actualSessionId) {
         throw new Error("No session or room ID available");
       }
-      console.log(
-        "⚠️ Invalid or missing callLogId detected! Creating real CallLog..."
-      );
+    
 
       // Create a real call log entry in the database
       const response = await adminVideoCallApi.createCallLog(

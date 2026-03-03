@@ -30,7 +30,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { user, loading, token } = useSelector((state: any) => state.auth);
-  console.log("object", user);
+
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
@@ -52,18 +52,18 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     });
 
     socket.on("connect", () => {
-      console.log("Connected to admin notification socket");
+     
       // Join admin notification room
       socket.emit("join-admin-notifications", {});
     });
 
     socket.on("admin-notifications-joined", (data) => {
-      console.log("Joined admin notifications channel:", data);
+    
     });
 
     // Listen for admin notifications
     socket.on("admin-notification", (data) => {
-      console.log("Admin received notification:", data);
+    
 
       // Add to notifications array
       const newNotification = {
@@ -105,7 +105,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     });
 
     socket.on("disconnect", () => {
-      console.log("Disconnected from admin notification socket");
+  
     });
 
     socket.on("connect_error", (error) => {

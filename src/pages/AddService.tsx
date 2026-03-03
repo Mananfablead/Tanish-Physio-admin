@@ -45,7 +45,7 @@ export default function AddService() {
       features: string[];
       prerequisites: string[];
       benefits: string[];
-    }>({
+    }>({  
       name: "",
       description: "",
       about: "", // New field
