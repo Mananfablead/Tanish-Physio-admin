@@ -1614,45 +1614,50 @@ const VideoCall = ({
                   </p>
                 </div>
               ) : (
-                chatMessages.map((message, index) => (
-                  <div
-                    key={index}
-                    className={`flex ${
-                      message.senderId === socket?.id
-                        ? "justify-end"
-                        : "justify-start"
-                    }`}
-                  >
-                    <div
-                      className={`max-w-[80%] rounded-2xl px-3 sm:px-4 py-2 sm:py-3 text-sm ${
-                        message.senderId === socket?.id
-                          ? "bg-emerald-500 text-white rounded-br-md"
-                          : "bg-slate-800 text-slate-100 rounded-bl-md border border-slate-700"
-                      }`}
-                    >
-                      <p className="text-[10px] font-semibold mb-1 opacity-80">
-                        {message.senderId === socket?.id || message.sender === "me"
-                          ? userInfo.name || user?.name || "Admin"
-                          : message.senderName || "Participant"}
-                      </p>
-                      <p>{message.text || message.content || message.message}</p>
-                      <p
-                        className={`text-[10px] mt-1 ${
-                          message.senderId === socket?.id
-                            ? "text-emerald-100 opacity-80"
-                            : "text-slate-400"
-                        }`}
-                      >
-                        {new Date(
-                          message.timestamp || message.createdAt
-                        ).toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </p>
-                    </div>
-                  </div>
-                ))
+              chatMessages.map((message, index) => {
+  const isSender =
+    String(message.senderId) === String(user?._id);
+
+  return (
+    <div
+      key={index}
+      className={`flex ${isSender ? "justify-end" : "justify-start"}`}
+    >
+      <div
+        className={`max-w-[80%] rounded-2xl px-3 sm:px-4 py-2 sm:py-3 text-sm ${
+          isSender
+            ? "bg-emerald-500 text-white rounded-br-md"
+            : "bg-slate-800 text-slate-100 rounded-bl-md border border-slate-700"
+        }`}
+      >
+        <p className="text-[10px] font-semibold mb-1 opacity-80">
+          {isSender
+            ? userInfo?.name || user?.name || "You"
+            : message.senderName || "Participant"}
+        </p>
+
+        <p>
+          {message.text || message.content || message.message}
+        </p>
+
+        <p
+          className={`text-[10px] mt-1 ${
+            isSender
+              ? "text-emerald-100 opacity-80"
+              : "text-slate-400"
+          }`}
+        >
+          {new Date(
+            message.timestamp || message.createdAt
+          ).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          })}
+        </p>
+      </div>
+    </div>
+  );
+})
               )}
 
               {/* Typing indicators */}
@@ -1768,12 +1773,12 @@ const VideoCall = ({
       <div className="bg-slate-900 px-4 py-4 md:px-8 md:py-8 border-t border-slate-800 md:relative fixed bottom-0 left-0 right-0 z-40">
         <div className="max-w-screen-xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 sm:gap-0">
           <div className="w-24 sm:w-32 hidden md:flex items-center gap-2">
-            <Badge
+            {/* <Badge
               variant="outline"
               className="border-slate-700 text-slate-500 text-[10px] px-2 py-0.5"
             >
               HD 1080p
-            </Badge>
+            </Badge> */}
           </div>
 
           <div className="flex items-center justify-center gap-3 sm:gap-4 flex-wrap">
@@ -1829,47 +1834,46 @@ const VideoCall = ({
             )} */}
 
             {/* Recording Button - Only for admins */}
-            {(userRole === "admin" || isTherapist) && (
-              <div className="flex flex-col items-center gap-2">
-                <Button
-                  variant={isRecording ? "destructive" : "secondary"}
-                  size="icon"
-                  className={`rounded-2xl md:w-16 md:h-16 w-14 h-12 border-2 min-w-[56px] ${
-                    isRecording
-                      ? "bg-red-600 text-white animate-pulse border-red-400 shadow-lg shadow-red-500/30"
-                      : "bg-slate-800 text-slate-300 hover:bg-slate-700 border-slate-600"
-                  }`}
-                  onClick={isRecording ? stopRecording : startRecording}
-                  disabled={!connected || recordingStatus === "starting"}
-                  title={isRecording ? "Stop Recording" : "Start Recording"}
-                >
-                  {recordingStatus === "starting" ? (
-                    <div className="h-6 w-6">
-                      <div className="animate-spin rounded-full h-full w-full border-b-2 border-white"></div>
-                    </div>
-                  ) : (
-                    <>
-                      <div
-                        className={`h-3 w-3 mr-1 rounded-full ${
-                          isRecording ? "bg-white animate-pulse" : "bg-red-500"
-                        }`}
-                      />
-                      <span className="text-sm font-bold">REC</span>
-                    </>
-                  )}
-                </Button>
-
-                {/* Recording Timer */}
-                {isRecording && (
-                  <div className="text-xs text-red-400 font-mono bg-red-900/30 px-2 py-1 rounded-md">
-                    {Math.floor(recordingTime / 60)
-                      .toString()
-                      .padStart(2, "0")}
-                    :{(recordingTime % 60).toString().padStart(2, "0")}
-                  </div>
-                )}
-              </div>
-            )}
+           {(userRole === "admin" || isTherapist) && (
+  <div className="flex flex-col items-center">
+    <Button
+      variant={isRecording ? "destructive" : "secondary"}
+      size="icon"
+      className={`rounded-2xl md:w-16 md:h-16 w-14 h-12 border-2 min-w-[56px] flex items-center justify-center gap-1 ${
+        isRecording
+          ? "bg-red-600 text-white animate-pulse border-red-400 shadow-lg shadow-red-500/30"
+          : "bg-slate-800 text-slate-300 hover:bg-slate-700 border-slate-600"
+      }`}
+      onClick={isRecording ? stopRecording : startRecording}
+      disabled={!connected || recordingStatus === "starting"}
+      title={isRecording ? "Stop Recording" : "Start Recording"}
+    >
+      {recordingStatus === "starting" ? (
+        <div className="h-6 w-6">
+          <div className="animate-spin rounded-full h-full w-full border-b-2 border-white"></div>
+        </div>
+      ) : isRecording ? (
+        <>
+          <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
+          <span className="text-xs font-mono font-bold">
+            {Math.floor(recordingTime / 60)
+              .toString()
+              .padStart(2, "0")}
+            :
+            {(recordingTime % 60)
+              .toString()
+              .padStart(2, "0")}
+          </span>
+        </>
+      ) : (
+        <>
+          <div className="h-3 w-3 rounded-full bg-red-500" />
+          <span className="text-sm font-bold">REC</span>
+        </>
+      )}
+    </Button>
+  </div>
+)}
 
             <Button
               variant="destructive"
