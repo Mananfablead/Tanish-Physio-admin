@@ -26,6 +26,7 @@ import {
 } from "@/features/bookings/bookingSlice";
 import { toast } from "@/hooks/use-toast";
 import PageLoader from "@/components/PageLoader";
+import { bookingAPI } from "@/api/apiClient";
 
 export default function BookingDetails() {
   const { id } = useParams<{ id: string }>();
@@ -224,40 +225,21 @@ console.log("Health profile:", singleBooking?.booking?.userId?.healthProfile);
 
     setStatusLoading(true);
     try {
-      // Use the dedicated status update endpoint for proper session creation
-      // Using proxy path instead of full URL
-      const res = await fetch(
-        `/api/bookings/${booking._id || booking.id}/status`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("admin_token")}`,
-          },
-          body: JSON.stringify({ status: newStatus }),
-        }
-      );
+      // Use the dedicated API client which handles CSRF tokens automatically
+      const response = await bookingAPI.updateStatus(booking._id || booking.id, newStatus);
       
-      if (!res.ok) {
-        // Handle error response safely
-        let errorMessage = 'Failed to update status';
-        try {
-          const errorData = await res.json();
-          errorMessage = errorData.message || errorData.error || errorMessage;
-        } catch (parseError) {
-          // If JSON parsing fails, use status text
-          errorMessage = res.statusText || errorMessage;
-        }
-        throw new Error(errorMessage);
+      if (response.data.success) {
+        // Refresh the booking data
+        dispatch(fetchBookingById(id));
+        toast({ title: "Status updated successfully" });
+      } else {
+        throw new Error(response.data.message || 'Failed to update status');
       }
-      
-      // Refresh the booking data
-      dispatch(fetchBookingById(id));
-      toast({ title: "Status updated successfully" });
     } catch (err: any) {
+      console.error('Error updating booking status:', err);
       toast({
         title: "Failed to update status",
-        description: err.message,
+        description: err.response?.data?.message || err.message || "An error occurred",
         variant: "destructive",
       });
     } finally {

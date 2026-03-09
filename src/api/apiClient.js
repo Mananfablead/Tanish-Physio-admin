@@ -482,6 +482,10 @@ export const bookingAPI = {
   update: (id, data) =>
     apiClient.put(`${API.BOOKING_BY_ID.replace(":id", id)}`, data),
 
+  // Update booking status
+  updateStatus: (id, status) =>
+    apiClient.put(`${API.BOOKING_BY_ID.replace(":id", id)}/status`, { status }),
+
   // Delete booking
   delete: (id) => apiClient.delete(`${API.BOOKING_BY_ID.replace(":id", id)}`),
 };
