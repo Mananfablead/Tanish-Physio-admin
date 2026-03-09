@@ -222,8 +222,8 @@ export default function Users() {
           name: "",
           email: "",
           phone: "",
-          role: "client",
-          status: "active"
+          role: "patient",
+          status: "active",
         });
         // Refresh user list
         dispatch(fetchUsers());
