@@ -42,7 +42,7 @@ import { fetchServices } from "@/features/services/serviceSlice";
 import { fetchUsers } from "@/features/users/userSlice";
 import { toast } from "@/hooks/use-toast";
 import PageLoader from "@/components/PageLoader";
-import { availabilityAPI } from "@/api/apiClient";
+import { availabilityAPI, bookingAPI } from "@/api/apiClient";
 
 export default function Bookings() {
   const dispatch: any = useDispatch();
@@ -535,45 +535,24 @@ export default function Bookings() {
                         onValueChange={async (value) => {
                           const bookingId = booking._id || booking.id;
                           setUpdatingStatusId(bookingId);
-                          
+                                                  
                           try {
-                            // Use the dedicated status update endpoint for proper session creation
-                            // Using proxy path instead of full URL
-                            const res = await fetch(
-                              `/api/bookings/${bookingId}/status`,
-                              {
-                                method: "PUT",
-                                headers: {
-                                  "Content-Type": "application/json",
-                                  Authorization: `Bearer ${localStorage.getItem(
-                                    "admin_token"
-                                  )}`,
-                                },
-                                body: JSON.stringify({ status: value }),
-                              }
-                            );
-                            
-                            if (!res.ok) {
-                              // Handle error response safely
-                              let errorMessage = 'Failed to update status';
-                              try {
-                                const errorData = await res.json();
-                                errorMessage = errorData.message || errorData.error || errorMessage;
-                              } catch (parseError) {
-                                // If JSON parsing fails, use status text
-                                errorMessage = res.statusText || errorMessage;
-                              }
-                              throw new Error(errorMessage);
+                            // Use the dedicated API client which handles CSRF tokens automatically
+                            const response = await bookingAPI.updateStatus(bookingId, value);
+                                                    
+                            if (response.data.success) {
+                              // Refresh the bookings list
+                              dispatch(fetchBookings());
+                              toast({
+                                title: "Booking status updated successfully",
+                              });
+                            } else {
+                              throw new Error(response.data.message || 'Failed to update status');
                             }
-                            
-                            // Refresh the bookings list
-                            dispatch(fetchBookings());
-                            toast({
-                              title: "Booking status updated successfully",
-                            });
                           } catch (error: any) {
+                            console.error('Error updating booking status:', error);
                             toast({
-                              title: error.message || "Failed to update status",
+                              title: error.response?.data?.message || error.message || "Failed to update status",
                               variant: "destructive",
                             });
                           } finally {

@@ -9,6 +9,7 @@ import {
   Plus,
   Trash,
   Mail,
+  CreditCard,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { Input } from "@/components/ui/input";
@@ -42,6 +43,8 @@ import { useDispatch, useSelector } from "react-redux";
 import { fetchUsers, deleteUser, updateUser, createUser } from "@/features/users/userSlice";
 import PageLoader from "@/components/PageLoader";
 import { toast } from "@/hooks/use-toast";
+import apiClient from "@/api/apiClient";
+import { API } from "@/api/apiClient";
 
 const filters = ["All", "Active Subscription", "Expired", "No Subscription"];
 
@@ -64,13 +67,74 @@ export default function Users() {
     email: "",
     phone: "",
     role: "patient",
-    status: "active"
+    status: "active",
+    assignedServices: [],
+    subscriptionPlan: ""
   });
+
+  const [services, setServices] = useState([]);
+  const [plans, setPlans] = useState([]);
+  const [isLoadingData, setIsLoadingData] = useState(false);
+  const [assignmentType, setAssignmentType] = useState(""); // 'plan' or 'service'
 
   /* ---------------- FETCH USERS ---------------- */
   useEffect(() => {
     dispatch(fetchUsers());
   }, [dispatch]);
+
+  // Fetch services and plans when create dialog opens
+  useEffect(() => {
+    if (isCreateDialogOpen) {
+      const fetchData = async () => {
+        setIsLoadingData(true);
+        try {
+          // Fetch services
+          console.log('Fetching services from:', API.SERVICES);
+          const servicesRes = await apiClient.get(API.SERVICES);
+          console.log('Services API response:', servicesRes);
+          // The API returns { services: [...] } inside data, so we need to extract it
+          const servicesData = Array.isArray(servicesRes.data?.data?.services) 
+            ? servicesRes.data.data.services 
+            : Array.isArray(servicesRes.data?.data) 
+              ? servicesRes.data.data 
+              : [];
+          setServices(servicesData);
+          console.log('Fetched services count:', servicesData.length);
+          console.log('Fetched services:', servicesData);
+
+          // Fetch plans
+          console.log('Fetching plans from:', API.SUBSCRIPTION_PLANS);
+          const plansRes = await apiClient.get(API.SUBSCRIPTION_PLANS);
+          console.log('Plans API response:', plansRes);
+          // The API returns { plans: [...] } inside data, so we need to extract it
+          const plansData = plansRes.data?.data;
+          const plansArray = Array.isArray(plansData?.plans) ? plansData.plans : Array.isArray(plansData) ? plansData : [];
+          setPlans(plansArray);
+          console.log('Fetched plans count:', plansArray.length);
+          console.log('Fetched plans:', plansArray);
+        } catch (error) {
+          console.error("Error fetching services/plans:", error);
+          console.error("Error response:", error.response?.data);
+          toast({
+            title: "Error",
+            description: error.response?.data?.message || "Failed to load services or plans",
+            variant: "destructive"
+          });
+        } finally {
+          setIsLoadingData(false);
+        }
+      };
+
+      fetchData();
+    }
+  }, [isCreateDialogOpen]);
+
+  // Reset assignment type when dialog closes
+  useEffect(() => {
+    if (!isCreateDialogOpen) {
+      setAssignmentType("");
+    }
+  }, [isCreateDialogOpen]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -209,7 +273,11 @@ export default function Users() {
       return;
     }
 
-    dispatch(createUser(newUser))
+    dispatch(createUser({
+      ...newUser,
+      subscriptionInfo: assignmentType === 'plan' && newUser.subscriptionPlan ? { planId: newUser.subscriptionPlan } : null,
+      assignedServices: assignmentType === 'service' ? newUser.assignedServices : []
+    }))
       .unwrap()
       .then(() => {
         toast({
@@ -222,9 +290,12 @@ export default function Users() {
           name: "",
           email: "",
           phone: "",
-          role: "client",
-          status: "active"
+          role: "patient",
+          status: "active",
+          assignedServices: [],
+          subscriptionPlan: ""
         });
+        setAssignmentType("");
         // Refresh user list
         dispatch(fetchUsers());
       })
@@ -468,7 +539,7 @@ export default function Users() {
 
       {/* CREATE USER DIALOG */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Create New User</DialogTitle>
             <DialogDescription>
@@ -520,9 +591,147 @@ export default function Users() {
                 <option value="inactive">Inactive</option>
               </select>
             </div>
+
+            {isLoadingData ? (
+              <div className="text-center text-sm text-muted-foreground py-4">
+                Loading services and plans...
+              </div>
+            ) : (
+              <>
+                {/* Assignment Type Selection */}
+                <div className="space-y-2">
+                  <Label>What would you like to assign?</Label>
+                  <div className="grid grid-cols-3 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAssignmentType('plan');
+                        setNewUser(prev => ({ ...prev, assignedServices: [], subscriptionPlan: "" }));
+                      }}
+                      className={`p-3 border rounded-lg transition-all ${
+                        assignmentType === 'plan'
+                          ? 'border-primary bg-primary/5 text-primary font-semibold'
+                          : 'border-border bg-background hover:border-primary/50'
+                      }`}
+                    >
+                      <CreditCard className="w-5 h-5 mx-auto mb-1" />
+                      <span className="text-sm">Subscription Plan</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAssignmentType('service');
+                        setNewUser(prev => ({ ...prev, assignedServices: [], subscriptionPlan: "" }));
+                      }}
+                      className={`p-3 border rounded-lg transition-all ${
+                        assignmentType === 'service'
+                          ? 'border-primary bg-primary/5 text-primary font-semibold'
+                          : 'border-border bg-background hover:border-primary/50'
+                      }`}
+                    >
+                      <Download className="w-5 h-5 mx-auto mb-1" />
+                      <span className="text-sm">Service</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAssignmentType('none');
+                        setNewUser(prev => ({ ...prev, assignedServices: [], subscriptionPlan: "" }));
+                      }}
+                      className={`p-3 border rounded-lg transition-all ${
+                        assignmentType === 'none'
+                          ? 'border-primary bg-primary/5 text-primary font-semibold'
+                          : 'border-border bg-background hover:border-primary/50'
+                      }`}
+                    >
+                      <UserX className="w-5 h-5 mx-auto mb-1" />
+                      <span className="text-sm">None</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Subscription Plan Dropdown */}
+                {assignmentType === 'plan' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="subscriptionPlan">Select Subscription Plan</Label>
+                    <select
+                      id="subscriptionPlan"
+                      value={newUser.subscriptionPlan}
+                      onChange={(e) => handleInputChange("subscriptionPlan", e.target.value)}
+                      className="w-full p-2 border rounded-md bg-background"
+                    >
+                      <option value="">Choose a plan...</option>
+                      {plans.map((plan) => (
+                        <option key={plan.planId} value={plan.planId}>
+                          {plan.name} - ₹{plan.price} ({plan.duration})
+                        </option>
+                      ))}
+                    </select>
+                    {newUser.subscriptionPlan && (
+                      <p className="text-xs text-muted-foreground">
+                        Selected: {plans.find(p => p.planId === newUser.subscriptionPlan)?.name}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Service Dropdown */}
+                {assignmentType === 'service' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="assignedServices">Select Service</Label>
+                    <select
+                      id="assignedServices"
+                      value={newUser.assignedServices[0] || ""}
+                      onChange={(e) => {
+                        const selectedValue = e.target.value;
+                        // Store as single-item array or empty array if no selection
+                        handleInputChange("assignedServices", selectedValue ? [selectedValue] : []);
+                      }}
+                      className="w-full p-2 border rounded-md bg-background"
+                    >
+                      <option value="">Choose a service...</option>
+                      {services.length > 0 ? (
+                        services.map((service) => (
+                          <option key={service._id} value={service._id}>
+                            {service.name} - ₹{service.price}
+                          </option>
+                        ))
+                      ) : (
+                        <option disabled>No services available</option>
+                      )}
+                    </select>
+                    {newUser.assignedServices.length > 0 && services.find(s => s._id === newUser.assignedServices[0]) && (
+                      <p className="text-xs text-muted-foreground">
+                        Selected: {services.find(s => s._id === newUser.assignedServices[0])?.name}
+                      </p>
+                    )}
+                    {services.length === 0 && !isLoadingData && (
+                      <p className="text-xs text-red-500">
+                        No services available. Please create services first.
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* None Selected Message */}
+                {assignmentType === 'none' && (
+                  <div className="p-4 border rounded-lg bg-muted/30 text-center">
+                    <p className="text-sm text-muted-foreground">
+                      No plan or service will be assigned. You can add them later from the user's profile.
+                    </p>
+                  </div>
+                )}
+
+                {!assignmentType && (
+                  <p className="text-xs text-muted-foreground text-center py-2">
+                    Select an option above to continue
+                  </p>
+                )}
+              </>
+            )}
           </div>
           
-          <div className="flex justify-end gap-2">
+          <div className="flex justify-end gap-2 sticky bottom-0 bg-background pt-4 border-t mt-4">
             <Button 
               variant="outline" 
               onClick={() => setIsCreateDialogOpen(false)}
@@ -531,9 +740,9 @@ export default function Users() {
             </Button>
             <Button 
               onClick={handleCreateUser}
-              disabled={loading}
+              disabled={loading || isLoadingData}
             >
-              {loading ? "Creating..." : "Create User"}
+              {loading || isLoadingData ? "Creating..." : "Create User"}
             </Button>
           </div>
         </DialogContent>
