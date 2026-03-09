@@ -2,12 +2,19 @@ import axios from "axios";
 
 const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
+  withCredentials: true, // Important for CSRF cookies
 });
 
 apiClient.interceptors.request.use((config) => {
   const token = localStorage.getItem("admin_token");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
+  }
+
+  // Add CSRF token for state-changing requests (POST, PUT, DELETE, PATCH)
+  const csrfToken = sessionStorage.getItem('csrfToken');
+  if (csrfToken && ['post', 'put', 'delete', 'patch'].includes(config.method?.toLowerCase() || '')) {
+    config.headers['X-CSRF-Token'] = csrfToken;
   }
 
   // Only set Content-Type to application/json if not FormData
@@ -18,11 +25,37 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
-// Response interceptor to handle token expiration and app type validation
+// Response interceptor to handle token expiration, app type validation and CSRF errors
 apiClient.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
     if (error.response?.status === 401 || error.response?.status === 403) {
+      // Handle CSRF token errors
+      if (error.response?.status === 403 && error.response?.data?.message?.includes('CSRF')) {
+        console.warn('CSRF token invalid, fetching new token...');
+        
+        try {
+          // Try to fetch a new CSRF token
+          const axios = await import('axios');
+          const response = await axios.default.get(`${import.meta.env.VITE_API_BASE_URL}/csrf-token`, {
+            withCredentials: true,
+          });
+          
+          if (response.data.success) {
+            const newCsrfToken = response.data.csrfToken;
+            sessionStorage.setItem('csrfToken', newCsrfToken);
+            
+            // Retry the original request with the new token
+            if (error.config) {
+              error.config.headers['X-CSRF-Token'] = newCsrfToken;
+              return apiClient.request(error.config);
+            }
+          }
+        } catch (retryError) {
+          console.error('Failed to refresh CSRF token:', retryError);
+        }
+      }
+      
       // Check if this is a token expiration/invalid token error
       const isTokenError =
         error.response?.data?.message?.includes("Invalid or expired token") ||

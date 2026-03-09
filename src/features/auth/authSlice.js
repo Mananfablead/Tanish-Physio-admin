@@ -204,6 +204,7 @@ const authSlice = createSlice({
     logout: (state) => {
       localStorage.removeItem("admin_token");
       localStorage.removeItem("token"); // Remove any client token too
+      sessionStorage.removeItem('csrfToken'); // Clear CSRF token
       state.user = null;
       state.role = null;
       state.token = null;
