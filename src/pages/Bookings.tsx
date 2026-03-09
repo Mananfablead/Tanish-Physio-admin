@@ -537,7 +537,7 @@ export default function Bookings() {
                           setUpdatingStatusId(bookingId);
                                                   
                           try {
-                            // Use the dedicated API client which handles CSRF tokens automatically
+                            // Update booking status
                             const response = await bookingAPI.updateStatus(bookingId, value);
                                                     
                             if (response.data.success) {

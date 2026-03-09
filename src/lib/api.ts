@@ -13,7 +13,6 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  withCredentials: true, // Important for CSRF cookies
 });
 
 // Request interceptor to add token to requests
@@ -24,12 +23,6 @@ api.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
     
-    // Add CSRF token for state-changing requests (POST, PUT, DELETE, PATCH)
-    const csrfToken = sessionStorage.getItem('csrfToken');
-    if (csrfToken && ['post', 'put', 'delete', 'patch'].includes(config.method?.toLowerCase() || '')) {
-      config.headers['X-CSRF-Token'] = csrfToken;
-    }
-    
     return config;
   },
   (error) => {
@@ -37,7 +30,7 @@ api.interceptors.request.use(
   }
 );
 
-// Response interceptor to handle token expiration and CSRF errors
+// Response interceptor to handle token expiration
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -45,31 +38,6 @@ api.interceptors.response.use(
       // Token might be expired, clear it and redirect to login
       localStorage.removeItem('admin_token');
       window.location.href = '/login';
-    }
-    
-    // Handle CSRF token errors
-    if (error.response?.status === 403 && error.response?.data?.message?.includes('CSRF')) {
-      console.warn('CSRF token invalid, fetching new token...');
-      
-      try {
-        // Try to fetch a new CSRF token
-        const response = await axios.get(`${API_BASE_URL}/csrf-token`, {
-          withCredentials: true,
-        });
-        
-        if (response.data.success) {
-          const newCsrfToken = response.data.csrfToken;
-          sessionStorage.setItem('csrfToken', newCsrfToken);
-          
-          // Retry the original request with the new token
-          if (error.config) {
-            error.config.headers['X-CSRF-Token'] = newCsrfToken;
-            return api.request(error.config);
-          }
-        }
-      } catch (retryError) {
-        console.error('Failed to refresh CSRF token:', retryError);
-      }
     }
     
     return Promise.reject(error);

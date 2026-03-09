@@ -7,7 +7,6 @@ const apiClient = axios.create({
     headers: {
         'Content-Type': 'application/json',
     },
-    withCredentials: true, // Enable sending cookies with requests
 });
 
 // Add auth token to requests
@@ -15,12 +14,6 @@ apiClient.interceptors.request.use((config) => {
     const token = localStorage.getItem('admin_token');
     if (token) {
         config.headers.Authorization = `Bearer ${token}`;
-    }
-    
-    // Add CSRF token for state-changing requests (POST, PUT, DELETE, PATCH)
-    const csrfToken = sessionStorage.getItem('csrfToken');
-    if (csrfToken && ['post', 'put', 'delete', 'patch'].includes(config.method?.toLowerCase() || '')) {
-        config.headers['X-CSRF-Token'] = csrfToken;
     }
     
     return config;

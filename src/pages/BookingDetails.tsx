@@ -225,7 +225,7 @@ console.log("Health profile:", singleBooking?.booking?.userId?.healthProfile);
 
     setStatusLoading(true);
     try {
-      // Use the dedicated API client which handles CSRF tokens automatically
+      // Update booking status
       const response = await bookingAPI.updateStatus(booking._id || booking.id, newStatus);
       
       if (response.data.success) {
