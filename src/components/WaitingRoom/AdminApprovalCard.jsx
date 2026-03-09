@@ -74,12 +74,12 @@ const AdminApprovalCard = ({
             <p className="text-xs text-gray-500 uppercase tracking-wide">Requested At</p>
             <p className="font-medium text-gray-900">{formatTime(patient.requestedAt)}</p>
           </div>
-          <div>
+          {/* <div>
             <p className="text-xs text-gray-500 uppercase tracking-wide">User ID</p>
             <p className="font-mono text-sm text-gray-700 bg-gray-100 px-2 py-1 rounded">
               {patient.userId.substring(0, 8)}...
             </p>
-          </div>
+          </div> */}
         </div>
 
         {showActions && status === "waiting" && (
