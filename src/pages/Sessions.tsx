@@ -203,15 +203,15 @@ export default function Sessions() {
     status: "pending",
     notes: "",
   });
-  
+
   // Function to check if a time slot is in the past
   const isTimeSlotPast = (date: any, time: any): boolean => {
     if (!date || !time) return false;
-    
-    const [hours, minutes] = time.split(':').map(Number);
+
+    const [hours, minutes] = time.split(":").map(Number);
     const slotDateTime = new Date(date);
     slotDateTime.setHours(hours, minutes, 0, 0);
-    
+
     const now = new Date();
     return slotDateTime < now;
   };
@@ -222,8 +222,11 @@ export default function Sessions() {
   const [isGoogleMeetModalOpen, setIsGoogleMeetModalOpen] = useState(false);
 
   // State for users and subscriptions
-  const [usersWithActiveSubscriptions, setUsersWithActiveSubscriptions] = useState([]);
-  const [selectedUserSubscriptions, setSelectedUserSubscriptions] = useState([]);
+  const [usersWithActiveSubscriptions, setUsersWithActiveSubscriptions] =
+    useState([]);
+  const [selectedUserSubscriptions, setSelectedUserSubscriptions] = useState(
+    []
+  );
   const [selectedUser, setSelectedUser] = useState("");
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [loadingSubscriptions, setLoadingSubscriptions] = useState(false);
@@ -305,10 +308,11 @@ export default function Sessions() {
 
       if (data.success) {
         // Filter for users with active subscriptions by checking their subscription data
-        const usersWithActiveSubs = data.data.users.filter(user =>
-          user.subscriptionInfo &&
-          user.subscriptionInfo.status === 'active' &&
-          !user.subscriptionInfo.isExpired
+        const usersWithActiveSubs = data.data.users.filter(
+          (user) =>
+            user.subscriptionInfo &&
+            user.subscriptionInfo.status === "active" &&
+            !user.subscriptionInfo.isExpired
         );
         setUsersWithActiveSubscriptions(usersWithActiveSubs);
       } else {
@@ -339,14 +343,12 @@ export default function Sessions() {
         }
       }
     } catch (error) {
-      console.error('Error fetching users with active subscriptions:', error);
+      console.error("Error fetching users with active subscriptions:", error);
       setUsersWithActiveSubscriptions([]);
     } finally {
       setLoadingUsers(false);
     }
   };
-
-
 
   const fetchUserSubscriptions = async (userId) => {
     try {
@@ -357,17 +359,20 @@ export default function Sessions() {
 
       if (data.success) {
         // Filter for active subscriptions for the specific user
-        const userSubs = (data.data.subscriptions || []).filter(sub =>
-          sub.userId && sub.userId._id === userId &&
-          sub.status === 'active' && !sub.isExpired
+        const userSubs = (data.data.subscriptions || []).filter(
+          (sub) =>
+            sub.userId &&
+            sub.userId._id === userId &&
+            sub.status === "active" &&
+            !sub.isExpired
         );
         setSelectedUserSubscriptions(userSubs);
       } else {
-        console.error('Failed to fetch user subscriptions:', data.message);
+        console.error("Failed to fetch user subscriptions:", data.message);
         setSelectedUserSubscriptions([]);
       }
     } catch (error) {
-      console.error('Error fetching user subscriptions:', error);
+      console.error("Error fetching user subscriptions:", error);
       setSelectedUserSubscriptions([]);
     } finally {
       setLoadingSubscriptions(false);
@@ -385,20 +390,25 @@ export default function Sessions() {
   const [isCreateSessionModalOpen, setIsCreateSessionModalOpen] =
     useState(false);
 
+  // State for rebooking missed sessions
+  const [isRebookModalOpen, setIsRebookModalOpen] = useState(false);
+  const [rebookDate, setRebookDate] = useState("");
+  const [rebookTime, setRebookTime] = useState("");
+
   // Fetch users with active subscriptions when modal opens
   useEffect(() => {
     if (isCreateSessionModalOpen) {
       fetchUsersWithActiveSubscriptions();
 
       // Set default therapist to admin when modal opens
-      const adminTherapist = availability.find(item =>
-        item.therapistId && item.therapistId.role === 'admin'
+      const adminTherapist = availability.find(
+        (item) => item.therapistId && item.therapistId.role === "admin"
       );
 
       if (adminTherapist) {
-        setNewSession(prev => ({
+        setNewSession((prev) => ({
           ...prev,
-          therapistId: adminTherapist.therapistId._id
+          therapistId: adminTherapist.therapistId._id,
         }));
       }
     }
@@ -435,6 +445,14 @@ export default function Sessions() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     return date < today;
+  };
+
+  // Helper function to format date as YYYY-MM-DD
+  const formatDate = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
   };
 
   // Memoize the calendar weeks to avoid regenerating on every render
@@ -564,7 +582,8 @@ export default function Sessions() {
       ) {
         toast({
           title: "Error",
-          description: "Please fill all required fields: user, subscription, therapist, date, and time",
+          description:
+            "Please fill all required fields: user, subscription, therapist, date, and time",
           variant: "destructive",
         });
         return;
@@ -601,8 +620,8 @@ export default function Sessions() {
       setIsCreateSessionModalOpen(false);
 
       // Reset form with admin as default therapist
-      const adminTherapist = availability.find(item =>
-        item.therapistId && item.therapistId.role === 'admin'
+      const adminTherapist = availability.find(
+        (item) => item.therapistId && item.therapistId.role === "admin"
       );
 
       setNewSession({
@@ -784,6 +803,63 @@ export default function Sessions() {
     }
   };
 
+  // Handle rebooking missed session
+  const handleRebookMissedSession = async () => {
+    try {
+      if (!selectedSession || !rebookDate || !rebookTime) {
+        toast({
+          title: "Error",
+          description: "Please select date and time for rebooking",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Create new session using the admin session creation API
+      await dispatch(
+        createSession({
+          bookingId:
+            selectedSession.bookingId?._id || selectedSession.bookingId,
+          userId: selectedSession.userId?._id || selectedSession.userId,
+          therapistId:
+            selectedSession.therapistId?._id || selectedSession.therapistId,
+          date: rebookDate,
+          time: rebookTime,
+          type: selectedSession.type || "1-on-1",
+          status: "scheduled",
+          duration: selectedSession.duration || 30,
+        })
+      ).unwrap();
+
+      toast({
+        title: "Success",
+        description:
+          "Session rebooked successfully! The client will be notified.",
+        variant: "default",
+      });
+
+      setIsRebookModalOpen(false);
+      setRebookDate("");
+      setRebookTime("");
+      dispatch(fetchSessions());
+    } catch (error: any) {
+      console.error("Rebook error:", error);
+
+      let errorMessage = "Failed to rebook session";
+      if (error?.message) {
+        errorMessage = error.message;
+      } else if (error?.data?.message) {
+        errorMessage = error.data.message;
+      }
+
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    }
+  };
+
   const statusStyles: Record<string, string> = {
     pending: "bg-yellow-100 text-yellow-800 border border-yellow-300",
     scheduled: "bg-blue-100 text-blue-800 border border-blue-300",
@@ -804,23 +880,23 @@ export default function Sessions() {
             {activeTab === "live"
               ? "Live Sessions"
               : activeTab === "pending"
-                ? "Pending Sessions"
-                : activeTab === "upcoming"
-                  ? "Upcoming Sessions"
-                  : activeTab === "all"
-                    ? "All Sessions"
-                    : "Session Management"}
+              ? "Pending Sessions"
+              : activeTab === "upcoming"
+              ? "Upcoming Sessions"
+              : activeTab === "all"
+              ? "All Sessions"
+              : "Session Management"}
           </h1>
           <p className="page-subtitle">
             {activeTab === "live"
               ? "View and join live sessions"
               : activeTab === "pending"
-                ? "Review and approve pending session requests"
-                : activeTab === "upcoming"
-                  ? "View sessions scheduled within 24 hours"
-                  : activeTab === "all"
-                    ? "Monitor and manage all platform sessions"
-                    : "Monitor and manage all platform sessions"}
+              ? "Review and approve pending session requests"
+              : activeTab === "upcoming"
+              ? "View sessions scheduled within 24 hours"
+              : activeTab === "all"
+              ? "Monitor and manage all platform sessions"
+              : "Monitor and manage all platform sessions"}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -941,8 +1017,12 @@ export default function Sessions() {
                 </span>
               )}
             </TabsTrigger>
-            <TabsTrigger value="completed" className="whitespace-nowrap">Completed</TabsTrigger>
-            <TabsTrigger value="cancelled" className="whitespace-nowrap">Cancelled</TabsTrigger>
+            <TabsTrigger value="completed" className="whitespace-nowrap">
+              Completed
+            </TabsTrigger>
+            <TabsTrigger value="cancelled" className="whitespace-nowrap">
+              Cancelled
+            </TabsTrigger>
             {/* Missed status is automatically set by backend */}
           </TabsList>
         </div>
@@ -956,10 +1036,10 @@ export default function Sessions() {
                 activeTab === "live"
                   ? "Search by user, therapist, date, time, or type..."
                   : activeTab === "pending"
-                    ? "Search by booking, user, therapist, date, or status..."
-                    : activeTab === "upcoming"
-                      ? "Search by user, therapist, date, time, or type..."
-                      : "Search by booking, user, therapist, date, or status..."
+                  ? "Search by booking, user, therapist, date, or status..."
+                  : activeTab === "upcoming"
+                  ? "Search by user, therapist, date, time, or type..."
+                  : "Search by booking, user, therapist, date, or status..."
               }
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -1075,8 +1155,8 @@ export default function Sessions() {
                               {isJoinEnabled
                                 ? "Join Session"
                                 : minutesUntilSession > 0
-                                  ? "Session Early"
-                                  : "Session Not Started"}
+                                ? "Session Early"
+                                : "Session Not Started"}
                             </Button>
                             <Button
                               variant="outline"
@@ -1119,368 +1199,346 @@ export default function Sessions() {
                   </h3>
                   <p className="text-muted-foreground">
                     {searchQuery
-                      ? `No ${activeTab === "live" ? "live" : "upcoming"
-                      } sessions match your search criteria.`
-                      : `There are no ${activeTab === "live" ? "live" : "upcoming"
-                      } sessions.`}
+                      ? `No ${
+                          activeTab === "live" ? "live" : "upcoming"
+                        } sessions match your search criteria.`
+                      : `There are no ${
+                          activeTab === "live" ? "live" : "upcoming"
+                        } sessions.`}
                   </p>
                 </div>
               )}
             </div>
           ) : /* Regular Table View for other tabs including 'all' */
-            filteredSessions.length > 0 ? (
-              <div className="bg-card rounded-lg border border-border overflow-hidden animate-fade-in">
-                <div className="overflow-x-auto">
-                  <table className="data-table">
-                    <thead>
-                      <tr>
-                        <th>Booking/Subscription Info</th>
-                        <th>User</th>
-                        <th>Date & Time</th>
-                        <th>Type</th>
-                        <th>Status</th>
-                        {activeTab === "live" && <th>Google Meet</th>}
-                        <th>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredSessions.map((session: any) => {
-                        const booking = session.bookingId;
-                        const user = session.userId;
-                        return (
-                          <tr
-                            key={session._id}
-                            className="hover:bg-muted/40 transition"
-                          >
-                            {/* BOOKING/SUBSCRIPTION INFO */}
-                            <td className="px-4 py-3">
-                              <div className="space-y-2">
-                                {session.bookingId ? (
-                                  // Booking-based session
-                                  <div>
-                                    <p className="font-medium">
-                                      {booking?.serviceName || "N/A"}
-                                    </p>
-                                    {/* <p className="text-xs text-muted-foreground">
+          filteredSessions.length > 0 ? (
+            <div className="bg-card rounded-lg border border-border overflow-hidden animate-fade-in">
+              <div className="overflow-x-auto">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Booking/Subscription Info</th>
+                      <th>User</th>
+                      <th>Date & Time</th>
+                      <th>Type</th>
+                      <th>Status</th>
+                      {activeTab === "live" && <th>Google Meet</th>}
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredSessions.map((session: any) => {
+                      const booking = session.bookingId;
+                      const user = session.userId;
+                      return (
+                        <tr
+                          key={session._id}
+                          className="hover:bg-muted/40 transition"
+                        >
+                          {/* BOOKING/SUBSCRIPTION INFO */}
+                          <td className="px-4 py-3">
+                            <div className="space-y-2">
+                              {session.bookingId ? (
+                                // Booking-based session
+                                <div>
+                                  <p className="font-medium">
+                                    {booking?.serviceName || "N/A"}
+                                  </p>
+                                  {/* <p className="text-xs text-muted-foreground">
                                     Booking ID:{" "}
                                     {booking?._id?.slice(0, 8) || "N/A"}
                                   </p> */}
-                                    <Badge variant="secondary" className="mt-1">
-                                      Booking Session
-                                    </Badge>
-                                  </div>
-                                ) : session.subscriptionId ? (
-                                  // Subscription-based session
-                                  <div>
-                                    <p className="font-medium">
-                                      {session.subscriptionId?.planName || "N/A"}
-                                    </p>
-                                    {/* <p className="text-xs text-muted-foreground">
+                                  <Badge variant="secondary" className="mt-1">
+                                    Booking Session
+                                  </Badge>
+                                </div>
+                              ) : session.subscriptionId ? (
+                                // Subscription-based session
+                                <div>
+                                  <p className="font-medium">
+                                    {session.subscriptionId?.planName || "N/A"}
+                                  </p>
+                                  {/* <p className="text-xs text-muted-foreground">
                                     Subscription ID:{" "}
                                     {session.subscriptionId?._id?.slice(0, 8) ||
                                       "N/A"}
                                   </p> */}
-                                    <div className="flex items-center gap-2 mt-1">
-                                      <Badge
-                                        variant="default"
-                                        className="bg-blue-100 text-blue-800"
-                                      >
-                                        Subscription Session
-                                      </Badge>
-                                      <Badge
-                                        variant="outline"
-                                        className="text-xs"
-                                      >
-                                        {session.subscriptionId?.status || "N/A"}
-                                      </Badge>
-                                    </div>
-                                  </div>
-                                ) : (
-                                  // Unknown session type
-                                  <div>
-                                    <p className="font-medium text-muted-foreground">
-                                      No Booking/Subscription
-                                    </p>
-                                    <Badge variant="destructive" className="mt-1">
-                                      Invalid Session
+                                  <div className="flex items-center gap-2 mt-1">
+                                    <Badge
+                                      variant="default"
+                                      className="bg-blue-100 text-blue-800"
+                                    >
+                                      Subscription Session
+                                    </Badge>
+                                    <Badge
+                                      variant="outline"
+                                      className="text-xs"
+                                    >
+                                      {session.subscriptionId?.status || "N/A"}
                                     </Badge>
                                   </div>
-                                )}
-                              </div>
-                            </td>
-
-                            {/* USER */}
-                            <td className="px-4 py-3">
-                              <div className="flex items-center gap-2">
-                                <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
-                                  <User className="h-4 w-4 text-blue-600" />
                                 </div>
-                                <div>
-                                  <p className="font-medium">
-                                    {user?.name || "N/A"}
-                                  </p>
-                                  <p className="text-xs text-muted-foreground">
-                                    {user?.email || ""}
-                                  </p>
-                                </div>
-                              </div>
-                            </td>
-
-                            {/* DATE & TIME */}
-                            <td className="px-4 py-3">
-                              <div className="space-y-0.5">
-                                <div className="flex items-center gap-1">
-                                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                                  <span>{session.date}</span>
-                                </div>
-                                <div className="flex items-center gap-1 text-muted-foreground">
-                                  <Clock className="h-4 w-4" />
-                                  <span>{session.time}</span>
-                                </div>
-                              </div>
-                            </td>
-
-                            {/* TYPE */}
-                            <td className="">
-                              <span className=" text-xs font-semibold">
-                                {session.type}
-                              </span>
-                            </td>
-
-                            {/* STATUS */}
-                            <td className="px-4 py-3">
-                              {isEditableStatus(session.status) ? (
-                                <Select
-                                  value={session.status}
-                                  disabled={updatingStatusId === session._id}
-                                  onValueChange={async (value) => {
-                                    setUpdatingStatusId(session._id);
-                                    try {
-                                      await handleUpdateSessionStatus(
-                                        session._id,
-                                        value
-                                      );
-                                    } finally {
-                                      setUpdatingStatusId(null);
-                                    }
-                                  }}
-                                >
-                                  <SelectTrigger
-                                    className={`w-[130px] rounded-full text-xs font-semibold ${statusStyles[session.status]
-                                      }`}
-                                  >
-                                    {updatingStatusId === session._id ? (
-                                      <div className="flex items-center gap-2">
-                                        <Loader2 className="w-3 h-3 animate-spin" />
-                                        <span>Updating...</span>
-                                      </div>
-                                    ) : (
-                                      <SelectValue />
-                                    )}
-                                  </SelectTrigger>
-
-                                  <SelectContent>
-                                    <SelectItem value="scheduled">
-                                      Scheduled
-                                    </SelectItem>
-                                    <SelectItem value="live">Live</SelectItem>
-                                    <SelectItem value="completed">
-                                      Completed
-                                    </SelectItem>
-                                    <SelectItem value="cancelled">
-                                      Cancelled
-                                    </SelectItem>
-                                  </SelectContent>
-                                </Select>
                               ) : (
-                                <span
-                                  className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${statusStyles[session.status]
-                                    }`}
-                                >
-                                  {session.status === "pending" ? (
-                                    <>
-                                      <UserCog className="w-3 h-3 mr-1" />
-                                      Pending Review
-                                    </>
-                                  ) : (
-                                    <>
-                                      {session.status && typeof session.status === 'string'
-                                        ? session.status.charAt(0).toUpperCase() +
-                                        session.status.slice(1)
-                                        : 'Unknown'}
-                                    </>
-                                  )}
-                                </span>
+                                // Unknown session type
+                                <div>
+                                  <p className="font-medium text-muted-foreground">
+                                    No Booking/Subscription
+                                  </p>
+                                  <Badge variant="destructive" className="mt-1">
+                                    Invalid Session
+                                  </Badge>
+                                </div>
                               )}
-                            </td>
+                            </div>
+                          </td>
 
-                            {/* GOOGLE MEET LINK - Only show in Live tab */}
-                            {activeTab === "live" && (
-                              <td className="px-4 py-3">
-                                {session.googleMeetLink ? (
-                                  <div className="flex flex-col gap-1">
-                                    <a
-                                      href={session.googleMeetLink}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="inline-flex items-center justify-center
+                          {/* USER */}
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
+                                <User className="h-4 w-4 text-blue-600" />
+                              </div>
+                              <div>
+                                <p className="font-medium">
+                                  {user?.name || "N/A"}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {user?.email || ""}
+                                </p>
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* DATE & TIME */}
+                          <td className="px-4 py-3">
+                            <div className="space-y-0.5">
+                              <div className="flex items-center gap-1">
+                                <Calendar className="h-4 w-4 text-muted-foreground" />
+                                <span>{session.date}</span>
+                              </div>
+                              <div className="flex items-center gap-1 text-muted-foreground">
+                                <Clock className="h-4 w-4" />
+                                <span>{session.time}</span>
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* TYPE */}
+                          <td className="">
+                            <span className=" text-xs font-semibold">
+                              {session.type}
+                            </span>
+                          </td>
+
+                          {/* STATUS */}
+                          <td className="px-4 py-3">
+                            {isEditableStatus(session.status) ? (
+                              <Select
+                                value={session.status}
+                                disabled={updatingStatusId === session._id}
+                                onValueChange={async (value) => {
+                                  setUpdatingStatusId(session._id);
+                                  try {
+                                    await handleUpdateSessionStatus(
+                                      session._id,
+                                      value
+                                    );
+                                  } finally {
+                                    setUpdatingStatusId(null);
+                                  }
+                                }}
+                              >
+                                <SelectTrigger
+                                  className={`w-[130px] rounded-full text-xs font-semibold ${
+                                    statusStyles[session.status]
+                                  }`}
+                                >
+                                  {updatingStatusId === session._id ? (
+                                    <div className="flex items-center gap-2">
+                                      <Loader2 className="w-3 h-3 animate-spin" />
+                                      <span>Updating...</span>
+                                    </div>
+                                  ) : (
+                                    <SelectValue />
+                                  )}
+                                </SelectTrigger>
+
+                                <SelectContent>
+                                  <SelectItem value="scheduled">
+                                    Scheduled
+                                  </SelectItem>
+                                  <SelectItem value="live">Live</SelectItem>
+                                  <SelectItem value="completed">
+                                    Completed
+                                  </SelectItem>
+                                  <SelectItem value="cancelled">
+                                    Cancelled
+                                  </SelectItem>
+                                </SelectContent>
+                              </Select>
+                            ) : (
+                              <span
+                                className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
+                                  statusStyles[session.status]
+                                }`}
+                              >
+                                {session.status === "pending" ? (
+                                  <>
+                                    <UserCog className="w-3 h-3 mr-1" />
+                                    Pending Review
+                                  </>
+                                ) : (
+                                  <>
+                                    {session.status &&
+                                    typeof session.status === "string"
+                                      ? session.status.charAt(0).toUpperCase() +
+                                        session.status.slice(1)
+                                      : "Unknown"}
+                                  </>
+                                )}
+                              </span>
+                            )}
+                          </td>
+
+                          {/* GOOGLE MEET LINK - Only show in Live tab */}
+                          {activeTab === "live" && (
+                            <td className="px-4 py-3">
+                              {session.googleMeetLink ? (
+                                <div className="flex flex-col gap-1">
+                                  <a
+                                    href={session.googleMeetLink}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center justify-center
                                       bg-blue-100 hover:bg-blue-200
                                       text-blue-700 font-bold text-xs
                                       px-2 py-1 rounded-full whitespace-nowrap gap-1"
+                                  >
+                                    <svg
+                                      className="h-3 w-3"
+                                      fill="currentColor"
+                                      viewBox="0 0 24 24"
                                     >
-                                      <svg
-                                        className="h-3 w-3"
-                                        fill="currentColor"
-                                        viewBox="0 0 24 24"
-                                      >
-                                        <path d="M22.2819 9.8211a5.9848 5.9848 0 0 0-.5157-2.1734 6.0633 6.0633 0 0 0-1.4432-1.9437 6.0335 6.0335 0 0 0-1.9441-1.4427 5.996 5.996 0 0 0-2.174-.5152c-.3747-.0428-.7511-.0643-1.1277-.0643-.4163 0-.7927.025-1.168.0745a5.993 5.993 0 0 0-2.174.5137 6.058 6.058 0 0 0-1.944 1.4441 6.035 6.035 0 0 0-1.443 1.9433 5.996 5.996 0 0 0-.515 2.174c-.0428.375-.0643.751-.0643 1.128 0 .416.025.793.074 1.168a5.993 5.993 0 0 0 .513 2.174 6.058 6.058 0 0 0 1.444 1.944 6.035 6.035 0 0 0 1.943 1.443 5.996 5.996 0 0 0 2.174.515c.375.043.751.064 1.128.064.416 0 .793-.025 1.168-.074a5.993 5.993 0 0 0 2.174-.513 6.058 6.058 0 0 0 1.944-1.444 6.035 6.035 0 0 0 1.443-1.943 5.996 5.996 0 0 0 .515-2.174c.043-.375.064-.751.064-1.128 0-.416-.025-.793-.074-1.168zm-9.478 4.3233L6.4358 10.006a.75.75 0 0 1 .254-1.225l13.006-7.5a.75.75 0 0 1 1.089.254.75.75 0 0 1-.254 1.09l-12.212 7.05 12.212 7.05a.75.75 0 0 1 .254 1.09.75.75 0 0 1-1.09.254l-13-7.5a.75.75 0 0 1-.254-.254z" />
-                                      </svg>
-                                      Join Meeting
-                                    </a>
-                                    {session.googleMeetCode && (
-                                      <span className="text-xs text-muted-foreground font-mono">
-                                        Code: {session.googleMeetCode}
-                                      </span>
-                                    )}
-                                    {session.googleMeetExpiresAt && (
-                                      <span className="text-xs text-muted-foreground">
-                                        Expires:{" "}
-                                        {new Date(
-                                          session.googleMeetExpiresAt
-                                        ).toLocaleString()}
-                                      </span>
-                                    )}
-                                  </div>
-                                ) : (
-                                  <div className="flex flex-col gap-2">
-                                    <span className="text-xs text-muted-foreground italic">
-                                      Not generated
+                                      <path d="M22.2819 9.8211a5.9848 5.9848 0 0 0-.5157-2.1734 6.0633 6.0633 0 0 0-1.4432-1.9437 6.0335 6.0335 0 0 0-1.9441-1.4427 5.996 5.996 0 0 0-2.174-.5152c-.3747-.0428-.7511-.0643-1.1277-.0643-.4163 0-.7927.025-1.168.0745a5.993 5.993 0 0 0-2.174.5137 6.058 6.058 0 0 0-1.944 1.4441 6.035 6.035 0 0 0-1.443 1.9433 5.996 5.996 0 0 0-.515 2.174c-.0428.375-.0643.751-.0643 1.128 0 .416.025.793.074 1.168a5.993 5.993 0 0 0 .513 2.174 6.058 6.058 0 0 0 1.444 1.944 6.035 6.035 0 0 0 1.943 1.443 5.996 5.996 0 0 0 2.174.515c.375.043.751.064 1.128.064.416 0 .793-.025 1.168-.074a5.993 5.993 0 0 0 2.174-.513 6.058 6.058 0 0 0 1.944-1.444 6.035 6.035 0 0 0 1.443-1.943 5.996 5.996 0 0 0 .515-2.174c.043-.375.064-.751.064-1.128 0-.416-.025-.793-.074-1.168zm-9.478 4.3233L6.4358 10.006a.75.75 0 0 1 .254-1.225l13.006-7.5a.75.75 0 0 1 1.089.254.75.75 0 0 1-.254 1.09l-12.212 7.05 12.212 7.05a.75.75 0 0 1 .254 1.09.75.75 0 0 1-1.09.254l-13-7.5a.75.75 0 0 1-.254-.254z" />
+                                    </svg>
+                                    Join Meeting
+                                  </a>
+                                  {session.googleMeetCode && (
+                                    <span className="text-xs text-muted-foreground font-mono">
+                                      Code: {session.googleMeetCode}
                                     </span>
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      className="w-full text-xs"
-                                      onClick={() => {
-                                        setSelectedSessionForMeet(session);
-                                        setIsGoogleMeetModalOpen(true);
+                                  )}
+                                  {session.googleMeetExpiresAt && (
+                                    <span className="text-xs text-muted-foreground">
+                                      Expires:{" "}
+                                      {new Date(
+                                        session.googleMeetExpiresAt
+                                      ).toLocaleString()}
+                                    </span>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="flex flex-col gap-2">
+                                  <span className="text-xs text-muted-foreground italic">
+                                    Not generated
+                                  </span>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="w-full text-xs"
+                                    onClick={() => {
+                                      setSelectedSessionForMeet(session);
+                                      setIsGoogleMeetModalOpen(true);
+                                    }}
+                                  >
+                                    <Video className="w-3 h-3 mr-1" />
+                                    Generate Meet Link
+                                  </Button>
+                                </div>
+                              )}
+                            </td>
+                          )}
+
+                          {/* ACTIONS */}
+                          <td className="px-4 py-3 text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                >
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+
+                              <DropdownMenuContent align="end" className="w-48">
+                                {/* PENDING SESSIONS */}
+                                {session.status === "pending" && (
+                                  <>
+                                    <DropdownMenuItem
+                                      className="text-success"
+                                      onClick={async () => {
+                                        await handleAcceptSession(session._id);
                                       }}
                                     >
-                                      <Video className="w-3 h-3 mr-1" />
-                                      Generate Meet Link
-                                    </Button>
-                                  </div>
+                                      <UserCog className="h-4 w-4 mr-2" />
+                                      Accept Session
+                                    </DropdownMenuItem>
+
+                                    <DropdownMenuItem
+                                      className="text-destructive"
+                                      onClick={async () => {
+                                        await handleRejectSession(session._id);
+                                      }}
+                                    >
+                                      <X className="h-4 w-4 mr-2" />
+                                      Reject Session
+                                    </DropdownMenuItem>
+                                  </>
                                 )}
-                              </td>
-                            )}
 
-                            {/* ACTIONS */}
-                            <td className="px-4 py-3 text-right">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8"
-                                  >
-                                    <MoreHorizontal className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-
-                                <DropdownMenuContent align="end" className="w-48">
-                                  {/* PENDING SESSIONS */}
-                                  {session.status === "pending" && (
+                                {/* SCHEDULED/CANCELLED SESSIONS (non-pending) */}
+                                {(activeTab === "scheduled" ||
+                                  activeTab === "all") &&
+                                  session.status !== "pending" && (
                                     <>
-                                      <DropdownMenuItem
-                                        className="text-success"
-                                        onClick={async () => {
-                                          await handleAcceptSession(session._id);
-                                        }}
-                                      >
-                                        <UserCog className="h-4 w-4 mr-2" />
-                                        Accept Session
-                                      </DropdownMenuItem>
-
-                                      <DropdownMenuItem
-                                        className="text-destructive"
-                                        onClick={async () => {
-                                          await handleRejectSession(session._id);
-                                        }}
-                                      >
-                                        <X className="h-4 w-4 mr-2" />
-                                        Reject Session
-                                      </DropdownMenuItem>
-                                    </>
-                                  )}
-
-                                  {/* SCHEDULED/CANCELLED SESSIONS (non-pending) */}
-                                  {(activeTab === "scheduled" ||
-                                    activeTab === "all") &&
-                                    session.status !== "pending" && (
-                                      <>
-                                        {/* Google Meet Generation for sessions without links */}
-                                        {!session.googleMeetLink && (
-                                          <DropdownMenuItem
-                                            className="text-blue-600"
-                                            onClick={async () => {
-                                              try {
-                                                const response = await fetch(
-                                                  `/api/video-call/generate-google-meet`,
-                                                  {
-                                                    method: "POST",
-                                                    headers: {
-                                                      "Content-Type":
-                                                        "application/json",
-                                                      Authorization: `Bearer ${localStorage.getItem(
-                                                        "token"
-                                                      )}`,
-                                                    },
-                                                    body: JSON.stringify({
-                                                      sessionId: session._id,
-                                                    }),
-                                                  }
-                                                );
-
-                                                const data =
-                                                  await response.json();
-
-                                                if (data.success) {
-                                                  // Refresh sessions to show the new link
-                                                  dispatch(fetchSessions());
-
-                                                  // Show success toast
-                                                  const toastElement =
-                                                    document.createElement("div");
-                                                  toastElement.className =
-                                                    "fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 animate-in fade-in slide-in-from-right";
-                                                  toastElement.innerHTML =
-                                                    "✅ Google Meet link generated successfully!";
-                                                  document.body.appendChild(
-                                                    toastElement
-                                                  );
-
-                                                  setTimeout(() => {
-                                                    document.body.removeChild(
-                                                      toastElement
-                                                    );
-                                                  }, 3000);
-                                                } else {
-                                                  throw new Error(
-                                                    data.message ||
-                                                    "Failed to generate Google Meet link"
-                                                  );
+                                      {/* Google Meet Generation for sessions without links */}
+                                      {!session.googleMeetLink && (
+                                        <DropdownMenuItem
+                                          className="text-blue-600"
+                                          onClick={async () => {
+                                            try {
+                                              const response = await fetch(
+                                                `/api/video-call/generate-google-meet`,
+                                                {
+                                                  method: "POST",
+                                                  headers: {
+                                                    "Content-Type":
+                                                      "application/json",
+                                                    Authorization: `Bearer ${localStorage.getItem(
+                                                      "token"
+                                                    )}`,
+                                                  },
+                                                  body: JSON.stringify({
+                                                    sessionId: session._id,
+                                                  }),
                                                 }
-                                              } catch (error) {
-                                                console.error(
-                                                  "Error generating Google Meet link:",
-                                                  error
-                                                );
-                                                // Show error toast
+                                              );
+
+                                              const data =
+                                                await response.json();
+
+                                              if (data.success) {
+                                                // Refresh sessions to show the new link
+                                                dispatch(fetchSessions());
+
+                                                // Show success toast
                                                 const toastElement =
                                                   document.createElement("div");
                                                 toastElement.className =
-                                                  "fixed top-4 right-4 bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 animate-in fade-in slide-in-from-right";
+                                                  "fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 animate-in fade-in slide-in-from-right";
                                                 toastElement.innerHTML =
-                                                  "❌ Failed to generate Google Meet link";
+                                                  "✅ Google Meet link generated successfully!";
                                                 document.body.appendChild(
                                                   toastElement
                                                 );
@@ -1490,15 +1548,42 @@ export default function Sessions() {
                                                     toastElement
                                                   );
                                                 }, 3000);
+                                              } else {
+                                                throw new Error(
+                                                  data.message ||
+                                                    "Failed to generate Google Meet link"
+                                                );
                                               }
-                                            }}
-                                          >
-                                            <Video className="h-4 w-4 mr-2" />
-                                            Generate Google Meet Link
-                                          </DropdownMenuItem>
-                                        )}
+                                            } catch (error) {
+                                              console.error(
+                                                "Error generating Google Meet link:",
+                                                error
+                                              );
+                                              // Show error toast
+                                              const toastElement =
+                                                document.createElement("div");
+                                              toastElement.className =
+                                                "fixed top-4 right-4 bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 animate-in fade-in slide-in-from-right";
+                                              toastElement.innerHTML =
+                                                "❌ Failed to generate Google Meet link";
+                                              document.body.appendChild(
+                                                toastElement
+                                              );
 
-                                        {/* <DropdownMenuItem
+                                              setTimeout(() => {
+                                                document.body.removeChild(
+                                                  toastElement
+                                                );
+                                              }, 3000);
+                                            }
+                                          }}
+                                        >
+                                          <Video className="h-4 w-4 mr-2" />
+                                          Generate Google Meet Link
+                                        </DropdownMenuItem>
+                                      )}
+
+                                      {/* <DropdownMenuItem
                                           onClick={() => {
                                             setSelectedSession(session);
                                             setIsRescheduleModalOpen(true);
@@ -1508,96 +1593,110 @@ export default function Sessions() {
                                           Reschedule
                                         </DropdownMenuItem> */}
 
-                                        <DropdownMenuItem
-                                          className="text-destructive"
-                                          onClick={() =>
-                                            handleCancelSession(session._id)
-                                          }
-                                        >
-                                          <X className="h-4 w-4 mr-2" />
-                                          Cancel Session
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem
-                                          className="text-destructive"
-                                          onClick={() =>
-                                            handleDeleteSession(session._id)
-                                          }
-                                        >
-                                          <X className="h-4 w-4 mr-2" />
-                                          Delete Session
-                                        </DropdownMenuItem>
-                                      </>
-                                    )}
-
-                                  {/* LIVE */}
-                                  {activeTab === "live" && (
-                                    <DropdownMenuItem
-                                      onClick={() =>
-                                        navigate(`/video-call/${session._id}`)
-                                      }
-                                    >
-                                      <Video className="h-4 w-4 mr-2" />
-                                      Join Session
-                                    </DropdownMenuItem>
+                                      <DropdownMenuItem
+                                        className="text-destructive"
+                                        onClick={() =>
+                                          handleCancelSession(session._id)
+                                        }
+                                      >
+                                        <X className="h-4 w-4 mr-2" />
+                                        Cancel Session
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem
+                                        className="text-destructive"
+                                        onClick={() =>
+                                          handleDeleteSession(session._id)
+                                        }
+                                      >
+                                        <X className="h-4 w-4 mr-2" />
+                                        Delete Session
+                                      </DropdownMenuItem>
+                                    </>
                                   )}
 
-                                  {/* COMPLETED */}
-                                  {activeTab === "completed" && (
-                                    <DropdownMenuItem
-                                      onClick={() =>
-                                        navigate(
-                                          `/session-recordings/${session._id}`
-                                        )
-                                      }
-                                    >
-                                      <Eye className="h-4 w-4 mr-2" />
-                                      View Recording
-                                    </DropdownMenuItem>
-                                  )}
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+                                {/* MISSED SESSIONS - Rebook Option */}
+                                {/* {session.status === "missed" && (
+                                  <DropdownMenuItem
+                                    className="text-blue-600 font-semibold"
+                                    onClick={() => {
+                                      setSelectedSession(session);
+                                      setIsRebookModalOpen(true);
+                                    }}
+                                  >
+                                    <RefreshCw className="h-4 w-4 mr-2" />
+                                    Rebook Session
+                                  </DropdownMenuItem>
+                                )} */}
 
-                <div className="flex items-center justify-between px-4 py-3 border-t border-border">
-                  <p className="text-sm text-muted-foreground">
-                    Showing{" "}
-                    <span className="font-medium">{filteredSessions.length}</span>{" "}
-                    {activeTab === "upcoming" ? "upcoming sessions" : "sessions"}
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" disabled>
-                      <ChevronLeft className="w-4 h-4" />
-                    </Button>
-                    <Button variant="outline" size="sm" className="min-w-[32px]">
-                      1
-                    </Button>
-                    <Button variant="outline" size="sm">
-                      <ChevronRight className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
+                                {/* LIVE */}
+                                {activeTab === "live" && (
+                                  <DropdownMenuItem
+                                    onClick={() =>
+                                      navigate(`/video-call/${session._id}`)
+                                    }
+                                  >
+                                    <Video className="h-4 w-4 mr-2" />
+                                    Join Session
+                                  </DropdownMenuItem>
+                                )}
+
+                                {/* COMPLETED */}
+                                {activeTab === "completed" && (
+                                  <DropdownMenuItem
+                                    onClick={() =>
+                                      navigate(
+                                        `/session-recordings/${session._id}`
+                                      )
+                                    }
+                                  >
+                                    <Eye className="h-4 w-4 mr-2" />
+                                    View Recording
+                                  </DropdownMenuItem>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
-            ) : (
-              <div className="border rounded-lg p-12 text-center">
-                <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
-                  <Calendar className="w-8 h-8 text-muted-foreground" />
-                </div>
-                <h3 className="text-lg font-medium mb-2">No Sessions Found</h3>
-                <p className="text-muted-foreground">
-                  {searchQuery
-                    ? "No sessions match your search criteria."
-                    : activeTab === "upcoming"
-                      ? "No upcoming sessions found in the system."
-                      : `No ${activeTab} sessions found in the system.`}
+
+              <div className="flex items-center justify-between px-4 py-3 border-t border-border">
+                <p className="text-sm text-muted-foreground">
+                  Showing{" "}
+                  <span className="font-medium">{filteredSessions.length}</span>{" "}
+                  {activeTab === "upcoming" ? "upcoming sessions" : "sessions"}
                 </p>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" disabled>
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
+                  <Button variant="outline" size="sm" className="min-w-[32px]">
+                    1
+                  </Button>
+                  <Button variant="outline" size="sm">
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
-            )}
+            </div>
+          ) : (
+            <div className="border rounded-lg p-12 text-center">
+              <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+                <Calendar className="w-8 h-8 text-muted-foreground" />
+              </div>
+              <h3 className="text-lg font-medium mb-2">No Sessions Found</h3>
+              <p className="text-muted-foreground">
+                {searchQuery
+                  ? "No sessions match your search criteria."
+                  : activeTab === "upcoming"
+                  ? "No upcoming sessions found in the system."
+                  : `No ${activeTab} sessions found in the system.`}
+              </p>
+            </div>
+          )}
         </TabsContent>
       </Tabs>
 
@@ -1808,8 +1907,8 @@ export default function Sessions() {
                         const statusColor = isPast
                           ? "bg-muted text-muted-foreground"
                           : hasAvailable
-                            ? "bg-green-100 text-green-700"
-                            : "";
+                          ? "bg-green-100 text-green-700"
+                          : "";
 
                         return (
                           <button
@@ -1831,10 +1930,11 @@ export default function Sessions() {
                             className={`
                         h-8 w-8 rounded-full text-xs flex items-center justify-center
                         ${statusColor}
-                        ${rescheduleDate === day.date
-                                ? "ring-2 ring-primary bg-primary text-white"
-                                : ""
-                              }
+                        ${
+                          rescheduleDate === day.date
+                            ? "ring-2 ring-primary bg-primary text-white"
+                            : ""
+                        }
                         ${isPast ? "opacity-50 cursor-not-allowed" : ""}
                       `}
                           >
@@ -1865,14 +1965,16 @@ export default function Sessions() {
                               }
                               className={`
                           w-full text-left p-2 border rounded-lg text-sm
-                          ${slot.status === "available"
-                                  ? "hover:bg-green-50 border-green-200"
-                                  : "opacity-50 border-gray-200"
-                                }
-                          ${rescheduleTime === slot.start
-                                  ? "ring-2 ring-primary bg-primary/10"
-                                  : ""
-                                }
+                          ${
+                            slot.status === "available"
+                              ? "hover:bg-green-50 border-green-200"
+                              : "opacity-50 border-gray-200"
+                          }
+                          ${
+                            rescheduleTime === slot.start
+                              ? "ring-2 ring-primary bg-primary/10"
+                              : ""
+                          }
                         `}
                             >
                               {formatTime(slot.start)} - {formatTime(slot.end)}
@@ -1924,6 +2026,272 @@ export default function Sessions() {
         </DialogContent>
       </Dialog>
 
+      {/* Rebook Missed Session Modal */}
+      <Dialog open={isRebookModalOpen} onOpenChange={setIsRebookModalOpen}>
+        <DialogContent
+          className="
+      w-full max-w-4xl
+      max-h-[95vh]
+      flex flex-col
+      overflow-hidden
+    "
+        >
+          {/* ================= HEADER ================= */}
+          <DialogHeader className="px-4 sm:px-6 pt-4">
+            <DialogTitle className="text-lg sm:text-xl text-primary-600">
+              🔄 Rebook Missed Session
+            </DialogTitle>
+            <DialogDescription className="text-sm">
+              Select a new date and time to rebook this missed session.
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* ================= BODY (SCROLLABLE) ================= */}
+          <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 space-y-4">
+            {selectedSession && (
+              <>
+                {/* CURRENT SESSION INFO */}
+                <div className="p-4 rounded-lg bg-blue-50 border border-blue-200">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <p className="text-sm">
+                      <span className="text-muted-foreground">
+                        Original Date:
+                      </span>{" "}
+                      <span className="font-medium">
+                        {selectedSession.date
+                          ? new Date(selectedSession.date).toLocaleDateString(
+                              "en-US",
+                              {
+                                weekday: "long",
+                                year: "numeric",
+                                month: "long",
+                                day: "numeric",
+                              }
+                            )
+                          : "N/A"}
+                      </span>
+                    </p>
+                    <p className="text-sm">
+                      <span className="text-muted-foreground">
+                        Original Time:
+                      </span>{" "}
+                      <span className="font-medium">
+                        {selectedSession.startTime
+                          ? new Date(
+                              selectedSession.startTime
+                            ).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })
+                          : selectedSession.time || "N/A"}
+                      </span>
+                    </p>
+                    <p className="text-sm">
+                      <span className="text-muted-foreground">Patient:</span>{" "}
+                      <span className="font-medium">
+                        {selectedSession.userId?.name || "N/A"}
+                      </span>
+                    </p>
+                    <p className="text-sm">
+                      <span className="text-muted-foreground">Therapist:</span>{" "}
+                      <span className="font-medium">
+                        {selectedSession.therapistId?.name || "N/A"}
+                      </span>
+                    </p>
+                  </div>
+                </div>
+
+                {/* DATE + TIME SELECTION */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* CALENDAR */}
+                  <div className="border rounded-lg p-3 bg-muted/30">
+                    <h4 className="font-bold text-sm mb-3">Select New Date</h4>
+                    <div className="space-y-2">
+                      {/* Calendar header */}
+                      <div className="flex justify-between items-center mb-3">
+                        <button
+                          type="button"
+                          className="p-1 hover:bg-accent rounded"
+                          onClick={() => {
+                            const newMonth = currentMonth - 1;
+                            const newYear =
+                              newMonth < 0 ? currentYear - 1 : currentYear;
+                            setCurrentMonth(newMonth < 0 ? 11 : newMonth);
+                            setCurrentYear(newYear);
+                          }}
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                        </button>
+                        <span className="font-semibold text-sm">
+                          {new Date(currentYear, currentMonth).toLocaleString(
+                            "default",
+                            {
+                              month: "long",
+                              year: "numeric",
+                            }
+                          )}
+                        </span>
+                        <button
+                          type="button"
+                          className="p-1 hover:bg-accent rounded"
+                          onClick={() => {
+                            const newMonth = currentMonth + 1;
+                            const newYear =
+                              newMonth > 11 ? currentYear + 1 : currentYear;
+                            setCurrentMonth(newMonth > 11 ? 0 : newMonth);
+                            setCurrentYear(newYear);
+                          }}
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </button>
+                      </div>
+
+                      {/* Weekday headers */}
+                      <div className="grid grid-cols-7 gap-1 text-xs text-muted-foreground text-center mb-2">
+                        <div>Su</div>
+                        <div>Mo</div>
+                        <div>Tu</div>
+                        <div>We</div>
+                        <div>Th</div>
+                        <div>Fr</div>
+                        <div>Sa</div>
+                      </div>
+
+                      {/* Calendar days */}
+                      <div className="grid grid-cols-7 gap-1">
+                        {calendarWeeks.map((week, index) =>
+                          week.map((dayData, dayIndex) => {
+                            if (!dayData) {
+                              return <div key={`empty-${index}-${dayIndex}`} />;
+                            }
+
+                            const dateStr = dayData.date;
+                            const isSelected = rebookDate === dateStr;
+                            const isPast = isPastDate(dateStr);
+                            const hasAvailability = availability.some(
+                              (item) =>
+                                item.date === dateStr &&
+                                item.timeSlots &&
+                                item.timeSlots.length > 0
+                            );
+
+                            return (
+                              <button
+                                key={dateStr}
+                                type="button"
+                                disabled={isPast || !hasAvailability}
+                                className={cn(
+                                  "aspect-square p-1 text-xs rounded-md transition-colors",
+                                  isSelected &&
+                                    "bg-primary text-white font-bold",
+                                  !isSelected &&
+                                    !isPast &&
+                                    hasAvailability &&
+                                    "hover:bg-accent",
+                                  isPast && "opacity-30 cursor-not-allowed",
+                                  !isPast &&
+                                    !hasAvailability &&
+                                    "opacity-50 cursor-not-allowed"
+                                )}
+                                onClick={() => {
+                                  setRebookDate(dateStr);
+                                }}
+                              >
+                                {dayData.day}
+                              </button>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* TIME SLOTS */}
+                  <div className="border rounded-lg p-3 bg-muted/30">
+                    <h4 className="font-bold text-sm mb-3">
+                      Available Time Slots
+                    </h4>
+                    <div className="space-y-3">
+                      {rebookDate ? (
+                        (() => {
+                          const dayAvailability = availability.find(
+                            (item) => item.date === rebookDate
+                          );
+
+                          if (
+                            !dayAvailability ||
+                            dayAvailability.timeSlots.length === 0
+                          ) {
+                            return (
+                              <p className="text-sm text-muted-foreground text-center py-4">
+                                No slots available
+                              </p>
+                            );
+                          }
+
+                          return dayAvailability.timeSlots.map(
+                            (slot: any, idx: number) => (
+                              <button
+                                key={idx}
+                                type="button"
+                                className={cn(
+                                  "w-full py-2 px-3 rounded-md text-xs font-medium transition-colors",
+                                  rebookTime === slot.start
+                                    ? "bg-primary text-white"
+                                    : "bg-background hover:bg-accent border"
+                                )}
+                                onClick={() => setRebookTime(slot.start)}
+                              >
+                                {formatTime(slot.start)} -{" "}
+                                {formatTime(slot.end)}
+                              </button>
+                            )
+                          );
+                        })()
+                      ) : (
+                        <p className="text-sm text-muted-foreground">
+                          Select a date to see slots
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* INFO BOX */}
+                <div className="p-4 rounded-lg bg-green-50 border border-green-200">
+                  <p className="text-sm text-green-800">
+                    <strong>ℹ️ Note:</strong> The client will be automatically
+                    notified about the new session schedule.
+                  </p>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* ================= FOOTER (FIXED) ================= */}
+          <DialogFooter className="px-4 sm:px-6 py-4 border-t">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsRebookModalOpen(false);
+                setRebookDate("");
+                setRebookTime("");
+              }}
+            >
+              Cancel
+            </Button>
+
+            <Button
+              disabled={!rebookDate || !rebookTime}
+              onClick={handleRebookMissedSession}
+              className="bg-primary hover:bg-primary/90"
+            >
+              Confirm Rebooking
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Create Session Modal */}
       <Dialog
         open={isCreateSessionModalOpen}
@@ -1952,7 +2320,8 @@ export default function Sessions() {
                   <SelectValue placeholder="Select a user with active subscription" />
                 </SelectTrigger>
                 <SelectContent>
-                  {usersWithActiveSubscriptions && usersWithActiveSubscriptions.length > 0 ? (
+                  {usersWithActiveSubscriptions &&
+                  usersWithActiveSubscriptions.length > 0 ? (
                     usersWithActiveSubscriptions.map((user) => (
                       <SelectItem key={user._id} value={user._id}>
                         {user.name} ({user.email})
@@ -1960,7 +2329,9 @@ export default function Sessions() {
                     ))
                   ) : (
                     <SelectItem value="__no_users__" disabled>
-                      {loadingUsers ? "Loading users..." : "No users with active subscriptions"}
+                      {loadingUsers
+                        ? "Loading users..."
+                        : "No users with active subscriptions"}
                     </SelectItem>
                   )}
                 </SelectContent>
@@ -1981,23 +2352,25 @@ export default function Sessions() {
                     <SelectValue placeholder="Select an active subscription" />
                   </SelectTrigger>
                   <SelectContent>
-                    {selectedUserSubscriptions && selectedUserSubscriptions.length > 0 ? (
+                    {selectedUserSubscriptions &&
+                    selectedUserSubscriptions.length > 0 ? (
                       selectedUserSubscriptions.map((sub) => (
                         <SelectItem key={sub._id} value={sub._id}>
-                          {sub.planName} - {sub.availableSessions?.remaining} sessions remaining
+                          {sub.planName} - {sub.availableSessions?.remaining}{" "}
+                          sessions remaining
                         </SelectItem>
                       ))
                     ) : (
                       <SelectItem value="__no_subscriptions__" disabled>
-                        {loadingSubscriptions ? "Loading subscriptions..." : "No active subscriptions"}
+                        {loadingSubscriptions
+                          ? "Loading subscriptions..."
+                          : "No active subscriptions"}
                       </SelectItem>
                     )}
                   </SelectContent>
                 </Select>
               </div>
             )}
-
-
 
             {/* DATE AND TIME WITH AVAILABILITY */}
             <div className="space-y-6">
@@ -2014,34 +2387,50 @@ export default function Sessions() {
                     onChange={(e) =>
                       setNewSession({ ...newSession, date: e.target.value })
                     }
-                    min={new Date().toISOString().split('T')[0]} // Prevent past dates
+                    min={new Date().toISOString().split("T")[0]} // Prevent past dates
                     className="w-full pr-10"
                   />
                   {/* Date availability indicator */}
                   {newSession.date && (
                     <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                      {availability.some(item =>
-                        item.date === newSession.date &&
-                        item.therapistId._id === newSession.therapistId &&
-                        item.timeSlots.some(slot => slot.status === true || slot.status === "available")
+                      {availability.some(
+                        (item) =>
+                          item.date === newSession.date &&
+                          item.therapistId._id === newSession.therapistId &&
+                          item.timeSlots.some(
+                            (slot) =>
+                              slot.status === true ||
+                              slot.status === "available"
+                          )
                       ) ? (
-                        <div className="w-3 h-3 rounded-full bg-green-500" title="Available slots"></div>
+                        <div
+                          className="w-3 h-3 rounded-full bg-green-500"
+                          title="Available slots"
+                        ></div>
                       ) : (
-                        <div className="w-3 h-3 rounded-full bg-red-500" title="No available slots"></div>
+                        <div
+                          className="w-3 h-3 rounded-full bg-red-500"
+                          title="No available slots"
+                        ></div>
                       )}
                     </div>
                   )}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {newSession.date && availability.some(item =>
-                    item.date === newSession.date &&
-                    item.therapistId._id === newSession.therapistId &&
-                    item.timeSlots.some(slot => slot.status === true || slot.status === "available")
+                  {newSession.date &&
+                  availability.some(
+                    (item) =>
+                      item.date === newSession.date &&
+                      item.therapistId._id === newSession.therapistId &&
+                      item.timeSlots.some(
+                        (slot) =>
+                          slot.status === true || slot.status === "available"
+                      )
                   )
                     ? "✓ Available time slots found for this date"
                     : newSession.date
-                      ? "⚠ No available time slots for this date"
-                      : "Select a date to check availability"}
+                    ? "⚠ No available time slots for this date"
+                    : "Select a date to check availability"}
                 </p>
               </div>
 
@@ -2050,18 +2439,26 @@ export default function Sessions() {
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
                     <Clock className="h-4 w-4 text-primary" />
-                    <label className="text-sm font-medium">Available Time Slots</label>
+                    <label className="text-sm font-medium">
+                      Available Time Slots
+                    </label>
                     <Badge variant="secondary" className="ml-2">
-                      {availability
-                        .filter(
-                          (item) =>
-                            item.date === newSession.date &&
-                            item.therapistId._id === newSession.therapistId
-                        )
-                        .flatMap((item) =>
-                          item.timeSlots.filter((slot) => slot.status === true || slot.status === "available")
-                        ).length
-                      } slots
+                      {
+                        availability
+                          .filter(
+                            (item) =>
+                              item.date === newSession.date &&
+                              item.therapistId._id === newSession.therapistId
+                          )
+                          .flatMap((item) =>
+                            item.timeSlots.filter(
+                              (slot) =>
+                                slot.status === true ||
+                                slot.status === "available"
+                            )
+                          ).length
+                      }{" "}
+                      slots
                     </Badge>
                   </div>
 
@@ -2074,28 +2471,47 @@ export default function Sessions() {
                       )
                       .flatMap((item) =>
                         item.timeSlots
-                          .filter((slot) => slot.status === true || slot.status === "available")
+                          .filter(
+                            (slot) =>
+                              slot.status === true ||
+                              slot.status === "available"
+                          )
                           .map((slot) => (
                             <button
                               key={`${item.date}-${slot.start}`}
                               type="button"
                               onClick={() => {
                                 // Only allow selecting if the slot is available and not in the past
-                                const isPastSlot = isTimeSlotPast(item.date, slot.start);
-                                const isAvailable = slot.status === 'available';
+                                const isPastSlot = isTimeSlotPast(
+                                  item.date,
+                                  slot.start
+                                );
+                                const isAvailable = slot.status === "available";
 
                                 if (!isPastSlot && isAvailable) {
-                                  setNewSession({ ...newSession, time: slot.start });
+                                  setNewSession({
+                                    ...newSession,
+                                    time: slot.start,
+                                  });
                                 }
                               }}
-                              disabled={slot.status !== "available" || isTimeSlotPast(item.date, slot.start)}
+                              disabled={
+                                slot.status !== "available" ||
+                                isTimeSlotPast(item.date, slot.start)
+                              }
                               className={`
                                 p-3 text-center rounded-lg border transition-all
-                                ${newSession.time === slot.start
-                                  ? 'border-primary bg-primary text-primary-foreground shadow-md'
-                                  : 'border-border hover:border-primary hover:bg-primary/5'
+                                ${
+                                  newSession.time === slot.start
+                                    ? "border-primary bg-primary text-primary-foreground shadow-md"
+                                    : "border-border hover:border-primary hover:bg-primary/5"
                                 }
-                                ${slot.status !== "available" || isTimeSlotPast(item.date, slot.start) ? 'opacity-50 cursor-not-allowed' : 'hover:border-primary hover:bg-primary/5'}
+                                ${
+                                  slot.status !== "available" ||
+                                  isTimeSlotPast(item.date, slot.start)
+                                    ? "opacity-50 cursor-not-allowed"
+                                    : "hover:border-primary hover:bg-primary/5"
+                                }
                               `}
                             >
                               <div className="font-medium text-sm">
@@ -2115,13 +2531,18 @@ export default function Sessions() {
                           item.therapistId._id === newSession.therapistId
                       )
                       .flatMap((item) =>
-                        item.timeSlots.filter((slot) => slot.status === true || slot.status === "available")
+                        item.timeSlots.filter(
+                          (slot) =>
+                            slot.status === true || slot.status === "available"
+                        )
                       ).length === 0 && (
-                        <div className="col-span-full text-center py-8 text-muted-foreground">
-                          <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                          <p className="text-sm">No available time slots for this date</p>
-                        </div>
-                      )}
+                      <div className="col-span-full text-center py-8 text-muted-foreground">
+                        <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <p className="text-sm">
+                          No available time slots for this date
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -2211,16 +2632,16 @@ export default function Sessions() {
         sessionInfo={
           selectedSessionForMeet
             ? {
-              userName: selectedSessionForMeet.userId?.name || "N/A",
-              therapistName:
-                selectedSessionForMeet.therapistId?.name || "N/A",
-              date: selectedSessionForMeet.date,
-              time: selectedSessionForMeet.time,
-              serviceName:
-                selectedSessionForMeet.bookingId?.serviceName ||
-                selectedSessionForMeet.subscriptionId?.planName ||
-                "Session",
-            }
+                userName: selectedSessionForMeet.userId?.name || "N/A",
+                therapistName:
+                  selectedSessionForMeet.therapistId?.name || "N/A",
+                date: selectedSessionForMeet.date,
+                time: selectedSessionForMeet.time,
+                serviceName:
+                  selectedSessionForMeet.bookingId?.serviceName ||
+                  selectedSessionForMeet.subscriptionId?.planName ||
+                  "Session",
+              }
             : undefined
         }
         onSuccess={() => {

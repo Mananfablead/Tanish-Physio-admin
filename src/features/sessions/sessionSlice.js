@@ -113,10 +113,15 @@ export const rescheduleSession = createAsyncThunk(
   "sessions/reschedule",
   async ({ id, sessionData }, { rejectWithValue }) => {
     try {
+      console.log('🔄 [RESCHEDULE] Attempting to reschedule session:', id);
+      console.log('📡 [RESCHEDULE] Session data:', sessionData);
+      console.log('📡 [RESCHEDULE] Calling API endpoint...');
       const res = await sessionAPI.reschedule(id, sessionData);
+      console.log('✅ [RESCHEDULE] Response received:', res.data);
       return res.data.data;
     } catch (err) {
-      return rejectWithValue("Session reschedule failed");
+      console.error('❌ [RESCHEDULE] Error:', err);
+      return rejectWithValue(err.response?.data?.message || "Session reschedule failed");
     }
   }
 );
