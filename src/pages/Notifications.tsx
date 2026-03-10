@@ -170,7 +170,12 @@ export default function Notifications() {
     if (!token) return;
 
     // Connect to notification socket
-    const socket = io("http://localhost:5000", {
+    const API_BASE_URL =
+      import.meta.env.VITE_API_BASE_URL || "https://tanishphysiofitness.in/api";
+    const serverUrl = API_BASE_URL.replace(/\/api$/, "");
+    console.log("🔌 Connecting admin notification socket to:", serverUrl);
+
+    const socket = io(serverUrl, {
       auth: { token },
       transports: ["websocket", "polling"],
     });

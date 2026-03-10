@@ -250,7 +250,7 @@ export default function Sessions() {
         const token = localStorage.getItem("adminToken"); // Adjust based on your auth system
 
         if (token) {
-          const socket = io("http://localhost:5001", {
+          const socket = io("http://localhost:5000", {
             // Adjust URL as needed
             auth: { token },
             transports: ["websocket", "polling"],
