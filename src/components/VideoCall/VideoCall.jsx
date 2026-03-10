@@ -1318,9 +1318,9 @@ const VideoCall = ({
             <h1 className="text-white font-semibold tracking-tight text-sm sm:text-base truncate">
               Remote Physiotherapy Monitoring
             </h1>
-            <p className="text-slate-500 text-xs truncate">
+            {/* <p className="text-slate-500 text-xs truncate">
               Session ID: {sessionId}
-            </p>
+            </p> */}
             <p className="text-slate-500 text-xs truncate">
               {userInfo.name || user?.name || "Admin"} monitoring clinic session
             </p>

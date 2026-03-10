@@ -397,7 +397,7 @@ const VideoCallChatHistory = () => {
                   >
                     <div className="flex justify-between">
                       <h3 className="font-medium text-foreground">
-                        Session: {chat.sessionId.substring(0, 8) + "..."}
+                        Session: {chat.sessionInfo.type || "Unknown Type"}
                       </h3>
                       <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-800">
                         Video Call
@@ -457,7 +457,7 @@ const VideoCallChatHistory = () => {
               <>
                 <div className="p-4 border-b">
                   <h2 className="text-lg font-semibold text-foreground">
-                    💬 Session Chat: {selectedSession.sessionId.substring(0, 8) + "..."}
+                    💬 Session Chat: {selectedSession.sessionInfo.type || "Unknown Type"}
                   </h2>
                   <div className="text-sm text-muted-foreground mt-2 space-y-1">
                     <p><span className="font-medium">👤 User:</span> {selectedSession.sessionInfo.userId.name || "Unknown User"}</p>

@@ -34,16 +34,26 @@ const LiveSessions = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [activeTab, setActiveTab] = useState('upcoming'); // Default to upcoming
+  const [currentTime, setCurrentTime] = useState(new Date()); // Track current time in real-time
     const { list: allSessions = [], loading, error } = useSelector((state: any) => state.sessions);
   const { upcomingSessions = [] } = useSelector((state: any) => state.sessions);
+
+  // Update current time every second for real-time button updates
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
 
   // Function to calculate time until session
   const calculateTimeUntilSession = (date: string, time: string) => {
     // Create a date object combining the session date and time
     const sessionDateTime = new Date(`${date} ${time}`);
     
-    // Get current time
-    const now = new Date();
+    // Use currentTime state instead of new Date() for consistency
+    const now = currentTime;
     
     // Calculate difference in milliseconds
     const diffMs = sessionDateTime.getTime() - now.getTime();
@@ -197,8 +207,7 @@ const LiveSessions = () => {
                     const sessionDateTime = new Date(
                       `${session.date} ${session.time}`
                     );
-                    const now = new Date();
-                    const timeDiff = sessionDateTime.getTime() - now.getTime();
+                    const timeDiff = sessionDateTime.getTime() - currentTime.getTime();
                     const hoursDiff = timeDiff / (1000 * 60 * 60);
                     return (
                       hoursDiff <= 2 &&
@@ -373,11 +382,11 @@ const LiveSessions = () => {
 
                     <div className="flex gap-2 pt-2">
                       {(() => {
-                        // Calculate if session time has arrived
+                        // Calculate if session time has arrived using currentTime state
                         const sessionDateTime = new Date(
                           `${session.date} ${session.time}`
                         );
-                        const now = new Date();
+                        const now = currentTime; // Use state time instead of new Date()
                         const isSessionTimeArrived =
                           sessionDateTime.getTime() <= now.getTime();
 

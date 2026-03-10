@@ -34,6 +34,7 @@ type SessionStatus =
 export default function Sessions() {
   const navigate = useNavigate();
   const dispatch: any = useDispatch();
+  const [currentTime, setCurrentTime] = useState(new Date()); // Track current time in real-time
   const {
     list: bookings,
     loading: bookingsLoading,
@@ -55,6 +56,15 @@ export default function Sessions() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("all");
   const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
+
+  // Update current time every second for real-time button updates
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -1058,8 +1068,8 @@ export default function Sessions() {
                   {filteredSessions.map((session: any) => {
                     const user = session.userId;
                     const therapist = session.therapistId;
-                    // Calculate timing status for upcoming sessions
-                    const now = new Date();
+                    // Calculate timing status for upcoming sessions using currentTime state
+                    const now = currentTime; // Use state time instead of new Date()
                     const sessionTime = new Date(
                       `${session.date}T${session.time}`
                     );
