@@ -420,7 +420,9 @@ console.log("Health profile:", singleBooking?.booking?.userId?.healthProfile);
               <Row
                 label="Join Date"
                 value={
-                  booking.userId && typeof booking.userId === "object" && booking.userId.joinDate
+                  booking.userId &&
+                  typeof booking.userId === "object" &&
+                  booking.userId.joinDate
                     ? new Date(booking.userId.joinDate).toLocaleDateString()
                     : "N/A"
                 }
@@ -446,30 +448,46 @@ console.log("Health profile:", singleBooking?.booking?.userId?.healthProfile);
                 <div className="mb-6 p-4 bg-primary/5 rounded-lg border border-primary/20">
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div className="text-center">
-                      <div className="text-2xl font-bold text-primary">{getResponseCount()}</div>
-                      <div className="text-sm text-muted-foreground">Responses</div>
+                      <div className="text-2xl font-bold text-primary">
+                        {getResponseCount()}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        Responses
+                      </div>
                     </div>
                     <div className="text-center">
-                      <div className="text-2xl font-bold text-primary">{getQuestionnaireSummary().completionRate}%</div>
-                      <div className="text-sm text-muted-foreground">Completion</div>
+                      <div className="text-2xl font-bold text-primary">
+                        {getQuestionnaireSummary().completionRate}%
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        Completion
+                      </div>
                     </div>
                     <div className="text-center">
-                      <div className="text-sm font-medium">{getQuestionnaireSummary().status}</div>
-                      <div className="text-xs text-muted-foreground">Status</div>
+                      <div className="text-sm font-medium">
+                        {getQuestionnaireSummary().status}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        Status
+                      </div>
                     </div>
                     <div className="text-center">
-                      <div className="text-sm font-medium">{getQuestionnaireSummary().completedAt || 'N/A'}</div>
-                      <div className="text-xs text-muted-foreground">Completed</div>
+                      <div className="text-sm font-medium">
+                        {getQuestionnaireSummary().completedAt || "N/A"}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        Completed
+                      </div>
                     </div>
                   </div>
                 </div>
               )}
-              
+
               {/* Questionnaire Responses Display */}
               <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
                 {getQuestionnaireResponses().length > 0 ? (
                   getQuestionnaireResponses().map((response, index) => (
-                    <div 
+                    <div
                       key={index}
                       className="p-4 border rounded-lg bg-muted/20 hover:bg-muted/30 transition-colors"
                     >
@@ -483,18 +501,26 @@ console.log("Health profile:", singleBooking?.booking?.userId?.healthProfile);
                               {response.question}
                             </h4>
                             {response.questionType && (
-                              <span className={`text-xs px-2 py-1 rounded-full ${getQuestionTypeBadge(response.questionType || 'text')}`}>
-                                {response.questionType || 'text'}
+                              <span
+                                className={`text-xs px-2 py-1 rounded-full ${getQuestionTypeBadge(
+                                  response.questionType || "text"
+                                )}`}
+                              >
+                                {response.questionType || "text"}
                               </span>
                             )}
-                            <span className={`text-xs px-2 py-1 rounded-full ${getSourceBadge(response.source || 'unknown')}`}>
-                              {response.source || 'unknown'}
+                            <span
+                              className={`text-xs px-2 py-1 rounded-full ${getSourceBadge(
+                                response.source || "unknown"
+                              )}`}
+                            >
+                              {response.source || "unknown"}
                             </span>
                           </div>
-                          
+
                           <div className="ml-6">
                             <p className="text-muted-foreground flex items-center gap-2">
-                              <span className="font-medium">Answer:</span>{' '}
+                              <span className="font-medium">Answer:</span>{" "}
                               {isFileUrl(response.answer) ? (
                                 <div className="flex items-center gap-2">
                                   <span className="font-medium text-foreground text-sm">
@@ -512,7 +538,10 @@ console.log("Health profile:", singleBooking?.booking?.userId?.healthProfile);
                                 </div>
                               ) : (
                                 <span className="font-medium text-foreground">
-                                  {formatAnswer(response.answer, response.questionType)}
+                                  {formatAnswer(
+                                    response.answer,
+                                    response.questionType
+                                  )}
                                 </span>
                               )}
                             </p>
@@ -523,36 +552,125 @@ console.log("Health profile:", singleBooking?.booking?.userId?.healthProfile);
                             )}
                           </div>
                         </div>
-                        
+
                         <div className="flex items-center gap-2">
-                          <span className={`flex items-center gap-1 text-sm px-2 py-1 rounded-full ${getResponseStatusBadge(!!response.answer)}`}>
-                            <div className={`w-2 h-2 rounded-full ${getResponseStatusIndicator(!!response.answer)}`}></div>
+                          <span
+                            className={`flex items-center gap-1 text-sm px-2 py-1 rounded-full ${getResponseStatusBadge(
+                              !!response.answer
+                            )}`}
+                          >
+                            <div
+                              className={`w-2 h-2 rounded-full ${getResponseStatusIndicator(
+                                !!response.answer
+                              )}`}
+                            ></div>
                             {getResponseStatusText(!!response.answer)}
                           </span>
                         </div>
                       </div>
                     </div>
                   ))
-                ) : (
-                  // No responses found - show raw health profile data
+                ) : // No structured responses - check if there's any health profile data
+                Object.keys(userHealthProfile).length > 0 ? (
+                  // Has some health profile data but no structured responses
                   <div className="space-y-4">
                     <div className="text-center py-4 text-muted-foreground">
                       <ClipboardList className="w-12 h-12 mx-auto mb-4 text-muted-foreground/50" />
-                      <p className="font-medium mb-1">No structured questionnaire responses found</p>
-                      <p className="text-sm">Showing raw health profile data instead.</p>
+                      <p className="font-medium mb-1">
+                        No structured questionnaire responses found
+                      </p>
+                      <p className="text-sm">
+                        The user has a health profile but hasn't completed the
+                        detailed questionnaire yet.
+                      </p>
                     </div>
-                    
-                    {/* Raw Health Profile Data */}
+
+                    {/* Health Profile Summary */}
                     <div className="bg-muted/10 p-4 rounded-lg border">
-                      <h4 className="font-semibold mb-3 text-foreground">Raw Health Profile Data</h4>
-                      <pre className="text-xs whitespace-pre-wrap text-muted-foreground font-mono bg-background/50 p-3 rounded">
-                        {JSON.stringify(userHealthProfile, null, 2)}
-                      </pre>
+                      <h4 className="font-semibold mb-3 text-foreground">
+                        Available Health Profile Information
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                        {userHealthProfile.primaryConcern && (
+                          <div>
+                            <span className="font-medium text-muted-foreground">
+                              Primary Concern:
+                            </span>
+                            <span className="ml-2 text-foreground">
+                              {userHealthProfile.primaryConcern}
+                            </span>
+                          </div>
+                        )}
+                        {userHealthProfile.painIntensity !== undefined && (
+                          <div>
+                            <span className="font-medium text-muted-foreground">
+                              Pain Intensity:
+                            </span>
+                            <span className="ml-2 text-foreground">
+                              {userHealthProfile.painIntensity}/10
+                            </span>
+                          </div>
+                        )}
+                        {userHealthProfile.priorTreatments && (
+                          <div>
+                            <span className="font-medium text-muted-foreground">
+                              Prior Treatments:
+                            </span>
+                            <span className="ml-2 text-foreground">
+                              {userHealthProfile.priorTreatments}
+                            </span>
+                          </div>
+                        )}
+                        {userHealthProfile.additionalNotes && (
+                          <div className="md:col-span-2">
+                            <span className="font-medium text-muted-foreground">
+                              Additional Notes:
+                            </span>
+                            <p className="mt-1 text-foreground whitespace-pre-wrap">
+                              {userHealthProfile.additionalNotes}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                      {Object.keys(userHealthProfile).filter(
+                        (key) =>
+                          ![
+                            "primaryConcern",
+                            "painIntensity",
+                            "priorTreatments",
+                            "additionalNotes",
+                            "questionnaireResponses",
+                            "questionnaireMetadata",
+                          ].includes(key)
+                      ).length > 0 && (
+                        <div className="mt-4 pt-4 border-t">
+                          <details className="text-sm">
+                            <summary className="cursor-pointer font-medium text-primary hover:text-primary/80">
+                              View additional health profile details
+                            </summary>
+                            <pre className="text-xs mt-2 whitespace-pre-wrap text-muted-foreground font-mono bg-background/50 p-3 rounded">
+                              {JSON.stringify(userHealthProfile, null, 2)}
+                            </pre>
+                          </details>
+                        </div>
+                      )}
                     </div>
+                  </div>
+                ) : (
+                  // Completely empty health profile
+                  <div className="text-center py-8">
+                    <ClipboardList className="w-16 h-16 mx-auto mb-4 text-muted-foreground/30" />
+                    <p className="text-lg font-medium text-muted-foreground mb-2">
+                      No Health Profile Data Available
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      The user has not filled out any health profile information
+                      or questionnaire responses yet.
+                    </p>
                   </div>
                 )}
               </div>
-              
+
               {/* Questionnaire Info Panel */}
               <div className="mt-6 p-4 bg-muted/10 rounded-lg border border-dashed">
                 <h4 className="font-semibold mb-3 text-foreground flex items-center gap-2">
@@ -561,16 +679,24 @@ console.log("Health profile:", singleBooking?.booking?.userId?.healthProfile);
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                   <div>
-                    <span className="font-medium text-muted-foreground">Status:</span>
+                    <span className="font-medium text-muted-foreground">
+                      Status:
+                    </span>
                     <span className="ml-2">{getQuestionnaireStatus()}</span>
                   </div>
                   <div>
-                    <span className="font-medium text-muted-foreground">Total Responses:</span>
+                    <span className="font-medium text-muted-foreground">
+                      Total Responses:
+                    </span>
                     <span className="ml-2">{getResponseCount()}</span>
                   </div>
                   <div>
-                    <span className="font-medium text-muted-foreground">Completion Date:</span>
-                    <span className="ml-2">{getQuestionnaireSummary().completedAt || 'Not completed'}</span>
+                    <span className="font-medium text-muted-foreground">
+                      Completion Date:
+                    </span>
+                    <span className="ml-2">
+                      {getQuestionnaireSummary().completedAt || "Not completed"}
+                    </span>
                   </div>
                 </div>
               </div>

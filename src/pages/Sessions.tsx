@@ -1374,9 +1374,11 @@ export default function Sessions() {
                                 </SelectTrigger>
 
                                 <SelectContent>
-                                  <SelectItem value="scheduled">
-                                    Scheduled
-                                  </SelectItem>
+                                  {session.status !== "live" && (
+                                    <SelectItem value="scheduled">
+                                      Scheduled
+                                    </SelectItem>
+                                  )}
                                   <SelectItem value="live">Live</SelectItem>
                                   <SelectItem value="completed">
                                     Completed
