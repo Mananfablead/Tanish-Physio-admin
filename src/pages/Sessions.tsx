@@ -24,6 +24,7 @@ import {
 import { toast } from "@/hooks/use-toast";
 import GenerateGoogleMeetModal from "@/components/VideoCall/GenerateGoogleMeetModal";
 import { subscriptionAPI } from "@/api/apiClient";
+import { tokenUtils } from "@/api/authAPI";
 type SessionStatus =
   | "pending"
   | "scheduled"
@@ -247,7 +248,7 @@ export default function Sessions() {
       try {
         // Import socket connection (assuming similar setup as client)
         const { io } = await import("socket.io-client");
-        const token = localStorage.getItem("adminToken"); // Adjust based on your auth system
+        const token = tokenUtils.getAdminToken(); // Get admin token properly
 
         if (token) {
           const socket = io("http://localhost:5000", {
@@ -1516,76 +1517,9 @@ export default function Sessions() {
                                       {!session.googleMeetLink && (
                                         <DropdownMenuItem
                                           className="text-blue-600"
-                                          onClick={async () => {
-                                            try {
-                                              const response = await fetch(
-                                                `/api/video-call/generate-google-meet`,
-                                                {
-                                                  method: "POST",
-                                                  headers: {
-                                                    "Content-Type":
-                                                      "application/json",
-                                                    Authorization: `Bearer ${localStorage.getItem(
-                                                      "token"
-                                                    )}`,
-                                                  },
-                                                  body: JSON.stringify({
-                                                    sessionId: session._id,
-                                                  }),
-                                                }
-                                              );
-
-                                              const data =
-                                                await response.json();
-
-                                              if (data.success) {
-                                                // Refresh sessions to show the new link
-                                                dispatch(fetchSessions());
-
-                                                // Show success toast
-                                                const toastElement =
-                                                  document.createElement("div");
-                                                toastElement.className =
-                                                  "fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 animate-in fade-in slide-in-from-right";
-                                                toastElement.innerHTML =
-                                                  "✅ Google Meet link generated successfully!";
-                                                document.body.appendChild(
-                                                  toastElement
-                                                );
-
-                                                setTimeout(() => {
-                                                  document.body.removeChild(
-                                                    toastElement
-                                                  );
-                                                }, 3000);
-                                              } else {
-                                                throw new Error(
-                                                  data.message ||
-                                                    "Failed to generate Google Meet link"
-                                                );
-                                              }
-                                            } catch (error) {
-                                              console.error(
-                                                "Error generating Google Meet link:",
-                                                error
-                                              );
-                                              // Show error toast
-                                              const toastElement =
-                                                document.createElement("div");
-                                              toastElement.className =
-                                                "fixed top-4 right-4 bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 animate-in fade-in slide-in-from-right";
-                                              toastElement.innerHTML =
-                                                "❌ Failed to generate Google Meet link";
-                                              document.body.appendChild(
-                                                toastElement
-                                              );
-
-                                              setTimeout(() => {
-                                                document.body.removeChild(
-                                                  toastElement
-                                                );
-                                              }, 3000);
-                                            }
+                                          onClick={() => {
+                                            setSelectedSessionForMeet(session);
+                                            setIsGoogleMeetModalOpen(true);
                                           }}
                                         >
                                           <Video className="h-4 w-4 mr-2" />

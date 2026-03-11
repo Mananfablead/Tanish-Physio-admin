@@ -577,19 +577,31 @@ export default function Bookings() {
                         </SelectTrigger>
                         <SelectContent>
                           {booking.bookingType === 'free-consultation' ? (
-                            <>
-                              <SelectItem value="pending">Pending</SelectItem>
-                              <SelectItem value="confirmed">Accept</SelectItem>
-                              {/* <SelectItem value="scheduled">Schedule</SelectItem>
-                              <SelectItem value="completed">Completed</SelectItem> */}
-                              <SelectItem value="cancelled">Cancelled</SelectItem>
-                            </>
+                            booking.status === 'confirmed' ? (
+                              <>
+                                <SelectItem value="confirmed">Accept</SelectItem>
+                                <SelectItem value="cancelled">Cancelled</SelectItem>
+                              </>
+                            ) : (
+                              <>
+                                <SelectItem value="pending">Pending</SelectItem>
+                                <SelectItem value="confirmed">Accept</SelectItem>
+                                <SelectItem value="cancelled">Cancelled</SelectItem>
+                              </>
+                            )
                           ) : (
-                            <>
-                              <SelectItem value="confirmed">Confirmed</SelectItem>
-                              <SelectItem value="pending">Pending</SelectItem>
-                              <SelectItem value="cancelled">Cancelled</SelectItem>
-                            </>
+                            booking.status === 'confirmed' ? (
+                              <>
+                                <SelectItem value="confirmed">Confirmed</SelectItem>
+                                <SelectItem value="cancelled">Cancelled</SelectItem>
+                              </>
+                            ) : (
+                              <>
+                                <SelectItem value="confirmed">Confirmed</SelectItem>
+                                <SelectItem value="pending">Pending</SelectItem>
+                                <SelectItem value="cancelled">Cancelled</SelectItem>
+                              </>
+                            )
                           )}
                         </SelectContent>
                       </Select>

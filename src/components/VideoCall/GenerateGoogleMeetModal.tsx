@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { AlertCircle, Video, Loader2, CheckCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { tokenUtils } from "@/api/authAPI";
 
 interface GenerateGoogleMeetModalProps {
   isOpen: boolean;
@@ -38,6 +39,9 @@ const GenerateGoogleMeetModal = ({
   const [generatedLink, setGeneratedLink] = useState("");
   const [generatedCode, setGeneratedCode] = useState("");
   const [expiresAt, setExpiresAt] = useState("");
+  // new state for manual link entry
+  const [manualLink, setManualLink] = useState("");
+  const [manualCode, setManualCode] = useState("");
 
   const handleGenerateMeet = async () => {
     if (!sessionId) {
@@ -49,8 +53,25 @@ const GenerateGoogleMeetModal = ({
       return;
     }
 
+    const token = tokenUtils.getAdminToken();
+    if (!token) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in as admin to continue",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
     try {
+      const body: any = { sessionId };
+      // if manual link provided, include in body
+      if (manualLink) {
+        body.googleMeetLink = manualLink;
+        if (manualCode) body.googleMeetCode = manualCode;
+      }
+
       const response = await fetch(
         `${
           import.meta.env.VITE_API_BASE_URL || "http://localhost:5000"
@@ -59,24 +80,27 @@ const GenerateGoogleMeetModal = ({
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("adminToken")}`,
+            Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({
-            sessionId: sessionId,
-          }),
+          body: JSON.stringify(body),
         }
       );
 
       const data = await response.json();
 
       if (data.success) {
-        setGeneratedLink(data.data.meetLink);
-        setGeneratedCode(data.data.meetCode);
-        setExpiresAt(data.data.expiresAt);
+        // set the link either from manual or returned data
+        setGeneratedLink(manualLink || data.data.googleMeetLink || data.data.meetLink);
+        setGeneratedCode(manualCode || data.data.googleMeetCode || data.data.meetCode);
+        if (data.data.googleMeetExpiresAt || data.data.expiresAt) {
+          setExpiresAt(data.data.googleMeetExpiresAt || data.data.expiresAt);
+        }
 
         toast({
           title: "Success",
-          description: "Google Meet link generated successfully!",
+          description: manualLink
+            ? "Meeting link saved successfully!"
+            : "Google Meet link generated successfully!",
           variant: "default",
         });
 
@@ -88,9 +112,20 @@ const GenerateGoogleMeetModal = ({
       }
     } catch (error: any) {
       console.error("Error generating Google Meet link:", error);
+      let errorMessage = error.message || "Failed to generate Google Meet link";
+
+      // Handle specific authentication errors
+      if (errorMessage.includes("Invalid or expired token")) {
+        errorMessage = "Your session has expired. Please log in again.";
+        // Optionally clear the token
+        tokenUtils.removeAdminToken();
+        // You might want to redirect to login page here
+        // window.location.href = "/admin/login";
+      }
+
       toast({
         title: "Error",
-        description: error.message || "Failed to generate Google Meet link",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -111,8 +146,9 @@ const GenerateGoogleMeetModal = ({
     setGeneratedLink("");
     setGeneratedCode("");
     setExpiresAt("");
+    setManualLink("");
+    setManualCode("");
   };
-
   const handleClose = () => {
     resetForm();
     onClose();
@@ -229,21 +265,44 @@ const GenerateGoogleMeetModal = ({
               </div>
             </div>
           ) : (
-            /* Generate Form */
+            /* Manual entry or generation form */
             <div className="space-y-4">
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <div className="flex items-start gap-3">
                   <Video className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
                   <div>
                     <h4 className="font-medium text-blue-800">
-                      Ready to Generate
+                      Provide a Meeting Link
                     </h4>
                     <p className="text-blue-700 text-sm mt-1">
-                      Click the button below to generate a Google Meet link for
-                      this session.
+                      Paste an existing link below or leave blank to generate a
+                      new Google Meet URL automatically.
                     </p>
                   </div>
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs font-medium">Meeting URL</Label>
+                <Input
+                  value={manualLink}
+                  onChange={(e) => setManualLink(e.target.value)}
+                  placeholder="https://meet.google.com/... or other meeting link"
+                  className="w-full"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Leave blank to auto-generate a link via Google Calendar.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs font-medium">Meeting Code (optional)</Label>
+                <Input
+                  value={manualCode}
+                  onChange={(e) => setManualCode(e.target.value)}
+                  placeholder="Optional code for the meeting"
+                  className="w-full"
+                />
               </div>
 
               <div className="flex gap-3">
@@ -255,12 +314,12 @@ const GenerateGoogleMeetModal = ({
                   {isLoading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Generating...
+                      {manualLink ? "Saving..." : "Generating..."}
                     </>
                   ) : (
                     <>
                       <Video className="mr-2 h-4 w-4" />
-                      Generate Google Meet Link
+                      {manualLink ? "Save Link" : "Generate Google Meet Link"}
                     </>
                   )}
                 </Button>
