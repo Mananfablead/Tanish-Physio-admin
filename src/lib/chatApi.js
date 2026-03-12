@@ -57,6 +57,20 @@ export const adminChatApi = {
         const response = await apiClient.post('/stop-typing');
         return response.data;
     },
+
+    // Upload file
+    uploadFile: async (file) => {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const response = await apiClient.post('/upload-file', formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+        });
+
+        return response.data;
+    },
 };
 
 export default adminChatApi;
