@@ -26,10 +26,12 @@ const Availability = () => {
   const { user: currentUser } = useSelector((state: RootState) => state.auth);
 
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
-   const [startTime, setStartTime] = useState('10:00');
+  const [startTime, setStartTime] = useState('10:00');
   const [endTime, setEndTime] = useState('10:45'); // Default to 45-minute slot
   const [slotDuration, setSlotDuration] = useState<number | ''>(); // Default to all durations
   const [slotBookingType, setSlotBookingType] = useState<'regular' | 'free-consultation' | ''>(); // Default to all types
+  const [slotSessionType, setSlotSessionType] = useState<'one-to-one' | 'group'>('one-to-one');
+  const [slotMaxParticipants, setSlotMaxParticipants] = useState<number>(5);
   const [viewMode, setViewMode] = useState<'day' | 'week' | 'month'>('month');
   
   // State for managing custom time slots
@@ -45,6 +47,8 @@ const Availability = () => {
   const [editSlotStatus, setEditSlotStatus] = useState('available');
   const [editSlotDuration, setEditSlotDuration] = useState<number | ''>();
   const [editSlotBookingType, setEditSlotBookingType] = useState<'regular' | 'free-consultation' | ''>();
+  const [editSlotSessionType, setEditSlotSessionType] = useState<'one-to-one' | 'group'>('one-to-one');
+  const [editSlotMaxParticipants, setEditSlotMaxParticipants] = useState<number>(5);
 
   // State for bulk apply preview
   const [bulkApplyPreview, setBulkApplyPreview] = useState<boolean>(false);
@@ -161,7 +165,18 @@ const Availability = () => {
         
         if (allSlots.length > 0) {
           // Set custom slots to all existing slots
-          setCustomSlots(allSlots);
+          const normalizedSlots = allSlots.map((slot: any) => {
+            const sessionType = slot.sessionType || 'one-to-one';
+            const maxParticipants = sessionType === 'group' ? (slot.maxParticipants || 5) : 1;
+            const bookedParticipants = typeof slot.bookedParticipants === 'number' ? slot.bookedParticipants : 0;
+            return {
+              ...slot,
+              sessionType,
+              maxParticipants,
+              bookedParticipants
+            };
+          });
+          setCustomSlots(normalizedSlots);
           
           // Use first slot start time and calculate 45 minutes after as end time
           setStartTime(allSlots[0].start);
@@ -202,8 +217,23 @@ const Availability = () => {
             start: startTime,
             end: endTime,
             status: "available",
+            sessionType: slotSessionType,
+            maxParticipants: slotSessionType === 'group' ? slotMaxParticipants : 1,
+            bookedParticipants: 0
           }];
-          
+      
+      const normalizedSlots = timeSlots.map((slot: any) => {
+        const sessionType = slot.sessionType || 'one-to-one';
+        const maxParticipants = sessionType === 'group' ? (slot.maxParticipants || 5) : 1;
+        const bookedParticipants = typeof slot.bookedParticipants === 'number' ? slot.bookedParticipants : 0;
+        return {
+          ...slot,
+          sessionType,
+          maxParticipants,
+          bookedParticipants
+        };
+      });
+
       // Validate time slots before saving
       if (customSlots.length === 0) {
         // Validate time intervals (15, 30, 45, 60 minutes)
@@ -248,7 +278,7 @@ const Availability = () => {
       const payload = {
         therapistId: currentUser?._id,
         date: selectedDate,
-        timeSlots,
+        timeSlots: normalizedSlots,
       };
 
       const existingAvailability = availability.find(
@@ -370,13 +400,28 @@ const Availability = () => {
             start: startTime,
             end: endTime,
             status: "available",
+            sessionType: slotSessionType,
+            maxParticipants: slotSessionType === 'group' ? slotMaxParticipants : 1,
+            bookedParticipants: 0
           }];
+      
+      const normalizedSlots = timeSlots.map((slot: any) => {
+        const sessionType = slot.sessionType || 'one-to-one';
+        const maxParticipants = sessionType === 'group' ? (slot.maxParticipants || 5) : 1;
+        const bookedParticipants = typeof slot.bookedParticipants === 'number' ? slot.bookedParticipants : 0;
+        return {
+          ...slot,
+          sessionType,
+          maxParticipants,
+          bookedParticipants
+        };
+      });
 
       // Process each date individually since backend bulk update affects entire month
       const promises = bulkApplyDates.map(async (date) => {
         const payload = {
           date,
-          timeSlots,
+          timeSlots: normalizedSlots,
           therapistId: currentUser?._id
         };
 
@@ -968,6 +1013,34 @@ const Availability = () => {
                                       <option value="free-consultation">Free Consultation</option>
                                     </select>
                                   </div>
+                                  <div className="col-span-4 flex flex-col gap-1">
+                                    <Label className="text-xs text-muted-foreground">Session</Label>
+                                    <select
+                                      value={editSlotSessionType}
+                                      onChange={(e) => {
+                                        const nextType = e.target.value as 'one-to-one' | 'group';
+                                        setEditSlotSessionType(nextType);
+                                        if (nextType === 'one-to-one') {
+                                          setEditSlotMaxParticipants(1);
+                                        }
+                                      }}
+                                      className="w-full h-9 text-sm border border-input rounded-md px-2 bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                                    >
+                                      <option value="one-to-one">One-to-One</option>
+                                      <option value="group">Group</option>
+                                    </select>
+                                  </div>
+                                  <div className="col-span-4 flex flex-col gap-1">
+                                    <Label className="text-xs text-muted-foreground">Max Participants</Label>
+                                    <Input
+                                      type="number"
+                                      min={editSlotSessionType === 'group' ? 2 : 1}
+                                      value={editSlotMaxParticipants}
+                                      onChange={(e) => setEditSlotMaxParticipants(Math.max(1, Number(e.target.value)))}
+                                      disabled={editSlotSessionType !== 'group'}
+                                      className="text-xs h-9"
+                                    />
+                                  </div>
                                 </div>
                                 <div className="flex gap-2 justify-end pt-1">
                                   <Button
@@ -1020,6 +1093,35 @@ const Availability = () => {
                                         });
                                         return;
                                       }
+
+                                      const existingBooked = Number(customSlots[index]?.bookedParticipants || 0);
+
+                                      if (editSlotSessionType === 'one-to-one' && existingBooked > 0) {
+                                        toast({
+                                          title: "Error",
+                                          description: "Cannot switch to one-to-one while participants are already booked.",
+                                          variant: "destructive",
+                                        });
+                                        return;
+                                      }
+
+                                      if (editSlotSessionType === 'group' && editSlotMaxParticipants < 2) {
+                                        toast({
+                                          title: "Error",
+                                          description: "Group sessions require at least 2 participants.",
+                                          variant: "destructive",
+                                        });
+                                        return;
+                                      }
+
+                                      if (editSlotSessionType === 'group' && existingBooked > editSlotMaxParticipants) {
+                                        toast({
+                                          title: "Error",
+                                          description: "Max participants cannot be less than already booked participants.",
+                                          variant: "destructive",
+                                        });
+                                        return;
+                                      }
                                       
                                       // Update the slot
                                       const updatedSlots = [...customSlots];
@@ -1029,7 +1131,10 @@ const Availability = () => {
                                         end: editSlotEnd,
                                         status: editSlotStatus,
                                         duration: editSlotDuration,
-                                        bookingType: editSlotBookingType
+                                        bookingType: editSlotBookingType,
+                                        sessionType: editSlotSessionType,
+                                        maxParticipants: editSlotSessionType === 'group' ? editSlotMaxParticipants : 1,
+                                        bookedParticipants: editSlotSessionType === 'group' ? existingBooked : 0
                                       };
                                       setCustomSlots(updatedSlots);
                                       setEditingSlotIndex(null);
@@ -1067,6 +1172,14 @@ const Availability = () => {
                                       <Badge variant="outline" className="text-xs px-2 py-0">
                                         {slot.bookingType === 'free-consultation' ? 'Free' : 'Regular'}
                                       </Badge>
+                                      <Badge variant="outline" className="text-xs px-2 py-0">
+                                        {slot.sessionType === 'group' ? 'Group' : 'One-to-One'}
+                                      </Badge>
+                                      {slot.sessionType === 'group' && (
+                                        <Badge variant="outline" className="text-xs px-2 py-0">
+                                          {slot.bookedParticipants ?? 0}/{slot.maxParticipants ?? 0}
+                                        </Badge>
+                                      )}
                                     </div>
                                     {/* <span className="text-xs text-muted-foreground capitalize">{slot.status}</span> */}
                                   </div>
@@ -1096,6 +1209,8 @@ const Availability = () => {
                                       setEditSlotStatus(slot.status);
                                       setEditSlotDuration(slot.duration || 45);
                                       setEditSlotBookingType(slot.bookingType || 'regular');
+                                      setEditSlotSessionType(slot.sessionType || 'one-to-one');
+                                      setEditSlotMaxParticipants(slot.sessionType === 'group' ? (slot.maxParticipants || 5) : 1);
                                     }}
                                   >
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1211,6 +1326,36 @@ const Availability = () => {
                           <option value="free-consultation">Free</option>
                         </select>
                       </div>
+                      <div className="col-span-6">
+                        <Label htmlFor="slotSessionType" className="text-xs text-muted-foreground">Session Type</Label>
+                        <select
+                          id="slotSessionType"
+                          value={slotSessionType}
+                          onChange={(e) => {
+                            const nextType = e.target.value as 'one-to-one' | 'group';
+                            setSlotSessionType(nextType);
+                            if (nextType === 'one-to-one') {
+                              setSlotMaxParticipants(1);
+                            }
+                          }}
+                          className="w-full h-10 text-sm border border-input rounded-md px-2 bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                        >
+                          <option value="one-to-one">One-to-One</option>
+                          <option value="group">Group</option>
+                        </select>
+                      </div>
+                      <div className="col-span-6">
+                        <Label htmlFor="slotMaxParticipants" className="text-xs text-muted-foreground">Max Participants</Label>
+                        <Input
+                          id="slotMaxParticipants"
+                          type="number"
+                          min={slotSessionType === 'group' ? 2 : 1}
+                          value={slotMaxParticipants}
+                          onChange={(e) => setSlotMaxParticipants(Math.max(1, Number(e.target.value)))}
+                          disabled={slotSessionType !== 'group'}
+                          className="text-sm h-10"
+                        />
+                      </div>
                       <div className="col-span-12 pt-3">
                         <Button
                         type="button"
@@ -1271,6 +1416,15 @@ const Availability = () => {
                               });
                               return;
                             }
+
+                            if (slotSessionType === 'group' && slotMaxParticipants < 2) {
+                              toast({
+                                title: "Error",
+                                description: "Group sessions require at least 2 participants.",
+                                variant: "destructive",
+                              });
+                              return;
+                            }
                             
                             // Add new slot
                             setCustomSlots([
@@ -1280,7 +1434,10 @@ const Availability = () => {
                                 end: endTime,
                                 status: "available",
                                 duration: slotDuration || 45, // Use selected duration or default to 45
-                                bookingType: slotBookingType || 'regular' // Use selected booking type or default to regular
+                                bookingType: slotBookingType || 'regular', // Use selected booking type or default to regular
+                                sessionType: slotSessionType,
+                                maxParticipants: slotSessionType === 'group' ? slotMaxParticipants : 1,
+                                bookedParticipants: 0
                               }
                             ]);
                             
