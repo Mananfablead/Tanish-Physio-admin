@@ -67,7 +67,20 @@ export default function Sessions() {
 
     return () => clearInterval(timer);
   }, []);
+useEffect(() => {
+  if (!allSessions || allSessions.length === 0) return;
 
+  allSessions.forEach((session) => {
+    if (session.status === "live" && session.endTime) {
+      const end = new Date(session.endTime);
+      const now = new Date();
+
+      if (now >= end) {
+        handleUpdateSessionStatus(session._id, "completed");
+      }
+    }
+  });
+}, [currentTime, allSessions]);
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10; // Set to 10 items per page as requested
