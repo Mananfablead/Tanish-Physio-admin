@@ -390,6 +390,25 @@ const LiveSessions = () => {
                         const isSessionTimeArrived =
                           sessionDateTime.getTime() <= now.getTime();
 
+                        // Disable button for cancelled and completed sessions
+                        if (
+                          session.status === "cancelled" ||
+                          session.status === "completed"
+                        ) {
+                          return (
+                            <Button
+                              className="flex-1"
+                              variant="secondary"
+                              disabled
+                            >
+                              <Clock className="w-4 h-4 mr-2" />
+                              {session.status === "cancelled"
+                                ? "Cancelled"
+                                : "Completed"}
+                            </Button>
+                          );
+                        }
+
                         if (session.status === "live") {
                           // For live sessions, check if the actual session time has arrived
                           if (isSessionTimeArrived) {

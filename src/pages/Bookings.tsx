@@ -44,7 +44,11 @@ import { toast } from "@/hooks/use-toast";
 import PageLoader from "@/components/PageLoader";
 import { availabilityAPI, bookingAPI } from "@/api/apiClient";
 
-export default function Bookings() {
+interface BookingsProps {
+  onStatusConfirmed?: () => void;
+}
+
+export default function Bookings({ onStatusConfirmed }: BookingsProps) {
   const dispatch: any = useDispatch();
   const {
     list: bookings,
@@ -66,13 +70,13 @@ export default function Bookings() {
   const [isEditing, setIsEditing] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
   const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false);
-  const [newStatus, setNewStatus] = useState('');
+  const [newStatus, setNewStatus] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [isCreating, setIsCreating] = useState(false);
   const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
   const [availability, setAvailability] = useState<any[]>([]);
   const [availableTimeSlots, setAvailableTimeSlots] = useState<any[]>([]);
-  const [selectedDate, setSelectedDate] = useState<string>('');
+  const [selectedDate, setSelectedDate] = useState<string>("");
   const [isLoadingAvailability, setIsLoadingAvailability] = useState(false);
   const bookingsPerPage = 10;
   console.log("isEditing", isEditing);
@@ -93,7 +97,8 @@ export default function Bookings() {
       console.error("Failed to fetch availability:", error);
       toast({
         title: "Failed to load availability",
-        description: "Could not load available time slots. Using manual time entry.",
+        description:
+          "Could not load available time slots. Using manual time entry.",
         variant: "destructive",
       });
     } finally {
@@ -104,14 +109,16 @@ export default function Bookings() {
   // Get available time slots for selected date
   useEffect(() => {
     if (selectedDate && availability.length > 0) {
-      const dateAvailability = availability.filter(avail => avail.date === selectedDate);
-      const slots = dateAvailability.flatMap(avail => 
+      const dateAvailability = availability.filter(
+        (avail) => avail.date === selectedDate
+      );
+      const slots = dateAvailability.flatMap((avail) =>
         avail.timeSlots
-          .filter((slot: any) => slot.status === 'available')
+          .filter((slot: any) => slot.status === "available")
           .map((slot: any) => ({
             ...slot,
             therapistId: avail.therapistId._id || avail.therapistId,
-            therapistName: avail.therapistId.name
+            therapistName: avail.therapistId.name,
           }))
       );
       setAvailableTimeSlots(slots);
@@ -175,7 +182,10 @@ export default function Bookings() {
   // Pagination logic
   const totalPages = Math.ceil(filteredBookings.length / bookingsPerPage);
   const startIndex = (currentPage - 1) * bookingsPerPage;
-  const paginatedBookings = filteredBookings.slice(startIndex, startIndex + bookingsPerPage);
+  const paginatedBookings = filteredBookings.slice(
+    startIndex,
+    startIndex + bookingsPerPage
+  );
 
   /* ===========================
      CREATE BOOKING
@@ -184,17 +194,18 @@ export default function Bookings() {
     setIsCreating(true);
     try {
       // Find the selected user by name to get their ID
-      const selectedUser = users.find(user => 
-        (user.name || user.email) === bookingForm.clientName
+      const selectedUser = users.find(
+        (user) => (user.name || user.email) === bookingForm.clientName
       );
-      
+
       // Prepare booking data with user ID for admin booking creation
       const bookingData = {
         ...bookingForm,
         userId: selectedUser?._id || selectedUser?.id, // Pass the user ID
-        clientName: selectedUser?.name || selectedUser?.email || bookingForm.clientName, // Use actual user name/email
+        clientName:
+          selectedUser?.name || selectedUser?.email || bookingForm.clientName, // Use actual user name/email
       };
-      
+
       await dispatch(createBooking(bookingData));
       setIsModalOpen(false);
       // Reset form
@@ -210,13 +221,15 @@ export default function Bookings() {
       dispatch(fetchBookings());
       toast({
         title: "Booking created successfully",
-        description: "The new booking has been created and added to the system.",
+        description:
+          "The new booking has been created and added to the system.",
       });
     } catch (error) {
       console.error("Failed to create booking:", error);
       toast({
         title: "Failed to create booking",
-        description: "There was an error creating the booking. Please try again.",
+        description:
+          "There was an error creating the booking. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -232,15 +245,16 @@ export default function Bookings() {
 
     try {
       // Find the selected user by name to get their ID (for potential updates)
-      const selectedUser = users.find(user => 
-        (user.name || user.email) === bookingForm.clientName
+      const selectedUser = users.find(
+        (user) => (user.name || user.email) === bookingForm.clientName
       );
-      
+
       // Prepare booking data with user ID if updating user
       const bookingData = {
         ...bookingForm,
         userId: selectedUser?._id || selectedUser?.id, // Pass the user ID if available
-        clientName: selectedUser?.name || selectedUser?.email || bookingForm.clientName, // Use actual user name/email
+        clientName:
+          selectedUser?.name || selectedUser?.email || bookingForm.clientName, // Use actual user name/email
       };
 
       await dispatch(
@@ -261,16 +275,17 @@ export default function Bookings() {
      PREPARE EDIT BOOKING
   =========================== */
 
-
   const getStatusBadge = (status: string, bookingType?: string) => {
     switch (status) {
       case "confirmed":
-        if (bookingType === 'subscription-covered') {
+        if (bookingType === "subscription-covered") {
           return "bg-emerald-500/15 text-emerald-600"; // Green for subscription confirmed
         }
-        return bookingType === 'free-consultation' ? "bg-blue-500/15 text-blue-600" : "bg-success/15 text-success";
+        return bookingType === "free-consultation"
+          ? "bg-blue-500/15 text-blue-600"
+          : "bg-success/15 text-success";
       case "pending":
-        if (bookingType === 'subscription-covered') {
+        if (bookingType === "subscription-covered") {
           return "bg-amber-500/15 text-amber-600"; // Amber for subscription pending
         }
         return "bg-warning/15 text-warning";
@@ -300,7 +315,7 @@ export default function Bookings() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button 
+          <Button
             onClick={() => {
               setIsEditing(false);
               setBookingForm({
@@ -437,12 +452,16 @@ export default function Bookings() {
                       </div>
                     </td>
                     <td className="min-w-[100px]">
-                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                        booking.bookingType === 'free-consultation' 
-                          ? 'bg-blue-100 text-blue-600' 
-                          : 'bg-gray-100 text-gray-600'
-                      }`}>
-                        {booking.bookingType === 'free-consultation' ? 'Free' : 'Regular'}
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                          booking.bookingType === "free-consultation"
+                            ? "bg-blue-100 text-blue-600"
+                            : "bg-gray-100 text-gray-600"
+                        }`}
+                      >
+                        {booking.bookingType === "free-consultation"
+                          ? "Free"
+                          : "Regular"}
                       </span>
                     </td>
                     <td className="min-w-[120px]">
@@ -531,28 +550,56 @@ export default function Bookings() {
                     <td className="min-w-[140px]">
                       <Select
                         value={booking.status}
-                        disabled={booking.status === "cancelled" || updatingStatusId === (booking._id || booking.id)}
+                        disabled={
+                          booking.status === "cancelled" ||
+                          updatingStatusId === (booking._id || booking.id)
+                        }
                         onValueChange={async (value) => {
                           const bookingId = booking._id || booking.id;
                           setUpdatingStatusId(bookingId);
-                                                  
+
+                          // Check if we're changing from pending to confirmed
+                          const wasPending = booking.status === "pending";
+                          const isNowConfirmed = value === "confirmed";
+
                           try {
                             // Update booking status
-                            const response = await bookingAPI.updateStatus(bookingId, value);
-                                                    
+                            const response = await bookingAPI.updateStatus(
+                              bookingId,
+                              value
+                            );
+
                             if (response.data.success) {
                               // Refresh the bookings list
                               dispatch(fetchBookings());
                               toast({
                                 title: "Booking status updated successfully",
                               });
+
+                              // Switch to sessions tab if changing from pending to confirmed
+                              if (
+                                wasPending &&
+                                isNowConfirmed &&
+                                onStatusConfirmed
+                              ) {
+                                onStatusConfirmed();
+                              }
                             } else {
-                              throw new Error(response.data.message || 'Failed to update status');
+                              throw new Error(
+                                response.data.message ||
+                                  "Failed to update status"
+                              );
                             }
                           } catch (error: any) {
-                            console.error('Error updating booking status:', error);
+                            console.error(
+                              "Error updating booking status:",
+                              error
+                            );
                             toast({
-                              title: error.response?.data?.message || error.message || "Failed to update status",
+                              title:
+                                error.response?.data?.message ||
+                                error.message ||
+                                "Failed to update status",
                               variant: "destructive",
                             });
                           } finally {
@@ -576,32 +623,46 @@ export default function Bookings() {
                           )}
                         </SelectTrigger>
                         <SelectContent>
-                          {booking.bookingType === 'free-consultation' ? (
-                            booking.status === 'confirmed' ? (
+                          {booking.bookingType === "free-consultation" ? (
+                            booking.status === "confirmed" ? (
                               <>
-                                <SelectItem value="confirmed">Accept</SelectItem>
-                                <SelectItem value="cancelled">Cancelled</SelectItem>
+                                <SelectItem value="confirmed">
+                                  Accept
+                                </SelectItem>
+                                <SelectItem value="cancelled">
+                                  Cancelled
+                                </SelectItem>
                               </>
                             ) : (
                               <>
                                 <SelectItem value="pending">Pending</SelectItem>
-                                <SelectItem value="confirmed">Accept</SelectItem>
-                                <SelectItem value="cancelled">Cancelled</SelectItem>
+                                <SelectItem value="confirmed">
+                                  Accept
+                                </SelectItem>
+                                <SelectItem value="cancelled">
+                                  Cancelled
+                                </SelectItem>
                               </>
                             )
+                          ) : booking.status === "confirmed" ? (
+                            <>
+                              <SelectItem value="confirmed">
+                                Confirmed
+                              </SelectItem>
+                              <SelectItem value="cancelled">
+                                Cancelled
+                              </SelectItem>
+                            </>
                           ) : (
-                            booking.status === 'confirmed' ? (
-                              <>
-                                <SelectItem value="confirmed">Confirmed</SelectItem>
-                                <SelectItem value="cancelled">Cancelled</SelectItem>
-                              </>
-                            ) : (
-                              <>
-                                <SelectItem value="confirmed">Confirmed</SelectItem>
-                                <SelectItem value="pending">Pending</SelectItem>
-                                <SelectItem value="cancelled">Cancelled</SelectItem>
-                              </>
-                            )
+                            <>
+                              <SelectItem value="confirmed">
+                                Confirmed
+                              </SelectItem>
+                              <SelectItem value="pending">Pending</SelectItem>
+                              <SelectItem value="cancelled">
+                                Cancelled
+                              </SelectItem>
+                            </>
                           )}
                         </SelectContent>
                       </Select>
@@ -777,7 +838,7 @@ export default function Bookings() {
                     });
                     setSelectedDate(dateValue);
                   }}
-                  min={new Date().toISOString().split('T')[0]}
+                  min={new Date().toISOString().split("T")[0]}
                 />
               </div>
 
@@ -803,9 +864,14 @@ export default function Bookings() {
                               : "border-gray-200 hover:bg-gray-50"
                           )}
                         >
-                          <div>{slot.start} - {slot.end}</div>
+                          <div>
+                            {slot.start} - {slot.end}
+                          </div>
                           <div className="text-xs text-muted-foreground mt-1">
-                            {slot.duration} min {slot.bookingType === 'free-consultation' ? '(Free)' : '(Regular)'}
+                            {slot.duration} min{" "}
+                            {slot.bookingType === "free-consultation"
+                              ? "(Free)"
+                              : "(Regular)"}
                           </div>
                         </button>
                       ))}
@@ -821,12 +887,14 @@ export default function Bookings() {
                   <div className="space-y-2">
                     <Input
                       type="time"
-                      value={bookingForm.time.split('-')[0] || ''}
+                      value={bookingForm.time.split("-")[0] || ""}
                       onChange={(e) => {
                         const startTime = e.target.value;
                         const endTime = new Date(`2000-01-01T${startTime}`);
                         endTime.setMinutes(endTime.getMinutes() + 45); // Default 45 min duration
-                        const endTimeString = endTime.toTimeString().substring(0, 5);
+                        const endTimeString = endTime
+                          .toTimeString()
+                          .substring(0, 5);
                         setBookingForm({
                           ...bookingForm,
                           time: `${startTime}-${endTimeString}`,
@@ -836,14 +904,18 @@ export default function Bookings() {
                     />
                     {bookingForm.time && (
                       <div className="text-sm text-muted-foreground">
-                        Duration: 45 minutes (ends at {bookingForm.time.split('-')[1]})
+                        Duration: 45 minutes (ends at{" "}
+                        {bookingForm.time.split("-")[1]})
                       </div>
                     )}
-                    {selectedDate && !isLoadingAvailability && availableTimeSlots.length === 0 && (
-                      <div className="text-sm text-yellow-600 bg-yellow-50 p-2 rounded">
-                        No available time slots found for this date. You can still create a booking with manual time entry.
-                      </div>
-                    )}
+                    {selectedDate &&
+                      !isLoadingAvailability &&
+                      availableTimeSlots.length === 0 && (
+                        <div className="text-sm text-yellow-600 bg-yellow-50 p-2 rounded">
+                          No available time slots found for this date. You can
+                          still create a booking with manual time entry.
+                        </div>
+                      )}
                     {isLoadingAvailability && (
                       <div className="text-sm text-muted-foreground flex items-center gap-2">
                         <LoaderCircle className="w-4 h-4 animate-spin" />

@@ -45,25 +45,41 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   useEffect(() => {
     if (!token || !user) return;
 
+    // Determine WebSocket server URL based on environment
+    let serverUrl;
+    if (
+      import.meta.env.VITE_API_BASE_URL &&
+      import.meta.env.VITE_API_BASE_URL.includes("localhost")
+    ) {
+      // Development environment - use localhost WebSocket server
+      serverUrl = "http://localhost:5000";
+    } else if (import.meta.env.VITE_API_BASE_URL) {
+      // Production environment - extract WebSocket URL from API URL
+      serverUrl = import.meta.env.VITE_API_BASE_URL.replace(/\/api$/, "");
+    } else {
+      // Fallback to production WebSocket server URL
+      serverUrl = "https://apitanishvideo.fableadtech.in";
+    }
+
     // Connect to notification socket
-    const socket = io("http://localhost:5000", {
+    const socket = io(serverUrl, {
       auth: { token },
       transports: ["websocket", "polling"],
     });
 
     socket.on("connect", () => {
-     
+      console.log("Admin notification socket connected");
       // Join admin notification room
       socket.emit("join-admin-notifications", {});
     });
 
     socket.on("admin-notifications-joined", (data) => {
-    
+      console.log("Joined admin notifications room");
     });
 
     // Listen for admin notifications
     socket.on("admin-notification", (data) => {
-    
+      console.log("Received admin notification:", data);
 
       // Add to notifications array
       const newNotification = {
@@ -74,6 +90,10 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         unread: true,
         type: data.type || "system",
         timestamp: data.timestamp || new Date().toISOString(),
+        bookingId: data.bookingId,
+        sessionId: data.sessionId,
+        clientName: data.clientName,
+        serviceName: data.serviceName,
       };
 
       setNotifications((prev) => [newNotification, ...prev]);
@@ -91,11 +111,13 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           toast.error(`${data.title}: ${data.message}`, toastOptions);
           break;
         case "booking":
-        case "session":
           toast.success(`${data.title}: ${data.message}`, toastOptions);
           break;
-        case "payment":
+        case "session":
           toast.info(`${data.title}: ${data.message}`, toastOptions);
+          break;
+        case "payment":
+          toast.warning(`${data.title}: ${data.message}`, toastOptions);
           break;
         case "system":
         default:
@@ -105,7 +127,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     });
 
     socket.on("disconnect", () => {
-  
+      console.log("Admin notification socket disconnected");
     });
 
     socket.on("connect_error", (error) => {
@@ -174,8 +196,11 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                   )}
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-80">
-                <div className="flex items-center justify-between p-4 border-b">
+              <DropdownMenuContent
+                align="end"
+                className="w-96 max-h-[600px] overflow-y-auto"
+              >
+                <div className="flex items-center justify-between p-4 border-b sticky top-0 bg-background z-10">
                   <h4 className="font-semibold">Notifications</h4>
                   {unreadCount > 0 && (
                     <span className="text-xs bg-primary text-primary-foreground px-2 py-1 rounded-full">
@@ -183,48 +208,176 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                     </span>
                   )}
                 </div>
-                <div className="max-h-96 overflow-y-auto">
+                <div className="max-h-[500px] overflow-y-auto">
                   {notifications.length > 0 ? (
-                    notifications.slice(0, 5).map((notification) => (
+                    notifications.slice(0, 10).map((notification) => (
                       <DropdownMenuItem
                         key={notification.id}
-                        className="flex flex-col items-start p-4 cursor-pointer hover:bg-muted"
+                        className={`flex flex-col items-start p-4 cursor-pointer hover:bg-muted border-b last:border-0 ${
+                          notification.unread ? "bg-primary/5" : ""
+                        }`}
                         onClick={() => markAsRead(notification.id)}
                       >
-                        <div className="flex items-start justify-between w-full">
-                          <div className="flex-1">
-                            <p className="font-medium text-sm">
-                              {notification.title}
-                            </p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {notification.message}
-                            </p>
-                            <p className="text-xs text-muted-foreground mt-2">
-                              {notification.time}
-                            </p>
+                        <div className="flex items-start justify-between w-full mb-2">
+                          <div className="flex items-center gap-2">
+                            {/* Icon based on type */}
+                            {notification.type === "booking" && (
+                              <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                                <svg
+                                  className="w-4 h-4 text-blue-600"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                  />
+                                </svg>
+                              </div>
+                            )}
+                            {notification.type === "session" && (
+                              <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
+                                <svg
+                                  className="w-4 h-4 text-green-600"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+                                  />
+                                </svg>
+                              </div>
+                            )}
+                            {notification.type === "payment" && (
+                              <div className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center">
+                                <svg
+                                  className="w-4 h-4 text-yellow-600"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                                  />
+                                </svg>
+                              </div>
+                            )}
+                            {notification.type === "system" && (
+                              <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+                                <svg
+                                  className="w-4 h-4 text-gray-600"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                                  />
+                                </svg>
+                              </div>
+                            )}
+
+                            <div className="flex-1">
+                              <p className="font-medium text-sm">
+                                {notification.title}
+                              </p>
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                {notification.message}
+                              </p>
+                            </div>
                           </div>
+
                           {notification.unread && (
                             <div className="w-2 h-2 bg-primary rounded-full mt-2 ml-2 flex-shrink-0" />
                           )}
                         </div>
+
+                        {/* Additional details for booking/session notifications */}
+                        {(notification.type === "booking" ||
+                          notification.type === "session") && (
+                          <div className="w-full mt-2 pt-2 border-t border-gray-100 text-xs text-muted-foreground">
+                            {notification.clientName && (
+                              <p>
+                                Client:{" "}
+                                <span className="font-medium">
+                                  {notification.clientName}
+                                </span>
+                              </p>
+                            )}
+                            {notification.serviceName && (
+                              <p>
+                                Service:{" "}
+                                <span className="font-medium">
+                                  {notification.serviceName}
+                                </span>
+                              </p>
+                            )}
+                            <p className="text-xs text-gray-400 mt-1">
+                              {notification.time}
+                            </p>
+                          </div>
+                        )}
                       </DropdownMenuItem>
                     ))
                   ) : (
-                    <div className="p-4 text-center text-muted-foreground text-sm">
+                    <div className="p-8 text-center text-muted-foreground text-sm">
+                      <div className="w-12 h-12 rounded-full bg-gray-100 mx-auto mb-3 flex items-center justify-center">
+                        <svg
+                          className="w-6 h-6 text-gray-400"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+                          />
+                        </svg>
+                      </div>
                       No notifications yet
                     </div>
                   )}
                 </div>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem className="flex items-center justify-center p-3 cursor-pointer">
-                  <span
-                    className="text-sm text-primary font-medium"
-                    onClick={() => navigate("/notifications")}
-                  >
-                    View all notifications
-                  </span>
-                  <ChevronDown className="w-4 h-4 ml-2 rotate-[-90deg]" />
-                </DropdownMenuItem>
+                {notifications.length > 0 && (
+                  <div className="border-t p-3">
+                    <DropdownMenuItem
+                      className="flex items-center justify-center p-2 cursor-pointer text-primary hover:text-primary"
+                      onClick={() => navigate("/notifications")}
+                    >
+                      <span className="text-sm font-medium">
+                        View all notifications
+                      </span>
+                      <svg
+                        className="w-4 h-4 ml-2"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9 5l7 7-7 7"
+                        />
+                      </svg>
+                    </DropdownMenuItem>
+                  </div>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
 
@@ -248,7 +401,6 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                       <User className="w-5 h-5 text-primary" />
                     )}
                   </div>
-
                 </div>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">

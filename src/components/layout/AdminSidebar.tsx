@@ -49,8 +49,14 @@ const navItems = [
   { icon: ClipboardList, label: "Questionnaires", path: "/questionnaires" },
   { icon: Clock, label: "Schedule", path: "/availability" },
   { icon: CreditCard, label: "Offers & Coupons", path: "/offers" },
-  { icon: Calendar, label: "Bookings", path: "/bookings" },
-  { icon: Calendar, label: "Sessions", path: "/sessions" },
+  {
+    icon: Calendar,
+    label: "Bookings & Sessions",
+    path: "/bookings-and-sessions",
+  },
+  // Legacy routes - can be removed later
+  // { icon: Calendar, label: "Bookings", path: "/bookings" },
+  // { icon: Video, label: "Sessions", path: "/sessions" },
   { icon: Video, label: "Live & Upcoming", path: "/live-sessions" },
   {
     icon: MessageCircle,

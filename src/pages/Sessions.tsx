@@ -23,6 +23,7 @@ import {
 } from '@/features/availability/availabilitySlice';
 import { toast } from "@/hooks/use-toast";
 import GenerateGoogleMeetModal from "@/components/VideoCall/GenerateGoogleMeetModal";
+import EditGoogleMeetModal from "@/components/VideoCall/EditGoogleMeetModal";
 import { subscriptionAPI } from "@/api/apiClient";
 import { tokenUtils } from "@/api/authAPI";
 type SessionStatus =
@@ -231,6 +232,13 @@ export default function Sessions() {
   const [isGeneratingMeet, setIsGeneratingMeet] = useState(false);
   const [selectedSessionForMeet, setSelectedSessionForMeet] = useState(null);
   const [isGoogleMeetModalOpen, setIsGoogleMeetModalOpen] = useState(false);
+
+  // State for editing Google Meet link
+  const [isEditingMeet, setIsEditingMeet] = useState(false);
+  const [selectedSessionForEditMeet, setSelectedSessionForEditMeet] =
+    useState(null);
+  const [isEditGoogleMeetModalOpen, setIsEditGoogleMeetModalOpen] =
+    useState(false);
 
   // State for users and subscriptions
   const [usersWithActiveSubscriptions, setUsersWithActiveSubscriptions] =
@@ -1448,6 +1456,19 @@ export default function Sessions() {
                                       ).toLocaleString()}
                                     </span>
                                   )}
+                                  {/* Edit Button */}
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="w-full text-xs mt-1"
+                                    onClick={() => {
+                                      setSelectedSessionForEditMeet(session);
+                                      setIsEditGoogleMeetModalOpen(true);
+                                    }}
+                                  >
+                                    <Video className="w-3 h-3 mr-1" />
+                                    Edit Link
+                                  </Button>
                                 </div>
                               ) : (
                                 <div className="flex flex-col gap-2">
@@ -1473,63 +1494,100 @@ export default function Sessions() {
 
                           {/* ACTIONS */}
                           <td className="px-4 py-3 text-right">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8"
+                            {session.status === "completed" ||
+                            session.status === "cancelled" ? (
+                              // Disabled state for completed and cancelled sessions
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 opacity-50 cursor-not-allowed"
+                                disabled
+                              >
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            ) : (
+                              // Active dropdown for other statuses
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8"
+                                  >
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+
+                                <DropdownMenuContent
+                                  align="end"
+                                  className="w-48"
                                 >
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-
-                              <DropdownMenuContent align="end" className="w-48">
-                                {/* PENDING SESSIONS */}
-                                {session.status === "pending" && (
-                                  <>
-                                    <DropdownMenuItem
-                                      className="text-success"
-                                      onClick={async () => {
-                                        await handleAcceptSession(session._id);
-                                      }}
-                                    >
-                                      <UserCog className="h-4 w-4 mr-2" />
-                                      Accept Session
-                                    </DropdownMenuItem>
-
-                                    <DropdownMenuItem
-                                      className="text-destructive"
-                                      onClick={async () => {
-                                        await handleRejectSession(session._id);
-                                      }}
-                                    >
-                                      <X className="h-4 w-4 mr-2" />
-                                      Reject Session
-                                    </DropdownMenuItem>
-                                  </>
-                                )}
-
-                                {/* SCHEDULED/CANCELLED SESSIONS (non-pending) */}
-                                {(activeTab === "scheduled" ||
-                                  activeTab === "all") &&
-                                  session.status !== "pending" && (
+                                  {/* PENDING SESSIONS */}
+                                  {session.status === "pending" && (
                                     <>
-                                      {/* Google Meet Generation for sessions without links */}
-                                      {!session.googleMeetLink && (
-                                        <DropdownMenuItem
-                                          className="text-blue-600"
-                                          onClick={() => {
-                                            setSelectedSessionForMeet(session);
-                                            setIsGoogleMeetModalOpen(true);
-                                          }}
-                                        >
-                                          <Video className="h-4 w-4 mr-2" />
-                                          Generate Google Meet Link
-                                        </DropdownMenuItem>
-                                      )}
+                                      <DropdownMenuItem
+                                        className="text-success"
+                                        onClick={async () => {
+                                          await handleAcceptSession(
+                                            session._id
+                                          );
+                                        }}
+                                      >
+                                        <UserCog className="h-4 w-4 mr-2" />
+                                        Accept Session
+                                      </DropdownMenuItem>
 
-                                      {/* <DropdownMenuItem
+                                      <DropdownMenuItem
+                                        className="text-destructive"
+                                        onClick={async () => {
+                                          await handleRejectSession(
+                                            session._id
+                                          );
+                                        }}
+                                      >
+                                        <X className="h-4 w-4 mr-2" />
+                                        Reject Session
+                                      </DropdownMenuItem>
+                                    </>
+                                  )}
+
+                                  {/* SCHEDULED/CANCELLED SESSIONS (non-pending) */}
+                                  {(activeTab === "scheduled" ||
+                                    activeTab === "all") &&
+                                    session.status !== "pending" && (
+                                      <>
+                                        {/* Google Meet Generation/Edit for sessions */}
+                                        {!session.googleMeetLink ? (
+                                          <DropdownMenuItem
+                                            className="text-blue-600"
+                                            onClick={() => {
+                                              setSelectedSessionForMeet(
+                                                session
+                                              );
+                                              setIsGoogleMeetModalOpen(true);
+                                            }}
+                                          >
+                                            <Video className="h-4 w-4 mr-2" />
+                                            Generate Google Meet Link
+                                          </DropdownMenuItem>
+                                        ) : (
+                                          <DropdownMenuItem
+                                            className="text-blue-600"
+                                            onClick={() => {
+                                              setSelectedSessionForEditMeet(
+                                                session
+                                              );
+                                              setIsEditGoogleMeetModalOpen(
+                                                true
+                                              );
+                                            }}
+                                          >
+                                            <Video className="h-4 w-4 mr-2" />
+                                            Edit Google Meet Link
+                                          </DropdownMenuItem>
+                                        )}
+
+                                        {/* <DropdownMenuItem
                                           onClick={() => {
                                             setSelectedSession(session);
                                             setIsRescheduleModalOpen(true);
@@ -1539,29 +1597,29 @@ export default function Sessions() {
                                           Reschedule
                                         </DropdownMenuItem> */}
 
-                                      <DropdownMenuItem
-                                        className="text-destructive"
-                                        onClick={() =>
-                                          handleCancelSession(session._id)
-                                        }
-                                      >
-                                        <X className="h-4 w-4 mr-2" />
-                                        Cancel Session
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem
-                                        className="text-destructive"
-                                        onClick={() =>
-                                          handleDeleteSession(session._id)
-                                        }
-                                      >
-                                        <X className="h-4 w-4 mr-2" />
-                                        Delete Session
-                                      </DropdownMenuItem>
-                                    </>
-                                  )}
+                                        <DropdownMenuItem
+                                          className="text-destructive"
+                                          onClick={() =>
+                                            handleCancelSession(session._id)
+                                          }
+                                        >
+                                          <X className="h-4 w-4 mr-2" />
+                                          Cancel Session
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                          className="text-destructive"
+                                          onClick={() =>
+                                            handleDeleteSession(session._id)
+                                          }
+                                        >
+                                          <X className="h-4 w-4 mr-2" />
+                                          Delete Session
+                                        </DropdownMenuItem>
+                                      </>
+                                    )}
 
-                                {/* MISSED SESSIONS - Rebook Option */}
-                                {/* {session.status === "missed" && (
+                                  {/* MISSED SESSIONS - Rebook Option */}
+                                  {/* {session.status === "missed" && (
                                   <DropdownMenuItem
                                     className="text-blue-600 font-semibold"
                                     onClick={() => {
@@ -1574,33 +1632,34 @@ export default function Sessions() {
                                   </DropdownMenuItem>
                                 )} */}
 
-                                {/* LIVE */}
-                                {activeTab === "live" && (
-                                  <DropdownMenuItem
-                                    onClick={() =>
-                                      navigate(`/video-call/${session._id}`)
-                                    }
-                                  >
-                                    <Video className="h-4 w-4 mr-2" />
-                                    Join Session
-                                  </DropdownMenuItem>
-                                )}
+                                  {/* LIVE */}
+                                  {activeTab === "live" && (
+                                    <DropdownMenuItem
+                                      onClick={() =>
+                                        navigate(`/video-call/${session._id}`)
+                                      }
+                                    >
+                                      <Video className="h-4 w-4 mr-2" />
+                                      Join Session
+                                    </DropdownMenuItem>
+                                  )}
 
-                                {/* COMPLETED */}
-                                {activeTab === "completed" && (
-                                  <DropdownMenuItem
-                                    onClick={() =>
-                                      navigate(
-                                        `/session-recordings/${session._id}`
-                                      )
-                                    }
-                                  >
-                                    <Eye className="h-4 w-4 mr-2" />
-                                    View Recording
-                                  </DropdownMenuItem>
-                                )}
-                              </DropdownMenuContent>
-                            </DropdownMenu>
+                                  {/* COMPLETED */}
+                                  {activeTab === "completed" && (
+                                    <DropdownMenuItem
+                                      onClick={() =>
+                                        navigate(
+                                          `/session-recordings/${session._id}`
+                                        )
+                                      }
+                                    >
+                                      <Eye className="h-4 w-4 mr-2" />
+                                      View Recording
+                                    </DropdownMenuItem>
+                                  )}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            )}
                           </td>
                         </tr>
                       );
@@ -2592,6 +2651,19 @@ export default function Sessions() {
         }
         onSuccess={() => {
           // Refresh sessions to show the new Google Meet link
+          dispatch(fetchSessions());
+        }}
+      />
+
+      {/* Google Meet Edit Modal */}
+      <EditGoogleMeetModal
+        isOpen={isEditGoogleMeetModalOpen}
+        onClose={() => setIsEditGoogleMeetModalOpen(false)}
+        sessionId={selectedSessionForEditMeet?._id}
+        currentLink={selectedSessionForEditMeet?.googleMeetLink || ""}
+        currentCode={selectedSessionForEditMeet?.googleMeetCode || ""}
+        onSuccess={() => {
+          // Refresh sessions to show the updated Google Meet link
           dispatch(fetchSessions());
         }}
       />

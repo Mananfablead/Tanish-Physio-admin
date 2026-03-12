@@ -41,6 +41,7 @@ import AddSubscription from "./pages/AddSubscription";
 import SubscriptionDetails from "./pages/SubscriptionDetails";
 import EditSubscription from "./pages/EditSubscription";
 import Bookings from "./pages/Bookings";
+import BookingsAndSessions from "./pages/BookingsAndSessions";
 import Courses from "./pages/Courses";
 import CMS from "./pages/CMS";
 import ContentDetails from "./pages/ContentDetails";
@@ -48,10 +49,13 @@ import Testimonials from "./pages/Testimonials";
 import ContactMessages from "./pages/ContactMessages";
 import VideoCallPage from "./pages/VideoCallPage";
 import NotFound from "./pages/NotFound";
-import ResetPassword from "./pages/ResetPassword";
-import ExpirationManagement from "./pages/ExpirationManagement";
-import BookingDetails from "./pages/BookingDetails";
 import PaymentDetails from "./pages/PaymentDetails";
+import BookingDetails from "./pages/BookingDetails";
+import ExpirationManagement from "./pages/ExpirationManagement";
+
+// New component
+import AdminNotificationPanel from "./components/AdminNotificationPanel";
+import ResetPassword from "./pages/ResetPassword";
 import OffersManagement from "./pages/OffersManagement";
 import AdminCredentials from "./pages/AdminCredentials";
 import { useDispatch } from "react-redux";
@@ -466,6 +470,17 @@ const App = () => {
             />
 
             <Route
+              path="/bookings-and-sessions"
+              element={
+                <ProtectedRoute>
+                  <AdminPage>
+                    <BookingsAndSessions />
+                  </AdminPage>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
               path="/expiration-management"
               element={
                 <ProtectedRoute>
@@ -537,6 +552,18 @@ const App = () => {
                 <ProtectedRoute>
                   <AdminPage>
                     <Testimonials />
+                  </AdminPage>
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Admin Notification Panel */}
+            <Route
+              path="/notifications-panel"
+              element={
+                <ProtectedRoute>
+                  <AdminPage>
+                    <AdminNotificationPanel />
                   </AdminPage>
                 </ProtectedRoute>
               }
