@@ -22,6 +22,7 @@ import {
 } from "@/features/auth/authSlice";
 import { io } from "socket.io-client";
 import { toast } from "sonner";
+import { fetchNotifications, prependNotification } from "@/features/notifications/notificationSlice";
 interface AdminLayoutProps {
   children: ReactNode;
 }
@@ -30,16 +31,22 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { user, loading, token } = useSelector((state: any) => state.auth);
+  const storedNotifications = useSelector((state: any) => state.notifications?.list || []);
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
-  const [notifications, setNotifications] = useState([]);
-  const [unreadCount, setUnreadCount] = useState(0);
+  const unreadCount = storedNotifications.filter((n: any) => !n?.read).length;
 
   useEffect(() => {
     dispatch(fetchProfile());
   }, []);
+
+  // Load persisted admin notifications for header (survives refresh)
+  useEffect(() => {
+    if (!token) return;
+    dispatch(fetchNotifications() as any);
+  }, [dispatch, token]);
 
   // Setup real-time notifications
   useEffect(() => {
@@ -82,22 +89,22 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       console.log("Received admin notification:", data);
 
       // Add to notifications array
-      const newNotification = {
-        id: Date.now(),
+      const newNotification: any = {
+        _id: data.id || `rt_${Date.now()}`,
         title: data.title || "New Notification",
         message: data.message || "You have a new notification",
-        time: "Just now",
-        unread: true,
         type: data.type || "system",
-        timestamp: data.timestamp || new Date().toISOString(),
+        read: false,
+        createdAt: data.timestamp || new Date().toISOString(),
+        updatedAt: data.timestamp || new Date().toISOString(),
+        recipientType: "admin",
         bookingId: data.bookingId,
         sessionId: data.sessionId,
         clientName: data.clientName,
         serviceName: data.serviceName,
       };
 
-      setNotifications((prev) => [newNotification, ...prev]);
-      setUnreadCount((prev) => prev + 1);
+      dispatch(prependNotification(newNotification) as any);
 
       // Show toast notification with appropriate styling based on type
       const toastOptions = {
@@ -139,16 +146,6 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       socket.disconnect();
     };
   }, [token, user]);
-
-  // Mark notification as read
-  const markAsRead = (id: number) => {
-    setNotifications((prev) =>
-      prev.map((notif) =>
-        notif.id === id ? { ...notif, unread: false } : notif
-      )
-    );
-    setUnreadCount((prev) => Math.max(0, prev - 1));
-  };
 
   return (
     <div className="flex h-screen w-screen overflow-hidden">
@@ -209,14 +206,14 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                   )}
                 </div>
                 <div className="max-h-[500px] overflow-y-auto">
-                  {notifications.length > 0 ? (
-                    notifications.slice(0, 10).map((notification) => (
+                  {storedNotifications.length > 0 ? (
+                    storedNotifications.slice(0, 10).map((notification: any) => (
                       <DropdownMenuItem
-                        key={notification.id}
+                        key={notification._id || notification.id}
                         className={`flex flex-col items-start p-4 cursor-pointer hover:bg-muted border-b last:border-0 ${
-                          notification.unread ? "bg-primary/5" : ""
+                          !notification.read ? "bg-primary/5" : ""
                         }`}
-                        onClick={() => markAsRead(notification.id)}
+                        onClick={() => navigate("/notifications")}
                       >
                         <div className="flex items-start justify-between w-full mb-2">
                           <div className="flex items-center gap-2">
@@ -300,7 +297,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                             </div>
                           </div>
 
-                          {notification.unread && (
+                          {!notification.read && (
                             <div className="w-2 h-2 bg-primary rounded-full mt-2 ml-2 flex-shrink-0" />
                           )}
                         </div>
@@ -326,7 +323,9 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                               </p>
                             )}
                             <p className="text-xs text-gray-400 mt-1">
-                              {notification.time}
+                              {notification.createdAt
+                                ? new Date(notification.createdAt).toLocaleString()
+                                : "Just now"}
                             </p>
                           </div>
                         )}
@@ -353,7 +352,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                     </div>
                   )}
                 </div>
-                {notifications.length > 0 && (
+                {storedNotifications.length > 0 && (
                   <div className="border-t p-3">
                     <DropdownMenuItem
                       className="flex items-center justify-center p-2 cursor-pointer text-primary hover:text-primary"

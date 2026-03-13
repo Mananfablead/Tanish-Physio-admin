@@ -209,8 +209,23 @@ export default function Notifications() {
     };
   }, [token]);
 
-  // Combine stored and real-time notifications
-  const allNotifications = [...realTimeNotifications, ...storedNotifications];
+  // Combine stored and real-time notifications (avoid duplicates by _id/id)
+  const allNotifications = useMemo(() => {
+    const out: any[] = [];
+    const seen = new Set<string>();
+
+    const add = (n: any) => {
+      const id = String(n?._id || n?.id || "");
+      if (id && seen.has(id)) return;
+      if (id) seen.add(id);
+      out.push(n);
+    };
+
+    realTimeNotifications.forEach(add);
+    storedNotifications.forEach(add);
+
+    return out;
+  }, [realTimeNotifications, storedNotifications]);
 
   // Fetch users when specific user is selected
   useEffect(() => {
