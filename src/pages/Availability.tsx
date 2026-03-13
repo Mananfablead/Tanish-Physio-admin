@@ -28,7 +28,7 @@ const Availability = () => {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
    const [startTime, setStartTime] = useState('10:00');
   const [endTime, setEndTime] = useState('10:45'); // Default to 45-minute slot
-  const [slotDuration, setSlotDuration] = useState<number | ''>(); // Default to all durations
+  const [slotDuration, setSlotDuration] = useState<number>(45); // Default to 45 minutes
   const [slotBookingType, setSlotBookingType] = useState<'regular' | 'free-consultation' | ''>(); // Default to all types
   const [viewMode, setViewMode] = useState<'day' | 'week' | 'month'>('month');
   
@@ -43,7 +43,7 @@ const Availability = () => {
   const [editSlotStart, setEditSlotStart] = useState('');
   const [editSlotEnd, setEditSlotEnd] = useState('');
   const [editSlotStatus, setEditSlotStatus] = useState('available');
-  const [editSlotDuration, setEditSlotDuration] = useState<number | ''>();
+  const [editSlotDuration, setEditSlotDuration] = useState<number>(45);
   const [editSlotBookingType, setEditSlotBookingType] = useState<'regular' | 'free-consultation' | ''>();
 
   // State for bulk apply preview
@@ -61,7 +61,7 @@ const Availability = () => {
 
   // Filter custom slots based on selected duration and booking type
   const filteredCustomSlots = customSlots.filter(slot => {
-    const durationMatch = !slotDuration || slot.duration === slotDuration;
+    const durationMatch = slot.duration === slotDuration;
     const typeMatch = !slotBookingType || slot.bookingType === slotBookingType;
     return durationMatch && typeMatch;
   });
@@ -852,14 +852,13 @@ const Availability = () => {
                     </h2>
                     <div className="flex items-center gap-3">
                       <div className="flex items-center gap-2">
-                        <Label htmlFor="filter-duration" className="text-xs text-muted-foreground">Duration</Label>
+                        <Label htmlFor="filter-duration" className="text-xs text-muted-foreground">Filter Duration</Label>
                         <select
                           id="filter-duration"
-                          value={slotDuration || ''}
-                          onChange={(e) => setSlotDuration(e.target.value === '' ? undefined as any : Number(e.target.value))}
+                          value={slotDuration}
+                          onChange={(e) => setSlotDuration(Number(e.target.value))}
                           className="h-8 text-xs border border-input rounded-md px-2 bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary"
                         >
-                          <option value="">All Durations</option>
                           <option value={15}>15 min</option>
                           <option value={45}>45 min</option>
                         </select>
@@ -1131,7 +1130,7 @@ const Availability = () => {
                         </div>
                         <p className="text-sm">No time slots configured</p>
                         <p className="text-xs mt-1">Add your first slot below</p>
-                        {slotDuration && customSlots.length > 0 && (
+                        {customSlots.length > 0 && (
                           <p className="text-xs mt-1 text-muted-foreground">Showing {slotDuration}min slots only</p>
                         )}
                         {slotBookingType && customSlots.length > 0 && (
@@ -1155,13 +1154,12 @@ const Availability = () => {
                           type="time"
                           value={startTime}
                           onChange={(e) => {
-                            setStartTime(e.target.value);
+                            const newStartTime = e.target.value;
+                            setStartTime(newStartTime);
                             // Automatically calculate end time based on selected duration
-                            if (slotDuration) {
-                              const start = new Date(`1970-01-01T${e.target.value}`);
-                              start.setMinutes(start.getMinutes() + slotDuration);
-                              setEndTime(start.toTimeString().substring(0, 5));
-                            }
+                            const start = new Date(`1970-01-01T${newStartTime}`);
+                            start.setMinutes(start.getMinutes() + slotDuration);
+                            setEndTime(start.toTimeString().substring(0, 5));
                           }}
                           className="text-sm h-10"
                         />
@@ -1180,9 +1178,9 @@ const Availability = () => {
                         <Label htmlFor="slotDuration" className="text-xs text-muted-foreground">Duration</Label>
                         <select
                           id="slotDuration"
-                          value={slotDuration || 45}
+                          value={slotDuration}
                           onChange={(e) => {
-                            const selectedDuration = e.target.value === '' ? undefined as any : Number(e.target.value);
+                            const selectedDuration = Number(e.target.value);
                             setSlotDuration(selectedDuration);
                             // Automatically calculate end time based on selected start time and new duration
                             if (selectedDuration && startTime) {
@@ -1193,7 +1191,6 @@ const Availability = () => {
                           }}
                           className="w-full h-10 text-sm border border-input rounded-md px-2 bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary"
                         >
-                          <option value="">All Durations</option>
                           <option value={15}>15 min</option>
                           <option value={45}>45 min</option>
                         </select>
@@ -1245,8 +1242,8 @@ const Availability = () => {
                               return;
                             }
                             
-                            // If a specific duration is selected, ensure it matches
-                            if (slotDuration && duration !== slotDuration) {
+                            // Ensure duration matches the selected duration
+                            if (duration !== slotDuration) {
                               toast({
                                 title: "Error",
                                 description: `Selected duration is ${slotDuration} minutes but time difference is ${duration} minutes`,
@@ -1279,15 +1276,15 @@ const Availability = () => {
                                 start: startTime,
                                 end: endTime,
                                 status: "available",
-                                duration: slotDuration || 45, // Use selected duration or default to 45
-                                bookingType: slotBookingType || 'regular' // Use selected booking type or default to regular
+                                duration: slotDuration,
+                                bookingType: slotBookingType || 'regular'
                               }
                             ]);
                             
                             // Reset form with duration-based increment validation
                             setStartTime(endTime);
                             const newEnd = new Date(`1970-01-01T${endTime}`);
-                            newEnd.setMinutes(newEnd.getMinutes() + (slotDuration || 45)); // Use selected duration or default to 45
+                            newEnd.setMinutes(newEnd.getMinutes() + slotDuration);
                             setEndTime(newEnd.toTimeString().substring(0, 5));
                             
                             // toast({
