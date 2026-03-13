@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from "react-router-dom";
+import { cn } from '@/lib/utils';
 import { 
   Video, 
   Clock, 
@@ -34,6 +35,7 @@ const LiveSessions = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [activeTab, setActiveTab] = useState('upcoming'); // Default to upcoming
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date()); // Track current time in real-time
     const { list: allSessions = [], loading, error } = useSelector((state: any) => state.sessions);
   const { upcomingSessions = [] } = useSelector((state: any) => state.sessions);
@@ -76,7 +78,7 @@ const LiveSessions = () => {
     }
   };
   
-  // Filter sessions based on active tab and additional filters
+  // Filter sessions based on active tab, status filter, and additional filters
   const filteredSessions = (activeTab === 'upcoming' ? upcomingSessions : allSessions).filter((session: any) => {
     // First filter by tab status
     let includeInTab = false;
@@ -93,6 +95,11 @@ const LiveSessions = () => {
     }
 
     if (!includeInTab) return false;
+
+    // Apply status filter from stat cards
+    if (statusFilter && session.status !== statusFilter) {
+      return false;
+    }
 
     // Apply additional filter based on user selection
     if (filterType === 'all') {
@@ -178,27 +185,14 @@ const LiveSessions = () => {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="shadow-sm rounded-xl border border-border">
+      {/* <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+        <Card 
+          className="shadow-sm rounded-xl border border-border cursor-pointer hover:shadow-md transition-shadow"
+          onClick={() => setStatusFilter(statusFilter === 'scheduled' ? null : 'scheduled')}
+        >
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-3 rounded-lg bg-success/10">
-              <Video className="w-5 h-5 text-success" />
-            </div>
-            <div>
-              <p className="text-2xl font-semibold">
-                {activeTab === "upcoming" ? upcomingTabCount : liveTabCount}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {activeTab === "upcoming" ? "Upcoming" : "Currently Live"}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-sm rounded-xl border border-border">
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-3 rounded-lg bg-warning/10">
-              <Clock className="w-5 h-5 text-warning" />
+            <div className={cn("p-3 rounded-lg", statusFilter === 'scheduled' ? "bg-warning text-white" : "bg-warning/10")}>
+              <Clock className={cn("w-5 h-5", statusFilter === 'scheduled' ? "text-white" : "text-warning")} />
             </div>
             <div>
               <p className="text-2xl font-semibold">
@@ -222,10 +216,14 @@ const LiveSessions = () => {
           </CardContent>
         </Card>
 
-        <Card className="shadow-sm rounded-xl border border-border">
+     {activeTab==="live"&&
+        <Card 
+          className="shadow-sm rounded-xl border border-border cursor-pointer hover:shadow-md transition-shadow"
+          onClick={() => setStatusFilter(statusFilter === 'live' ? null : 'live')}
+        >
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-3 rounded-lg bg-primary/10">
-              <Play className="w-5 h-5 text-primary" />
+            <div className={cn("p-3 rounded-lg", statusFilter === 'live' ? "bg-success text-white" : "bg-success/10")}>
+              <Play className={cn("w-5 h-5", statusFilter === 'live' ? "text-white" : "text-success")} />
             </div>
             <div>
               <p className="text-2xl font-semibold">
@@ -239,7 +237,46 @@ const LiveSessions = () => {
             </div>
           </CardContent>
         </Card>
-      </div>
+     }   <Card 
+          className="shadow-sm rounded-xl border border-border cursor-pointer hover:shadow-md transition-shadow"
+          onClick={() => setStatusFilter(statusFilter === 'live' ? null : 'live')}
+        >
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className={cn("p-3 rounded-lg", statusFilter === 'live' ? "bg-success text-white" : "bg-success/10")}>
+              <Play className={cn("w-5 h-5", statusFilter === 'live' ? "text-white" : "text-success")} />
+            </div>
+            <div>
+              <p className="text-2xl font-semibold">
+                {
+                  allSessions.filter(
+                    (session: any) => session.status === "live"
+                  ).length
+                }
+              </p>
+              <p className="text-sm text-muted-foreground">Available to Join</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card 
+          className="shadow-sm rounded-xl border border-border cursor-pointer hover:shadow-md transition-shadow"
+          onClick={() => setStatusFilter(null)}
+        >
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className={cn("p-3 rounded-lg", statusFilter === null ? "bg-primary text-white" : "bg-primary/10")}>
+              <Video className={cn("w-5 h-5", statusFilter === null ? "text-white" : "text-primary")} />
+            </div>
+            <div>
+              <p className="text-2xl font-semibold">
+                {activeTab === "upcoming" ? upcomingTabCount : liveTabCount}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {activeTab === "upcoming" ? "Total Upcoming" : "Total Live"}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div> */}
 
       {/* Filters */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -257,17 +294,29 @@ const LiveSessions = () => {
           </Select>
         </div>
 
-        <div className="md:col-span-2">
-          <label className="text-sm font-medium mb-1 block">Search</label>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Search by user or therapist..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
+        <div className="md:col-span-2 flex items-end gap-4">
+          <div className="flex-1">
+            <label className="text-sm font-medium mb-1 block">Search</label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by user or therapist..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
           </div>
+          {statusFilter && (
+            <Button
+              variant="outline"
+              onClick={() => setStatusFilter(null)}
+              className="flex items-center gap-2"
+            >
+              <Copy className="w-4 h-4 rotate-45" />
+              Clear Filter
+            </Button>
+          )}
         </div>
       </div>
 
@@ -316,7 +365,7 @@ const LiveSessions = () => {
                   <div className="flex justify-between items-start">
                     <div>
                       <CardTitle className="text-lg flex items-center gap-2">
-                        {session.userId?.name || "N/A"}
+                        {session.userId?.name }
                         <Badge
                           variant="secondary"
                           className={
