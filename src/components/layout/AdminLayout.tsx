@@ -207,7 +207,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                 </div>
                 <div className="max-h-[500px] overflow-y-auto">
                   {storedNotifications.length > 0 ? (
-                    storedNotifications.slice(0, 10).map((notification: any) => (
+                    storedNotifications.slice(0, 3).map((notification: any) => (
                       <DropdownMenuItem
                         key={notification._id || notification.id}
                         className={`flex flex-col items-start p-4 cursor-pointer hover:bg-muted border-b last:border-0 ${
