@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Search,
   MoreHorizontal,
@@ -10,6 +10,7 @@ import {
   Clock as ClockIcon,
   Eye,
   LoaderCircle,
+  UserPlus,
 } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
@@ -50,6 +51,7 @@ interface BookingsProps {
 
 export default function Bookings({ onStatusConfirmed }: BookingsProps) {
   const dispatch: any = useDispatch();
+  const navigate = useNavigate();
   const {
     list: bookings,
     loading: bookingsLoading,
@@ -955,7 +957,20 @@ export default function Bookings({ onStatusConfirmed }: BookingsProps) {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Client</label>
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium">Client</label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsModalOpen(false);
+                    navigate("/users?action=create");
+                  }}
+                  className="text-sm text-primary hover:text-primary/80 flex items-center gap-1 transition-colors"
+                >
+                  <UserPlus className="w-4 h-4" />
+                  Create New Client
+                </button>
+              </div>
 
               <select
                 className="w-full p-2 border rounded-md"
