@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -13,6 +19,11 @@ import {
   Share,
   ArrowRight,
   X,
+  Paperclip,
+  Image,
+  FileText,
+  Play,
+  Upload,
 } from "lucide-react";
 import useSocket from "@/hooks/useSocket";
 import useWebRTC from "@/hooks/useWebRTC";
@@ -32,7 +43,7 @@ const VideoCall = ({
   user,
   sessionDetails,
 }) => {
-   useEffect(() => {
+  useEffect(() => {
     console.log("🎬 VideoCall component mounted/updated");
     console.log("🎬 Props received:", {
       roomId,
@@ -43,12 +54,24 @@ const VideoCall = ({
       user: user?.userId,
       sessionDetails: !!sessionDetails,
     });
-  }, [roomId, roomType, userRole, sessionId, externalConnected, user, sessionDetails]);
-  
-  const { socket, connected, error, emit, on, setError: setSocketError} = useSocket(
+  }, [
     roomId,
-    roomType
-  );
+    roomType,
+    userRole,
+    sessionId,
+    externalConnected,
+    user,
+    sessionDetails,
+  ]);
+
+  const {
+    socket,
+    connected,
+    error,
+    emit,
+    on,
+    setError: setSocketError,
+  } = useSocket(roomId, roomType);
   const [localError, setLocalError] = useState(null);
   const [socketError, setSocketErrorState] = useState(null);
   const [connectionAttempts, setConnectionAttempts] = useState(0);
@@ -101,9 +124,8 @@ const VideoCall = ({
 
   const stopMediaStreams = () => {
     if (localStream) {
-      localStream.getTracks().forEach(track => {
+      localStream.getTracks().forEach((track) => {
         track.stop();
-      
       });
     }
   };
@@ -115,11 +137,16 @@ const VideoCall = ({
       roomId: roomId,
       userRole: userRole,
       socketConnected: socket?.connected,
-      sessionDetails: sessionDetails
+      sessionDetails: sessionDetails,
     });
-    console.log("🎬 VideoCall component re-rendering due to dependency changes");
+    console.log(
+      "🎬 VideoCall component re-rendering due to dependency changes"
+    );
     if (sessionDetails) {
-      console.log("📊 SessionDetails content:", JSON.stringify(sessionDetails, null, 2));
+      console.log(
+        "📊 SessionDetails content:",
+        JSON.stringify(sessionDetails, null, 2)
+      );
     }
   }, [sessionId, roomId, userRole, socket, sessionDetails]);
 
@@ -133,9 +160,9 @@ const VideoCall = ({
   // Memoize WaitingNotification to prevent re-renders
   const WaitingNotificationMemo = useMemo(() => {
     return (
-      <WaitingNotification 
+      <WaitingNotification
         key={`waiting-notification-${sessionId || roomId}`}
-        socket={socket} 
+        socket={socket}
         sessionId={sessionId || roomId}
         onPatientApproved={handlePatientApproved}
       />
@@ -167,7 +194,9 @@ const VideoCall = ({
       const fetchParticipants = async () => {
         try {
           setLoadingParticipants(true);
-          const response = await adminVideoCallApi.getSessionParticipants(sessionId);
+          const response = await adminVideoCallApi.getSessionParticipants(
+            sessionId
+          );
           if (response.success && response.data && response.data.participants) {
             setApiParticipants(response.data.participants);
           } else {
@@ -181,7 +210,7 @@ const VideoCall = ({
           setLoadingParticipants(false);
         }
       };
-      
+
       fetchParticipants();
     }
   }, [sessionId]); // Removed the interval, now it runs only once
@@ -250,7 +279,6 @@ const VideoCall = ({
       if (!actualSessionId) {
         throw new Error("No session or room ID available");
       }
-    
 
       // Create a real call log entry in the database
       const response = await adminVideoCallApi.createCallLog(
@@ -332,6 +360,9 @@ const VideoCall = ({
   const [isTyping, setIsTyping] = useState(false);
   const [typingUsers, setTypingUsers] = useState([]);
   const chatContainerRef = React.useRef(null);
+  const fileInputRef = useRef(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadedFiles, setUploadedFiles] = useState([]);
   const [therapistInfo, setTherapistInfo] = useState({
     name: "",
     specialty: "",
@@ -578,17 +609,25 @@ const VideoCall = ({
   };
 
   const sendChatMessage = async () => {
-    if (!newMessage.trim() || !sessionId) return;
+    if ((!newMessage.trim() && uploadedFiles.length === 0) || !sessionId)
+      return;
 
     try {
       // Generate UUID for message deduplication
-      const messageId = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-        const r = Math.random() * 16 | 0;
-        const v = c === 'x' ? r : (r & 0x3 | 0x8);
-        return v.toString(16);
-      });
+      const messageId = "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(
+        /[xy]/g,
+        function (c) {
+          const r = (Math.random() * 16) | 0;
+          const v = c === "x" ? r : (r & 0x3) | 0x8;
+          return v.toString(16);
+        }
+      );
 
       const senderName = userInfo.name || user?.name || "Admin";
+
+      // Get files to send and clear the list
+      const filesToSend = [...uploadedFiles];
+      setUploadedFiles([]);
 
       // Send message via socket only (no optimistic update)
       setNewMessage("");
@@ -596,13 +635,18 @@ const VideoCall = ({
       if (socket && socket.connected) {
         socket.emit("send-message", {
           roomId: sessionId,
-          roomType: sessionId.includes('group') ? 'group' : 'individual',
+          roomType: sessionId.includes("group") ? "group" : "individual",
           message: {
             content: newMessage.trim(),
-            messageId: messageId
-          }
+            messageId: messageId,
+            attachments: filesToSend, // Include uploaded files
+          },
         });
-        console.log("Message sent via socket with messageId:", messageId);
+        console.log(
+          "Message sent via socket with messageId:",
+          messageId,
+          filesToSend.length > 0 ? `with ${filesToSend.length} file(s)` : ""
+        );
       } else {
         console.error("Socket not connected, cannot send message");
       }
@@ -630,6 +674,66 @@ const VideoCall = ({
       }
     }
   };
+
+  // Handle file selection
+  const handleFileSelect = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // Validate file size (50MB limit)
+    const maxSize = 50 * 1024 * 1024;
+    if (file.size > maxSize) {
+      alert("File size exceeds 50MB limit. Please choose a smaller file.");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+
+    setIsUploading(true);
+
+    try {
+      console.log("📤 Uploading file:", file.name, file.type, file.size);
+      console.log("📤 Current uploadedFiles before upload:", uploadedFiles);
+
+      // Upload file using adminChatApi
+      const response = await adminChatApi.uploadFile(file);
+
+      console.log("✅ File uploaded successfully:", response);
+      console.log("✅ Response data:", response.data);
+
+      if (response.success && response.data) {
+        const fileData = response.data.file;
+        console.log("📎 File data to add:", fileData);
+
+        // Add to uploaded files list (to be sent with message)
+        setUploadedFiles((prev) => {
+          const newFiles = [...prev, fileData];
+          console.log("📎 Updated uploadedFiles:", newFiles);
+          return newFiles;
+        });
+      }
+    } catch (error) {
+      console.error("❌ Error uploading file:", error);
+      alert("Failed to upload file. Please try again.");
+    } finally {
+      setIsUploading(false);
+      // Reset file input
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  // Remove a file from the pending upload list
+  const removeFile = (fileIndex) => {
+    setUploadedFiles((prev) => prev.filter((_, index) => index !== fileIndex));
+  };
+
+  // Debug effect to monitor uploadedFiles
+  useEffect(() => {
+    console.log("📎 Admin uploadedFiles state changed:", uploadedFiles);
+    console.log("📎 Number of files:", uploadedFiles.length);
+    uploadedFiles.forEach((file, idx) => {
+      console.log(`📎 File ${idx}:`, file.originalName, file.type, file.size);
+    });
+  }, [uploadedFiles]);
 
   // Handle socket connection errors and join events
   useEffect(() => {
@@ -953,6 +1057,7 @@ const VideoCall = ({
       console.log("Message senderId:", data.senderId);
       console.log("Is own message:", data.senderId === socket?.id);
       console.log("Message content:", data.content);
+      console.log("Message attachments:", data.attachments);
 
       // Determine sender name - use provided name or fallback
       const senderName =
@@ -966,33 +1071,45 @@ const VideoCall = ({
       // Add the received message to chat messages with proper deduplication
       setChatMessages((prev) => {
         // Primary: Check by messageId if available
-        if (data.messageId && prev.some(m => m.messageId === data.messageId)) {
-          console.log("Admin: Duplicate message ignored by messageId:", data.messageId);
+        if (
+          data.messageId &&
+          prev.some((m) => m.messageId === data.messageId)
+        ) {
+          console.log(
+            "Admin: Duplicate message ignored by messageId:",
+            data.messageId
+          );
           return prev;
         }
-        
+
         // Secondary: Check by id/_id
-        if (data._id && prev.some(m => m.id === data._id)) {
+        if (data._id && prev.some((m) => m.id === data._id)) {
           console.log("Admin: Duplicate message ignored by id:", data._id);
           return prev;
         }
-        
+
         // Tertiary: Check by content and timestamp (fallback)
         const messageContent = data.content;
         const messageTimestamp = data.timestamp || new Date().toISOString();
-        
+
         console.log("Processing message content:", messageContent);
-        
-        const isDuplicate = prev.some(m => 
-          m.text === messageContent && 
-          new Date(m.timestamp).getTime() === new Date(messageTimestamp).getTime()
+
+        const isDuplicate = prev.some(
+          (m) =>
+            m.text === messageContent &&
+            new Date(m.timestamp).getTime() ===
+              new Date(messageTimestamp).getTime()
         );
-        
+
         if (isDuplicate) {
           console.log("Admin: Duplicate message ignored by content+timestamp");
           return prev;
         }
 
+        console.log(
+          "Admin: Adding new message with attachments:",
+          data.attachments?.length || 0
+        );
         return [
           ...prev,
           {
@@ -1003,6 +1120,7 @@ const VideoCall = ({
             senderId: data.senderId,
             senderName: senderName,
             timestamp: messageTimestamp,
+            attachments: data.attachments || [], // Include attachments!
           },
         ];
       });
@@ -1143,18 +1261,23 @@ const VideoCall = ({
     // Show only the most recent remote stream (latest socket) in the UI
     const latestKey = streamKeys[streamKeys.length - 1];
     const latestStream = remoteStreams[latestKey];
-    const latestParticipant = participants.find((p) => p.userId === latestKey) || {};
+    const latestParticipant =
+      participants.find((p) => p.userId === latestKey) || {};
 
     // Clear any non-latest refs to avoid stale media showing
     Object.keys(remoteStreams).forEach((k) => {
       if (k !== latestKey) {
         try {
           if (remoteVideoRefs.current[k]) {
-            try { remoteVideoRefs.current[k].srcObject = null; } catch (e) {}
+            try {
+              remoteVideoRefs.current[k].srcObject = null;
+            } catch (e) {}
             delete remoteVideoRefs.current[k];
           }
           if (remoteAudioRefs.current[k]) {
-            try { remoteAudioRefs.current[k].srcObject = null; } catch (e) {}
+            try {
+              remoteAudioRefs.current[k].srcObject = null;
+            } catch (e) {}
             delete remoteAudioRefs.current[k];
           }
         } catch (e) {
@@ -1183,7 +1306,12 @@ const VideoCall = ({
                     });
                   }
                 } catch (err) {
-                  console.error(`Error assigning audio for ${latestParticipant.name || 'Participant'}:`, err);
+                  console.error(
+                    `Error assigning audio for ${
+                      latestParticipant.name || "Participant"
+                    }:`,
+                    err
+                  );
                 }
               }
             }
@@ -1211,7 +1339,12 @@ const VideoCall = ({
                     });
                   }
                 } catch (err) {
-                  console.error(`Error assigning video for ${latestParticipant.name || 'Participant'}:`, err);
+                  console.error(
+                    `Error assigning video for ${
+                      latestParticipant.name || "Participant"
+                    }:`,
+                    err
+                  );
                 }
               }
             }
@@ -1226,8 +1359,14 @@ const VideoCall = ({
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 bg-emerald-500 rounded-full animate-pulse"></div>
             <div>
-              <p className="text-white font-medium text-sm">{latestParticipant.name || 'Participant'}</p>
-              <p className="text-slate-300 text-xs">{latestParticipant.role === 'therapist' ? 'Therapist' : 'Patient'}</p>
+              <p className="text-white font-medium text-sm">
+                {latestParticipant.name || "Participant"}
+              </p>
+              <p className="text-slate-300 text-xs">
+                {latestParticipant.role === "therapist"
+                  ? "Therapist"
+                  : "Patient"}
+              </p>
             </div>
           </div>
         </div>
@@ -1614,50 +1753,137 @@ const VideoCall = ({
                   </p>
                 </div>
               ) : (
-              chatMessages.map((message, index) => {
-  const isSender =
-    String(message.senderId) === String(user?._id);
+                chatMessages.map((message, index) => {
+                  const isSender =
+                    String(message.senderId) === String(user?._id);
 
-  return (
-    <div
-      key={index}
-      className={`flex ${isSender ? "justify-end" : "justify-start"}`}
-    >
-      <div
-        className={`max-w-[80%] rounded-2xl px-3 sm:px-4 py-2 sm:py-3 text-sm ${
-          isSender
-            ? "bg-emerald-500 text-white rounded-br-md"
-            : "bg-slate-800 text-slate-100 rounded-bl-md border border-slate-700"
-        }`}
-      >
-        <p className="text-[10px] font-semibold mb-1 opacity-80">
-          {isSender
-            ? userInfo?.name || user?.name || "You"
-            : message.senderName || "Participant"}
-        </p>
+                  // Get attachments from message
+                  const attachments =
+                    message.attachments ||
+                    (message.message && message.message.attachments) ||
+                    [];
+                  const hasAttachments = attachments.length > 0;
+                  const messageContent =
+                    message.text || message.content || message.message || "";
+                  // Check if message has real content (not just the placeholder)
+                  const hasRealContent =
+                    messageContent.trim() &&
+                    messageContent.trim() !== "📎 File attachment";
 
-        <p>
-          {message.text || message.content || message.message}
-        </p>
+                  return (
+                    <div
+                      key={index}
+                      className={`flex ${
+                        isSender ? "justify-end" : "justify-start"
+                      }`}
+                    >
+                      <div
+                        className={`max-w-[80%] rounded-2xl px-3 sm:px-4 py-2 sm:py-3 text-sm ${
+                          isSender
+                            ? "bg-emerald-500 text-white rounded-br-md"
+                            : "bg-slate-800 text-slate-100 rounded-bl-md border border-slate-700"
+                        }`}
+                      >
+                        <p className="text-[10px] font-semibold mb-1 opacity-80">
+                          {isSender
+                            ? userInfo?.name || user?.name || "You"
+                            : message.senderName || "Participant"}
+                        </p>
 
-        <p
-          className={`text-[10px] mt-1 ${
-            isSender
-              ? "text-emerald-100 opacity-80"
-              : "text-slate-400"
-          }`}
-        >
-          {new Date(
-            message.timestamp || message.createdAt
-          ).toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          })}
-        </p>
-      </div>
-    </div>
-  );
-})
+                        {/* Display message text (only if it's not just the placeholder) */}
+                        {hasRealContent && (
+                          <p className="mb-2">{messageContent}</p>
+                        )}
+
+                        {/* Display attachments */}
+                        {hasAttachments && (
+                          <div className="space-y-2 mb-2">
+                            {attachments.map((attachment, attIndex) => (
+                              <div key={attIndex}>
+                                {attachment.type === "image" ? (
+                                  // Display image with preview
+                                  <div className="mt-1">
+                                    <img
+                                      src={attachment.url}
+                                      alt={attachment.originalName}
+                                      className="max-w-full rounded-lg cursor-pointer hover:opacity-90"
+                                      onClick={() =>
+                                        window.open(attachment.url, "_blank")
+                                      }
+                                    />
+                                    <a
+                                      href={attachment.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-[10px] mt-1 flex items-center gap-1 opacity-80 hover:underline"
+                                    >
+                                      <Image className="h-3 w-3" />
+                                      {attachment.originalName}
+                                    </a>
+                                  </div>
+                                ) : attachment.type === "video" ? (
+                                  // Display video with controls
+                                  <div className="mt-1">
+                                    <video
+                                      controls
+                                      className="max-w-full rounded-lg"
+                                      src={attachment.url}
+                                    >
+                                      Your browser does not support video
+                                      playback
+                                    </video>
+                                    <a
+                                      href={attachment.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-[10px] mt-1 flex items-center gap-1 opacity-80 hover:underline"
+                                    >
+                                      <Play className="h-3 w-3" />
+                                      {attachment.originalName}
+                                    </a>
+                                  </div>
+                                ) : (
+                                  // Display document with icon
+                                  <a
+                                    href={attachment.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-2 bg-slate-700/50 rounded p-2 hover:bg-slate-700 transition-colors"
+                                  >
+                                    <FileText className="h-5 w-5 text-orange-400 flex-shrink-0" />
+                                    <div className="min-w-0 flex-1">
+                                      <p className="text-xs truncate">
+                                        {attachment.originalName}
+                                      </p>
+                                      <p className="text-[10px] opacity-60">
+                                        {(attachment.size / 1024).toFixed(1)} KB
+                                      </p>
+                                    </div>
+                                  </a>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        <p
+                          className={`text-[10px] mt-1 ${
+                            isSender
+                              ? "text-emerald-100 opacity-80"
+                              : "text-slate-400"
+                          }`}
+                        >
+                          {new Date(
+                            message.timestamp || message.createdAt
+                          ).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })
               )}
 
               {/* Typing indicators */}
@@ -1688,7 +1914,65 @@ const VideoCall = ({
             </div>
 
             <div className="p-3 sm:p-4 border-t border-slate-800">
+              {/* Show uploaded files preview */}
+              {uploadedFiles.length > 0 && (
+                <div className="mb-3 space-y-2">
+                  {uploadedFiles.map((file, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center gap-2 bg-slate-800 rounded-lg p-2 border border-slate-700"
+                    >
+                      <div className="flex-shrink-0">
+                        {file.type === "image" ? (
+                          <Image className="h-5 w-5 text-emerald-400" />
+                        ) : file.type === "video" ? (
+                          <Play className="h-5 w-5 text-blue-400" />
+                        ) : (
+                          <FileText className="h-5 w-5 text-orange-400" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-white truncate">
+                          {file.originalName}
+                        </p>
+                        <p className="text-[10px] text-slate-400">
+                          {(file.size / 1024).toFixed(1)} KB
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => removeFile(index)}
+                        className="flex-shrink-0 text-slate-400 hover:text-red-400"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               <div className="flex gap-2">
+                {/* File upload button */}
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileSelect}
+                  className="hidden"
+                  accept="image/*,video/*,.pdf,.doc,.docx,.txt,.xls,.xlsx,.ppt,.pptx"
+                />
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="bg-slate-800 border-slate-700 hover:bg-slate-700 text-slate-300 rounded-xl"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
+                >
+                  {isUploading ? (
+                    <Upload className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Paperclip className="h-4 w-4" />
+                  )}
+                </Button>
+
                 <input
                   type="text"
                   placeholder="Admin message..."
@@ -1707,7 +1991,7 @@ const VideoCall = ({
                   size="icon"
                   className="bg-slate-100 hover:bg-white text-slate-900 rounded-xl"
                   onClick={sendChatMessage}
-                  disabled={!newMessage.trim()}
+                  disabled={!newMessage.trim() && uploadedFiles.length === 0}
                 >
                   <ArrowRight className="h-4 w-4" />
                 </Button>
@@ -1834,46 +2118,43 @@ const VideoCall = ({
             )} */}
 
             {/* Recording Button - Only for admins */}
-           {(userRole === "admin" || isTherapist) && (
-  <div className="flex flex-col items-center">
-    <Button
-      variant={isRecording ? "destructive" : "secondary"}
-      size="icon"
-      className={`rounded-2xl md:w-16 md:h-16 w-14 h-12 border-2 min-w-[56px] flex items-center justify-center gap-1 ${
-        isRecording
-          ? "bg-red-600 text-white animate-pulse border-red-400 shadow-lg shadow-red-500/30"
-          : "bg-slate-800 text-slate-300 hover:bg-slate-700 border-slate-600"
-      }`}
-      onClick={isRecording ? stopRecording : startRecording}
-      disabled={!connected || recordingStatus === "starting"}
-      title={isRecording ? "Stop Recording" : "Start Recording"}
-    >
-      {recordingStatus === "starting" ? (
-        <div className="h-6 w-6">
-          <div className="animate-spin rounded-full h-full w-full border-b-2 border-white"></div>
-        </div>
-      ) : isRecording ? (
-        <>
-          <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
-          <span className="text-xs font-mono font-bold">
-            {Math.floor(recordingTime / 60)
-              .toString()
-              .padStart(2, "0")}
-            :
-            {(recordingTime % 60)
-              .toString()
-              .padStart(2, "0")}
-          </span>
-        </>
-      ) : (
-        <>
-          <div className="h-3 w-3 rounded-full bg-red-500" />
-          <span className="text-sm font-bold">REC</span>
-        </>
-      )}
-    </Button>
-  </div>
-)}
+            {(userRole === "admin" || isTherapist) && (
+              <div className="flex flex-col items-center">
+                <Button
+                  variant={isRecording ? "destructive" : "secondary"}
+                  size="icon"
+                  className={`rounded-2xl md:w-16 md:h-16 w-14 h-12 border-2 min-w-[56px] flex items-center justify-center gap-1 ${
+                    isRecording
+                      ? "bg-red-600 text-white animate-pulse border-red-400 shadow-lg shadow-red-500/30"
+                      : "bg-slate-800 text-slate-300 hover:bg-slate-700 border-slate-600"
+                  }`}
+                  onClick={isRecording ? stopRecording : startRecording}
+                  disabled={!connected || recordingStatus === "starting"}
+                  title={isRecording ? "Stop Recording" : "Start Recording"}
+                >
+                  {recordingStatus === "starting" ? (
+                    <div className="h-6 w-6">
+                      <div className="animate-spin rounded-full h-full w-full border-b-2 border-white"></div>
+                    </div>
+                  ) : isRecording ? (
+                    <>
+                      <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
+                      <span className="text-xs font-mono font-bold">
+                        {Math.floor(recordingTime / 60)
+                          .toString()
+                          .padStart(2, "0")}
+                        :{(recordingTime % 60).toString().padStart(2, "0")}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <div className="h-3 w-3 rounded-full bg-red-500" />
+                      <span className="text-sm font-bold">REC</span>
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
 
             <Button
               variant="destructive"
