@@ -95,7 +95,7 @@ const EditGoogleMeetModal = ({
       if (data.success) {
         toast({
           title: "Success!",
-          description: "Google Meet link updated successfully",
+          description: "Google Meet/Zoom link updated successfully",
         });
 
         // Close modal and trigger success callback

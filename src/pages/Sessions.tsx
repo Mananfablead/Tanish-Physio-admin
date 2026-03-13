@@ -1612,7 +1612,7 @@ useEffect(() => {
                                             }}
                                           >
                                             <Video className="h-4 w-4 mr-2" />
-                                            Generate Google Meet Link
+                                            Generate Google Meet/Zoom Link
                                           </DropdownMenuItem>
                                         ) : (
                                           <DropdownMenuItem
@@ -1627,7 +1627,7 @@ useEffect(() => {
                                             }}
                                           >
                                             <Video className="h-4 w-4 mr-2" />
-                                            Edit Google Meet Link
+                                            Edit Google Meet/Zoom Link
                                           </DropdownMenuItem>
                                         )}
 
