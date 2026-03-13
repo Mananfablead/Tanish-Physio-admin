@@ -1,7 +1,7 @@
 import { ReactNode, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { AdminSidebar } from "./AdminSidebar";
-import { Bell, LogOut, Search, User, Menu, ChevronDown } from "lucide-react";
+import { Bell, LogOut, Search, User, Menu, ChevronDown, Check, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
@@ -22,7 +22,7 @@ import {
 } from "@/features/auth/authSlice";
 import { io } from "socket.io-client";
 import { toast } from "sonner";
-import { fetchNotifications, prependNotification } from "@/features/notifications/notificationSlice";
+import { fetchNotifications, prependNotification, markNotificationAsRead, removeNotification } from "@/features/notifications/notificationSlice";
 interface AdminLayoutProps {
   children: ReactNode;
 }
@@ -208,15 +208,17 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                 <div className="max-h-[500px] overflow-y-auto">
                   {storedNotifications.length > 0 ? (
                     storedNotifications.slice(0, 3).map((notification: any) => (
-                      <DropdownMenuItem
+                      <div
                         key={notification._id || notification.id}
-                        className={`flex flex-col items-start p-4 cursor-pointer hover:bg-muted border-b last:border-0 ${
+                        className={`flex flex-col p-4 border-b last:border-0 ${
                           !notification.read ? "bg-primary/5" : ""
                         }`}
-                        onClick={() => navigate("/notifications")}
                       >
                         <div className="flex items-start justify-between w-full mb-2">
-                          <div className="flex items-center gap-2">
+                          <div 
+                            className="flex items-center gap-2 flex-1 cursor-pointer"
+                            onClick={() => navigate("/notifications")}
+                          >
                             {/* Icon based on type */}
                             {notification.type === "booking" && (
                               <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
@@ -300,6 +302,30 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                           {!notification.read && (
                             <div className="w-2 h-2 bg-primary rounded-full mt-2 ml-2 flex-shrink-0" />
                           )}
+                          
+                          {/* Action buttons */}
+                          <div className="flex gap-1 ml-2">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                dispatch(markNotificationAsRead(notification._id || notification.id));
+                              }}
+                              className="p-1 hover:bg-muted rounded transition-colors"
+                              title={notification.read ? "Already read" : "Mark as read"}
+                            >
+                              <Check className="w-4 h-4 text-muted-foreground" />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                dispatch(removeNotification(notification._id || notification.id));
+                              }}
+                              className="p-1 hover:bg-destructive/10 rounded transition-colors"
+                              title="Delete notification"
+                            >
+                              <Trash2 className="w-4 h-4 text-destructive" />
+                            </button>
+                          </div>
                         </div>
 
                         {/* Additional details for booking/session notifications */}
@@ -329,7 +355,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                             </p>
                           </div>
                         )}
-                      </DropdownMenuItem>
+                      </div>
                     ))
                   ) : (
                     <div className="p-8 text-center text-muted-foreground text-sm">
