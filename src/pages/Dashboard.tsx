@@ -167,7 +167,7 @@ const navigate = useNavigate();
           }
           icon={CalendarClock} // 🔥 more specific
           iconColor="bg-warning"
-          onClick={() => navigate("/bookings-and-sessions")}
+          onClick={() => navigate("/live-sessions")}
         />
       </div>
 
