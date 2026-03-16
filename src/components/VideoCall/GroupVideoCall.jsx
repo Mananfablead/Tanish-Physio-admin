@@ -72,6 +72,9 @@ const GroupVideoCall = ({
     setParticipants,
   } = useWebRTC(groupSessionId, socket, userRole);
 
+  // Local state for tracking if call has started (used for UI purposes)
+  const [callHasStarted, setCallHasStarted] = useState(false);
+
   // Timer for call duration
   useEffect(() => {
     let interval;
@@ -102,9 +105,14 @@ const GroupVideoCall = ({
         // Initialize local media
         await initLocalMedia();
 
-        // Join the group session
+        // Join the group session - send ONLY groupSessionId field (not sessionId)
+        console.log('📡 Emitting join-room with:', {
+          groupSessionId: groupSessionId,
+          sessionId: undefined,
+        });
         socket.emit("join-room", {
           groupSessionId: groupSessionId,
+          sessionId: undefined, // Explicitly set to undefined so backend knows it's a group session
         });
 
         setJoinedCall(true);
@@ -185,12 +193,12 @@ const GroupVideoCall = ({
 
     const groupCallStartedListener = (data) => {
       setCallActive(true);
-      setCallStarted(true);
+      setCallHasStarted(true);
     };
 
     const groupCallEndedListener = (data) => {
       setCallActive(false);
-      setCallStarted(false);
+      setCallHasStarted(false);
       if (onEndCall) onEndCall();
     };
 
@@ -251,7 +259,6 @@ const GroupVideoCall = ({
     handleAnswer,
     handleIceCandidate,
     setCallActive,
-    setCallStarted,
     setParticipants,
     user,
     onEndCall,
