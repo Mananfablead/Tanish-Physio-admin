@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   Search,
   MoreHorizontal,
@@ -50,6 +50,7 @@ const filters = ["All", "Active Subscription", "Expired", "No Subscription"];
 
 export default function Users() {
   const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useDispatch();
   const { list: users = [], loading } = useSelector(
     (state: any) => state.users
@@ -81,6 +82,16 @@ export default function Users() {
   useEffect(() => {
     dispatch(fetchUsers());
   }, [dispatch]);
+
+  // Check for query param to auto-open create user modal
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    if (searchParams.get("action") === "create") {
+      setIsCreateDialogOpen(true);
+      // Clean up the URL after opening the modal
+      navigate("/users", { replace: true });
+    }
+  }, [location.search, navigate]);
 
   // Fetch services and plans when create dialog opens
   useEffect(() => {

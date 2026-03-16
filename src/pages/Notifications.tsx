@@ -209,8 +209,23 @@ export default function Notifications() {
     };
   }, [token]);
 
-  // Combine stored and real-time notifications
-  const allNotifications = [...realTimeNotifications, ...storedNotifications];
+  // Combine stored and real-time notifications (avoid duplicates by _id/id)
+  const allNotifications = useMemo(() => {
+    const out: any[] = [];
+    const seen = new Set<string>();
+
+    const add = (n: any) => {
+      const id = String(n?._id || n?.id || "");
+      if (id && seen.has(id)) return;
+      if (id) seen.add(id);
+      out.push(n);
+    };
+
+    realTimeNotifications.forEach(add);
+    storedNotifications.forEach(add);
+
+    return out;
+  }, [realTimeNotifications, storedNotifications]);
 
   // Fetch users when specific user is selected
   useEffect(() => {
@@ -463,6 +478,32 @@ export default function Notifications() {
         </div>
 
         <div className="flex gap-3">
+          {stats.unread > 0 && (
+            <Button
+              variant="outline"
+              onClick={() => {
+                allNotifications
+                  .filter((n: any) => !n.read)
+                  .forEach((notification: any) => {
+                    dispatch(markNotificationAsRead(notification._id || notification.id));
+                  });
+              }}
+              className="flex items-center gap-2"
+            >
+              <Check className="w-4 h-4" />
+              Mark All Read
+            </Button>
+          )}
+          {allNotifications.length > 0 && (
+            <Button
+              variant="outline"
+              onClick={() => setShowDeleteAllConfirmation(true)}
+              className="flex items-center gap-2 text-destructive hover:text-destructive"
+            >
+              <Trash2 className="w-4 h-4" />
+              Delete All
+            </Button>
+          )}
           <Button
             onClick={() => setShowSendModal(true)}
             className="flex items-center gap-2"
@@ -566,7 +607,7 @@ export default function Notifications() {
                             {notification.read ? "Read" : "Unread"}
                           </Badge>
                         </td>
-                        {/* <td>
+                        <td>
                           <div className="flex gap-1">
                             <Button
                               size="sm"
@@ -579,6 +620,7 @@ export default function Notifications() {
                                 )
                               }
                               disabled={notification.read}
+                              title={notification.read ? "Already read" : "Mark as read"}
                             >
                               <Check className="w-4 h-4" />
                             </Button>
@@ -586,21 +628,20 @@ export default function Notifications() {
                               size="sm"
                               variant="ghost"
                               onClick={() =>
-                                confirmDeleteNotification(
-                                  notification._id || notification.id
-                                )
+                                handleDeleteNotification(notification._id || notification.id)
                               }
+                              title="Delete notification"
                             >
                               <Trash2 className="w-4 h-4" />
                             </Button>
                           </div>
-                        </td> */}
+                        </td>
                       </tr>
                     ))
                   ) : (
                     <tr>
                       <td
-                        colSpan={8}
+                        colSpan={7}
                         className="text-center py-8 text-muted-foreground"
                       >
                         No notifications found
@@ -683,7 +724,7 @@ export default function Notifications() {
                               notification.createdAt
                             ).toLocaleDateString()}
                           </td>
-                          {/* <td>
+                          <td>
                             <div className="flex gap-1">
                               <Button
                                 size="sm"
@@ -695,6 +736,7 @@ export default function Notifications() {
                                     )
                                   )
                                 }
+                                title={notification.read ? "Already read" : "Mark as read"}
                               >
                                 <Check className="w-4 h-4" />
                               </Button>
@@ -702,15 +744,14 @@ export default function Notifications() {
                                 size="sm"
                                 variant="ghost"
                                 onClick={() =>
-                                  confirmDeleteNotification(
-                                    notification._id || notification.id
-                                  )
+                                  handleDeleteNotification(notification._id || notification.id)
                                 }
+                                title="Delete notification"
                               >
                                 <Trash2 className="w-4 h-4" />
                               </Button>
                             </div>
-                          </td> */}
+                          </td>
                         </tr>
                       ))
                   ) : (
@@ -830,7 +871,7 @@ export default function Notifications() {
                                     {notification.read ? "Read" : "Unread"}
                                   </Badge>
                                 </td>
-                                {/* <td>
+                                <td>
                                   <div className="flex gap-1">
                                     <Button
                                       size="sm"
@@ -843,6 +884,7 @@ export default function Notifications() {
                                         )
                                       }
                                       disabled={notification.read}
+                                      title={notification.read ? "Already read" : "Mark as read"}
                                     >
                                       <Check className="w-4 h-4" />
                                     </Button>
@@ -850,15 +892,14 @@ export default function Notifications() {
                                       size="sm"
                                       variant="ghost"
                                       onClick={() =>
-                                        confirmDeleteNotification(
-                                          notification._id || notification.id
-                                        )
+                                        handleDeleteNotification(notification._id || notification.id)
                                       }
+                                      title="Delete notification"
                                     >
                                       <Trash2 className="w-4 h-4" />
                                     </Button>
                                   </div>
-                                </td> */}
+                                </td>
                               </tr>
                             ))
                           ) : (
@@ -1006,6 +1047,33 @@ export default function Notifications() {
           ))}
         </div>
       )}
+
+      {/* Delete All Confirmation Dialog */}
+      <Dialog open={showDeleteAllConfirmation} onOpenChange={setShowDeleteAllConfirmation}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete All Notifications</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete all notifications? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-3 justify-end mt-4">
+            <Button
+              variant="outline"
+              onClick={() => setShowDeleteAllConfirmation(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteAllNotifications}
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Delete All
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Send Notification Modal */}
       <Dialog open={showSendModal} onOpenChange={setShowSendModal}>

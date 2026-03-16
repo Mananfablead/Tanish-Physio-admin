@@ -160,10 +160,10 @@ const GenerateGoogleMeetModal = ({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Video className="h-5 w-5 text-blue-500" />
-            Generate Google Meet Link
+            Generate Google Meet/Zoom Link
           </DialogTitle>
           <DialogDescription>
-            Create a Google Meet link for this video session
+            Create a Google Meet/Zoom link for this video session
           </DialogDescription>
         </DialogHeader>
 
@@ -191,7 +191,7 @@ const GenerateGoogleMeetModal = ({
                 <div className="flex items-center gap-2 mb-2">
                   <CheckCircle className="h-5 w-5 text-green-600" />
                   <h4 className="font-medium text-green-800">
-                    Google Meet Generated Successfully!
+                    Google Meet/Zoom Generated Successfully!
                   </h4>
                 </div>
 

@@ -1,12 +1,12 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { notificationAPI } from "@/api/apiClient";
 
-// Fetch all notifications
+// Fetch admin notifications only (admin app)
 export const fetchNotifications = createAsyncThunk(
   "notifications/fetchAll",
   async (_, { rejectWithValue }) => {
     try {
-      const res = await notificationAPI.getAll();
+      const res = await notificationAPI.getAdmin();
       // Handle the API response structure properly
       return res.data.data?.notifications || res.data.data || res.data || [];
     } catch (err) {
@@ -77,6 +77,21 @@ const notificationSlice = createSlice({
   reducers: {
     clearError: (state) => {
       state.error = null;
+    },
+    // Used for websocket notifications (header + notifications page)
+    prependNotification: (state, action) => {
+      const incoming = action.payload;
+      if (!incoming) return;
+
+      const incomingId = incoming._id || incoming.id;
+      if (incomingId) {
+        const exists = state.list.some(
+          (n) => (n?._id || n?.id) === incomingId
+        );
+        if (exists) return;
+      }
+
+      state.list.unshift(incoming);
     },
     // Add a reducer to remove a specific notification
     removeNotification: (state, action) => {
@@ -165,5 +180,5 @@ const notificationSlice = createSlice({
   },
 });
 
-export const { clearError, removeNotification, clearAllNotifications } = notificationSlice.actions;
+export const { clearError, prependNotification, removeNotification, clearAllNotifications } = notificationSlice.actions;
 export default notificationSlice.reducer;

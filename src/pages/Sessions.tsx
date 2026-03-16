@@ -57,6 +57,7 @@ export default function Sessions() {
   } = useSelector((state: any) => state.sessions);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("all");
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
 
   // Update current time every second for real-time button updates
@@ -67,7 +68,20 @@ export default function Sessions() {
 
     return () => clearInterval(timer);
   }, []);
+useEffect(() => {
+  if (!allSessions || allSessions.length === 0) return;
 
+  allSessions.forEach((session) => {
+    if (session.status === "live" && session.endTime) {
+      const end = new Date(session.endTime);
+      const now = new Date();
+
+      if (now >= end) {
+        handleUpdateSessionStatus(session._id, "completed");
+      }
+    }
+  });
+}, [currentTime, allSessions]);
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10; // Set to 10 items per page as requested
@@ -92,7 +106,7 @@ export default function Sessions() {
   // Note: "missed" and "no-show" statuses are automatically set by the backend
   // They should not be manually set by admins
 
-  // Filter sessions based on active tab and search query
+  // Filter sessions based on active tab, status filter, and search query
   const filteredSessions = (() => {
     let sessionsToFilter = [];
 
@@ -134,6 +148,11 @@ export default function Sessions() {
         }
 
         if (!includeInTab) return false;
+      }
+
+      // Apply status filter from stat cards
+      if (statusFilter && session.status !== statusFilter) {
+        return false;
       }
 
       // Then filter by search query
@@ -943,10 +962,13 @@ export default function Sessions() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
-        <div className="stat-card">
+        <div 
+          className="stat-card cursor-pointer hover:shadow-md transition-shadow"
+          onClick={() => setStatusFilter(statusFilter === "pending" ? null : "pending")}
+        >
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-warning/10">
-              <UserCog className="w-5 h-5 text-warning" />
+            <div className={cn("p-2 rounded-lg", statusFilter === "pending" ? "bg-warning text-white" : "bg-warning/10")}>
+              <UserCog className={cn("w-5 h-5", statusFilter === "pending" ? "text-white" : "text-warning")} />
             </div>
             <div>
               <p className="text-2xl font-semibold">{pendingCount}</p>
@@ -954,10 +976,13 @@ export default function Sessions() {
             </div>
           </div>
         </div>
-        <div className="stat-card">
+        <div 
+          className="stat-card cursor-pointer hover:shadow-md transition-shadow"
+          onClick={() => setStatusFilter(statusFilter === "scheduled" ? null : "scheduled")}
+        >
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-info/10">
-              <Calendar className="w-5 h-5 text-info" />
+            <div className={cn("p-2 rounded-lg", statusFilter === "scheduled" ? "bg-info text-white" : "bg-info/10")}>
+              <Calendar className={cn("w-5 h-5", statusFilter === "scheduled" ? "text-white" : "text-info")} />
             </div>
             <div>
               <p className="text-2xl font-semibold">{scheduledCount}</p>
@@ -965,10 +990,13 @@ export default function Sessions() {
             </div>
           </div>
         </div>
-        <div className="stat-card">
+        <div 
+          className="stat-card cursor-pointer hover:shadow-md transition-shadow"
+          onClick={() => setStatusFilter(statusFilter === "live" ? null : "live")}
+        >
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-success/10">
-              <Play className="w-5 h-5 text-success" />
+            <div className={cn("p-2 rounded-lg", statusFilter === "live" ? "bg-success text-white" : "bg-success/10")}>
+              <Play className={cn("w-5 h-5", statusFilter === "live" ? "text-white" : "text-success")} />
             </div>
             <div>
               <p className="text-2xl font-semibold">{liveCount}</p>
@@ -976,10 +1004,13 @@ export default function Sessions() {
             </div>
           </div>
         </div>
-        <div className="stat-card">
+        <div 
+          className="stat-card cursor-pointer hover:shadow-md transition-shadow"
+          onClick={() => setStatusFilter(statusFilter === "completed" ? null : "completed")}
+        >
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-primary/10">
-              <Video className="w-5 h-5 text-primary" />
+            <div className={cn("p-2 rounded-lg", statusFilter === "completed" ? "bg-primary text-white" : "bg-primary/10")}>
+              <Video className={cn("w-5 h-5", statusFilter === "completed" ? "text-white" : "text-primary")} />
             </div>
             <div>
               <p className="text-2xl font-semibold">{completedCount}</p>
@@ -987,10 +1018,13 @@ export default function Sessions() {
             </div>
           </div>
         </div>
-        <div className="stat-card">
+        <div 
+          className="stat-card cursor-pointer hover:shadow-md transition-shadow"
+          onClick={() => setStatusFilter(statusFilter === "cancelled" ? null : "cancelled")}
+        >
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-warning/10">
-              <X className="w-5 h-5 text-warning" />
+            <div className={cn("p-2 rounded-lg", statusFilter === "cancelled" ? "bg-warning text-white" : "bg-warning/10")}>
+              <X className={cn("w-5 h-5", statusFilter === "cancelled" ? "text-white" : "text-warning")} />
             </div>
             <div>
               <p className="text-2xl font-semibold">{cancelledCount}</p>
@@ -1047,8 +1081,8 @@ export default function Sessions() {
         </div>
 
         {/* Search */}
-        <div className="mt-4">
-          <div className="relative max-w-md">
+        <div className="mt-4 flex items-center gap-4">
+          <div className="relative max-w-md flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               placeholder={
@@ -1065,6 +1099,16 @@ export default function Sessions() {
               className="pl-10"
             />
           </div>
+          {statusFilter && (
+            <Button
+              variant="outline"
+              onClick={() => setStatusFilter(null)}
+              className="flex items-center gap-2"
+            >
+              <X className="w-4 h-4" />
+              Clear Filter
+            </Button>
+          )}
         </div>
 
         {/* Sessions Content */}
@@ -1568,7 +1612,7 @@ export default function Sessions() {
                                             }}
                                           >
                                             <Video className="h-4 w-4 mr-2" />
-                                            Generate Google Meet Link
+                                            Generate Google Meet/Zoom Link
                                           </DropdownMenuItem>
                                         ) : (
                                           <DropdownMenuItem
@@ -1583,7 +1627,7 @@ export default function Sessions() {
                                             }}
                                           >
                                             <Video className="h-4 w-4 mr-2" />
-                                            Edit Google Meet Link
+                                            Edit Google Meet/Zoom Link
                                           </DropdownMenuItem>
                                         )}
 

@@ -37,37 +37,37 @@ interface ActiveChat {
   lastMessage?: string;
   lastMessageTime?: string;
   userInfo?:
-    | {
-        _id?: string;
-        name?: string;
-        email?: string;
-      }
-    | Array<{
-        _id?: string;
-        name?: string;
-        email?: string;
-      }>;
+  | {
+    _id?: string;
+    name?: string;
+    email?: string;
+  }
+  | Array<{
+    _id?: string;
+    name?: string;
+    email?: string;
+  }>;
   sessionInfo?:
-    | {
-        date?: string;
-        time?: string;
-      }
-    | Array<{
-        date?: string;
-        time?: string;
-      }>;
+  | {
+    date?: string;
+    time?: string;
+  }
+  | Array<{
+    date?: string;
+    time?: string;
+  }>;
 }
 
 interface ChatMessage {
   _id: string;
   sessionId?: string;
   senderId:
-    | {
-        _id: string;
-        name: string;
-        email: string;
-      }
-    | string;
+  | {
+    _id: string;
+    name: string;
+    email: string;
+  }
+  | string;
   senderType: "user" | "therapist" | "admin";
   message: string;
   timestamp: string;
@@ -248,22 +248,24 @@ const LiveChatHistory = () => {
     const cleanupMessageReceived = on("message-received", (data) => {
       console.log("Received message-received event in LiveChatHistory:", data);
       console.log("senderType value:", data.senderType, "Type:", typeof data.senderType);
+      console.log("Attachments in message:", data.attachments);
 
       // Check if this message matches the currently selected chat
       if (selectedChat && data.chatRoom) {
         const chatRoom = selectedChat.sessionId || selectedChat._id;
         console.log("Checking if chatRoom matches - current:", chatRoom, "data.chatRoom:", data.chatRoom);
-        
+
         if (chatRoom?.toString() === data.chatRoom?.toString()) {
           console.log("Adding message to current chat from message-received event");
-          
+          console.log("Message attachments being added:", data.attachments);
+
           // Check for duplicate before adding
           setMessages((prev) => {
             // Check if message already exists by _id or messageId
-            const isDuplicate = prev.some(m => 
+            const isDuplicate = prev.some(m =>
               m._id === data._id || m._id === (data.messageId)
             );
-            
+
             if (isDuplicate) {
               console.log("Duplicate message detected, skipping");
               return prev;
@@ -280,7 +282,7 @@ const LiveChatHistory = () => {
               }
             }
             console.log("Final senderType being set:", finalSenderType);
-            
+
             return [
               ...prev,
               {
@@ -294,7 +296,7 @@ const LiveChatHistory = () => {
               },
             ];
           });
-          
+
           // Scroll to bottom after adding message
           setTimeout(() => {
             messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -317,12 +319,12 @@ const LiveChatHistory = () => {
             return prev.map((c) =>
               c.sessionId === data.chatRoom
                 ? {
-                    ...c,
-                    lastMessage: data.content || data.message?.message || '',
-                    lastMessageTime: data.timestamp || new Date().toISOString(),
-                    // Only update userInfo if message is from user, keep existing if from admin
-                    userInfo: data.senderType === 'user' ? (data.userId ? { _id: data.userId, name: data.senderName || data.userName } : c.userInfo) : c.userInfo
-                  }
+                  ...c,
+                  lastMessage: data.content || data.message?.message || '',
+                  lastMessageTime: data.timestamp || new Date().toISOString(),
+                  // Only update userInfo if message is from user, keep existing if from admin
+                  userInfo: data.senderType === 'user' ? (data.userId ? { _id: data.userId, name: data.senderName || data.userName } : c.userInfo) : c.userInfo
+                }
                 : c
             );
           } else {
@@ -352,7 +354,7 @@ const LiveChatHistory = () => {
     // Also listen for admin-new-message for backwards compatibility
     const cleanupNewMessage = on("admin-new-message", (data) => {
       console.log("Received admin-new-message in LiveChatHistory:", data);
-      
+
       // Skip if this is a support room message - message-received already handled it
       if (data.chatRoom && data.chatRoom.startsWith('support-')) {
         console.log("Skipping admin-new-message for support room - message-received handles it");
@@ -384,7 +386,7 @@ const LiveChatHistory = () => {
             attachments: data.attachments || [],
           },
         ]);
-        
+
         // Scroll to bottom after adding message
         setTimeout(() => {
           messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -407,7 +409,7 @@ const LiveChatHistory = () => {
       setLoading(true);
       setChatsError(null);
       console.log("Loading chats...");
-      
+
       // Fetch both default-chat (support rooms) and live-chat messages
       const [defaultResponse, liveResponse] = await Promise.all([
         adminChatApi.getChatMessages({
@@ -419,13 +421,13 @@ const LiveChatHistory = () => {
           limit: 50,
         }).catch(() => ({ data: { messages: [] } }))
       ]);
-      
+
       // Combine all messages
       const msgs = [
         ...(defaultResponse.data?.messages || []),
         ...(liveResponse.data?.messages || [])
       ];
-      
+
       console.log("Chats response:", { defaultResponse, liveResponse });
       setChats(msgs);
 
@@ -438,14 +440,14 @@ const LiveChatHistory = () => {
           // For support rooms: use chatRoom if present
           // For default chat: group by userId
           let key = null;
-          
+
           if (m.chatRoom && m.chatRoom.startsWith('support-')) {
             key = m.chatRoom;
           } else if (!m.sessionId || m.sessionId === null || m.messageType === 'default-chat') {
             // Group default-chat messages by senderId
             key = `user-${m.senderId?._id || m.senderId}`;
           }
-          
+
           if (!key) return;
 
           // For support rooms, store client user info only (senderType === "user")
@@ -655,14 +657,14 @@ const LiveChatHistory = () => {
 
       if (isSupportRoom && socket && connected && currentRoomId) {
         // For support rooms, send via socket
-        const messageId = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        const messageId = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
           const r = Math.random() * 16 | 0;
           const v = c === 'x' ? r : (r & 0x3 | 0x8);
           return v.toString(16);
         });
 
         console.log('Sending message via socket to support room:', currentRoomId);
-        
+
         emit('send-message', {
           roomId: currentRoomId,
           roomType: 'individual',
@@ -708,14 +710,14 @@ const LiveChatHistory = () => {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
-      const validFiles = Array.from(files).filter(file => 
+      const validFiles = Array.from(files).filter(file =>
         file.type.startsWith('image/') || file.type.startsWith('video/')
       );
-      
+
       if (validFiles.length !== files.length) {
         alert('Only image and video files are allowed!');
       }
-      
+
       setSelectedFiles(prev => [...prev, ...validFiles]);
     }
   };
@@ -728,11 +730,11 @@ const LiveChatHistory = () => {
   // Upload files to server
   const uploadFiles = async (files: File[]) => {
     const uploadedAttachments = [];
-    
+
     for (const file of files) {
       const formData = new FormData();
       formData.append('file', file);
-      
+
       try {
         const token = localStorage.getItem("admin_token");
         const response = await axios.post('/api/chat/upload-file', formData, {
@@ -741,7 +743,7 @@ const LiveChatHistory = () => {
             'Authorization': `Bearer ${token}`
           }
         });
-        
+
         if (response.data.success) {
           uploadedAttachments.push(response.data.data.file);
         }
@@ -749,7 +751,7 @@ const LiveChatHistory = () => {
         console.error('Error uploading file:', error);
       }
     }
-    
+
     return uploadedAttachments;
   };
 
@@ -759,13 +761,13 @@ const LiveChatHistory = () => {
 
     try {
       setUploading(true);
-      
+
       // Upload files first
       let attachments = [];
       if (selectedFiles.length > 0) {
         attachments = await uploadFiles(selectedFiles);
       }
-      
+
       // Send reply to the user - handle different possible session ID structures
       const sessionId =
         selectedChat.sessionId ||
@@ -780,14 +782,14 @@ const LiveChatHistory = () => {
 
       if (isSupportRoom && socket && connected && currentRoomId) {
         // For support rooms, send via socket
-        const messageId = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        const messageId = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
           const r = Math.random() * 16 | 0;
           const v = c === 'x' ? r : (r & 0x3 | 0x8);
           return v.toString(16);
         });
 
         console.log('Sending message via socket to support room:', currentRoomId);
-        
+
         emit('send-message', {
           roomId: currentRoomId,
           roomType: 'individual',
@@ -879,49 +881,48 @@ const LiveChatHistory = () => {
           <div className="w-full md:w-1/3 bg-card rounded-lg shadow">
             <div className="p-4 border-b">
               <h2 className="text-lg font-semibold text-foreground">
-                  1-on-1 Chats
+                1-on-1 Chats
               </h2>
             </div>
             <div className="overflow-y-auto max-h-[50vh] md:max-h-[calc(100vh-250px)]">
-                {oneOnOneChats.length > 0 ? (
-                  oneOnOneChats.map((chat) => (
-                    <div
-                      key={chat.sessionId || JSON.stringify(chat)}
-                      className={`p-4 border-b cursor-pointer hover:bg-accent ${
-                        selectedChat &&
+              {oneOnOneChats.length > 0 ? (
+                oneOnOneChats.map((chat) => (
+                  <div
+                    key={chat.sessionId || JSON.stringify(chat)}
+                    className={`p-4 border-b cursor-pointer hover:bg-accent ${selectedChat &&
                         String(selectedChat.sessionId || selectedChat._id) ===
-                          String(chat.sessionId || chat._id)
-                          ? "bg-blue-50 border-l-4 border-l-blue-500"
-                          : ""
+                        String(chat.sessionId || chat._id)
+                        ? "bg-blue-50 border-l-4 border-l-blue-500"
+                        : ""
                       }`}
-                      onClick={() => loadChatMessages(chat)}
-                    >
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <h3 className="font-medium text-foreground">
-                            {getClientNameOnly(chat)}
-                          </h3>
-                          <p className="text-sm text-muted-foreground truncate">
-                            {chat.lastMessage || "No messages yet"}
-                          </p>
-                        </div>
-                        {chat.unreadCount > 0 && (
-                          <span className="bg-red-100 text-red-800 text-xs px-2 py-1 rounded-full ml-2">
-                            {chat.unreadCount}
-                          </span>
-                        )}
+                    onClick={() => loadChatMessages(chat)}
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <h3 className="font-medium text-foreground">
+                          {getClientNameOnly(chat)}
+                        </h3>
+                        <p className="text-sm text-muted-foreground truncate">
+                          {chat.lastMessage || "No messages yet"}
+                        </p>
                       </div>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {chat.lastMessageTime ? new Date(chat.lastMessageTime).toLocaleString() : "—"}
-                      </p>
+                      {chat.unreadCount > 0 && (
+                        <span className="bg-red-100 text-red-800 text-xs px-2 py-1 rounded-full ml-2">
+                          {chat.unreadCount}
+                        </span>
+                      )}
                     </div>
-                  ))
-                ) : (
-                  <div className="p-4 text-center text-muted-foreground">
-                    <p>No 1-on-1 chats yet</p>
-                    <p className="text-xs mt-1">Messages from users will appear here</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {chat.lastMessageTime ? new Date(chat.lastMessageTime).toLocaleString() : "—"}
+                    </p>
                   </div>
-                )}
+                ))
+              ) : (
+                <div className="p-4 text-center text-muted-foreground">
+                  <p>No 1-on-1 chats yet</p>
+                  <p className="text-xs mt-1">Messages from users will appear here</p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -956,94 +957,91 @@ const LiveChatHistory = () => {
                 {/* Messages Area */}
                 <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-muted max-h-[50vh] md:max-h-[calc(100vh-300px)] flex flex-col">
                   {messages.length > 0 ? (
-                    messages.map((msg) => (
-                      <div
-                        key={msg._id}
-                        className={`flex w-full ${
-                          msg.senderType === "admin"
-                            ? "justify-end"
-                            : "justify-start"
-                        }`}
-                      >
+                    messages.map((msg) => {
+                      const isAdmin = msg.senderType !== "user";
+
+                      return (
                         <div
-                          className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg flex flex-col ${
-                            msg.senderType === "admin"
-                              ? "bg-primary text-primary-foreground"
-                              : msg.senderType === "user"
-                              ? "bg-background text-foreground border"
-                              : "bg-secondary text-secondary-foreground"
-                          }`}
-                        >
-                          {msg.senderType !== "admin" && msg.senderName && (
-                            <p className="text-xs font-semibold mb-1">
-                              {msg.senderName}
-                            </p>
-                          )}
-                          <p className="text-sm">{renderTextWithLinks(msg.content)}</p>
-                          {msg.attachments && msg.attachments.length > 0 && (
-                            <div className="mt-2 space-y-2">
-                              {msg.attachments.map((attachment, index) => (
-                                <div key={index} className="relative">
-                                  {attachment.type === 'image' ? (
-                                    <img 
-                                      src={attachment.url} 
-                                      alt={attachment.originalName}
-                                      className="max-w-full h-auto rounded-lg cursor-pointer max-h-48"
-                                      onClick={() => window.open(attachment.url, '_blank')}
-                                    />
-                                  ) : attachment.type === 'video' ? (
-                                    <div className="flex flex-col">
-                                      <video 
-                                        src={attachment.url} 
-                                        controls
-                                        className="max-w-full max-h-64 rounded-lg"
-                                      >
-                                        Your browser does not support the video tag.
-                                      </video>
-                                      <div className="mt-1 text-xs text-muted-foreground">
-                                        {attachment.originalName} ({(attachment.size / 1024 / 1024).toFixed(2)} MB)
-                                      </div>
-                                    </div>
-                                  ) : (
-                                    <div className="flex items-center space-x-2 p-2 bg-gray-100 rounded-lg">
-                                      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                      </svg>
-                                      <div>
-                                        <p className="text-sm font-medium text-gray-800">{attachment.originalName}</p>
-                                        <p className="text-xs text-gray-500">
-                                          {(attachment.size / 1024 / 1024).toFixed(2)} MB
-                                        </p>
-                                      </div>
-                                      <button 
-                                        onClick={() => window.open(attachment.url, '_blank')}
-                                        className="ml-auto text-blue-500 hover:text-blue-700"
-                                      >
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                        </svg>
-                                      </button>
-                                    </div>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                          <p
-                            className={`text-xs mt-1 ${
-                              msg.senderType === "admin"
-                                ? "text-primary-foreground/70"
-                                : "text-muted-foreground"
+                          key={msg._id}
+                          className={`flex w-full ${isAdmin ? "justify-end" : "justify-start"
                             }`}
+                        >
+                          <div
+                            className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg flex flex-col ${isAdmin
+                                ? "bg-blue-500 text-white rounded-br-none"
+                                : "bg-gray-100 text-black border rounded-bl-none"
+                              }`}
                           >
-                            {new Date(msg.timestamp).toLocaleTimeString([], {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                          </p>
+                            {msg.senderType !== "admin" && msg.senderName && (
+                              <p className="text-xs font-semibold mb-1">
+                                {msg.senderName}
+                              </p>
+                            )}
+                            <p className="text-sm">{renderTextWithLinks(msg.content)}</p>
+                            {msg.attachments && msg.attachments.length > 0 && (
+                              <div className="mt-2 space-y-2">
+                                {msg.attachments.map((attachment, index) => (
+                                  <div key={index} className="relative">
+                                    {attachment.type === 'image' ? (
+                                      <img
+                                        src={attachment.url}
+                                        alt={attachment.originalName}
+                                        className="max-w-full h-auto rounded-lg cursor-pointer max-h-48"
+                                        onClick={() => window.open(attachment.url, '_blank')}
+                                      />
+                                    ) : attachment.type === 'video' ? (
+                                      <div className="flex flex-col">
+                                        <video
+                                          src={attachment.url}
+                                          controls
+                                          className="max-w-full max-h-64 rounded-lg"
+                                        >
+                                          Your browser does not support the video tag.
+                                        </video>
+                                        <div className="mt-1 text-xs text-muted-foreground">
+                                          {attachment.originalName} ({(attachment.size / 1024 / 1024).toFixed(2)} MB)
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <div className="flex items-center space-x-2 p-2 bg-gray-100 rounded-lg">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
+                                        <div>
+                                          <p className="text-sm font-medium text-gray-800">{attachment.originalName}</p>
+                                          <p className="text-xs text-gray-500">
+                                            {(attachment.size / 1024 / 1024).toFixed(2)} MB
+                                          </p>
+                                        </div>
+                                        <button
+                                          onClick={() => window.open(attachment.url, '_blank')}
+                                          className="ml-auto text-blue-500 hover:text-blue-700"
+                                        >
+                                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                          </svg>
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            <p
+                              className={`text-xs mt-1 ${msg.senderType === "admin"
+                                  ? "text-primary-foreground/70"
+                                  : "text-muted-foreground"
+                                }`}
+                            >
+                              {new Date(msg.timestamp).toLocaleTimeString([], {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                    ))
+                      )
+                    })
                   ) : (
                     <div className="text-center text-muted-foreground mt-8">
                       <p>No messages yet</p>
@@ -1059,7 +1057,7 @@ const LiveChatHistory = () => {
                     <div className="mb-2 p-2 bg-gray-50 rounded-lg">
                       <div className="flex justify-between items-center mb-1">
                         <span className="text-sm font-medium text-gray-700">Selected files:</span>
-                        <button 
+                        <button
                           onClick={() => setSelectedFiles([])}
                           className="text-xs text-red-500 hover:text-red-700"
                         >
@@ -1070,7 +1068,7 @@ const LiveChatHistory = () => {
                         {selectedFiles.map((file, index) => (
                           <div key={index} className="flex items-center bg-white px-2 py-1 rounded border text-xs">
                             <span className="truncate max-w-[120px]">{file.name}</span>
-                            <button 
+                            <button
                               onClick={() => removeFile(index)}
                               className="ml-2 text-red-500 hover:text-red-700"
                             >
@@ -1081,7 +1079,7 @@ const LiveChatHistory = () => {
                       </div>
                     </div>
                   )}
-                  
+
                   <div className="flex items-end space-x-2">
                     <input
                       type="file"
@@ -1112,11 +1110,10 @@ const LiveChatHistory = () => {
                     <button
                       onClick={handleSendReplyWithFiles}
                       disabled={(!newReply.trim() && selectedFiles.length === 0) || loading || uploading}
-                      className={`px-4 py-2 rounded-lg ${
-                        (newReply.trim() || selectedFiles.length > 0) && !loading && !uploading
+                      className={`px-4 py-2 rounded-lg ${(newReply.trim() || selectedFiles.length > 0) && !loading && !uploading
                           ? "bg-primary text-primary-foreground hover:bg-primary/90"
                           : "bg-muted text-muted-foreground cursor-not-allowed"
-                      }`}
+                        }`}
                     >
                       {uploading ? "Uploading..." : loading ? "Sending..." : "Send"}
                     </button>

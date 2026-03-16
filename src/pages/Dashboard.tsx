@@ -33,11 +33,12 @@ import { useSelector, useDispatch } from 'react-redux';
 import { fetchDashboard } from '@/features/dashboard/dashboardSlice';
 import { useEffect } from 'react';
 import PageLoader from "@/components/PageLoader";
+import { useNavigate } from "react-router-dom";
 
 export default function Dashboard() {
   const dispatch = useDispatch();
   const { stats, loading, error } = useSelector((state: any) => state.dashboard);
-
+const navigate = useNavigate();
   useEffect(() => {
     dispatch(fetchDashboard());
   }, [dispatch]);
@@ -128,6 +129,7 @@ export default function Dashboard() {
           change={{ value: 12.5, isPositive: true }}
           icon={Users} // ✅ correct
           iconColor="bg-info"
+          onClick={() => navigate("/users")}
         />
 
         <StatCard
@@ -140,6 +142,7 @@ export default function Dashboard() {
           change={{ value: 15.3, isPositive: true }}
           icon={BadgeCheck} // 🔥 better than CreditCard
           iconColor="bg-primary"
+          onClick={() => navigate("/subscriptions")}
         />
 
         <StatCard
@@ -152,6 +155,7 @@ export default function Dashboard() {
           change={{ value: 18.7, isPositive: true }}
           icon={IndianRupee} // 🔥 better than DollarSign (India)
           iconColor="bg-success"
+          onClick={() => navigate("/payments")}
         />
 
         <StatCard
@@ -163,6 +167,7 @@ export default function Dashboard() {
           }
           icon={CalendarClock} // 🔥 more specific
           iconColor="bg-warning"
+          onClick={() => navigate("/live-sessions")}
         />
       </div>
 
@@ -177,6 +182,7 @@ export default function Dashboard() {
           }
           icon={CheckCircle} // 🔥 completion indicator
           iconColor="bg-success"
+          onClick={() => navigate("/bookings-and-sessions")}
         />
 
         <StatCard
@@ -188,6 +194,7 @@ export default function Dashboard() {
           }
           icon={Hourglass} // 🔥 pending / waiting
           iconColor="bg-warning"
+          onClick={() => navigate("/bookings-and-sessions")}
         />
 
         <StatCard
@@ -198,6 +205,7 @@ export default function Dashboard() {
               : "0"
           }
           icon={Layers} // 🔥 stack / plans
+          onClick={() => navigate("/subscriptions")}
           iconColor="bg-primary"
         />
 
@@ -210,6 +218,7 @@ export default function Dashboard() {
           }
           icon={Stethoscope} // ✅ perfect
           iconColor="bg-info"
+          onClick={() => navigate("/services")}
         />
       </div>
 

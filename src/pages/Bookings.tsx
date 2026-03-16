@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Search,
   MoreHorizontal,
@@ -10,6 +10,7 @@ import {
   Clock as ClockIcon,
   Eye,
   LoaderCircle,
+  UserPlus,
 } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
@@ -50,6 +51,7 @@ interface BookingsProps {
 
 export default function Bookings({ onStatusConfirmed }: BookingsProps) {
   const dispatch: any = useDispatch();
+  const navigate = useNavigate();
   const {
     list: bookings,
     loading: bookingsLoading,
@@ -66,6 +68,7 @@ export default function Bookings({ onStatusConfirmed }: BookingsProps) {
     error: usersError,
   } = useSelector((state: any) => state.users);
   const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
@@ -177,6 +180,8 @@ export default function Bookings({ onStatusConfirmed }: BookingsProps) {
         ?.toLowerCase()
         .includes(searchQuery?.toLowerCase()) ||
       booking.status?.toLowerCase().includes(searchQuery?.toLowerCase())
+  ).filter(
+    (booking) => statusFilter ? booking.status === statusFilter : true
   );
 
   // Pagination logic
@@ -337,13 +342,16 @@ export default function Bookings({ onStatusConfirmed }: BookingsProps) {
       {/* Stats */}{" "}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {" "}
-        <div className="stat-card">
+        <div 
+          className="stat-card cursor-pointer hover:shadow-md transition-shadow"
+          onClick={() => setStatusFilter(statusFilter === "confirmed" ? null : "confirmed")}
+        >
           {" "}
           <div className="flex items-center gap-3">
             {" "}
-            <div className="p-2 rounded-lg bg-success/10">
+            <div className={cn("p-2 rounded-lg", statusFilter === "confirmed" ? "bg-success text-white" : "bg-success/10")}>
               {" "}
-              <CheckCircle className="w-5 h-5 text-success" />{" "}
+              <CheckCircle className={cn("w-5 h-5", statusFilter === "confirmed" ? "text-white" : "text-success")} />{" "}
             </div>{" "}
             <div>
               {" "}
@@ -354,13 +362,16 @@ export default function Bookings({ onStatusConfirmed }: BookingsProps) {
             </div>{" "}
           </div>{" "}
         </div>{" "}
-        <div className="stat-card">
+        <div 
+          className="stat-card cursor-pointer hover:shadow-md transition-shadow"
+          onClick={() => setStatusFilter(statusFilter === "pending" ? null : "pending")}
+        >
           {" "}
           <div className="flex items-center gap-3">
             {" "}
-            <div className="p-2 rounded-lg bg-warning/10">
+            <div className={cn("p-2 rounded-lg", statusFilter === "pending" ? "bg-warning text-white" : "bg-warning/10")}>
               {" "}
-              <ClockIcon className="w-5 h-5 text-warning" />{" "}
+              <ClockIcon className={cn("w-5 h-5", statusFilter === "pending" ? "text-white" : "text-warning")} />{" "}
             </div>{" "}
             <div>
               {" "}
@@ -371,13 +382,16 @@ export default function Bookings({ onStatusConfirmed }: BookingsProps) {
             </div>{" "}
           </div>{" "}
         </div>{" "}
-        <div className="stat-card">
+        <div 
+          className="stat-card cursor-pointer hover:shadow-md transition-shadow"
+          onClick={() => setStatusFilter(statusFilter === "cancelled" ? null : "cancelled")}
+        >
           {" "}
           <div className="flex items-center gap-3">
             {" "}
-            <div className="p-2 rounded-lg bg-destructive/10">
+            <div className={cn("p-2 rounded-lg", statusFilter === "cancelled" ? "bg-destructive text-white" : "bg-destructive/10")}>
               {" "}
-              <XCircle className="w-5 h-5 text-destructive" />{" "}
+              <XCircle className={cn("w-5 h-5", statusFilter === "cancelled" ? "text-white" : "text-destructive")} />{" "}
             </div>{" "}
             <div>
               {" "}
@@ -388,13 +402,16 @@ export default function Bookings({ onStatusConfirmed }: BookingsProps) {
             </div>{" "}
           </div>{" "}
         </div>{" "}
-        <div className="stat-card">
+        <div 
+          className="stat-card cursor-pointer hover:shadow-md transition-shadow"
+          onClick={() => setStatusFilter(null)}
+        >
           {" "}
           <div className="flex items-center gap-3">
             {" "}
-            <div className="p-2 rounded-lg bg-primary/10">
+            <div className={cn("p-2 rounded-lg", statusFilter === null ? "bg-primary text-white" : "bg-primary/10")}>
               {" "}
-              <Calendar className="w-5 h-5 text-primary" />{" "}
+              <Calendar className={cn("w-5 h-5", statusFilter === null ? "text-white" : "text-primary")} />{" "}
             </div>{" "}
             <div>
               {" "}
@@ -405,14 +422,26 @@ export default function Bookings({ onStatusConfirmed }: BookingsProps) {
         </div>{" "}
       </div>
       {/* Search */}
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input
-          placeholder="Search bookings..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-10"
-        />
+      <div className="flex items-center gap-4">
+        <div className="relative max-w-md flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="Search bookings..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        {statusFilter && (
+          <Button
+            variant="outline"
+            onClick={() => setStatusFilter(null)}
+            className="flex items-center gap-2"
+          >
+            <XCircle className="w-4 h-4" />
+            Clear Filter
+          </Button>
+        )}
       </div>
       {/* Table or Empty State */}
       {paginatedBookings.length > 0 ? (
@@ -928,7 +957,20 @@ export default function Bookings({ onStatusConfirmed }: BookingsProps) {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Client</label>
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium">Client</label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsModalOpen(false);
+                    navigate("/users?action=create");
+                  }}
+                  className="text-sm text-primary hover:text-primary/80 flex items-center gap-1 transition-colors"
+                >
+                  <UserPlus className="w-4 h-4" />
+                  Create New Client
+                </button>
+              </div>
 
               <select
                 className="w-full p-2 border rounded-md"

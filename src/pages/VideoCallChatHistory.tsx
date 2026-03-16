@@ -3,6 +3,14 @@ import useSocket from "@/hooks/useSocket";
 import { adminChatApi } from "../lib/adminChatApi";
 import { renderTextWithLinks } from "../utils/linkUtils";
 
+interface Attachment {
+  type: string;
+  url: string;
+  originalName: string;
+  size: number;
+  mimeType: string;
+}
+
 interface ChatMessage {
   _id: string;
   messageId: string;
@@ -27,6 +35,7 @@ interface ChatMessage {
   createdAt: string;
   updatedAt: string;
   __v: number;
+  attachments?: Attachment[];
 }
 
 interface LiveChatSession {
@@ -486,33 +495,134 @@ const VideoCallChatHistory = () => {
                             } shadow-sm`}
                           >
                             <div className="flex items-center justify-between mb-1">
-                              <span className={`text-xs font-medium ${
-                                msg.senderType === "user" 
-                                  ? "text-blue-600" 
-                                  : msg.senderType === "therapist" 
-                                  ? "text-green-700" 
-                                  : "text-white"
-                              }`}>
-                                {msg.senderType === "user" 
+                              <span
+                                className={`text-xs font-medium ${
+                                  msg.senderType === "user"
+                                    ? "text-blue-600"
+                                    : msg.senderType === "therapist"
+                                    ? "text-green-700"
+                                    : "text-white"
+                                }`}
+                              >
+                                {msg.senderType === "user"
                                   ? "👤 " + (msg.senderId.name || "User")
-                                  : msg.senderType === "therapist" 
+                                  : msg.senderType === "therapist"
                                   ? "👨‍⚕️ " + (msg.senderId.name || "Therapist")
                                   : "🛡️ Admin"}
                               </span>
-                              <span className={`text-xs ${
-                                msg.senderType === "user" 
-                                  ? "text-gray-500" 
-                                  : msg.senderType === "therapist" 
-                                  ? "text-green-600" 
-                                  : "text-blue-100"
-                              }`}>
+                              <span
+                                className={`text-xs ${
+                                  msg.senderType === "user"
+                                    ? "text-gray-500"
+                                    : msg.senderType === "therapist"
+                                    ? "text-green-600"
+                                    : "text-blue-100"
+                                }`}
+                              >
                                 {new Date(msg.timestamp).toLocaleTimeString([], {
                                   hour: "2-digit",
                                   minute: "2-digit",
                                 })}
                               </span>
                             </div>
-                            <p className="text-sm">{renderTextWithLinks(msg.message)}</p>
+                            <div className="space-y-2">
+                              {msg.message && (
+                                <p className="text-sm">
+                                  {renderTextWithLinks(msg.message)}
+                                </p>
+                              )}
+                              {msg.attachments && msg.attachments.length > 0 && (
+                                <div className="mt-1 space-y-2">
+                                  {msg.attachments.map((attachment, index) => (
+                                    <div key={index} className="relative">
+                                      {attachment.type === "image" ? (
+                                        <img
+                                          src={attachment.url}
+                                          alt={attachment.originalName}
+                                          className="max-w-full h-auto rounded-lg cursor-pointer max-h-48"
+                                          onClick={() =>
+                                            window.open(attachment.url, "_blank")
+                                          }
+                                        />
+                                      ) : attachment.type === "video" ? (
+                                        <div className="flex flex-col">
+                                          <video
+                                            src={attachment.url}
+                                            controls
+                                            className="max-w-full max-h-64 rounded-lg"
+                                          >
+                                            Your browser does not support the video
+                                            tag.
+                                          </video>
+                                          <div className="mt-1 text-xs text-muted-foreground">
+                                            {attachment.originalName}{" "}
+                                            {attachment.size &&
+                                              `(${(
+                                                attachment.size /
+                                                1024 /
+                                                1024
+                                              ).toFixed(2)} MB)`}
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <div className="flex items-center space-x-2 p-2 bg-gray-100 rounded-lg">
+                                          <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            className="h-6 w-6 text-blue-500"
+                                            fill="none"
+                                            viewBox="0 0 24 24"
+                                            stroke="currentColor"
+                                          >
+                                            <path
+                                              strokeLinecap="round"
+                                              strokeLinejoin="round"
+                                              strokeWidth={2}
+                                              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                            />
+                                          </svg>
+                                          <div>
+                                            <p className="text-sm font-medium text-gray-800">
+                                              {attachment.originalName}
+                                            </p>
+                                            {attachment.size && (
+                                              <p className="text-xs text-gray-500">
+                                                {(
+                                                  attachment.size /
+                                                  1024 /
+                                                  1024
+                                                ).toFixed(2)}{" "}
+                                                MB
+                                              </p>
+                                            )}
+                                          </div>
+                                          <button
+                                            onClick={() =>
+                                              window.open(attachment.url, "_blank")
+                                            }
+                                            className="ml-auto text-blue-500 hover:text-blue-700"
+                                          >
+                                            <svg
+                                              xmlns="http://www.w3.org/2000/svg"
+                                              className="h-5 w-5"
+                                              fill="none"
+                                              viewBox="0 0 24 24"
+                                              stroke="currentColor"
+                                            >
+                                              <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                strokeWidth={2}
+                                                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                                              />
+                                            </svg>
+                                          </button>
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
                       ))}

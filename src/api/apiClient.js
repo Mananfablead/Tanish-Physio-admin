@@ -103,6 +103,7 @@ export const API = {
 
   // notifications
   NOTIFICATIONS: "/notifications",
+  NOTIFICATIONS_ADMIN: "/notifications/admin",
   NOTIFICATION_BY_ID: "/notifications/:id",
   NOTIFICATION_MARK_READ: "/notifications/:id/read",
 
@@ -414,6 +415,9 @@ export const userAPI = {
 export const notificationAPI = {
   // Get all notifications
   getAll: () => apiClient.get(API.NOTIFICATIONS),
+
+  // Get admin-only notifications
+  getAdmin: () => apiClient.get(API.NOTIFICATIONS_ADMIN),
 
   // Send notification
   send: (data) => apiClient.post(API.NOTIFICATIONS, data),
