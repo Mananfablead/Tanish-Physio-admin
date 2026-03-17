@@ -316,6 +316,21 @@ export const subscriptionAPI = {
   getAllSubscriptions: () => apiClient.get(`${API.SUBSCRIPTIONS}/admin/all`),
 };
 
+// Group Session API endpoints
+export const groupSessionAPI = {
+  // Get all group sessions
+  getAll: () => apiClient.get('/group-sessions/admin/all-sessions'),
+  
+  // Get join link for group session
+  getJoinLink: (groupSessionId) => apiClient.get(`/group-sessions/join/${groupSessionId}`),
+  
+  // Start group call
+  startCall: (groupSessionId) => apiClient.post(`/group-sessions/${groupSessionId}/start-call`),
+  
+  // End group call
+  endCall: (groupSessionId) => apiClient.post(`/group-sessions/${groupSessionId}/end-call`),
+};
+
 // Service API endpoints
 export const serviceAPI = {
   // Get all services

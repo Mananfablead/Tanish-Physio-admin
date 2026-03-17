@@ -666,15 +666,15 @@ const toggleUserStatus = async () => {
                   <ClipboardList className="w-5 h-5 text-indigo-500" />
                 </div>
                 <h3 className="text-xl font-bold">Health Profile</h3>
-                {hasCompletedQuestionnaire() && (
+                {/* {hasCompletedQuestionnaire() && (
                   <span className="text-sm text-muted-foreground ml-2">
                     ({getResponseCount()} responses)
                   </span>
-                )}
+                )} */}
               </div>
               
               {/* Questionnaire Summary */}
-              {hasCompletedQuestionnaire() && (
+              {/* {hasCompletedQuestionnaire() && (
                 <div className="mb-6 p-4 bg-primary/5 rounded-lg border border-primary/20">
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div className="text-center">
@@ -695,7 +695,7 @@ const toggleUserStatus = async () => {
                     </div>
                   </div>
                 </div>
-              )}
+              )} */}
               
               {/* Questionnaire Responses Display */}
               <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
@@ -868,10 +868,10 @@ const toggleUserStatus = async () => {
                     <span className="font-medium text-muted-foreground">Status:</span>
                     <span className="ml-2">{getQuestionnaireStatus()}</span>
                   </div>
-                  <div>
+                  {/* <div>
                     <span className="font-medium text-muted-foreground">Total Responses:</span>
                     <span className="ml-2">{getResponseCount()}</span>
-                  </div>
+                  </div> */}
                   {/* <div>
                     <span className="font-medium text-muted-foreground">Questionnaire ID:</span>
                     <span className="ml-2 font-mono text-xs">{getQuestionnaireInfo()?.questionnaireId || 'N/A'}</span>

@@ -57,7 +57,21 @@ const useSocket = (roomId, roomType) => {
                 serverUrl = 'https://apitanishvideo.fableadtech.in'; // Production WebSocket server
             }
             console.log('useSocket: Connecting to server:', serverUrl);
+            
+            // CRITICAL: Clean up existing socket before creating new one
+            if (socket) {
+                console.log('🧹 Cleaning up previous socket before creating new connection');
+                socket.removeAllListeners();
+                socket.disconnect();
+                socket.close();
+                socket.io = null; // Clear internal reference
+            }
+            
             const newSocket = io(serverUrl, socketOptions);
+            
+            // Add unique identifier to track this socket instance
+            newSocket.instanceId = Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+            console.log('🆔 New socket instance created:', newSocket.instanceId);
 
             newSocket.on('connect', () => {
                 console.log('Connected to video call server');
@@ -128,9 +142,17 @@ const useSocket = (roomId, roomType) => {
                 newSocket.emit('webrtc-ice-candidate-received', data);
             });
 
+            let wasManuallyDisconnected = false;
+            
             newSocket.on('disconnect', (reason) => {
                 console.log('❌ Disconnected from video call server:', reason);
                 setConnected(false);
+
+                // If manually disconnected due to error, don't reconnect
+                if (wasManuallyDisconnected) {
+                    console.log('🛑 Manual disconnect flag set - not reconnecting');
+                    return;
+                }
 
                 // Check if this is a page refresh - if so, we want to preserve monitoring
                 const isPageRefresh = reason === 'transport close' || reason === 'ping timeout';
@@ -147,12 +169,20 @@ const useSocket = (roomId, roomType) => {
                     // Handle server-initiated disconnection
                     console.log('🔄 Server disconnected, attempting reconnection...');
                     setTimeout(() => {
-                        if (newSocket) {
+                        if (newSocket && !wasManuallyDisconnected) {
                             newSocket.connect();
                         }
                     }, 3000);
                 }
             });
+            
+            // Override disconnect to track manual disconnections
+            const originalDisconnect = newSocket.disconnect.bind(newSocket);
+            newSocket.disconnect = function(shouldEmitClose) {
+                wasManuallyDisconnected = true;
+                console.log('🔧 Manual disconnect called, setting flag');
+                return originalDisconnect(shouldEmitClose);
+            };
 
             newSocket.on('connect_error', (err) => {
                 console.error('❌ Connection error:', err);
@@ -181,16 +211,67 @@ const useSocket = (roomId, roomType) => {
                 }, 3000);
             });
 
+            let errorCount = 0;
+            const MAX_ERROR_RETRIES = 2;
+            
+            let hasEmittedError = false;
+            
             newSocket.on('error', (err) => {
+                // Ignore errors from already disconnected sockets
+                if (!newSocket.connected && !newSocket.active) {
+                    console.log('⚠️ Ignoring error from disconnected socket:', err.message);
+                    return;
+                }
+
+                // For group monitoring rooms, completely ignore "Session not found"
+                // This error comes from an early monitor join using sessionId semantics,
+                // but the real group call uses groupSessionId and works correctly.
+                if (roomType === 'group' && err.message && err.message.includes('Session not found')) {
+                    console.log('⚠️ Session not found for group monitor socket – ignoring without logging as error');
+                    // Do NOT mark as emitted, do NOT increment retries, do NOT setError
+                    return;
+                }
+                
+                // Prevent duplicate error emissions from same socket instance
+                if (hasEmittedError) {
+                    console.log('⏭️ Suppressing duplicate error emission');
+                    return;
+                }
+                
                 console.error('❌ Socket error:', err);
+                hasEmittedError = true;
+                errorCount++;
+
+                // Prevent infinite error loops
+                if (errorCount > MAX_ERROR_RETRIES) {
+                    console.error('🛑 Maximum error retries reached, stopping connection attempts');
+                    newSocket.disconnect();
+                    setError('Connection failed after multiple attempts');
+                    return;
+                }
+
+                // Handle specific session not found error - don't retry
+                if (err.message && err.message.includes('Session not found')) {
+                    console.log('🛑 Session not found - stopping connection attempts');
+                    setError('Session not found. Please verify the session ID is correct.');
+                    // Disconnect to prevent retries
+                    newSocket.disconnect();
+                    return;
+                }
 
                 // Handle specific session not active error
                 if (err.message && err.message.includes('Session is not active at this time')) {
                     console.log('⚠️ Session is not active - blocking admin entry');
                     setError('⏰ Session Not Active\n\nThis monitoring session is not currently active.');
+                    // Disconnect to prevent retries
+                    newSocket.disconnect();
+                    return;
                 } else if (err.message && err.message.includes('Unauthorized to join this session')) {
                     console.log('⚠️ Unauthorized admin access attempt');
                     setError('🔒 Access Denied\n\nYou are not authorized to monitor this session.');
+                    // Disconnect to prevent retries
+                    newSocket.disconnect();
+                    return;
                 } else {
                     setError(err.message);
                 }

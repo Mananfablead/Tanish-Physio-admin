@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuthRedux } from "@/hooks/useAuthRedux";
 import GroupVideoCall from "@/components/VideoCall/GroupVideoCall";
@@ -11,31 +11,82 @@ export default function GroupVideoCallPage() {
   const [connected, setConnected] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [sessionDetails, setSessionDetails] = useState<any>(null);
+
+  // Memoize session details to prevent unnecessary re-renders
+  const memoizedSessionDetails = useMemo(() => {
+    return sessionDetails;
+  }, [JSON.stringify(sessionDetails)]);
 
   useEffect(() => {
+    // Wait for both id and user to be available
+    if (!id) {
+      console.log("⏳ Waiting for session ID...");
+      return;
+    }
+    
+    if (!user || !user._id) {
+      console.log("⏳ Waiting for user authentication...");
+      return;
+    }
+    
     const initializeCall = async () => {
       try {
-        if (!id || !user) {
-          setError("Missing session ID or user authentication");
-          setLoading(false);
-          return;
-        }
+        console.log("🔍 GroupVideoCallPage Debug Info:");
+        console.log("  - URL ID param:", id);
+        console.log("  - User object:", user);
+        console.log("  - User._id:", user._id);
+        
+        console.log("🎯 Initializing group video call:", id);
 
-        // Generate admin join token
-        const tokenResponse = await adminVideoCallApi.generateJoinLink(
-          id,
-          user._id,
-          "admin"
-        );
+        // Add timeout for API calls
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Request timeout - server may not be running')), 10000);
+        });
 
-        if (tokenResponse.success) {
+        // Generate admin join token with timeout
+        const tokenPromise = adminVideoCallApi.generateJoinLink(id, user._id, "admin");
+        const tokenResponse = await Promise.race([tokenPromise, timeoutPromise]);
+
+        console.log("🎯 Admin join token response:", tokenResponse);
+
+        if (tokenResponse && tokenResponse.success) {
           setConnected(true);
+          setLoading(false);
+        } else if (tokenResponse && !tokenResponse.success) {
+          const errorMsg = tokenResponse.message || "Failed to generate join token";
+          console.error("❌ Token generation failed:", errorMsg);
+          setError(errorMsg);
+          setLoading(false);
         } else {
-          setError(tokenResponse.message || "Failed to generate join token");
+          console.error("❌ Invalid response format");
+          setError("Invalid server response");
+          setLoading(false);
         }
+
+        // Fetch session participants for group call
+        try {
+          const participantsPromise = adminVideoCallApi.getSessionParticipants(id);
+          const participantsResponse = await Promise.race([participantsPromise, timeoutPromise]);
+          console.log("🎯 Group session participants:", participantsResponse);
+          
+          if (participantsResponse && participantsResponse.success) {
+            const sessionInfo = {
+              participants: participantsResponse.data.participants,
+              type: "group",
+              groupSessionId: id,
+            };
+            setSessionDetails(sessionInfo);
+            console.log("✅ Group session details set:", sessionInfo);
+          }
+        } catch (participantsErr) {
+          console.warn("⚠️ Could not fetch group session participants:", participantsErr);
+          // Continue anyway - participants will be discovered via WebRTC signaling
+        }
+        
       } catch (err: any) {
-        setError(err.response?.data?.message || "Failed to initialize call");
-      } finally {
+        console.error("❌ Error initializing group call:", err);
+        setError(err.message || "Failed to initialize call");
         setLoading(false);
       }
     };
@@ -44,7 +95,7 @@ export default function GroupVideoCallPage() {
   }, [id, user]);
 
   const handleEndCall = () => {
-    navigate("/group-sessions");
+    navigate("/sessions");
   };
 
   if (loading) {
@@ -63,9 +114,24 @@ export default function GroupVideoCallPage() {
       <div className="flex items-center justify-center h-screen bg-black text-white">
         <div className="text-center max-w-md p-6">
           <div className="text-red-500 text-6xl mb-4">⚠️</div>
-          <h2 className="text-2xl font-bold mb-2">Error</h2>
+          <h2 className="text-2xl font-bold mb-2">Connection Error</h2>
           <p className="text-gray-400 mb-6">{error}</p>
-          <div className="flex gap-4 justify-center">
+          <div className="flex gap-4 justify-center flex-wrap">
+            <button
+              onClick={() => {
+                console.log("🔄 Retrying connection...");
+                setError(null);
+                setLoading(true);
+                // Force re-run of useEffect by clearing and resetting state
+                setConnected(false);
+                setTimeout(() => {
+                  window.location.reload();
+                }, 100);
+              }}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+            >
+              🔄 Retry Connection
+            </button>
             <button
               onClick={() => navigate("/group-sessions")}
               className="bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
@@ -95,6 +161,8 @@ export default function GroupVideoCallPage() {
       userRole="admin"
       onEndCall={handleEndCall}
       user={user}
+      connected={connected}
+      sessionDetails={memoizedSessionDetails}
     />
   );
 }

@@ -24,7 +24,7 @@ import {
 import { toast } from "@/hooks/use-toast";
 import GenerateGoogleMeetModal from "@/components/VideoCall/GenerateGoogleMeetModal";
 import EditGoogleMeetModal from "@/components/VideoCall/EditGoogleMeetModal";
-import { subscriptionAPI } from "@/api/apiClient";
+import { subscriptionAPI, groupSessionAPI } from "@/api/apiClient";
 import { tokenUtils } from "@/api/authAPI";
 type SessionStatus =
   | "pending"
@@ -222,6 +222,26 @@ useEffect(() => {
     }
   };
 
+  // Group sessions by groupSessionId to show single join button per group
+  const getGroupedSessions = (sessions: any[]) => {
+    const groups = new Map<string, any[]>();
+    const nonGroupSessions: any[] = [];
+
+    sessions.forEach((session) => {
+      if (session.groupSessionId && session.sessionType === 'group') {
+        const key = `${session.groupSessionId}_${session.date}_${session.time}`;
+        if (!groups.has(key)) {
+          groups.set(key, []);
+        }
+        groups.get(key)!.push(session);
+      } else {
+        nonGroupSessions.push(session);
+      }
+    });
+
+    return { groups, nonGroupSessions };
+  };
+
   // State for creating a new session
   const [newSession, setNewSession] = useState({
     bookingId: "",
@@ -258,6 +278,11 @@ useEffect(() => {
     useState(null);
   const [isEditGoogleMeetModalOpen, setIsEditGoogleMeetModalOpen] =
     useState(false);
+
+  // State for group video calls
+  const [groupSessions, setGroupSessions] = useState<any[]>([]);
+  const [loadingGroupSessions, setLoadingGroupSessions] = useState(false);
+  const [joiningGroupSessionId, setJoiningGroupSessionId] = useState<string | null>(null);
 
   // State for users and subscriptions
   const [usersWithActiveSubscriptions, setUsersWithActiveSubscriptions] =
@@ -808,6 +833,21 @@ useEffect(() => {
     }
   };
 
+  // Handle group video call join
+  const handleJoinGroupCall = async (groupSessionId: string) => {
+    try {
+      // Navigate to the group video call page with the groupSessionId
+      navigate(`/group-video-call/${groupSessionId}`);
+    } catch (error: any) {
+      console.error("Failed to join group call:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to join group call",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleDeleteSession = async (sessionId: string) => {
     try {
       await dispatch(deleteSessionById(sessionId)).unwrap();
@@ -1207,26 +1247,48 @@ useEffect(() => {
                           </div>
 
                           <div className="flex gap-3">
-                            <Button
-                              className="flex-1"
-                              onClick={() =>
-                                navigate(`/video-call/${session._id}`)
-                              }
-                              disabled={!isJoinEnabled}
-                            >
-                              <Video className="w-4 h-4 mr-2" />
-                              {isJoinEnabled
-                                ? "Join Session"
-                                : minutesUntilSession > 0
-                                ? "Session Early"
-                                : "Session Not Started"}
-                            </Button>
+                            {/* Show Group Join Button for group sessions */}
+                            {session.groupSessionId ? (
+                              <Button
+                                className="flex-1 bg-purple-600 hover:bg-purple-700"
+                                onClick={() => handleJoinGroupCall(session.groupSessionId)}
+                                disabled={joiningGroupSessionId === session.groupSessionId || !isJoinEnabled}
+                              >
+                                {joiningGroupSessionId === session.groupSessionId ? (
+                                  <>
+                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                    Joining...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Video className="w-4 h-4 mr-2" />
+                                    {isJoinEnabled ? "Join Group Call" : "Session Early"}
+                                  </>
+                                )}
+                              </Button>
+                            ) : (
+                              // Regular join button for non-group sessions
+                              <Button
+                                className="flex-1"
+                                onClick={() =>
+                                  navigate(`/video-call/${session._id}`)
+                                }
+                                disabled={!isJoinEnabled}
+                              >
+                                <Video className="w-4 h-4 mr-2" />
+                                {isJoinEnabled
+                                  ? "Join Session"
+                                  : minutesUntilSession > 0
+                                  ? "Session Early"
+                                  : "Session Not Started"}
+                              </Button>
+                            )}
                             <Button
                               variant="outline"
                               size="icon"
                               onClick={() => {
                                 navigator.clipboard.writeText(
-                                  `${window.location.origin}/video-call/${session._id}`
+                                  `${window.location.origin}/video-call/${session.groupSessionId ? `/group-video-call/${session.groupSessionId}` : `/video-call/${session._id}`}`
                                 );
                               }}
                             >
@@ -1289,425 +1351,578 @@ useEffect(() => {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredSessions.map((session: any) => {
-                      const booking = session.bookingId;
-                      const user = session.userId;
-                      return (
-                        <tr
-                          key={session._id}
-                          className="hover:bg-muted/40 transition"
-                        >
-                          {/* BOOKING/SUBSCRIPTION INFO */}
-                          <td className="px-4 py-3">
-                            <div className="space-y-2">
-                              {session.bookingId ? (
-                                // Booking-based session
-                                <div>
-                                  <p className="font-medium">
-                                    {booking?.serviceName || "N/A"}
-                                  </p>
-                                  {/* <p className="text-xs text-muted-foreground">
-                                    Booking ID:{" "}
-                                    {booking?._id?.slice(0, 8) || "N/A"}
-                                  </p> */}
-                                  <Badge variant="secondary" className="mt-1">
-                                    Booking Session
-                                  </Badge>
-                                </div>
-                              ) : session.subscriptionId ? (
-                                // Subscription-based session
-                                <div>
-                                  <p className="font-medium">
-                                    {session.subscriptionId?.planName || "N/A"}
-                                  </p>
-                                  {/* <p className="text-xs text-muted-foreground">
-                                    Subscription ID:{" "}
-                                    {session.subscriptionId?._id?.slice(0, 8) ||
-                                      "N/A"}
-                                  </p> */}
-                                  <div className="flex items-center gap-2 mt-1">
-                                    <Badge
-                                      variant="default"
-                                      className="bg-blue-100 text-blue-800"
-                                    >
-                                      Subscription Session
-                                    </Badge>
-                                    <Badge
-                                      variant="outline"
-                                      className="text-xs"
-                                    >
-                                      {session.subscriptionId?.status || "N/A"}
+                    {(() => {
+                      const { groups, nonGroupSessions } = getGroupedSessions(filteredSessions);
+                      const rows: JSX.Element[] = [];
+
+                      // Render non-group sessions normally
+                      nonGroupSessions.forEach((session: any) => {
+                        const booking = session.bookingId;
+                        const user = session.userId;
+                        rows.push(
+                          <tr
+                            key={session._id}
+                            className="hover:bg-muted/40 transition"
+                          >
+                            {/* BOOKING/SUBSCRIPTION INFO */}
+                            <td className="px-4 py-3">
+                              <div className="space-y-2">
+                                {session.bookingId ? (
+                                  <div>
+                                    <p className="font-medium">
+                                      {booking?.serviceName || "N/A"}
+                                    </p>
+                                    <Badge variant="secondary" className="mt-1">
+                                      Booking Session
                                     </Badge>
                                   </div>
+                                ) : session.subscriptionId ? (
+                                  <div>
+                                    <p className="font-medium">
+                                      {session.subscriptionId?.planName || "N/A"}
+                                    </p>
+                                    <div className="flex items-center gap-2 mt-1">
+                                      <Badge
+                                        variant="default"
+                                        className="bg-blue-100 text-blue-800"
+                                      >
+                                        Subscription Session
+                                      </Badge>
+                                      <Badge
+                                        variant="outline"
+                                        className="text-xs"
+                                      >
+                                        {session.subscriptionId?.status || "N/A"}
+                                      </Badge>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div>
+                                    <p className="font-medium text-muted-foreground">
+                                      No Booking/Subscription
+                                    </p>
+                                    <Badge variant="destructive" className="mt-1">
+                                      Invalid Session
+                                    </Badge>
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+
+                            {/* USER */}
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-2">
+                                <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
+                                  <User className="h-4 w-4 text-blue-600" />
                                 </div>
-                              ) : (
-                                // Unknown session type
                                 <div>
-                                  <p className="font-medium text-muted-foreground">
-                                    No Booking/Subscription
+                                  <p className="font-medium">
+                                    {user?.name || "N/A"}
                                   </p>
-                                  <Badge variant="destructive" className="mt-1">
-                                    Invalid Session
-                                  </Badge>
+                                  <p className="text-xs text-muted-foreground">
+                                    {user?.email || ""}
+                                  </p>
                                 </div>
-                              )}
-                            </div>
-                          </td>
-
-                          {/* USER */}
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-2">
-                              <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
-                                <User className="h-4 w-4 text-blue-600" />
                               </div>
-                              <div>
-                                <p className="font-medium">
-                                  {user?.name || "N/A"}
-                                </p>
-                                <p className="text-xs text-muted-foreground">
-                                  {user?.email || ""}
-                                </p>
-                              </div>
-                            </div>
-                          </td>
+                            </td>
 
-                          {/* DATE & TIME */}
-                          <td className="px-4 py-3">
-                            <div className="space-y-0.5">
-                              <div className="flex items-center gap-1">
-                                <Calendar className="h-4 w-4 text-muted-foreground" />
-                                <span>{session.date}</span>
+                            {/* DATE & TIME */}
+                            <td className="px-4 py-3">
+                              <div className="space-y-0.5">
+                                <div className="flex items-center gap-1">
+                                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                                  <span>{session.date}</span>
+                                </div>
+                                <div className="flex items-center gap-1 text-muted-foreground">
+                                  <Clock className="h-4 w-4" />
+                                  <span>{session.time}</span>
+                                </div>
                               </div>
-                              <div className="flex items-center gap-1 text-muted-foreground">
-                                <Clock className="h-4 w-4" />
-                                <span>{session.time}</span>
-                              </div>
-                            </div>
-                          </td>
+                            </td>
 
-                          {/* TYPE */}
-                          <td className="">
-                            <span className=" text-xs font-semibold">
-                              {session.type}
-                            </span>
-                          </td>
+                            {/* TYPE */}
+                            <td className="">
+                              <span className=" text-xs font-semibold">
+                                {session.type}
+                              </span>
+                            </td>
 
-                          {/* STATUS */}
-                          <td className="px-4 py-3">
-                            {isEditableStatus(session.status) ? (
-                              <Select
-                                value={session.status}
-                                disabled={updatingStatusId === session._id}
-                                onValueChange={async (value) => {
-                                  setUpdatingStatusId(session._id);
-                                  try {
-                                    await handleUpdateSessionStatus(
-                                      session._id,
-                                      value
-                                    );
-                                  } finally {
-                                    setUpdatingStatusId(null);
-                                  }
-                                }}
-                              >
-                                <SelectTrigger
-                                  className={`w-[130px] rounded-full text-xs font-semibold ${
+                            {/* STATUS */}
+                            <td className="px-4 py-3">
+                              {isEditableStatus(session.status) ? (
+                                <Select
+                                  value={session.status}
+                                  disabled={updatingStatusId === session._id}
+                                  onValueChange={async (value) => {
+                                    setUpdatingStatusId(session._id);
+                                    try {
+                                      await handleUpdateSessionStatus(
+                                        session._id,
+                                        value
+                                      );
+                                    } finally {
+                                      setUpdatingStatusId(null);
+                                    }
+                                  }}
+                                >
+                                  <SelectTrigger
+                                    className={`w-[130px] rounded-full text-xs font-semibold ${
+                                      statusStyles[session.status]
+                                    }`}
+                                  >
+                                    {updatingStatusId === session._id ? (
+                                      <div className="flex items-center gap-2">
+                                        <Loader2 className="w-3 h-3 animate-spin" />
+                                        <span>Updating...</span>
+                                      </div>
+                                    ) : (
+                                      <SelectValue />
+                                    )}
+                                  </SelectTrigger>
+
+                                  <SelectContent>
+                                    {session.status !== "live" && (
+                                      <SelectItem value="scheduled">
+                                        Scheduled
+                                      </SelectItem>
+                                    )}
+                                    <SelectItem value="live">Live</SelectItem>
+                                    <SelectItem value="completed">
+                                      Completed
+                                    </SelectItem>
+                                    <SelectItem value="cancelled">
+                                      Cancelled
+                                    </SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              ) : (
+                                <span
+                                  className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
                                     statusStyles[session.status]
                                   }`}
                                 >
-                                  {updatingStatusId === session._id ? (
-                                    <div className="flex items-center gap-2">
-                                      <Loader2 className="w-3 h-3 animate-spin" />
-                                      <span>Updating...</span>
-                                    </div>
+                                  {session.status === "pending" ? (
+                                    <>
+                                      <UserCog className="w-3 h-3 mr-1" />
+                                      Pending Review
+                                    </>
                                   ) : (
-                                    <SelectValue />
+                                    <>
+                                      {session.status &&
+                                      typeof session.status === "string"
+                                        ? session.status.charAt(0).toUpperCase() +
+                                          session.status.slice(1)
+                                        : "Unknown"}
+                                    </>
                                   )}
-                                </SelectTrigger>
-
-                                <SelectContent>
-                                  {session.status !== "live" && (
-                                    <SelectItem value="scheduled">
-                                      Scheduled
-                                    </SelectItem>
-                                  )}
-                                  <SelectItem value="live">Live</SelectItem>
-                                  <SelectItem value="completed">
-                                    Completed
-                                  </SelectItem>
-                                  <SelectItem value="cancelled">
-                                    Cancelled
-                                  </SelectItem>
-                                </SelectContent>
-                              </Select>
-                            ) : (
-                              <span
-                                className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
-                                  statusStyles[session.status]
-                                }`}
-                              >
-                                {session.status === "pending" ? (
-                                  <>
-                                    <UserCog className="w-3 h-3 mr-1" />
-                                    Pending Review
-                                  </>
-                                ) : (
-                                  <>
-                                    {session.status &&
-                                    typeof session.status === "string"
-                                      ? session.status.charAt(0).toUpperCase() +
-                                        session.status.slice(1)
-                                      : "Unknown"}
-                                  </>
-                                )}
-                              </span>
-                            )}
-                          </td>
-
-                          {/* GOOGLE MEET LINK - Only show in Live tab */}
-                          {activeTab === "live" && (
-                            <td className="px-4 py-3">
-                              {session.googleMeetLink ? (
-                                <div className="flex flex-col gap-1">
-                                  <a
-                                    href={session.googleMeetLink}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center justify-center
-                                      bg-blue-100 hover:bg-blue-200
-                                      text-blue-700 font-bold text-xs
-                                      px-2 py-1 rounded-full whitespace-nowrap gap-1"
-                                  >
-                                    <svg
-                                      className="h-3 w-3"
-                                      fill="currentColor"
-                                      viewBox="0 0 24 24"
-                                    >
-                                      <path d="M22.2819 9.8211a5.9848 5.9848 0 0 0-.5157-2.1734 6.0633 6.0633 0 0 0-1.4432-1.9437 6.0335 6.0335 0 0 0-1.9441-1.4427 5.996 5.996 0 0 0-2.174-.5152c-.3747-.0428-.7511-.0643-1.1277-.0643-.4163 0-.7927.025-1.168.0745a5.993 5.993 0 0 0-2.174.5137 6.058 6.058 0 0 0-1.944 1.4441 6.035 6.035 0 0 0-1.443 1.9433 5.996 5.996 0 0 0-.515 2.174c-.0428.375-.0643.751-.0643 1.128 0 .416.025.793.074 1.168a5.993 5.993 0 0 0 .513 2.174 6.058 6.058 0 0 0 1.444 1.944 6.035 6.035 0 0 0 1.943 1.443 5.996 5.996 0 0 0 2.174.515c.375.043.751.064 1.128.064.416 0 .793-.025 1.168-.074a5.993 5.993 0 0 0 2.174-.513 6.058 6.058 0 0 0 1.944-1.444 6.035 6.035 0 0 0 1.443-1.943 5.996 5.996 0 0 0 .515-2.174c.043-.375.064-.751.064-1.128 0-.416-.025-.793-.074-1.168zm-9.478 4.3233L6.4358 10.006a.75.75 0 0 1 .254-1.225l13.006-7.5a.75.75 0 0 1 1.089.254.75.75 0 0 1-.254 1.09l-12.212 7.05 12.212 7.05a.75.75 0 0 1 .254 1.09.75.75 0 0 1-1.09.254l-13-7.5a.75.75 0 0 1-.254-.254z" />
-                                    </svg>
-                                    Join Meeting
-                                  </a>
-                                  {session.googleMeetCode && (
-                                    <span className="text-xs text-muted-foreground font-mono">
-                                      Code: {session.googleMeetCode}
-                                    </span>
-                                  )}
-                                  {session.googleMeetExpiresAt && (
-                                    <span className="text-xs text-muted-foreground">
-                                      Expires:{" "}
-                                      {new Date(
-                                        session.googleMeetExpiresAt
-                                      ).toLocaleString()}
-                                    </span>
-                                  )}
-                                  {/* Edit Button */}
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="w-full text-xs mt-1"
-                                    onClick={() => {
-                                      setSelectedSessionForEditMeet(session);
-                                      setIsEditGoogleMeetModalOpen(true);
-                                    }}
-                                  >
-                                    <Video className="w-3 h-3 mr-1" />
-                                    Edit Link
-                                  </Button>
-                                </div>
-                              ) : (
-                                <div className="flex flex-col gap-2">
-                                  <span className="text-xs text-muted-foreground italic">
-                                    Not generated
-                                  </span>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="w-full text-xs"
-                                    onClick={() => {
-                                      setSelectedSessionForMeet(session);
-                                      setIsGoogleMeetModalOpen(true);
-                                    }}
-                                  >
-                                    <Video className="w-3 h-3 mr-1" />
-                                    Generate Meet Link
-                                  </Button>
-                                </div>
+                                </span>
                               )}
                             </td>
-                          )}
 
-                          {/* ACTIONS */}
-                          <td className="px-4 py-3 text-right">
-                            {session.status === "completed" ||
-                            session.status === "cancelled" ? (
-                              // Disabled state for completed and cancelled sessions
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 opacity-50 cursor-not-allowed"
-                                disabled
-                              >
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            ) : (
-                              // Active dropdown for other statuses
+                            {/* ACTIONS - Simplified for non-group sessions */}
+                            <td className="px-4 py-3 text-right">
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8"
-                                  >
+                                  <Button variant="ghost" size="icon" className="h-8 w-8">
                                     <MoreHorizontal className="h-4 w-4" />
                                   </Button>
                                 </DropdownMenuTrigger>
-
-                                <DropdownMenuContent
-                                  align="end"
-                                  className="w-48"
-                                >
-                                  {/* PENDING SESSIONS */}
+                                <DropdownMenuContent align="end" className="w-48">
                                   {session.status === "pending" && (
                                     <>
-                                      <DropdownMenuItem
-                                        className="text-success"
-                                        onClick={async () => {
-                                          await handleAcceptSession(
-                                            session._id
-                                          );
-                                        }}
-                                      >
-                                        <UserCog className="h-4 w-4 mr-2" />
-                                        Accept Session
+                                      <DropdownMenuItem className="text-success" onClick={async () => { await handleAcceptSession(session._id); }}>
+                                        <UserCog className="h-4 w-4 mr-2" /> Accept Session
                                       </DropdownMenuItem>
-
-                                      <DropdownMenuItem
-                                        className="text-destructive"
-                                        onClick={async () => {
-                                          await handleRejectSession(
-                                            session._id
-                                          );
-                                        }}
-                                      >
-                                        <X className="h-4 w-4 mr-2" />
-                                        Reject Session
+                                      <DropdownMenuItem className="text-destructive" onClick={async () => { await handleRejectSession(session._id); }}>
+                                        <X className="h-4 w-4 mr-2" /> Reject Session
                                       </DropdownMenuItem>
                                     </>
                                   )}
-
-                                  {/* SCHEDULED/CANCELLED SESSIONS (non-pending) */}
-                                  {(activeTab === "scheduled" ||
-                                    activeTab === "all") &&
-                                    session.status !== "pending" && (
-                                      <>
-                                        {/* Google Meet Generation/Edit for sessions */}
-                                        {!session.googleMeetLink ? (
-                                          <DropdownMenuItem
-                                            className="text-blue-600"
-                                            onClick={() => {
-                                              setSelectedSessionForMeet(
-                                                session
-                                              );
-                                              setIsGoogleMeetModalOpen(true);
-                                            }}
-                                          >
-                                            <Video className="h-4 w-4 mr-2" />
-                                            Generate Google Meet/Zoom Link
-                                          </DropdownMenuItem>
-                                        ) : (
-                                          <DropdownMenuItem
-                                            className="text-blue-600"
-                                            onClick={() => {
-                                              setSelectedSessionForEditMeet(
-                                                session
-                                              );
-                                              setIsEditGoogleMeetModalOpen(
-                                                true
-                                              );
-                                            }}
-                                          >
-                                            <Video className="h-4 w-4 mr-2" />
-                                            Edit Google Meet/Zoom Link
-                                          </DropdownMenuItem>
-                                        )}
-
-                                        {/* <DropdownMenuItem
-                                          onClick={() => {
-                                            setSelectedSession(session);
-                                            setIsRescheduleModalOpen(true);
-                                          }}
-                                        >
-                                          <RefreshCw className="h-4 w-4 mr-2" />
-                                          Reschedule
-                                        </DropdownMenuItem> */}
-
-                                        <DropdownMenuItem
-                                          className="text-destructive"
-                                          onClick={() =>
-                                            handleCancelSession(session._id)
-                                          }
-                                        >
-                                          <X className="h-4 w-4 mr-2" />
-                                          Cancel Session
+                                  {(activeTab === "scheduled" || activeTab === "all") && session.status !== "pending" && (
+                                    <>
+                                      {!session.googleMeetLink ? (
+                                        <DropdownMenuItem className="text-blue-600" onClick={() => { setSelectedSessionForMeet(session); setIsGoogleMeetModalOpen(true); }}>
+                                          <Video className="h-4 w-4 mr-2" /> Generate Google Meet/Zoom Link
                                         </DropdownMenuItem>
-                                        <DropdownMenuItem
-                                          className="text-destructive"
-                                          onClick={() =>
-                                            handleDeleteSession(session._id)
-                                          }
-                                        >
-                                          <X className="h-4 w-4 mr-2" />
-                                          Delete Session
+                                      ) : (
+                                        <DropdownMenuItem className="text-blue-600" onClick={() => { setSelectedSessionForEditMeet(session); setIsEditGoogleMeetModalOpen(true); }}>
+                                          <Video className="h-4 w-4 mr-2" /> Edit Google Meet/Zoom Link
                                         </DropdownMenuItem>
-                                      </>
-                                    )}
-
-                                  {/* MISSED SESSIONS - Rebook Option */}
-                                  {/* {session.status === "missed" && (
-                                  <DropdownMenuItem
-                                    className="text-blue-600 font-semibold"
-                                    onClick={() => {
-                                      setSelectedSession(session);
-                                      setIsRebookModalOpen(true);
-                                    }}
-                                  >
-                                    <RefreshCw className="h-4 w-4 mr-2" />
-                                    Rebook Session
-                                  </DropdownMenuItem>
-                                )} */}
-
-                                  {/* LIVE */}
-                                  {activeTab === "live" && (
-                                    <DropdownMenuItem
-                                      onClick={() =>
-                                        navigate(`/video-call/${session._id}`)
-                                      }
-                                    >
-                                      <Video className="h-4 w-4 mr-2" />
-                                      Join Session
-                                    </DropdownMenuItem>
+                                      )}
+                                      <DropdownMenuItem className="text-destructive" onClick={() => handleCancelSession(session._id)}>
+                                        <X className="h-4 w-4 mr-2" /> Cancel Session
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteSession(session._id)}>
+                                        <X className="h-4 w-4 mr-2" /> Delete Session
+                                      </DropdownMenuItem>
+                                    </>
                                   )}
-
-                                  {/* COMPLETED */}
-                                  {activeTab === "completed" && (
-                                    <DropdownMenuItem
-                                      onClick={() =>
-                                        navigate(
-                                          `/session-recordings/${session._id}`
-                                        )
-                                      }
-                                    >
-                                      <Eye className="h-4 w-4 mr-2" />
-                                      View Recording
+                                  {activeTab === "live" && (
+                                    <DropdownMenuItem onClick={() => navigate(`/video-call/${session._id}`)}>
+                                      <Video className="h-4 w-4 mr-2" /> Join Session
                                     </DropdownMenuItem>
                                   )}
                                 </DropdownMenuContent>
                               </DropdownMenu>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
+                            </td>
+                          </tr>
+                        );
+                      });
+
+                      // Render group sessions with single join button per group
+                      groups.forEach((groupSessions, groupKey) => {
+                        const groupSessionId = groupSessions[0].groupSessionId;
+                        
+                        groupSessions.forEach((session: any, index: number) => {
+                          const booking = session.bookingId;
+                          const user = session.userId;
+                          rows.push(
+                            <tr
+                              key={session._id}
+                              className="hover:bg-muted/40 transition"
+                            >
+                              {/* BOOKING/SUBSCRIPTION INFO */}
+                              <td className="px-4 py-3">
+                                <div className="space-y-2">
+                                  {session.bookingId ? (
+                                    <div>
+                                      <p className="font-medium">
+                                        {booking?.serviceName || "N/A"}
+                                      </p>
+                                      <Badge
+                                        variant="secondary"
+                                        className="mt-1"
+                                      >
+                                        Booking Session
+                                      </Badge>
+                                      {index === 0 && (
+                                        <Badge
+                                          variant="default"
+                                          className="ml-2 bg-purple-600"
+                                        >
+                                          Group
+                                        </Badge>
+                                      )}
+                                    </div>
+                                  ) : session.subscriptionId ? (
+                                    <div>
+                                      <p className="font-medium">
+                                        {session.subscriptionId?.planName ||
+                                          "N/A"}
+                                      </p>
+                                      <div className="flex items-center gap-2 mt-1">
+                                        <Badge
+                                          variant="default"
+                                          className="bg-blue-100 text-blue-800"
+                                        >
+                                          Subscription
+                                        </Badge>
+                                        {index === 0 && (
+                                          <Badge
+                                            variant="default"
+                                            className="bg-purple-600"
+                                          >
+                                            Group
+                                          </Badge>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div>
+                                      <p className="font-medium text-muted-foreground">
+                                        No Booking/Subscription
+                                      </p>
+                                      <Badge
+                                        variant="destructive"
+                                        className="mt-1"
+                                      >
+                                        Invalid
+                                      </Badge>
+                                    </div>
+                                  )}
+                                </div>
+                              </td>
+
+                              {/* USER */}
+                              <td className="px-4 py-3">
+                                <div className="flex items-center gap-2">
+                                  <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
+                                    <User className="h-4 w-4 text-blue-600" />
+                                  </div>
+                                  <div>
+                                    <p className="font-medium">
+                                      {user?.name || "N/A"}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {user?.email || ""}
+                                    </p>
+                                    {index === 0 && (
+                                      <Badge
+                                        variant="outline"
+                                        className="text-xs mt-1"
+                                      >
+                                        {groupSessions.length} in Group
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </div>
+                              </td>
+
+                              {/* DATE & TIME */}
+                              <td className="px-4 py-3">
+                                <div className="space-y-0.5">
+                                  <div className="flex items-center gap-1">
+                                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                                    <span>{session.date}</span>
+                                  </div>
+                                  <div className="flex items-center gap-1 text-muted-foreground">
+                                    <Clock className="h-4 w-4" />
+                                    <span>{session.time}</span>
+                                  </div>
+                                </div>
+                              </td>
+
+                              {/* TYPE */}
+                              <td className="">
+                                <span className="text-xs font-semibold">
+                                  {session.type}
+                                </span>
+                              </td>
+
+                              {/* STATUS */}
+                              <td className="px-4 py-3">
+                                {isEditableStatus(session.status) ? (
+                                  <Select
+                                    value={session.status}
+                                    disabled={updatingStatusId === session._id}
+                                    onValueChange={async (value) => {
+                                      setUpdatingStatusId(session._id);
+                                      try {
+                                        await handleUpdateSessionStatus(
+                                          session._id,
+                                          value,
+                                        );
+                                      } finally {
+                                        setUpdatingStatusId(null);
+                                      }
+                                    }}
+                                  >
+                                    <SelectTrigger
+                                      className={`w-[130px] rounded-full text-xs font-semibold ${statusStyles[session.status]}`}
+                                    >
+                                      {updatingStatusId === session._id ? (
+                                        <div className="flex items-center gap-2">
+                                          <Loader2 className="w-3 h-3 animate-spin" />
+                                          <span>Updating...</span>
+                                        </div>
+                                      ) : (
+                                        <SelectValue />
+                                      )}
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {session.status !== "live" && (
+                                        <SelectItem value="scheduled">
+                                          Scheduled
+                                        </SelectItem>
+                                      )}
+                                      <SelectItem value="live">Live</SelectItem>
+                                      <SelectItem value="completed">
+                                        Completed
+                                      </SelectItem>
+                                      <SelectItem value="cancelled">
+                                        Cancelled
+                                      </SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                ) : (
+                                  <span
+                                    className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${statusStyles[session.status]}`}
+                                  >
+                                    {session.status === "pending" ? (
+                                      <>
+                                        <UserCog className="w-3 h-3 mr-1" />
+                                        Pending Review
+                                      </>
+                                    ) : (
+                                      <>
+                                        {typeof session.status === "string"
+                                          ? session.status
+                                              .charAt(0)
+                                              .toUpperCase() +
+                                            session.status.slice(1)
+                                          : "Unknown"}
+                                      </>
+                                    )}
+                                  </span>
+                                )}
+                              </td>
+
+                              {/* ACTIONS - Disabled for completed/cancelled sessions */}
+                              <td className="px-4 py-3 text-right">
+                                {session.status === "completed" ||
+                                session.status === "cancelled" ? (
+                                  /* Show disabled Actions button for completed/cancelled sessions */
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 opacity-50 cursor-not-allowed"
+                                    disabled
+                                  >
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                ) : (
+                                  /* Show active Actions dropdown for other statuses */
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8"
+                                      >
+                                        <MoreHorizontal className="h-4 w-4" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent
+                                      align="end"
+                                      className="w-48"
+                                    >
+                                      {/* Pending actions */}
+                                      {session.status === "pending" && (
+                                        <>
+                                          <DropdownMenuItem
+                                            className="text-success"
+                                            onClick={async () => {
+                                              await handleAcceptSession(
+                                                session._id,
+                                              );
+                                            }}
+                                          >
+                                            <UserCog className="h-4 w-4 mr-2" />{" "}
+                                            Accept
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem
+                                            className="text-destructive"
+                                            onClick={async () => {
+                                              await handleRejectSession(
+                                                session._id,
+                                              );
+                                            }}
+                                          >
+                                            <X className="h-4 w-4 mr-2" />{" "}
+                                            Reject
+                                          </DropdownMenuItem>
+                                        </>
+                                      )}
+
+                                      {/* Google Meet/Zoom Link - For non-completed sessions */}
+                                      {session.status !== "pending" && (
+                                        <>
+                                          {!session.googleMeetLink ? (
+                                            <DropdownMenuItem
+                                              className="text-blue-600 font-medium"
+                                              onClick={() => {
+                                                setSelectedSessionForMeet(
+                                                  session,
+                                                );
+                                                setIsGoogleMeetModalOpen(true);
+                                              }}
+                                            >
+                                              <Video className="h-4 w-4 mr-2" />{" "}
+                                              Generate Google Meet/Zoom Link
+                                            </DropdownMenuItem>
+                                          ) : (
+                                            <DropdownMenuItem
+                                              className="text-blue-600 font-medium"
+                                              onClick={() => {
+                                                setSelectedSessionForEditMeet(
+                                                  session,
+                                                );
+                                                setIsEditGoogleMeetModalOpen(
+                                                  true,
+                                                );
+                                              }}
+                                            >
+                                              <Video className="h-4 w-4 mr-2" />{" "}
+                                              View Meet Link
+                                            </DropdownMenuItem>
+                                          )}
+                                        </>
+                                      )}
+
+                                      {/* Cancel/Delete - Only for scheduled/all tabs */}
+                                      {(activeTab === "scheduled" ||
+                                        activeTab === "all") && (
+                                        <>
+                                          <DropdownMenuItem
+                                            className="text-destructive"
+                                            onClick={() =>
+                                              handleCancelSession(session._id)
+                                            }
+                                          >
+                                            <X className="h-4 w-4 mr-2" />{" "}
+                                            Cancel
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem
+                                            className="text-destructive"
+                                            onClick={() =>
+                                              handleDeleteSession(session._id)
+                                            }
+                                          >
+                                            <X className="h-4 w-4 mr-2" />{" "}
+                                            Delete
+                                          </DropdownMenuItem>
+                                        </>
+                                      )}
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                )}
+
+                                {/* Single Join Group Button - In LIVE and UPCOMING tabs */}
+                                {index === 0 &&
+                                  (activeTab === "live" ||
+                                    activeTab === "upcoming") &&
+                                  session.groupSessionId &&
+                                  session.status !== "completed" &&
+                                  session.status !== "cancelled" && (
+                                    <Button
+                                      variant="default"
+                                      size="sm"
+                                      className="bg-purple-600 hover:bg-purple-700 text-white font-semibold px-4 py-2 rounded-lg shadow-md hover:shadow-lg transition-all"
+                                      onClick={() =>
+                                        handleJoinGroupCall(groupSessionId)
+                                      }
+                                      disabled={
+                                        joiningGroupSessionId === groupSessionId
+                                      }
+                                    >
+                                      {joiningGroupSessionId ===
+                                      groupSessionId ? (
+                                        <>
+                                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                          Joining...
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Video className="w-4 h-4 mr-2" />
+                                          Join Group{" "}
+                                          <Badge
+                                            variant="secondary"
+                                            className="ml-2 bg-purple-800 text-white border-none"
+                                          >
+                                            {groupSessions.length}
+                                          </Badge>
+                                        </>
+                                      )}
+                                    </Button>
+                                  )}
+                              </td>
+                            </tr>,
+                          );
+                        });
+                      });
+
+                      return rows;
+                    })()}
                   </tbody>
                 </table>
               </div>

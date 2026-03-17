@@ -65,8 +65,12 @@ export const adminVideoCallApi = {
 
     // Generate join link for admin monitoring
     generateJoinLink: async (sessionId, userId, role) => {
+        // Smart detection: if sessionId looks like a group session ID (24 chars or starts with 'group_'), send as groupSessionId
+        const isGroupSessionId = sessionId.length === 24 || sessionId.startsWith('group_');
+        
         const response = await apiClient.post('/generate-join-link', {
-            sessionId,
+            sessionId: isGroupSessionId ? undefined : sessionId,
+            groupSessionId: isGroupSessionId ? sessionId : undefined,
             userId,
             role,
         });

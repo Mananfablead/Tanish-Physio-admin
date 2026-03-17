@@ -23,6 +23,7 @@ import useSocket from "@/hooks/useSocket";
 import useWebRTC from "@/hooks/useWebRTC";
 import { adminVideoCallApi } from "@/lib/videoCallApi";
 import { adminChatApi } from "@/lib/chatApi";
+import WaitingNotification from "@/components/WaitingRoom/WaitingNotification";
 
 const GroupVideoCall = ({
   groupSessionId,
@@ -72,6 +73,9 @@ const GroupVideoCall = ({
     setParticipants,
   } = useWebRTC(groupSessionId, socket, userRole);
 
+  // Local state for tracking if call has started (used for UI purposes)
+  const [callHasStarted, setCallHasStarted] = useState(false);
+
   // Timer for call duration
   useEffect(() => {
     let interval;
@@ -82,6 +86,23 @@ const GroupVideoCall = ({
     }
     return () => clearInterval(interval);
   }, [callActive]);
+
+  // Update local video when localStream changes
+  useEffect(() => {
+    if (localStream && localVideoRef.current) {
+      try {
+        console.log('📹 Assigning local stream to video element in GroupVideoCall');
+        // Check if it's a valid MediaStream before accessing tracks
+        if (typeof localStream.getTracks === 'function') {
+          console.log('📹 Local stream tracks:', localStream.getTracks().length);
+        }
+        localVideoRef.current.srcObject = localStream;
+      } catch (err) {
+        console.error('Error assigning local stream to video element:', err);
+        console.error('Local stream value:', localStream);
+      }
+    }
+  }, [localStream]);
 
   // Format call duration
   const formatDuration = (seconds) => {
@@ -95,27 +116,66 @@ const GroupVideoCall = ({
 
   // Initialize media and join call
   useEffect(() => {
+    let hasJoinedRoom = false; // Prevent duplicate joins
+    
     const initializeCall = async () => {
       try {
-        if (!socket || !connected) return;
+        if (!socket || !connected) {
+          console.log('⏳ Waiting for socket connection...');
+          return;
+        }
 
-        // Initialize local media
-        await initLocalMedia();
+        // Wait a bit to ensure socket is fully established
+        await new Promise(resolve => setTimeout(resolve, 200));
 
-        // Join the group session
-        socket.emit("join-room", {
-          groupSessionId: groupSessionId,
+        // Prevent duplicate initialization
+        if (hasJoinedRoom) {
+          console.log('⏭️ Already joined room, skipping initialization');
+          return;
+        }
+
+        console.log('✅ Socket is connected, initializing...');
+        console.log('📋 GroupVideoCall props:', {
+          groupSessionId,
+          userRole,
+          hasSocket: !!socket,
+          isConnected: connected,
         });
 
+        // Initialize local media FIRST before joining room
+        console.log('🎥 Initializing local media...');
+        const mediaResult = await initLocalMedia();
+        console.log('✅ Local media initialized:', mediaResult ? 'SUCCESS' : 'FAILED');
+        console.log('📹 Local stream tracks:', localStream?.getTracks().length);
+
+        // Join the group session - send ONLY groupSessionId field (not sessionId)
+        console.log('📡 Emitting join-room with:', {
+          groupSessionId: groupSessionId,
+          sessionId: undefined,
+        });
+        
+        socket.emit("join-room", {
+          groupSessionId: groupSessionId,
+          sessionId: undefined, // Explicitly set to undefined so backend knows it's a group session
+        });
+
+        hasJoinedRoom = true;
+        console.log('✅ join-room emitted successfully');
         setJoinedCall(true);
       } catch (err) {
         console.error("Error initializing group call:", err);
-        setError("Failed to initialize group call");
+        setError("Failed to initialize group call: " + err.message);
       }
     };
 
     initializeCall();
-  }, [socket, connected, groupSessionId, initLocalMedia]);
+    
+    // Cleanup function
+    return () => {
+      console.log('🧹 Cleaning up GroupVideoCall initialization');
+      hasJoinedRoom = false;
+    };
+  }, [socket, connected, groupSessionId]); // Keep dependencies minimal
 
   // Fetch group session details
   useEffect(() => {
@@ -145,20 +205,40 @@ const GroupVideoCall = ({
       handleIceCandidate(data.candidate, data.senderId);
 
     const participantJoinedListener = (data) => {
+      console.log('🎉 ADMIN: Participant joined event:', data);
       setParticipants((prev) => {
-        const exists = prev.some((p) => p.userId === data.userId);
-        if (exists) return prev;
+        // Check by socketId first (most reliable)
+        const existsBySocketId = prev.some((p) => p.socketId === data.socketId);
+        if (existsBySocketId) {
+          console.log('⚠️ Participant already exists (by socketId):', data.socketId);
+          return prev;
+        }
+        
+        // Also check by userId
+        const existsByUserId = prev.some((p) => p.userId === data.userId);
+        if (existsByUserId) {
+          console.log('⚠️ Participant already exists (by userId):', data.userId);
+          return prev;
+        }
 
-        return [
-          ...prev,
-          {
-            userId: data.userId,
-            name: data.name || (data.firstName && data.lastName ? `${data.firstName} ${data.lastName}` : `Participant ${data.userId.slice(0, 5)}`),
-            role: data.role || "participant",
-            isSelf: data.userId === user?._id,
-            joinedAt: new Date().toISOString(),
-          },
-        ];
+        const newParticipant = {
+          socketId: data.socketId,
+          userId: data.userId,
+          name: data.name || (data.firstName && data.lastName ? `${data.firstName} ${data.lastName}` : `Participant ${data.userId?.slice(0, 5) || 'Unknown'}`),
+          firstName: data.firstName,
+          lastName: data.lastName,
+          role: data.role || "participant",
+          email: data.email,
+          isSelf: data.userId === user?._id,
+          isTherapist: data.isTherapist,
+          isUser: data.isUser,
+          joinedAt: data.joinedAt || new Date().toISOString(),
+        };
+        
+        console.log('✅ Adding new participant:', newParticipant);
+        const updated = [...prev, newParticipant];
+        console.log('📊 Total participants:', updated.length);
+        return updated;
       });
       
       // Initialize audio status for the new participant (default to enabled)
@@ -185,12 +265,12 @@ const GroupVideoCall = ({
 
     const groupCallStartedListener = (data) => {
       setCallActive(true);
-      setCallStarted(true);
+      setCallHasStarted(true);
     };
 
     const groupCallEndedListener = (data) => {
       setCallActive(false);
-      setCallStarted(false);
+      setCallHasStarted(false);
       if (onEndCall) onEndCall();
     };
 
@@ -216,6 +296,18 @@ const GroupVideoCall = ({
 
     };
 
+    const messageReceivedListener = (data) => {
+      console.log('💬 Message received:', data);
+      setChatMessages((prev) => [
+        ...prev,
+        {
+          user: data.senderName || 'Participant',
+          message: data.content,
+          timestamp: data.timestamp || new Date().toISOString(),
+        },
+      ]);
+    };
+
     // Add listeners
     on("offer", offerListener);
     on("answer", answerListener);
@@ -226,6 +318,7 @@ const GroupVideoCall = ({
     on("group-call-ended", groupCallEndedListener);
     on("participant-status-changed", participantStatusChangedListener);
     on("participant-screen-sharing", participantScreenSharingListener);
+    on("message-received", messageReceivedListener);
 
     return () => {
       socket.off("offer", offerListener);
@@ -243,6 +336,7 @@ const GroupVideoCall = ({
         "participant-screen-sharing",
         participantScreenSharingListener
       );
+      socket.off("message-received", messageReceivedListener);
     };
   }, [
     socket,
@@ -251,7 +345,6 @@ const GroupVideoCall = ({
     handleAnswer,
     handleIceCandidate,
     setCallActive,
-    setCallStarted,
     setParticipants,
     user,
     onEndCall,
@@ -312,6 +405,47 @@ const GroupVideoCall = ({
     }
   };
 
+  // Send chat message
+  const sendChatMessage = async () => {
+    if (!newMessage.trim() || !groupSessionId) return;
+
+    try {
+      // Generate UUID for message deduplication
+      const messageId = "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(
+        /[xy]/g,
+        function (c) {
+          const r = (Math.random() * 16) | 0;
+          const v = c === "x" ? r : (r & 0x3) | 0x8;
+          return v.toString(16);
+        }
+      );
+
+      const senderName = user?.name || "Admin";
+
+      // Send message via socket
+      setNewMessage("");
+
+      if (socket && socket.connected) {
+        socket.emit("send-message", {
+          roomId: groupSessionId,
+          roomType: "group",
+          message: {
+            content: newMessage.trim(),
+            messageId: messageId,
+            attachments: [],
+          },
+        });
+        console.log(
+          "Message sent via socket with messageId:",
+          messageId
+        );
+      }
+    } catch (error) {
+      console.error("Error sending chat message:", error);
+      setError("Failed to send message");
+    }
+  };
+
   // Render participant videos in grid
   const renderParticipantVideos = () => {
     const participantKeys = Object.keys(remoteStreams);
@@ -345,7 +479,21 @@ const GroupVideoCall = ({
     return (
       <div className={gridClass}>
         {participantKeys.map((userId, index) => {
+          // Try to find participant by userId first, then by socketId matching
           const participant = participants.find((p) => p.userId === userId);
+          
+          // Fallback: try to match by other properties if userId doesn't match
+          const matchedParticipant = participant || participants.find((p) => {
+            // Check if this remote stream belongs to this participant
+            const remoteStream = remoteStreams[userId];
+            return remoteStream && p.socketId && remoteStream.id.includes(p.socketId);
+          });
+          
+          const displayName = matchedParticipant?.name || 
+                             (matchedParticipant?.firstName && matchedParticipant?.lastName) ? 
+                               `${matchedParticipant.firstName} ${matchedParticipant.lastName}` : 
+                               `Participant ${index + 1}`;
+          
           return (
             <div
               key={userId}
@@ -361,35 +509,35 @@ const GroupVideoCall = ({
               {/* Participant info overlay */}
               <div className="absolute bottom-2 left-2 right-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded flex items-center justify-between">
                 <div className="flex items-center gap-1">
-                  {participant?.isSelf && (
+                  {matchedParticipant?.isSelf && (
                     <Crown className="h-3 w-3 text-yellow-400" />
                   )}
                   <span className="truncate">
-                    {participant?.name || `Participant ${index + 1}`}
+                    {displayName}
                   </span>
                 </div>
 
                 <div className="flex gap-1">
-                  {participant?.isMuted && (
+                  {matchedParticipant?.isMuted && (
                     <MicOff className="h-3 w-3 text-red-400" />
                   )}
-                  {participant?.isVideoOff && (
+                  {matchedParticipant?.isVideoOff && (
                     <VideoOff className="h-3 w-3 text-red-400" />
                   )}
-                  {participant?.isSelf && (
+                  {matchedParticipant?.isSelf && (
                     <User className="h-3 w-3 text-blue-400" />
                   )}
                 </div>
               </div>
 
               {/* Admin controls for each participant */}
-              {userRole === "admin" && !participant?.isSelf && (
+              {userRole === "admin" && !matchedParticipant?.isSelf && (
                 <div className="absolute top-2 right-2 flex gap-1">
                   <Button
                     size="sm"
                     variant="secondary"
                     className="h-6 w-6 p-0 bg-red-500/20 hover:bg-red-500/30"
-                    onClick={() => handleMuteParticipant(userId)}
+                    onClick={() => handleMuteParticipant(matchedParticipant.userId)}
                   >
                     <VolumeX className="h-3 w-3" />
                   </Button>
@@ -419,6 +567,12 @@ const GroupVideoCall = ({
 
   return (
     <div className="h-screen bg-black text-white flex flex-col">
+      {/* Waiting Room Notification for group sessions */}
+      <WaitingNotification
+        socket={socket}
+        sessionId={groupSessionId}
+        onPatientApproved={() => {}}
+      />
       {/* Header */}
       <div className="flex items-center justify-between p-4 bg-slate-900 border-b border-slate-700">
         <div className="flex items-center gap-4">

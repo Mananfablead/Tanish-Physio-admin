@@ -15,17 +15,16 @@ const API_BASE_URL = "http://localhost:3000";
 
 interface Payment {
   _id: string;
-  bookingId: {
+  bookingId?: {
     _id: string;
     patientName: string;
     patientEmail: string;
     serviceName: string;
   };
-  userId: {
+  userId?: {
     _id: string;
     name: string;
     email: string;
-
   };
   guestName?: string;
   guestEmail?: string;
@@ -35,12 +34,20 @@ interface Payment {
   method?: string;
   paymentMethod?: string;
   razorpayOrderId?: string;
-  
   razorpayPaymentId?: string;
   razorpaySignature?: string;
   createdAt: string;
   updatedAt: string;
   __v?: number;
+  // Additional fields for combined payment/subscription display
+  isSubscription?: boolean;
+  subscriptionId?: string;
+  planName?: string;
+  therapistName?: string;
+  serviceName?: string;
+  finalAmount?: number;
+  orderId?: string;
+  paymentId?: string;
 }
 
 
@@ -61,7 +68,7 @@ export default function Payments() {
   const [isDisputeModalOpen, setIsDisputeModalOpen] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
   const [refundReason, setRefundReason] = useState("");
-    
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10; // Set to 10 items per page as requested
@@ -124,12 +131,12 @@ export default function Payments() {
       payment.razorpayPaymentId?.toLowerCase().includes(searchQuery.toLowerCase());
 
     if (activeFilter === "All") return matchesSearch;
-    
+
     // Handle Successful filter which maps to captured, successful, and paid statuses
     if (activeFilter === "captured" || activeFilter === "successful") {
       return matchesSearch && (payment.status === "captured" || payment.status === "successful" || payment.status === "paid");
     }
-    
+
     return matchesSearch && payment.status.toLowerCase() === activeFilter.toLowerCase();
   }) || [];
 
@@ -179,8 +186,8 @@ export default function Payments() {
           <p className="page-subtitle">Track and manage all platform transactions</p>
         </div>
         <div className="flex items-center gap-3">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             className="gap-2"
             onClick={() => dispatch(fetchAllPayments())}
             disabled={isLoading}
@@ -329,7 +336,23 @@ export default function Payments() {
                         <p className="text-sm text-muted-foreground">{payment.userId?.email || payment?.guestEmail}</p>
                       </div>
                     </td>
-                    <td>{payment.bookingId?.serviceName}</td>
+                    <td>
+                      {payment.isSubscription ? (
+                        <div>
+                          <p className="font-medium">{payment.planName || 'Subscription Plan'}</p>
+                          {payment.therapistName && payment.therapistName !== 'N/A' && (
+                            <p className="text-sm text-muted-foreground">Therapist: {payment.therapistName}</p>
+                          )}
+                        </div>
+                      ) : (
+                        <div>
+                          <p className="font-medium">{payment.serviceName || 'Service Booking'}</p>
+                          {payment.therapistName && payment.therapistName !== 'N/A' && (
+                            <p className="text-sm text-muted-foreground">Therapist: {payment.therapistName}</p>
+                          )}
+                        </div>
+                      )}
+                    </td>
                     <td className="font-semibold">₹{payment.amount}</td>
                     <td className="text-muted-foreground">{payment.paymentMethod}</td>
                     <td className="text-muted-foreground">{new Date(payment.createdAt).toLocaleDateString()}</td>
@@ -341,9 +364,9 @@ export default function Payments() {
                     </td>
                     <td>
                       <div className="flex items-center gap-1">
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           onClick={() => navigate(`/payment-details/${payment._id}`)}
                         >
                           <Eye className="w-4 h-4" />
@@ -448,7 +471,7 @@ export default function Payments() {
               Process a refund for this transaction. This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
-          
+
           {selectedPayment && (
             <div className="space-y-4 mt-4">
               <div className="p-3 rounded-lg bg-muted/50">
@@ -483,7 +506,7 @@ export default function Payments() {
               </div>
             </div>
           )}
-          
+
           <DialogFooter className="mt-4">
             <Button variant="outline" onClick={() => setIsRefundModalOpen(false)}>
               Cancel
@@ -504,7 +527,7 @@ export default function Payments() {
               Review and resolve this payment dispute.
             </DialogDescription>
           </DialogHeader>
-          
+
           {selectedPayment && (
             <div className="space-y-4 mt-4">
               <div className="p-3 rounded-lg bg-muted/50">
@@ -529,7 +552,7 @@ export default function Payments() {
               </div>
             </div>
           )}
-          
+
           <DialogFooter className="mt-4 gap-2">
             <Button variant="outline" onClick={() => setIsDisputeModalOpen(false)}>
               Cancel
