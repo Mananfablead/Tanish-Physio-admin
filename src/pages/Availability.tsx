@@ -275,10 +275,14 @@ const Availability = () => {
       }
 
 
+      // Get user's timezone
+      const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
       const payload = {
         therapistId: currentUser?._id,
         date: selectedDate,
-        timeSlots: normalizedSlots,
+        timeSlots,
+        timezone: userTimezone  // Add timezone field (REQUIRED by backend)
       };
 
       const existingAvailability = availability.find(
@@ -400,29 +404,18 @@ const Availability = () => {
             start: startTime,
             end: endTime,
             status: "available",
-            sessionType: slotSessionType,
-            maxParticipants: slotSessionType === 'group' ? slotMaxParticipants : 1,
-            bookedParticipants: 0
           }];
-      
-      const normalizedSlots = timeSlots.map((slot: any) => {
-        const sessionType = slot.sessionType || 'one-to-one';
-        const maxParticipants = sessionType === 'group' ? (slot.maxParticipants || 5) : 1;
-        const bookedParticipants = typeof slot.bookedParticipants === 'number' ? slot.bookedParticipants : 0;
-        return {
-          ...slot,
-          sessionType,
-          maxParticipants,
-          bookedParticipants
-        };
-      });
+
+      // Get user's timezone
+      const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
       // Process each date individually since backend bulk update affects entire month
       const promises = bulkApplyDates.map(async (date) => {
         const payload = {
           date,
-          timeSlots: normalizedSlots,
-          therapistId: currentUser?._id
+          timeSlots,
+          therapistId: currentUser?._id,
+          timezone: userTimezone  // Add timezone field (REQUIRED by backend)
         };
 
         // Check if availability already exists for this date

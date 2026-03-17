@@ -15,6 +15,10 @@ apiClient.interceptors.request.use((config) => {
     config.headers["Content-Type"] = "application/json";
   }
 
+  // Add admin timezone header (always use Asia/Kolkata for admin)
+  // This ensures admin always sees their local IST time
+  config.headers['X-Timezone'] = 'Asia/Kolkata';
+
   return config;
 });
 

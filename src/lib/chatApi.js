@@ -60,16 +60,27 @@ export const adminChatApi = {
 
     // Upload file
     uploadFile: async (file) => {
-        const formData = new FormData();
-        formData.append('file', file);
+        try {
+            console.log('📤 Admin: Starting file upload:', file.name);
 
-        const response = await apiClient.post('/upload-file', formData, {
-            headers: {
-                'Content-Type': 'multipart/form-data',
-            },
-        });
+            const formData = new FormData();
+            formData.append('file', file);
 
-        return response.data;
+            console.log('📤 Admin: Sending upload request...');
+
+            const response = await apiClient.post('/upload-file', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+            });
+
+            console.log('✅ Admin: File upload response:', response.data);
+            return response.data;
+        } catch (error) {
+            console.error('❌ Admin: File upload error:', error);
+            console.error('❌ Error details:', error.response?.data);
+            throw error;
+        }
     },
 };
 
