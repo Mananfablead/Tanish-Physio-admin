@@ -245,10 +245,14 @@ const Availability = () => {
       }
 
 
+      // Get user's timezone
+      const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
       const payload = {
         therapistId: currentUser?._id,
         date: selectedDate,
         timeSlots,
+        timezone: userTimezone  // Add timezone field (REQUIRED by backend)
       };
 
       const existingAvailability = availability.find(
@@ -372,12 +376,16 @@ const Availability = () => {
             status: "available",
           }];
 
+      // Get user's timezone
+      const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
       // Process each date individually since backend bulk update affects entire month
       const promises = bulkApplyDates.map(async (date) => {
         const payload = {
           date,
           timeSlots,
-          therapistId: currentUser?._id
+          therapistId: currentUser?._id,
+          timezone: userTimezone  // Add timezone field (REQUIRED by backend)
         };
 
         // Check if availability already exists for this date
