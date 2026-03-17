@@ -50,34 +50,60 @@ const LiveSessions = () => {
   }, []);
 
   // Function to calculate time until session
+  // const calculateTimeUntilSession = (date: string, time: string) => {
+  //   // Create a date object combining the session date and time
+  //   const sessionDateTime = new Date(`${date} ${time}`);
+    
+  //   // Use currentTime state instead of new Date() for consistency
+  //   const now = currentTime;
+    
+  //   // Calculate difference in milliseconds
+  //   const diffMs = sessionDateTime.getTime() - now.getTime();
+    
+  //   // Convert to hours and minutes
+  //   const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  //   const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    
+  //   // Format the result
+  //   if (diffHours > 0) {
+  //     if (diffMinutes > 0) {
+  //       return `${diffHours}h ${diffMinutes}m`;
+  //     } else {
+  //       return `${diffHours}h`;
+  //     }
+  //   } else if (diffMinutes > 0) {
+  //     return `${diffMinutes}m`;
+  //   } else {
+  //     return 'less than 1 minute';
+  //   }
+  // };
   const calculateTimeUntilSession = (date: string, time: string) => {
-    // Create a date object combining the session date and time
-    const sessionDateTime = new Date(`${date} ${time}`);
-    
-    // Use currentTime state instead of new Date() for consistency
-    const now = currentTime;
-    
-    // Calculate difference in milliseconds
-    const diffMs = sessionDateTime.getTime() - now.getTime();
-    
-    // Convert to hours and minutes
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-    
-    // Format the result
-    if (diffHours > 0) {
-      if (diffMinutes > 0) {
-        return `${diffHours}h ${diffMinutes}m`;
-      } else {
-        return `${diffHours}h`;
-      }
-    } else if (diffMinutes > 0) {
-      return `${diffMinutes}m`;
-    } else {
-      return 'less than 1 minute';
-    }
-  };
-  
+  const [year, month, day] = date.split("-").map(Number);
+  const [hours, minutes] = time.split(":").map(Number);
+
+  const sessionDateTime = new Date(year, month - 1, day, hours, minutes);
+
+  const now = currentTime;
+
+  const diffMs = sessionDateTime.getTime() - now.getTime();
+
+  if (diffMs <= 0) return "Session started";
+
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+
+  if (diffHours > 0) {
+    return diffMinutes > 0
+      ? `${diffHours}h ${diffMinutes}m`
+      : `${diffHours}h`;
+  }
+
+  if (diffMinutes > 0) {
+    return `${diffMinutes}m`;
+  }
+
+  return "less than 1 minute";
+};
   // Filter sessions based on active tab, status filter, and additional filters
   const filteredSessions = (activeTab === 'upcoming' ? upcomingSessions : allSessions).filter((session: any) => {
     // First filter by tab status
