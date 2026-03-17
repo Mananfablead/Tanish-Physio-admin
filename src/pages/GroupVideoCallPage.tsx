@@ -39,31 +39,38 @@ export default function GroupVideoCallPage() {
         
         console.log("🎯 Initializing group video call:", id);
 
-        // Generate admin join token
-        const tokenResponse = await adminVideoCallApi.generateJoinLink(
-          id,
-          user._id,
-          "admin"
-        );
+        // Add timeout for API calls
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Request timeout - server may not be running')), 10000);
+        });
+
+        // Generate admin join token with timeout
+        const tokenPromise = adminVideoCallApi.generateJoinLink(id, user._id, "admin");
+        const tokenResponse = await Promise.race([tokenPromise, timeoutPromise]);
 
         console.log("🎯 Admin join token response:", tokenResponse);
 
-        if (tokenResponse.success) {
+        if (tokenResponse && tokenResponse.success) {
           setConnected(true);
           setLoading(false);
-        } else {
+        } else if (tokenResponse && !tokenResponse.success) {
           const errorMsg = tokenResponse.message || "Failed to generate join token";
           console.error("❌ Token generation failed:", errorMsg);
           setError(errorMsg);
+          setLoading(false);
+        } else {
+          console.error("❌ Invalid response format");
+          setError("Invalid server response");
           setLoading(false);
         }
 
         // Fetch session participants for group call
         try {
-          const participantsResponse = await adminVideoCallApi.getSessionParticipants(id);
+          const participantsPromise = adminVideoCallApi.getSessionParticipants(id);
+          const participantsResponse = await Promise.race([participantsPromise, timeoutPromise]);
           console.log("🎯 Group session participants:", participantsResponse);
           
-          if (participantsResponse.success) {
+          if (participantsResponse && participantsResponse.success) {
             const sessionInfo = {
               participants: participantsResponse.data.participants,
               type: "group",
@@ -79,7 +86,7 @@ export default function GroupVideoCallPage() {
         
       } catch (err: any) {
         console.error("❌ Error initializing group call:", err);
-        setError(err.response?.data?.message || "Failed to initialize call");
+        setError(err.message || "Failed to initialize call");
         setLoading(false);
       }
     };

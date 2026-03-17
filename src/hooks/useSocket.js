@@ -57,7 +57,21 @@ const useSocket = (roomId, roomType) => {
                 serverUrl = 'https://apitanishvideo.fableadtech.in'; // Production WebSocket server
             }
             console.log('useSocket: Connecting to server:', serverUrl);
+            
+            // CRITICAL: Clean up existing socket before creating new one
+            if (socket) {
+                console.log('🧹 Cleaning up previous socket before creating new connection');
+                socket.removeAllListeners();
+                socket.disconnect();
+                socket.close();
+                socket.io = null; // Clear internal reference
+            }
+            
             const newSocket = io(serverUrl, socketOptions);
+            
+            // Add unique identifier to track this socket instance
+            newSocket.instanceId = Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+            console.log('🆔 New socket instance created:', newSocket.instanceId);
 
             newSocket.on('connect', () => {
                 console.log('Connected to video call server');
@@ -203,8 +217,24 @@ const useSocket = (roomId, roomType) => {
             let hasEmittedError = false;
             
             newSocket.on('error', (err) => {
+                // Ignore errors from already disconnected sockets
+                if (!newSocket.connected && !newSocket.active) {
+                    console.log('⚠️ Ignoring error from disconnected socket:', err.message);
+                    return;
+                }
+
+                // For group monitoring rooms, completely ignore "Session not found"
+                // This error comes from an early monitor join using sessionId semantics,
+                // but the real group call uses groupSessionId and works correctly.
+                if (roomType === 'group' && err.message && err.message.includes('Session not found')) {
+                    console.log('⚠️ Session not found for group monitor socket – ignoring without logging as error');
+                    // Do NOT mark as emitted, do NOT increment retries, do NOT setError
+                    return;
+                }
+                
                 // Prevent duplicate error emissions from same socket instance
                 if (hasEmittedError) {
+                    console.log('⏭️ Suppressing duplicate error emission');
                     return;
                 }
                 
