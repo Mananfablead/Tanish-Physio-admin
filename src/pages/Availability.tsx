@@ -225,6 +225,10 @@ const Availability = () => {
                 start: startTime,
                 end: endTime,
                 status: "available",
+                duration: slotDuration,
+                bookingType: slotBookingType || "regular",
+                sessionType: slotSessionType,
+                maxParticipants: slotMaxParticipants,
               },
             ];
 
@@ -409,6 +413,10 @@ const Availability = () => {
                 start: startTime,
                 end: endTime,
                 status: "available",
+                duration: slotDuration,
+                bookingType: slotBookingType || "regular",
+                sessionType: slotSessionType,
+                maxParticipants: slotMaxParticipants,
               },
             ];
 
@@ -1444,6 +1452,8 @@ const Availability = () => {
                                         status: editSlotStatus,
                                         duration: editSlotDuration,
                                         bookingType: editSlotBookingType,
+                                        sessionType: editSlotSessionType,
+                                        maxParticipants: editSlotMaxParticipants,
                                       };
                                       setCustomSlots(updatedSlots);
                                       setEditingSlotIndex(null);
@@ -1840,6 +1850,8 @@ const Availability = () => {
                                 status: "available",
                                 duration: slotDuration,
                                 bookingType: slotBookingType || "regular",
+                                sessionType: slotSessionType,
+                                maxParticipants: slotMaxParticipants,
                               },
                             ]);
 
