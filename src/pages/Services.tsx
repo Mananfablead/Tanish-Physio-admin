@@ -148,7 +148,8 @@ export default function Services() {
                     <tr>
                       <th>Service</th>
                       {/* <th>Description</th> */}
-                      <th>Price</th>
+                      <th>Price (INR)</th>
+                      <th>Price (USD)</th>
                       <th>Duration</th>
                       <th>Purchases</th>
                       {/* <th>Sessions</th> */}
@@ -210,7 +211,8 @@ export default function Services() {
                           </div>
                         </td>
 
-                        <td>&#8377;{service.price}</td>
+                        <td>&#8377;{service.priceINR?.toLocaleString()}</td>
+                        <td>${service.priceUSD?.toLocaleString()}</td>
                         <td>{service.duration}</td>
                         <td>{service.purchaseCount}</td>
                         {/* <td>{service.sessions}</td> */}
@@ -400,8 +402,12 @@ export default function Services() {
                   </span>
                 </p>
                 <p className="text-sm">
-                  <span className="text-muted-foreground">Price:</span>{" "}
-                  <span className="font-medium">₹{selectedService.price}</span>
+                  <span className="text-muted-foreground">Price (INR):</span>{" "}
+                  <span className="font-medium">&#8377;{selectedService.priceINR?.toLocaleString()}</span>
+                </p>
+                <p className="text-sm">
+                  <span className="text-muted-foreground">Price (USD):</span>{" "}
+                  <span className="font-medium">${selectedService.priceUSD?.toLocaleString()}</span>
                 </p>
               </div>
             </div>

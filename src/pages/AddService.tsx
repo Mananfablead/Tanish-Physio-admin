@@ -35,7 +35,8 @@ export default function AddService() {
       name: string;
       description: string;
       about: string;
-      price: string;
+      priceINR: string;
+      priceUSD: string;
       duration: string;
       // sessions: string;
       validity: string;
@@ -49,7 +50,8 @@ export default function AddService() {
       name: "",
       description: "",
       about: "", // New field
-      price: "",
+      priceINR: "",
+      priceUSD: "",
       duration: "",
       // sessions: "",
       validity: "",
@@ -160,7 +162,8 @@ export default function AddService() {
       formData.append("name", serviceForm.name.trim());
       formData.append("description", serviceForm.description.trim());
       formData.append("about", serviceForm.about.trim());
-      formData.append("price", serviceForm.price);
+      formData.append("priceINR", serviceForm.priceINR);
+      formData.append("priceUSD", serviceForm.priceUSD);
       formData.append("duration", serviceForm.duration);
       // formData.append("sessions", serviceForm.sessions);
       formData.append("validity", serviceForm.validity);
@@ -266,25 +269,51 @@ export default function AddService() {
             />
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input
-                type="number"
-                placeholder="Price"
-                value={serviceForm.price}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  // Prevent negative values
-                  if (value === "" || (Number(value) >= 0 && !value.includes("-"))) {
-                    setServiceForm({ ...serviceForm, price: value });
-                  }
-                }}
-                min="0"
-                onKeyPress={(e) => {
-                  // Prevent negative sign and other non-numeric characters
-                  if (e.key === "-" || e.key === "e" || e.key === "+" || e.key === "E") {
-                    e.preventDefault();
-                  }
-                }}
-              />
+              <div>
+                <label className="text-sm font-medium mb-2 block">Price INR (₹)</label>
+                <Input
+                  type="number"
+                  placeholder="Enter price in INR"
+                  value={serviceForm.priceINR}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    // Prevent negative values
+                    if (value === "" || (Number(value) >= 0 && !value.includes("-"))) {
+                      setServiceForm({ ...serviceForm, priceINR: value });
+                    }
+                  }}
+                  min="0"
+                  onKeyPress={(e) => {
+                    // Prevent negative sign and other non-numeric characters
+                    if (e.key === "-" || e.key === "e" || e.key === "+" || e.key === "E") {
+                      e.preventDefault();
+                    }
+                  }}
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium mb-2 block">Price USD ($)</label>
+                <Input
+                  type="number"
+                  placeholder="Enter price in USD"
+                  value={serviceForm.priceUSD}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    // Prevent negative values
+                    if (value === "" || (Number(value) >= 0 && !value.includes("-"))) {
+                      setServiceForm({ ...serviceForm, priceUSD: value });
+                    }
+                  }}
+                  min="0"
+                  onKeyPress={(e) => {
+                    // Prevent negative sign and other non-numeric characters
+                    if (e.key === "-" || e.key === "e" || e.key === "+" || e.key === "E") {
+                      e.preventDefault();
+                    }
+                  }}
+                />
+              </div>
 
               <div>
                 <Input
@@ -546,7 +575,8 @@ export default function AddService() {
                 onClick={handleAddService}
                 disabled={
                   !serviceForm.name ||
-                  !serviceForm.price ||
+                  !serviceForm.priceINR ||
+                  !serviceForm.priceUSD ||
                   !serviceForm.duration ||
                   !serviceForm.features ||
                   !!imageError ||

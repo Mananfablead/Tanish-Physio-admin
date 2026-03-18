@@ -40,7 +40,8 @@ export default function UpdateService() {
     name: string;
     description: string;
     about: string;
-    price: string;
+    priceINR: string;
+    priceUSD: string;
     duration: string;
     sessions: string;
     validity: string;
@@ -54,7 +55,8 @@ export default function UpdateService() {
     name: "",
     description: "",
     about: "", // New field
-    price: "",
+    priceINR: "",
+    priceUSD: "",
     duration: "",
     sessions: "",
     validity: "",
@@ -101,8 +103,10 @@ export default function UpdateService() {
         name: service.name || "",
         description: service.description || "",
         about: service.about || "", // New field
-        price:
-          service.price || service.price === 0 ? service.price.toString() : "",
+        priceINR:
+          service.priceINR || service.priceINR === 0 ? service.priceINR.toString() : "",
+        priceUSD:
+          service.priceUSD || service.priceUSD === 0 ? service.priceUSD.toString() : "",
         duration: service.duration || "",
         sessions:
           service.sessions || service.sessions === 0
@@ -269,7 +273,8 @@ export default function UpdateService() {
     formData.append("name", serviceForm.name.trim());
     formData.append("description", serviceForm.description.trim());
     formData.append("about", serviceForm.about.trim());
-    formData.append("price", serviceForm.price);
+    formData.append("priceINR", serviceForm.priceINR);
+    formData.append("priceUSD", serviceForm.priceUSD);
     formData.append("duration", serviceForm.duration);
     formData.append("sessions", serviceForm.sessions);
     formData.append("validity", serviceForm.validity);
@@ -390,24 +395,49 @@ export default function UpdateService() {
           />
 
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            <Input
-              type="text"
-              placeholder="Price"
-              value={serviceForm.price}
-              onChange={(e) => {
-                const value = e.target.value;
-                // Prevent negative values
-                if (value === "" || (Number(value) >= 0 && !value.includes("-"))) {
-                  setServiceForm({ ...serviceForm, price: value });
-                }
-              }}
-              onKeyPress={(e) => {
-                // Prevent negative sign and other non-numeric characters
-                if (e.key === "-" || e.key === "e" || e.key === "+" || e.key === "E") {
-                  e.preventDefault();
-                }
-              }}
-            />
+            <div>
+              <label className="text-sm font-medium mb-2 block">Price INR (₹)</label>
+              <Input
+                type="number"
+                placeholder="Enter price in INR"
+                value={serviceForm.priceINR}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  // Prevent negative values
+                  if (value === "" || (Number(value) >= 0 && !value.includes("-"))) {
+                    setServiceForm({ ...serviceForm, priceINR: value });
+                  }
+                }}
+                onKeyPress={(e) => {
+                  // Prevent negative sign and other non-numeric characters
+                  if (e.key === "-" || e.key === "e" || e.key === "+" || e.key === "E") {
+                    e.preventDefault();
+                  }
+                }}
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium mb-2 block">Price USD ($)</label>
+              <Input
+                type="number"
+                placeholder="Enter price in USD"
+                value={serviceForm.priceUSD}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  // Prevent negative values
+                  if (value === "" || (Number(value) >= 0 && !value.includes("-"))) {
+                    setServiceForm({ ...serviceForm, priceUSD: value });
+                  }
+                }}
+                onKeyPress={(e) => {
+                  // Prevent negative sign and other non-numeric characters
+                  if (e.key === "-" || e.key === "e" || e.key === "+" || e.key === "E") {
+                    e.preventDefault();
+                  }
+                }}
+              />
+            </div>
 
             <div>
               <Input
@@ -696,7 +726,8 @@ export default function UpdateService() {
               onClick={handleUpdateService}
               disabled={
                 !serviceForm.name ||
-                !serviceForm.price ||
+                !serviceForm.priceINR ||
+                !serviceForm.priceUSD ||
                 !serviceForm.duration ||
                 !!imageError ||
                 isLoading

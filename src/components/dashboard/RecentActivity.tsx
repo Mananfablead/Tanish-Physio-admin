@@ -1,5 +1,6 @@
 import { CheckCircle, XCircle, UserPlus, CreditCard, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useNavigate } from "react-router-dom";
 
 interface RecentActivityProps {
   recentActivityData?: Array<{
@@ -12,21 +13,60 @@ interface RecentActivityProps {
 }
 
 export function RecentActivity({ recentActivityData = [] }: RecentActivityProps) {
-  // Map activity type to icon and color
+  const navigate = useNavigate();
+
+  // Map activity type to icon, color and navigation path
   const getActivityConfig = (type: string) => {
     switch(type) {
       case 'session_complete':
-        return { icon: CheckCircle, iconColor: "text-success", bgColor: "bg-success/10" };
+        return { 
+          icon: CheckCircle, 
+          iconColor: "text-success", 
+          bgColor: "bg-success/10",
+          path: "/bookings-and-sessions"
+        };
       case 'new_user':
-        return { icon: UserPlus, iconColor: "text-info", bgColor: "bg-info/10" };
+        return { 
+          icon: UserPlus, 
+          iconColor: "text-info", 
+          bgColor: "bg-info/10",
+          path: "/users"
+        };
       case 'payment':
-        return { icon: CreditCard, iconColor: "text-primary", bgColor: "bg-primary/10" };
+        return { 
+          icon: CreditCard, 
+          iconColor: "text-primary", 
+          bgColor: "bg-primary/10",
+          path: "/payments"
+        };
       case 'cancellation':
-        return { icon: XCircle, iconColor: "text-warning", bgColor: "bg-warning/10" };
+        return { 
+          icon: XCircle, 
+          iconColor: "text-warning", 
+          bgColor: "bg-warning/10",
+          path: "/bookings-and-sessions"
+        };
       case 'issue':
-        return { icon: AlertTriangle, iconColor: "text-destructive", bgColor: "bg-destructive/10" };
+        return { 
+          icon: AlertTriangle, 
+          iconColor: "text-destructive", 
+          bgColor: "bg-destructive/10",
+          path: "/support"
+        };
       default:
-        return { icon: CheckCircle, iconColor: "text-muted-foreground", bgColor: "bg-muted" };
+        return { 
+          icon: CheckCircle, 
+          iconColor: "text-muted-foreground", 
+          bgColor: "bg-muted",
+          path: "/dashboard"
+        };
+    }
+  };
+
+  const handleActivityClick = (type: string) => {
+    const config = getActivityConfig(type);
+    if (config.path) {
+      navigate(config.path);
     }
   };
 
@@ -34,14 +74,18 @@ export function RecentActivity({ recentActivityData = [] }: RecentActivityProps)
     <div className="bg-card rounded-lg border border-border p-5 animate-fade-in">
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-semibold">Recent Activity</h3>
-        <button className="text-sm text-primary hover:underline">View all</button>
+        {/* <button className="text-sm text-primary hover:underline">View all</button> */}
       </div>
       
       <div className="space-y-4">
         {recentActivityData.slice(0, 5).map((activity, index) => {
           const { icon: Icon, iconColor, bgColor } = getActivityConfig(activity.type);
           return (
-            <div key={activity.id || index} className="flex items-start gap-3">
+            <div 
+              key={activity.id || index} 
+              className="flex items-start gap-3 cursor-pointer hover:bg-muted/50 p-2 rounded-lg transition-colors"
+              onClick={() => handleActivityClick(activity.type)}
+            >
               <div className={cn("p-2 rounded-lg", bgColor)}>
                 <Icon className={cn("w-4 h-4", iconColor)} />
               </div>
