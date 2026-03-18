@@ -358,7 +358,7 @@ export default function EditSubscription() {
                   }))
                 }
                 className="mt-1"
-                disabled={planHasSubscribers}
+                // disabled={planHasSubscribers}
               />
               {planHasSubscribers && (
                 <p className="text-xs text-muted-foreground mt-1">

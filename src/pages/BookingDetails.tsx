@@ -753,6 +753,9 @@ console.log("Health profile:", singleBooking?.booking?.userId?.healthProfile);
         <div className="space-y-6">
           {/* Status */}
 
+          <Card>
+          </Card>
+
           {/* Service Details */}
           <Card>
             <CardHeader>

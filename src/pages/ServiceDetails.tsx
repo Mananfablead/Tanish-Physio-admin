@@ -431,7 +431,7 @@ export default function ServiceDetails() {
                   </div>
                 </CardContent>
               </Card>
-            </TabsContent>
+            </TabsContent> 
 
             {/* Purchases Tab */}
             <TabsContent value="purchases" className="space-y-6">
