@@ -151,7 +151,7 @@ export default function Services() {
                       <th>Price</th>
                       <th>Duration</th>
                       <th>Purchases</th>
-                      <th>Sessions</th>
+                      {/* <th>Sessions</th> */}
                       <th>Validity</th>
                       <th>Featured</th>
                       <th>Status</th>
@@ -213,7 +213,7 @@ export default function Services() {
                         <td>&#8377;{service.price}</td>
                         <td>{service.duration}</td>
                         <td>{service.purchaseCount}</td>
-                        <td>{service.sessions}</td>
+                        {/* <td>{service.sessions}</td> */}
                         <td>{service.validity} days</td>
                         <td>
                           <span

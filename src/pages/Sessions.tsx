@@ -26,6 +26,7 @@ import GenerateGoogleMeetModal from "@/components/VideoCall/GenerateGoogleMeetMo
 import EditGoogleMeetModal from "@/components/VideoCall/EditGoogleMeetModal";
 import { subscriptionAPI, groupSessionAPI } from "@/api/apiClient";
 import { tokenUtils } from "@/api/authAPI";
+
 type SessionStatus =
   | "pending"
   | "scheduled"
@@ -68,20 +69,20 @@ export default function Sessions() {
 
     return () => clearInterval(timer);
   }, []);
-useEffect(() => {
-  if (!allSessions || allSessions.length === 0) return;
+  useEffect(() => {
+    if (!allSessions || allSessions.length === 0) return;
 
-  allSessions.forEach((session) => {
-    if (session.status === "live" && session.endTime) {
-      const end = new Date(session.endTime);
-      const now = new Date();
+    allSessions.forEach((session) => {
+      if (session.status === "live" && session.endTime) {
+        const end = new Date(session.endTime);
+        const now = new Date();
 
-      if (now >= end) {
-        handleUpdateSessionStatus(session._id, "completed");
+        if (now >= end) {
+          handleUpdateSessionStatus(session._id, "completed");
+        }
       }
-    }
-  });
-}, [currentTime, allSessions]);
+    });
+  }, [currentTime, allSessions]);
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10; // Set to 10 items per page as requested
@@ -958,23 +959,23 @@ useEffect(() => {
             {activeTab === "live"
               ? "Live Sessions"
               : activeTab === "pending"
-              ? "Pending Sessions"
-              : activeTab === "upcoming"
-              ? "Upcoming Sessions"
-              : activeTab === "all"
-              ? "All Sessions"
-              : "Session Management"}
+                ? "Pending Sessions"
+                : activeTab === "upcoming"
+                  ? "Upcoming Sessions"
+                  : activeTab === "all"
+                    ? "All Sessions"
+                    : "Session Management"}
           </h1>
           <p className="page-subtitle">
             {activeTab === "live"
               ? "View and join live sessions"
               : activeTab === "pending"
-              ? "Review and approve pending session requests"
-              : activeTab === "upcoming"
-              ? "View sessions scheduled within 24 hours"
-              : activeTab === "all"
-              ? "Monitor and manage all platform sessions"
-              : "Monitor and manage all platform sessions"}
+                ? "Review and approve pending session requests"
+                : activeTab === "upcoming"
+                  ? "View sessions scheduled within 24 hours"
+                  : activeTab === "all"
+                    ? "Monitor and manage all platform sessions"
+                    : "Monitor and manage all platform sessions"}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -1002,7 +1003,7 @@ useEffect(() => {
 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
-        <div 
+        <div
           className="stat-card cursor-pointer hover:shadow-md transition-shadow"
           onClick={() => setStatusFilter(statusFilter === "pending" ? null : "pending")}
         >
@@ -1016,7 +1017,7 @@ useEffect(() => {
             </div>
           </div>
         </div>
-        <div 
+        <div
           className="stat-card cursor-pointer hover:shadow-md transition-shadow"
           onClick={() => setStatusFilter(statusFilter === "scheduled" ? null : "scheduled")}
         >
@@ -1030,7 +1031,7 @@ useEffect(() => {
             </div>
           </div>
         </div>
-        <div 
+        <div
           className="stat-card cursor-pointer hover:shadow-md transition-shadow"
           onClick={() => setStatusFilter(statusFilter === "live" ? null : "live")}
         >
@@ -1044,7 +1045,7 @@ useEffect(() => {
             </div>
           </div>
         </div>
-        <div 
+        <div
           className="stat-card cursor-pointer hover:shadow-md transition-shadow"
           onClick={() => setStatusFilter(statusFilter === "completed" ? null : "completed")}
         >
@@ -1058,7 +1059,7 @@ useEffect(() => {
             </div>
           </div>
         </div>
-        <div 
+        <div
           className="stat-card cursor-pointer hover:shadow-md transition-shadow"
           onClick={() => setStatusFilter(statusFilter === "cancelled" ? null : "cancelled")}
         >
@@ -1129,10 +1130,10 @@ useEffect(() => {
                 activeTab === "live"
                   ? "Search by user, therapist, date, time, or type..."
                   : activeTab === "pending"
-                  ? "Search by booking, user, therapist, date, or status..."
-                  : activeTab === "upcoming"
-                  ? "Search by user, therapist, date, time, or type..."
-                  : "Search by booking, user, therapist, date, or status..."
+                    ? "Search by booking, user, therapist, date, or status..."
+                    : activeTab === "upcoming"
+                      ? "Search by user, therapist, date, time, or type..."
+                      : "Search by booking, user, therapist, date, or status..."
               }
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -1324,12 +1325,10 @@ useEffect(() => {
                   </h3>
                   <p className="text-muted-foreground">
                     {searchQuery
-                      ? `No ${
-                          activeTab === "live" ? "live" : "upcoming"
-                        } sessions match your search criteria.`
-                      : `There are no ${
-                          activeTab === "live" ? "live" : "upcoming"
-                        } sessions.`}
+                      ? `No ${activeTab === "live" ? "live" : "upcoming"
+                      } sessions match your search criteria.`
+                      : `There are no ${activeTab === "live" ? "live" : "upcoming"
+                      } sessions.`}
                   </p>
                 </div>
               )}
@@ -1927,40 +1926,40 @@ useEffect(() => {
                 </table>
               </div>
 
-              <div className="flex items-center justify-between px-4 py-3 border-t border-border">
-                <p className="text-sm text-muted-foreground">
-                  Showing{" "}
-                  <span className="font-medium">{filteredSessions.length}</span>{" "}
-                  {activeTab === "upcoming" ? "upcoming sessions" : "sessions"}
-                </p>
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" disabled>
-                    <ChevronLeft className="w-4 h-4" />
-                  </Button>
-                  <Button variant="outline" size="sm" className="min-w-[32px]">
-                    1
-                  </Button>
-                  <Button variant="outline" size="sm">
-                    <ChevronRight className="w-4 h-4" />
-                  </Button>
+                <div className="flex items-center justify-between px-4 py-3 border-t border-border">
+                  <p className="text-sm text-muted-foreground">
+                    Showing{" "}
+                    <span className="font-medium">{filteredSessions.length}</span>{" "}
+                    {activeTab === "upcoming" ? "upcoming sessions" : "sessions"}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" disabled>
+                      <ChevronLeft className="w-4 h-4" />
+                    </Button>
+                    <Button variant="outline" size="sm" className="min-w-[32px]">
+                      1
+                    </Button>
+                    <Button variant="outline" size="sm">
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ) : (
-            <div className="border rounded-lg p-12 text-center">
-              <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
-                <Calendar className="w-8 h-8 text-muted-foreground" />
+            ) : (
+              <div className="border rounded-lg p-12 text-center">
+                <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+                  <Calendar className="w-8 h-8 text-muted-foreground" />
+                </div>
+                <h3 className="text-lg font-medium mb-2">No Sessions Found</h3>
+                <p className="text-muted-foreground">
+                  {searchQuery
+                    ? "No sessions match your search criteria."
+                    : activeTab === "upcoming"
+                      ? "No upcoming sessions found in the system."
+                      : `No ${activeTab} sessions found in the system.`}
+                </p>
               </div>
-              <h3 className="text-lg font-medium mb-2">No Sessions Found</h3>
-              <p className="text-muted-foreground">
-                {searchQuery
-                  ? "No sessions match your search criteria."
-                  : activeTab === "upcoming"
-                  ? "No upcoming sessions found in the system."
-                  : `No ${activeTab} sessions found in the system.`}
-              </p>
-            </div>
-          )}
+            )}
         </TabsContent>
       </Tabs>
 
@@ -2171,8 +2170,8 @@ useEffect(() => {
                         const statusColor = isPast
                           ? "bg-muted text-muted-foreground"
                           : hasAvailable
-                          ? "bg-green-100 text-green-700"
-                          : "";
+                            ? "bg-green-100 text-green-700"
+                            : "";
 
                         return (
                           <button
@@ -2194,11 +2193,10 @@ useEffect(() => {
                             className={`
                         h-8 w-8 rounded-full text-xs flex items-center justify-center
                         ${statusColor}
-                        ${
-                          rescheduleDate === day.date
-                            ? "ring-2 ring-primary bg-primary text-white"
-                            : ""
-                        }
+                        ${rescheduleDate === day.date
+                                ? "ring-2 ring-primary bg-primary text-white"
+                                : ""
+                              }
                         ${isPast ? "opacity-50 cursor-not-allowed" : ""}
                       `}
                           >
@@ -2229,16 +2227,14 @@ useEffect(() => {
                               }
                               className={`
                           w-full text-left p-2 border rounded-lg text-sm
-                          ${
-                            slot.status === "available"
-                              ? "hover:bg-green-50 border-green-200"
-                              : "opacity-50 border-gray-200"
-                          }
-                          ${
-                            rescheduleTime === slot.start
-                              ? "ring-2 ring-primary bg-primary/10"
-                              : ""
-                          }
+                          ${slot.status === "available"
+                                  ? "hover:bg-green-50 border-green-200"
+                                  : "opacity-50 border-gray-200"
+                                }
+                          ${rescheduleTime === slot.start
+                                  ? "ring-2 ring-primary bg-primary/10"
+                                  : ""
+                                }
                         `}
                             >
                               {formatTime(slot.start)} - {formatTime(slot.end)}
@@ -2324,14 +2320,14 @@ useEffect(() => {
                       <span className="font-medium">
                         {selectedSession.date
                           ? new Date(selectedSession.date).toLocaleDateString(
-                              "en-US",
-                              {
-                                weekday: "long",
-                                year: "numeric",
-                                month: "long",
-                                day: "numeric",
-                              }
-                            )
+                            "en-US",
+                            {
+                              weekday: "long",
+                              year: "numeric",
+                              month: "long",
+                              day: "numeric",
+                            }
+                          )
                           : "N/A"}
                       </span>
                     </p>
@@ -2342,11 +2338,11 @@ useEffect(() => {
                       <span className="font-medium">
                         {selectedSession.startTime
                           ? new Date(
-                              selectedSession.startTime
-                            ).toLocaleTimeString([], {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })
+                            selectedSession.startTime
+                          ).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })
                           : selectedSession.time || "N/A"}
                       </span>
                     </p>
@@ -2447,15 +2443,15 @@ useEffect(() => {
                                 className={cn(
                                   "aspect-square p-1 text-xs rounded-md transition-colors",
                                   isSelected &&
-                                    "bg-primary text-white font-bold",
+                                  "bg-primary text-white font-bold",
                                   !isSelected &&
-                                    !isPast &&
-                                    hasAvailability &&
-                                    "hover:bg-accent",
+                                  !isPast &&
+                                  hasAvailability &&
+                                  "hover:bg-accent",
                                   isPast && "opacity-30 cursor-not-allowed",
                                   !isPast &&
-                                    !hasAvailability &&
-                                    "opacity-50 cursor-not-allowed"
+                                  !hasAvailability &&
+                                  "opacity-50 cursor-not-allowed"
                                 )}
                                 onClick={() => {
                                   setRebookDate(dateStr);
@@ -2585,7 +2581,7 @@ useEffect(() => {
                 </SelectTrigger>
                 <SelectContent>
                   {usersWithActiveSubscriptions &&
-                  usersWithActiveSubscriptions.length > 0 ? (
+                    usersWithActiveSubscriptions.length > 0 ? (
                     usersWithActiveSubscriptions.map((user) => (
                       <SelectItem key={user._id} value={user._id}>
                         {user.name} ({user.email})
@@ -2617,7 +2613,7 @@ useEffect(() => {
                   </SelectTrigger>
                   <SelectContent>
                     {selectedUserSubscriptions &&
-                    selectedUserSubscriptions.length > 0 ? (
+                      selectedUserSubscriptions.length > 0 ? (
                       selectedUserSubscriptions.map((sub) => (
                         <SelectItem key={sub._id} value={sub._id}>
                           {sub.planName} - {sub.availableSessions?.remaining}{" "}
@@ -2682,19 +2678,19 @@ useEffect(() => {
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {newSession.date &&
-                  availability.some(
-                    (item) =>
-                      item.date === newSession.date &&
-                      item.therapistId._id === newSession.therapistId &&
-                      item.timeSlots.some(
-                        (slot) =>
-                          slot.status === true || slot.status === "available"
-                      )
-                  )
+                    availability.some(
+                      (item) =>
+                        item.date === newSession.date &&
+                        item.therapistId._id === newSession.therapistId &&
+                        item.timeSlots.some(
+                          (slot) =>
+                            slot.status === true || slot.status === "available"
+                        )
+                    )
                     ? "✓ Available time slots found for this date"
                     : newSession.date
-                    ? "⚠ No available time slots for this date"
-                    : "Select a date to check availability"}
+                      ? "⚠ No available time slots for this date"
+                      : "Select a date to check availability"}
                 </p>
               </div>
 
@@ -2765,16 +2761,14 @@ useEffect(() => {
                               }
                               className={`
                                 p-3 text-center rounded-lg border transition-all
-                                ${
-                                  newSession.time === slot.start
-                                    ? "border-primary bg-primary text-primary-foreground shadow-md"
-                                    : "border-border hover:border-primary hover:bg-primary/5"
+                                ${newSession.time === slot.start
+                                  ? "border-primary bg-primary text-primary-foreground shadow-md"
+                                  : "border-border hover:border-primary hover:bg-primary/5"
                                 }
-                                ${
-                                  slot.status !== "available" ||
+                                ${slot.status !== "available" ||
                                   isTimeSlotPast(item.date, slot.start)
-                                    ? "opacity-50 cursor-not-allowed"
-                                    : "hover:border-primary hover:bg-primary/5"
+                                  ? "opacity-50 cursor-not-allowed"
+                                  : "hover:border-primary hover:bg-primary/5"
                                 }
                               `}
                             >
@@ -2800,13 +2794,13 @@ useEffect(() => {
                             slot.status === true || slot.status === "available"
                         )
                       ).length === 0 && (
-                      <div className="col-span-full text-center py-8 text-muted-foreground">
-                        <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                        <p className="text-sm">
-                          No available time slots for this date
-                        </p>
-                      </div>
-                    )}
+                        <div className="col-span-full text-center py-8 text-muted-foreground">
+                          <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                          <p className="text-sm">
+                            No available time slots for this date
+                          </p>
+                        </div>
+                      )}
                   </div>
                 </div>
               )}
@@ -2896,16 +2890,16 @@ useEffect(() => {
         sessionInfo={
           selectedSessionForMeet
             ? {
-                userName: selectedSessionForMeet.userId?.name || "N/A",
-                therapistName:
-                  selectedSessionForMeet.therapistId?.name || "N/A",
-                date: selectedSessionForMeet.date,
-                time: selectedSessionForMeet.time,
-                serviceName:
-                  selectedSessionForMeet.bookingId?.serviceName ||
-                  selectedSessionForMeet.subscriptionId?.planName ||
-                  "Session",
-              }
+              userName: selectedSessionForMeet.userId?.name || "N/A",
+              therapistName:
+                selectedSessionForMeet.therapistId?.name || "N/A",
+              date: selectedSessionForMeet.date,
+              time: selectedSessionForMeet.time,
+              serviceName:
+                selectedSessionForMeet.bookingId?.serviceName ||
+                selectedSessionForMeet.subscriptionId?.planName ||
+                "Session",
+            }
             : undefined
         }
         onSuccess={() => {

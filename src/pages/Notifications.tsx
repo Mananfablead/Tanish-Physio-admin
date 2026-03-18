@@ -494,7 +494,7 @@ export default function Notifications() {
               Mark All Read
             </Button>
           )}
-          {allNotifications.length > 0 && (
+          {/* {allNotifications.length > 0 && (
             <Button
               variant="outline"
               onClick={() => setShowDeleteAllConfirmation(true)}
@@ -503,7 +503,7 @@ export default function Notifications() {
               <Trash2 className="w-4 h-4" />
               Delete All
             </Button>
-          )}
+          )} */}
           <Button
             onClick={() => setShowSendModal(true)}
             className="flex items-center gap-2"
@@ -532,24 +532,27 @@ export default function Notifications() {
               <table className="data-table">
                 <thead>
                   <tr>
-                    <th>Title</th>
-                    <th>Message</th>
+                    <th>Title & Description</th>
+                    {/* <th>Message</th> */}
                     <th>Type</th>
                     <th>Recipient</th>
-                    <th>Channels</th>
+                    {/* <th>Channels</th> */}
                     <th>Sent At</th>
                     <th>Status</th>
-                    {/* <th className="w-24">Actions</th> */}
+                    <th className="w-24">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredNotifications.length > 0 ? (
                     filteredNotifications.map((notification: any) => (
                       <tr key={notification._id || notification.id}>
-                        <td className="font-medium">{notification.title}</td>
-                        <td className="text-muted-foreground max-w-xs truncate">
-                          {notification.message}
+                        <td className="font-medium">
+                          <div className="font-semibold">{notification.title}</div>
+                          <div className="text-sm text-muted-foreground line-clamp-2 max-w-xs">
+                            {notification.message}
+                          </div>
                         </td>
+
                         <td>
                           <Badge
                             className={cn(
@@ -567,7 +570,7 @@ export default function Notifications() {
                               : "All Users"}
                           </Badge>
                         </td>
-                        <td>
+                        {/* <td>
                           <div className="flex flex-wrap gap-1">
                             {notification.channels ? (
                               Object.entries(notification.channels).map(
@@ -588,7 +591,7 @@ export default function Notifications() {
                               </Badge>
                             )}
                           </div>
-                        </td>
+                        </td> */}
                         <td className="text-muted-foreground">
                           {new Date(
                             notification.createdAt
@@ -671,7 +674,7 @@ export default function Notifications() {
                 </thead>
                 <tbody>
                   {filteredNotifications.filter((n: any) => !n.read).length >
-                  0 ? (
+                    0 ? (
                     filteredNotifications
                       .filter((n: any) => !n.read)
                       .map((notification: any) => (
@@ -865,7 +868,7 @@ export default function Notifications() {
                                     className={cn(
                                       "capitalize",
                                       !notification.read &&
-                                        "bg-blue-100 text-blue-800"
+                                      "bg-blue-100 text-blue-800"
                                     )}
                                   >
                                     {notification.read ? "Read" : "Unread"}
