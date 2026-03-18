@@ -47,6 +47,11 @@ const Availability = () => {
   const [editSlotStatus, setEditSlotStatus] = useState("available");
   const [editSlotDuration, setEditSlotDuration] = useState<number>(45);
   const [editSlotBookingType, setEditSlotBookingType] = useState<'regular' | 'free-consultation' | ''>();
+  const [editSlotSessionType, setEditSlotSessionType] = useState<
+    "one-to-one" | "group"
+  >("one-to-one");
+  const [editSlotMaxParticipants, setEditSlotMaxParticipants] =
+    useState<number>(5);
 
   // State for bulk apply preview
   const [bulkApplyPreview, setBulkApplyPreview] = useState<boolean>(false);
@@ -172,7 +177,7 @@ const Availability = () => {
         if (allSlots.length > 0) {
           // Set custom slots to all existing slots
           setCustomSlots(allSlots);
-          
+
           // Use first slot start time and calculate 45 minutes after as end time
           setStartTime(allSlots[0].start);
           const startDate = new Date(`1970-01-01T${allSlots[0].start}`);
@@ -212,14 +217,17 @@ const Availability = () => {
       setSaving(true);
 
       // Use custom slots if available, otherwise create single slot
-      const timeSlots = customSlots.length > 0 
-        ? [...customSlots]
-        : [{
-            start: startTime,
-            end: endTime,
-            status: "available",
-          }];
-          
+      const timeSlots =
+        customSlots.length > 0
+          ? [...customSlots]
+          : [
+              {
+                start: startTime,
+                end: endTime,
+                status: "available",
+              },
+            ];
+
       // Validate time slots before saving
       if (customSlots.length === 0) {
         // Validate time intervals (15, 30, 45, 60 minutes)
@@ -1320,30 +1328,44 @@ const Availability = () => {
                                     </select>
                                   </div>
                                   <div className="col-span-4 flex flex-col gap-1">
-                                    <Label className="text-xs text-muted-foreground">Session</Label>
+                                    <Label className="text-xs text-muted-foreground">
+                                      Session
+                                    </Label>
                                     <select
                                       value={editSlotSessionType}
                                       onChange={(e) => {
-                                        const nextType = e.target.value as 'one-to-one' | 'group';
+                                        const nextType = e.target.value as
+                                          | "one-to-one"
+                                          | "group";
                                         setEditSlotSessionType(nextType);
-                                        if (nextType === 'one-to-one') {
+                                        if (nextType === "one-to-one") {
                                           setEditSlotMaxParticipants(1);
                                         }
                                       }}
                                       className="w-full h-9 text-sm border border-input rounded-md px-2 bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary"
                                     >
-                                      <option value="one-to-one">One-to-One</option>
+                                      <option value="one-to-one">
+                                        One-to-One
+                                      </option>
                                       <option value="group">Group</option>
                                     </select>
                                   </div>
                                   <div className="col-span-4 flex flex-col gap-1">
-                                    <Label className="text-xs text-muted-foreground">Max Participants</Label>
+                                    <Label className="text-xs text-muted-foreground">
+                                      Max Participants
+                                    </Label>
                                     <Input
                                       type="number"
-                                      min={editSlotSessionType === 'group' ? 2 : 1}
+                                      min={
+                                        editSlotSessionType === "group" ? 2 : 1
+                                      }
                                       value={editSlotMaxParticipants}
-                                      onChange={(e) => setEditSlotMaxParticipants(Math.max(1, Number(e.target.value)))}
-                                      disabled={editSlotSessionType !== 'group'}
+                                      onChange={(e) =>
+                                        setEditSlotMaxParticipants(
+                                          Math.max(1, Number(e.target.value)),
+                                        )
+                                      }
+                                      disabled={editSlotSessionType !== "group"}
                                       className="text-xs h-9"
                                     />
                                   </div>
@@ -1412,7 +1434,7 @@ const Availability = () => {
                                         });
                                         return;
                                       }
-                                      
+
                                       // Update the slot
                                       const updatedSlots = [...customSlots];
                                       updatedSlots[index] = {
@@ -1421,7 +1443,7 @@ const Availability = () => {
                                         end: editSlotEnd,
                                         status: editSlotStatus,
                                         duration: editSlotDuration,
-                                        bookingType: editSlotBookingType
+                                        bookingType: editSlotBookingType,
                                       };
                                       setCustomSlots(updatedSlots);
                                       setEditingSlotIndex(null);
@@ -1471,12 +1493,21 @@ const Availability = () => {
                                           ? "Free"
                                           : "Regular"}
                                       </Badge>
-                                      <Badge variant="outline" className="text-xs px-2 py-0">
-                                        {slot.sessionType === 'group' ? 'Group' : 'One-to-One'}
+                                      <Badge
+                                        variant="outline"
+                                        className="text-xs px-2 py-0"
+                                      >
+                                        {slot.sessionType === "group"
+                                          ? "Group"
+                                          : "One-to-One"}
                                       </Badge>
-                                      {slot.sessionType === 'group' && (
-                                        <Badge variant="outline" className="text-xs px-2 py-0">
-                                          {slot.bookedParticipants ?? 0}/{slot.maxParticipants ?? 0}
+                                      {slot.sessionType === "group" && (
+                                        <Badge
+                                          variant="outline"
+                                          className="text-xs px-2 py-0"
+                                        >
+                                          {slot.bookedParticipants ?? 0}/
+                                          {slot.maxParticipants ?? 0}
                                         </Badge>
                                       )}
                                     </div>
@@ -1507,7 +1538,15 @@ const Availability = () => {
                                       setEditSlotEnd(slot.end);
                                       setEditSlotStatus(slot.status);
                                       setEditSlotDuration(slot.duration || 45);
-                                      setEditSlotBookingType(slot.bookingType || 'regular');
+                                      setEditSlotBookingType(
+                                        slot.bookingType || "regular",
+                                      );
+                                      setEditSlotSessionType(
+                                        slot.sessionType || "one-to-one",
+                                      );
+                                      setEditSlotMaxParticipants(
+                                        slot.maxParticipants || 1,
+                                      );
                                     }}
                                   >
                                     <svg
@@ -1677,14 +1716,21 @@ const Availability = () => {
                         </select>
                       </div>
                       <div className="col-span-6">
-                        <Label htmlFor="slotSessionType" className="text-xs text-muted-foreground">Session Type</Label>
+                        <Label
+                          htmlFor="slotSessionType"
+                          className="text-xs text-muted-foreground"
+                        >
+                          Session Type
+                        </Label>
                         <select
                           id="slotSessionType"
                           value={slotSessionType}
                           onChange={(e) => {
-                            const nextType = e.target.value as 'one-to-one' | 'group';
+                            const nextType = e.target.value as
+                              | "one-to-one"
+                              | "group";
                             setSlotSessionType(nextType);
-                            if (nextType === 'one-to-one') {
+                            if (nextType === "one-to-one") {
                               setSlotMaxParticipants(1);
                             }
                           }}
@@ -1695,14 +1741,23 @@ const Availability = () => {
                         </select>
                       </div>
                       <div className="col-span-6">
-                        <Label htmlFor="slotMaxParticipants" className="text-xs text-muted-foreground">Max Participants</Label>
+                        <Label
+                          htmlFor="slotMaxParticipants"
+                          className="text-xs text-muted-foreground"
+                        >
+                          Max Participants
+                        </Label>
                         <Input
                           id="slotMaxParticipants"
                           type="number"
-                          min={slotSessionType === 'group' ? 2 : 1}
+                          min={slotSessionType === "group" ? 2 : 1}
                           value={slotMaxParticipants}
-                          onChange={(e) => setSlotMaxParticipants(Math.max(1, Number(e.target.value)))}
-                          disabled={slotSessionType !== 'group'}
+                          onChange={(e) =>
+                            setSlotMaxParticipants(
+                              Math.max(1, Number(e.target.value)),
+                            )
+                          }
+                          disabled={slotSessionType !== "group"}
                           className="text-sm h-10"
                         />
                       </div>
@@ -1775,7 +1830,7 @@ const Availability = () => {
                               });
                               return;
                             }
-                            
+
                             // Add new slot
                             setCustomSlots([
                               ...customSlots,
@@ -1784,8 +1839,8 @@ const Availability = () => {
                                 end: endTime,
                                 status: "available",
                                 duration: slotDuration,
-                                bookingType: slotBookingType || 'regular'
-                              }
+                                bookingType: slotBookingType || "regular",
+                              },
                             ]);
 
                             // Reset form with duration-based increment validation
