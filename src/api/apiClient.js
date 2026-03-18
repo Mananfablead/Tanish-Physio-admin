@@ -321,6 +321,9 @@ export const groupSessionAPI = {
   // Get all group sessions
   getAll: () => apiClient.get('/group-sessions/admin/all-sessions'),
   
+  // Get group session by ID
+  getById: (id) => apiClient.get(`/group-sessions/${id}`),
+  
   // Get join link for group session
   getJoinLink: (groupSessionId) => apiClient.get(`/group-sessions/join/${groupSessionId}`),
   

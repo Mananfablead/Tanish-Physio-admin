@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -18,6 +18,11 @@ import {
   VolumeX,
   User,
   Crown,
+  Paperclip,
+  Image,
+  FileText,
+  Play,
+  Trash2,
 } from "lucide-react";
 import useSocket from "@/hooks/useSocket";
 import useWebRTC from "@/hooks/useWebRTC";
@@ -46,6 +51,10 @@ const GroupVideoCall = ({
   const [showSettings, setShowSettings] = useState(false);
   const [chatMessages, setChatMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
+  const [uploadedFiles, setUploadedFiles] = useState([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef(null);
+  const chatContainerRef = useRef(null);
   const [groupSessionDetails, setGroupSessionDetails] = useState(null);
   const [callDuration, setCallDuration] = useState(0);
 
@@ -76,6 +85,155 @@ const GroupVideoCall = ({
   // Local state for tracking if call has started (used for UI purposes)
   const [callHasStarted, setCallHasStarted] = useState(false);
 
+  // Load chat messages when joining call
+  useEffect(() => {
+    const loadChatMessages = async () => {
+      try {
+        console.log('📥 Loading group video call chat messages...');
+        
+        // First, load historical messages from database
+        if (groupSessionId) {
+          console.log('📥 Fetching historical messages for group session:', groupSessionId);
+          const response = await adminChatApi.getMessages(groupSessionId);
+          if (response.success && response.data.messages) {
+            console.log('✅ Loaded', response.data.messages.length, 'historical messages');
+            setChatMessages(response.data.messages.map(msg => ({
+              id: msg._id || msg.messageId,
+              messageId: msg.messageId || msg._id,
+              user: msg.senderId?.name || 'Participant',
+              message: msg.message,
+              timestamp: msg.timestamp || msg.createdAt,
+              senderId: msg.senderId?._id || msg.senderId,
+              attachments: msg.attachments || []
+            })));
+          }
+        }
+        
+        // Join the video session room for messaging
+        if (socket && connected) {
+          const videoRoomId = `video-call-${groupSessionId}`;
+          console.log('📥 Joining video session room:', videoRoomId);
+          socket.emit('join-video-session', {
+            sessionId: groupSessionId
+          });
+          
+          // Listen for join confirmation
+          socket.on('joined-video-session', (data) => {
+            console.log('✅ Successfully joined group video session:', data);
+          });
+          
+          socket.on('error', (data) => {
+            console.error('❌ Error joining group video session:', data);
+          });
+          
+          // Listen for incoming messages (including own)
+          socket.on('receive-video-message', (data) => {
+            console.log('📥 Received group video message:', data);
+            console.log('📥 Message senderId:', data.senderId, 'My userId:', socket.user?.userId);
+            
+            setChatMessages((prev) => {
+              // First, check if this is a server confirmation of an optimistically added message
+              // Look for pending messages from this sender with matching content
+              const pendingIndex = prev.findIndex(m => 
+                m.isPending && 
+                m.senderId === data.senderId && 
+                m.message === data.message &&
+                Math.abs(new Date(m.timestamp).getTime() - new Date(data.timestamp).getTime()) < 2000 // Within 2 seconds
+              );
+              
+              if (pendingIndex !== -1) {
+                console.log('✅ Server confirmation received, updating pending message');
+                // Update the pending message with real data instead of adding duplicate
+                const updated = [...prev];
+                updated[pendingIndex] = {
+                  ...updated[pendingIndex],
+                  messageId: data.messageId || updated[pendingIndex].messageId.replace('temp-', ''),
+                  timestamp: data.timestamp || updated[pendingIndex].timestamp,
+                  isPending: false // Remove pending flag
+                };
+                return updated;
+              }
+              
+              // Deduplication - check if message already exists by messageId
+              if (data.messageId && prev.some(m => m.messageId && m.messageId === data.messageId)) {
+                console.log('⚠️ Duplicate message detected (messageId match), skipping');
+                return prev;
+              }
+              
+              // Secondary deduplication - check by senderId, timestamp, and content
+              const isDuplicate = prev.some(m => 
+                m.senderId === data.senderId && 
+                m.message === data.message &&
+                !m.isPending && // Don't compare with pending messages
+                Math.abs(new Date(m.timestamp).getTime() - new Date(data.timestamp).getTime()) < 1000 // Within 1 second
+              );
+              
+              if (isDuplicate) {
+                console.log('⚠️ Duplicate message detected (content match), skipping');
+                return prev;
+              }
+              
+              return [
+                ...prev,
+                {
+                  user: data.senderName || 'Participant',
+                  message: data.message,
+                  timestamp: data.timestamp || new Date().toISOString(),
+                  senderId: data.senderId,
+                  messageId: data.messageId,
+                  attachments: data.attachments || []
+                }
+              ];
+            });
+          });
+        }
+      } catch (error) {
+        console.error('Error loading chat messages:', error);
+      }
+    };
+    
+    if (groupSessionId && socket && connected) {
+      loadChatMessages();
+    }
+    
+    return () => {
+      socket?.off('joined-video-session');
+      socket?.off('receive-video-message');
+      socket?.off('error');
+    };
+  }, [groupSessionId, socket, connected]);
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
+  }, [chatMessages, showChat]);
+
+  // Ensure local video displays when stream is ready
+  useEffect(() => {
+    if (localVideoRef.current && localStream) {
+      console.log('📹 ADMIN: Setting local video stream');
+      try {
+        localVideoRef.current.srcObject = localStream;
+        localVideoRef.current.muted = true;
+        localVideoRef.current.autoplay = true;
+        localVideoRef.current.playsInline = true;
+        
+        // Play video
+        const playPromise = localVideoRef.current.play();
+        if (playPromise !== undefined) {
+          playPromise.catch(error => {
+            console.log('⚠️ ADMIN: Local video autoplay prevented:', error.name);
+          });
+        }
+        console.log('✅ ADMIN: Local video stream attached');
+      } catch (error) {
+        console.error('❌ ADMIN: Error attaching local video:', error);
+      }
+    }
+  }, [localStream, localVideoRef]);
+
   // Timer for call duration
   useEffect(() => {
     let interval;
@@ -86,23 +244,6 @@ const GroupVideoCall = ({
     }
     return () => clearInterval(interval);
   }, [callActive]);
-
-  // Update local video when localStream changes
-  useEffect(() => {
-    if (localStream && localVideoRef.current) {
-      try {
-        console.log('📹 Assigning local stream to video element in GroupVideoCall');
-        // Check if it's a valid MediaStream before accessing tracks
-        if (typeof localStream.getTracks === 'function') {
-          console.log('📹 Local stream tracks:', localStream.getTracks().length);
-        }
-        localVideoRef.current.srcObject = localStream;
-      } catch (err) {
-        console.error('Error assigning local stream to video element:', err);
-        console.error('Local stream value:', localStream);
-      }
-    }
-  }, [localStream]);
 
   // Format call duration
   const formatDuration = (seconds) => {
@@ -144,9 +285,14 @@ const GroupVideoCall = ({
 
         // Initialize local media FIRST before joining room
         console.log('🎥 Initializing local media...');
-        const mediaResult = await initLocalMedia();
-        console.log('✅ Local media initialized:', mediaResult ? 'SUCCESS' : 'FAILED');
-        console.log('📹 Local stream tracks:', localStream?.getTracks().length);
+        try {
+          const mediaResult = await initLocalMedia();
+          console.log('✅ Local media initialized:', mediaResult ? 'SUCCESS' : 'FAILED');
+          console.log('📹 Local stream tracks:', localStream?.getTracks().length);
+        } catch (mediaError) {
+          console.error('❌ Failed to initialize local media:', mediaError);
+          // Continue anyway - admin can still monitor without camera
+        }
 
         // Join the group session - send ONLY groupSessionId field (not sessionId)
         console.log('📡 Emitting join-room with:', {
@@ -296,18 +442,6 @@ const GroupVideoCall = ({
 
     };
 
-    const messageReceivedListener = (data) => {
-      console.log('💬 Message received:', data);
-      setChatMessages((prev) => [
-        ...prev,
-        {
-          user: data.senderName || 'Participant',
-          message: data.content,
-          timestamp: data.timestamp || new Date().toISOString(),
-        },
-      ]);
-    };
-
     // Add listeners
     on("offer", offerListener);
     on("answer", answerListener);
@@ -318,7 +452,6 @@ const GroupVideoCall = ({
     on("group-call-ended", groupCallEndedListener);
     on("participant-status-changed", participantStatusChangedListener);
     on("participant-screen-sharing", participantScreenSharingListener);
-    on("message-received", messageReceivedListener);
 
     return () => {
       socket.off("offer", offerListener);
@@ -336,7 +469,6 @@ const GroupVideoCall = ({
         "participant-screen-sharing",
         participantScreenSharingListener
       );
-      socket.off("message-received", messageReceivedListener);
     };
   }, [
     socket,
@@ -407,10 +539,13 @@ const GroupVideoCall = ({
 
   // Send chat message
   const sendChatMessage = async () => {
-    if (!newMessage.trim() || !groupSessionId) return;
+    if ((!newMessage.trim() && uploadedFiles.length === 0) || !groupSessionId || !socket) {
+      console.log('⚠️ Cannot send message: missing message, session ID, or socket');
+      return;
+    }
 
     try {
-      // Generate UUID for message deduplication
+      console.log('📤 Sending group video call message:', newMessage);
       const messageId = "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(
         /[xy]/g,
         function (c) {
@@ -420,30 +555,90 @@ const GroupVideoCall = ({
         }
       );
 
-      const senderName = user?.name || "Admin";
-
-      // Send message via socket
+      const originalMessage = newMessage.trim();
       setNewMessage("");
 
-      if (socket && socket.connected) {
-        socket.emit("send-message", {
-          roomId: groupSessionId,
-          roomType: "group",
-          message: {
-            content: newMessage.trim(),
-            messageId: messageId,
-            attachments: [],
-          },
+      // Get files to send and clear the list
+      const filesToSend = [...uploadedFiles];
+      setUploadedFiles([]);
+
+      // Send message via socket
+      socket.emit("send-video-message", {
+        sessionId: groupSessionId,
+        message: originalMessage,
+        senderId: user?._id || socket.user?.userId,
+        attachments: filesToSend // Include uploaded files
+      });
+
+      // Add message to local state immediately (optimistic update)
+      // Mark it as pending server confirmation with temporary flag
+      setChatMessages((prev) => [
+        ...prev,
+        {
+          user: user?.name || "You",
+          message: originalMessage,
+          timestamp: new Date().toISOString(),
+          senderId: user?._id || socket.user?.userId,
+          messageId: `temp-${messageId}`, // Temporary ID until server confirms
+          attachments: filesToSend,
+          isPending: true // Flag to track this is optimistically added
+        }
+      ]);
+
+      console.log('📤 Group video call message sent', filesToSend.length > 0 ? `with ${filesToSend.length} file(s)` : '');
+    } catch (error) {
+      console.error("Error sending message:", error);
+    }
+  };
+
+  // Handle file selection
+  const handleFileSelect = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // Validate file size (50MB limit)
+    const maxSize = 50 * 1024 * 1024;
+    if (file.size > maxSize) {
+      alert("File size exceeds 50MB limit. Please choose a smaller file.");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+
+    setIsUploading(true);
+
+    try {
+      console.log("📤 Uploading file:", file.name, file.type, file.size);
+
+      // Upload file using adminChatApi
+      const response = await adminChatApi.uploadFile(file);
+
+      console.log("✅ File uploaded successfully:", response);
+      console.log("✅ Response data:", response.data);
+
+      if (response.success && response.data) {
+        const fileData = response.data.file;
+        console.log("📎 File data to add:", fileData);
+
+        // Add to uploaded files list (to be sent with message)
+        setUploadedFiles((prev) => {
+          const newFiles = [...prev, fileData];
+          console.log("📎 Updated uploadedFiles:", newFiles);
+          return newFiles;
         });
-        console.log(
-          "Message sent via socket with messageId:",
-          messageId
-        );
       }
     } catch (error) {
-      console.error("Error sending chat message:", error);
-      setError("Failed to send message");
+      console.error("❌ Error uploading file:", error);
+      alert("Failed to upload file. Please try again.");
+    } finally {
+      setIsUploading(false);
+      // Reset file input
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
+  };
+
+  // Remove a file from the pending upload list
+  const removeFile = (fileIndex) => {
+    setUploadedFiles((prev) => prev.filter((_, index) => index !== fileIndex));
   };
 
   // Render participant videos in grid
@@ -479,21 +674,7 @@ const GroupVideoCall = ({
     return (
       <div className={gridClass}>
         {participantKeys.map((userId, index) => {
-          // Try to find participant by userId first, then by socketId matching
           const participant = participants.find((p) => p.userId === userId);
-          
-          // Fallback: try to match by other properties if userId doesn't match
-          const matchedParticipant = participant || participants.find((p) => {
-            // Check if this remote stream belongs to this participant
-            const remoteStream = remoteStreams[userId];
-            return remoteStream && p.socketId && remoteStream.id.includes(p.socketId);
-          });
-          
-          const displayName = matchedParticipant?.name || 
-                             (matchedParticipant?.firstName && matchedParticipant?.lastName) ? 
-                               `${matchedParticipant.firstName} ${matchedParticipant.lastName}` : 
-                               `Participant ${index + 1}`;
-          
           return (
             <div
               key={userId}
@@ -509,35 +690,35 @@ const GroupVideoCall = ({
               {/* Participant info overlay */}
               <div className="absolute bottom-2 left-2 right-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded flex items-center justify-between">
                 <div className="flex items-center gap-1">
-                  {matchedParticipant?.isSelf && (
+                  {participant?.isSelf && (
                     <Crown className="h-3 w-3 text-yellow-400" />
                   )}
                   <span className="truncate">
-                    {displayName}
+                    {participant?.name || `Participant ${index + 1}`}
                   </span>
                 </div>
 
                 <div className="flex gap-1">
-                  {matchedParticipant?.isMuted && (
+                  {participant?.isMuted && (
                     <MicOff className="h-3 w-3 text-red-400" />
                   )}
-                  {matchedParticipant?.isVideoOff && (
+                  {participant?.isVideoOff && (
                     <VideoOff className="h-3 w-3 text-red-400" />
                   )}
-                  {matchedParticipant?.isSelf && (
+                  {participant?.isSelf && (
                     <User className="h-3 w-3 text-blue-400" />
                   )}
                 </div>
               </div>
 
               {/* Admin controls for each participant */}
-              {userRole === "admin" && !matchedParticipant?.isSelf && (
+              {userRole === "admin" && !participant?.isSelf && (
                 <div className="absolute top-2 right-2 flex gap-1">
                   <Button
                     size="sm"
                     variant="secondary"
                     className="h-6 w-6 p-0 bg-red-500/20 hover:bg-red-500/30"
-                    onClick={() => handleMuteParticipant(matchedParticipant.userId)}
+                    onClick={() => handleMuteParticipant(userId)}
                   >
                     <VolumeX className="h-3 w-3" />
                   </Button>
@@ -718,30 +899,148 @@ const GroupVideoCall = ({
         {/* Chat Panel */}
         {showChat && (
           <div className="w-80 bg-slate-900 border-l border-slate-700 flex flex-col">
-            <div className="p-4 border-b border-slate-700">
+            <div className="p-4 border-b border-slate-700 flex items-center justify-between">
               <h3 className="font-semibold">Group Chat</h3>
+              <Badge variant="secondary" className="bg-slate-800 text-slate-400">
+                {chatMessages.length}
+              </Badge>
             </div>
-            <div className="flex-1 overflow-y-auto p-4">
+            <div 
+              ref={chatContainerRef}
+              className="flex-1 overflow-y-auto p-4"
+            >
               <div className="space-y-3">
                 {chatMessages.map((msg, index) => (
-                  <div key={index} className="text-sm">
-                    <div className="font-medium text-slate-300">{msg.user}</div>
-                    <div className="text-slate-400">{msg.message}</div>
+                  <div 
+                    key={index} 
+                    className={`text-sm ${msg.senderId === user?._id ? 'text-right' : 'text-left'}`}
+                  >
+                    <div className={`inline-block max-w-[85%] rounded-lg px-3 py-2 ${
+                      msg.senderId === user?._id 
+                        ? 'bg-blue-600 text-white' 
+                        : 'bg-slate-800 text-slate-100'
+                    }`}>
+                      <div className={`font-medium text-xs mb-1 ${
+                        msg.senderId === user?._id ? 'text-blue-100' : 'text-slate-400'
+                      }`}>
+                        {msg.user}{msg.senderId === user?._id && ' (You)'}
+                      </div>
+                      <div className="break-words">{msg.message}</div>
+                      {msg.attachments && msg.attachments.length > 0 && (
+                        <div className="mt-2 space-y-2">
+                          {msg.attachments.map((attachment, attIndex) => (
+                            <a
+                              key={attIndex}
+                              href={attachment.url || attachment.path}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-2 bg-black/30 rounded-md p-2 hover:bg-black/50 transition-colors"
+                            >
+                              {attachment.type === 'image' ? (
+                                <Image className="h-4 w-4 text-emerald-400 flex-shrink-0" />
+                              ) : attachment.type === 'video' ? (
+                                <Play className="h-4 w-4 text-blue-400 flex-shrink-0" />
+                              ) : (
+                                <FileText className="h-4 w-4 text-orange-400 flex-shrink-0" />
+                              )}
+                              <span className="text-xs truncate flex-1">
+                                {attachment.originalName || attachment.name || `Attachment ${attIndex + 1}`}
+                              </span>
+                            </a>
+                          ))}
+                        </div>
+                      )}
+                      {msg.timestamp && (
+                        <div className={`text-xs mt-1 ${
+                          msg.senderId === user?._id ? 'text-blue-200' : 'text-slate-500'
+                        }`}>
+                          {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
+            
+            {/* Show uploaded files preview */}
+            {uploadedFiles.length > 0 && (
+              <div className="px-4 pb-2">
+                <div className="space-y-2">
+                  {uploadedFiles.map((file, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center gap-2 bg-slate-800 rounded-lg p-2 border border-slate-700"
+                    >
+                      <div className="flex-shrink-0">
+                        {file.type === 'image' ? (
+                          <Image className="h-5 w-5 text-emerald-400" />
+                        ) : file.type === 'video' ? (
+                          <Play className="h-5 w-5 text-blue-400" />
+                        ) : (
+                          <FileText className="h-5 w-5 text-orange-400" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-white truncate">
+                          {file.originalName || file.name}
+                        </p>
+                        <p className="text-[10px] text-slate-400">
+                          {(file.size / 1024).toFixed(1)} KB
+                        </p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 w-6 p-0 hover:bg-red-500/20 hover:text-red-400"
+                        onClick={() => removeFile(index)}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
             <div className="p-4 border-t border-slate-700">
-              <div className="flex gap-2">
+              <div className="flex gap-2 mb-2">
                 <input
-                  type="text"
-                  placeholder="Type a message..."
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  className="flex-1 bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white text-sm"
-                  onKeyPress={(e) => e.key === "Enter" && sendChatMessage()}
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*,video/*,application/pdf,.doc,.docx,.txt"
+                  className="hidden"
+                  onChange={handleFileSelect}
                 />
-                <Button size="sm" onClick={sendChatMessage}>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="h-9 w-9 p-0"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
+                >
+                  {isUploading ? (
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-400 border-t-transparent" />
+                  ) : (
+                    <Paperclip className="h-4 w-4" />
+                  )}
+                </Button>
+                <div className="flex-1 relative">
+                  <input
+                    type="text"
+                    placeholder="Type a message..."
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    onKeyPress={(e) => e.key === "Enter" && sendChatMessage()}
+                    className="w-full h-9 bg-slate-800 border border-slate-700 rounded-md px-3 pr-8 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <Button 
+                  size="sm" 
+                  onClick={sendChatMessage}
+                  disabled={(!newMessage.trim() && uploadedFiles.length === 0) || isUploading}
+                  className="h-9 px-4"
+                >
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </div>

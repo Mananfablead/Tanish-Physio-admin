@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from "react-router-dom";
 import { cn } from '@/lib/utils';
 import { 
@@ -12,7 +12,8 @@ import {
   Users,
   Filter,
   Search,
-  Copy
+  Copy,
+  Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,6 +38,7 @@ const LiveSessions = () => {
   const [activeTab, setActiveTab] = useState('upcoming'); // Default to upcoming
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date()); // Track current time in real-time
+  const [joiningGroupSessionId, setJoiningGroupSessionId] = useState<string | null>(null);
     const { list: allSessions = [], loading, error } = useSelector((state: any) => state.sessions);
   const { upcomingSessions = [] } = useSelector((state: any) => state.sessions);
 
@@ -157,6 +159,96 @@ const LiveSessions = () => {
       dispatch(fetchSessions());
     }
   }, [dispatch, activeTab]);
+
+  // Group sessions by groupSessionId to show single join button per group
+  const getGroupedSessions = (sessions: any[]) => {
+    const groups = new Map<string, any[]>();
+    const nonGroupSessions: any[] = [];
+
+    sessions.forEach((session) => {
+      if (session.groupSessionId && session.type === 'group') {
+        const key = `${session.groupSessionId}_${session.date}_${session.time}`;
+        if (!groups.has(key)) {
+          groups.set(key, []);
+        }
+        groups.get(key)!.push(session);
+      } else {
+        nonGroupSessions.push(session);
+      }
+    });
+
+    return { groups, nonGroupSessions };
+  };
+
+  // Handle group video call join
+  const handleJoinGroupCall = async (groupSessionId: string) => {
+    try {
+      setJoiningGroupSessionId(groupSessionId);
+      // Navigate to the group video call page with the groupSessionId
+      navigate(`/group-video-call/${groupSessionId}`);
+    } catch (error: any) {
+      console.error("Failed to join group call:", error);
+    } finally {
+      setJoiningGroupSessionId(null);
+    }
+  };
+
+  // Group sessions and apply search filter
+  const groupedAndFilteredSessions = useMemo(() => {
+    const { groups, nonGroupSessions } = getGroupedSessions(filteredSessions);
+    const sessionCards: any[] = [];
+
+    // Add non-group sessions
+    nonGroupSessions.forEach((session: any) => {
+      sessionCards.push(session);
+    });
+
+    // Add group sessions (one entry per group)
+    groups.forEach((groupSessions, groupKey) => {
+      if (groupSessions.length > 0) {
+        sessionCards.push({
+          isGroup: true,
+          groupSessionId: groupSessions[0].groupSessionId,
+          participants: groupSessions,
+          date: groupSessions[0].date,
+          time: groupSessions[0].time,
+          status: groupSessions[0].status,
+          type: 'group',
+          userId: groupSessions[0].userId,
+          therapistId: groupSessions[0].therapistId,
+          googleMeetLink: groupSessions[0].googleMeetLink,
+          googleMeetCode: groupSessions[0].googleMeetCode,
+        });
+      }
+    });
+
+    // Apply search filter
+    return sessionCards.filter((session: any) => {
+      if (!searchQuery) return true;
+      const query = searchQuery.toLowerCase();
+
+      // Search in user name, therapist name, date, time, or type
+      if (session.isGroup) {
+        return (
+          session.participants.some((p: any) => 
+            p.userId?.name?.toLowerCase().includes(query) ||
+            p.therapistId?.name?.toLowerCase().includes(query)
+          ) ||
+          session.date?.toLowerCase().includes(query) ||
+          session.time?.toLowerCase().includes(query) ||
+          session.type?.toLowerCase().includes(query)
+        );
+      } else {
+        return (
+          session.userId?.name?.toLowerCase().includes(query) ||
+          session.therapistId?.name?.toLowerCase().includes(query) ||
+          session.date?.toLowerCase().includes(query) ||
+          session.time?.toLowerCase().includes(query) ||
+          session.type?.toLowerCase().includes(query)
+        );
+      }
+    });
+  }, [filteredSessions, searchQuery]);
 
 
 
@@ -368,30 +460,23 @@ const LiveSessions = () => {
         </Card>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {filteredSessions
-            .filter((session: any) => {
-              if (!searchQuery) return true;
-              const query = searchQuery.toLowerCase();
-
-              // Search in user name, therapist name, date, time, or type
-              return (
-                session.userId?.name?.toLowerCase().includes(query) ||
-                session.therapistId?.name?.toLowerCase().includes(query) ||
-                session.date?.toLowerCase().includes(query) ||
-                session.time?.toLowerCase().includes(query) ||
-                session.type?.toLowerCase().includes(query)
-              );
-            })
-            .map((session: any) => (
+          {groupedAndFilteredSessions.map((session: any) => (
               <Card
-                key={session._id}
+                key={session.isGroup ? `group-${session.groupSessionId}` : session._id}
                 className="shadow-sm rounded-xl border border-border overflow-hidden hover:shadow-md transition-shadow"
               >
                 <CardHeader className="pb-3">
                   <div className="flex justify-between items-start">
                     <div>
                       <CardTitle className="text-lg flex items-center gap-2">
-                        {session.userId?.name }
+                        {session.isGroup ? (
+                          <>
+                            <Users className="w-5 h-5 text-purple-600" />
+                            Group Session
+                          </>
+                        ) : (
+                          session.userId?.name
+                        )}
                         <Badge
                           variant="secondary"
                           className={
@@ -404,7 +489,10 @@ const LiveSessions = () => {
                         </Badge>
                       </CardTitle>
                       <p className="text-sm text-muted-foreground mt-1">
-                        {session.therapistId?.name || "N/A"}
+                        {session.isGroup 
+                          ? `${session.participants.length} participant${session.participants.length > 1 ? 's' : ''}`
+                          : session.therapistId?.name || "N/A"
+                        }
                       </p>
                     </div>
                     <Badge variant="outline">{session.type}</Badge>
@@ -465,6 +553,176 @@ const LiveSessions = () => {
                         const isSessionTimeArrived =
                           sessionDateTime.getTime() <= now.getTime();
 
+                        // Handle group sessions - Same logic as 1-on-1
+                        if (session.isGroup) {
+                          // Disable button for cancelled and completed sessions
+                          if (
+                            session.status === "cancelled" ||
+                            session.status === "completed"
+                          ) {
+                            return (
+                              <Button
+                                className="flex-1"
+                                variant="secondary"
+                                disabled
+                              >
+                                <Clock className="w-4 h-4 mr-2" />
+                                {session.status === "cancelled"
+                                  ? "Cancelled"
+                                  : "Completed"}
+                              </Button>
+                            );
+                          }
+
+                          if (session.status === "live") {
+                            // For live sessions, check if the actual session time has arrived
+                            if (isSessionTimeArrived) {
+                              return (
+                                <div className="flex gap-2 flex-1">
+                                  <Button
+                                    className="flex-1 bg-primary hover:bg-primary/90 text-white"
+                                    onClick={() => {
+                                      handleJoinGroupCall(session.groupSessionId);
+                                    }}
+                                    disabled={joiningGroupSessionId === session.groupSessionId}
+                                  >
+                                    {joiningGroupSessionId === session.groupSessionId ? (
+                                      <>
+                                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                        Joining...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Video className="w-4 h-4 mr-2" />
+                                        Join Group{" "}
+                                        <Badge
+                                          variant="secondary"
+                                          className="ml-2 bg-purple-800 text-white border-none"
+                                        >
+                                          {session.participants.length}
+                                        </Badge>
+                                      </>
+                                    )}
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={() =>
+                                      navigator.clipboard.writeText(
+                                        `${window.location.origin}/group-video-call/${session.groupSessionId}`
+                                      )
+                                    }
+                                  >
+                                    <Copy className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                              );
+                            } else {
+                              // Session is marked as live but time hasn't arrived yet
+                              return (
+                                <Button
+                                  className="flex-1"
+                                  variant="secondary"
+                                  disabled
+                                >
+                                  <Clock className="w-4 h-4 mr-2" />
+                                  Session Early - Starts in{" "}
+                                  {calculateTimeUntilSession(
+                                    session.date,
+                                    session.time
+                                  )}
+                                </Button>
+                              );
+                            }
+                          } else {
+                            // For non-live sessions, use timingStatus
+                            if (session.timingStatus === "join_now") {
+                              // Check if the actual session time has arrived
+                              if (isSessionTimeArrived) {
+                                return (
+                                  <div className="flex gap-2 flex-1">
+                                    <Button
+                                      className="flex-1 bg-primary hover:bg-primary/90 text-white"
+                                      onClick={() => {
+                                        handleJoinGroupCall(session.groupSessionId);
+                                      }}
+                                      disabled={joiningGroupSessionId === session.groupSessionId}
+                                    >
+                                      {joiningGroupSessionId === session.groupSessionId ? (
+                                        <>
+                                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                          Joining...
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Video className="w-4 h-4 mr-2" />
+                                          Join Group{" "}
+                                          <Badge
+                                            variant="secondary"
+                                            className="ml-2 bg-purple-800 text-white border-none"
+                                          >
+                                            {session.participants.length}
+                                          </Badge>
+                                        </>
+                                      )}
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      size="icon"
+                                      onClick={() =>
+                                        navigator.clipboard.writeText(
+                                          `${window.location.origin}/group-video-call/${session.groupSessionId}`
+                                        )
+                                      }
+                                    >
+                                      <Copy className="w-4 h-4" />
+                                    </Button>
+                                  </div>
+                                );
+                              } else {
+                                // Session is in join_now window but time hasn't arrived yet
+                                return (
+                                  <Button
+                                    className="flex-1"
+                                    variant="secondary"
+                                    disabled
+                                  >
+                                    <Clock className="w-4 h-4 mr-2" />
+                                    Session Early - Starts in{" "}
+                                    {calculateTimeUntilSession(
+                                      session.date,
+                                      session.time
+                                    )}
+                                  </Button>
+                                );
+                              }
+                            } else if (session.timingStatus === "join_soon") {
+                              return (
+                                <Button className="flex-1" variant="secondary">
+                                  <Clock className="w-4 h-4 mr-2" />
+                                  Join Soon
+                                </Button>
+                              );
+                            } else {
+                              return (
+                                <Button
+                                  className="flex-1"
+                                  variant="secondary"
+                                  disabled
+                                >
+                                  <Clock className="w-4 h-4 mr-2" />
+                                  Starts in{" "}
+                                  {calculateTimeUntilSession(
+                                    session.date,
+                                    session.time
+                                  )}
+                                </Button>
+                              );
+                            }
+                          }
+                        }
+
+                        // Handle regular 1-on-1 sessions
                         // Disable button for cancelled and completed sessions
                         if (
                           session.status === "cancelled" ||
@@ -490,7 +748,7 @@ const LiveSessions = () => {
                             return (
                               <div className="flex gap-2 flex-1">
                                 <Button
-                                  className="flex-1"
+                                  className="flex-1 bg-primary hover:bg-primary/90 text-white"
                                   onClick={() => {
                                     navigate(`/video-call/${session._id}`);
                                   }}
@@ -616,7 +874,7 @@ const LiveSessions = () => {
                             if (isSessionTimeArrived) {
                               return (
                                 <Button
-                                  className="flex-1"
+                                  className="flex-1 bg-primary hover:bg-primary/90 text-white"
                                   onClick={() =>
                                     navigate(`/video-call/${session._id}`)
                                   }

@@ -15,6 +15,7 @@ import {
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
 import {
   Dialog,
@@ -44,6 +45,7 @@ import { fetchUsers } from "@/features/users/userSlice";
 import { toast } from "@/hooks/use-toast";
 import PageLoader from "@/components/PageLoader";
 import { availabilityAPI, bookingAPI } from "@/api/apiClient";
+import { groupSessionAPI } from "@/api/apiClient";
 
 interface BookingsProps {
   onStatusConfirmed?: () => void;
@@ -81,6 +83,9 @@ export default function Bookings({ onStatusConfirmed }: BookingsProps) {
   const [availableTimeSlots, setAvailableTimeSlots] = useState<any[]>([]);
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [isLoadingAvailability, setIsLoadingAvailability] = useState(false);
+  const [selectedGroupSession, setSelectedGroupSession] = useState<any>(null);
+  const [isGroupDetailModalOpen, setIsGroupDetailModalOpen] = useState(false);
+  const [isLoadingGroupSession, setIsLoadingGroupSession] = useState(false);
   const bookingsPerPage = 10;
   console.log("isEditing", isEditing);
   useEffect(() => {
@@ -457,6 +462,7 @@ export default function Bookings({ onStatusConfirmed }: BookingsProps) {
                   <th className="whitespace-nowrap">Date & Time</th>
                   {/* <th className="whitespace-nowrap">Expiration</th> */}
                   <th className="whitespace-nowrap">Status</th>
+                  <th className="whitespace-nowrap">Group</th>
                   <th className="whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
@@ -695,6 +701,45 @@ export default function Bookings({ onStatusConfirmed }: BookingsProps) {
                           )}
                         </SelectContent>
                       </Select>
+                    </td>
+                    <td className="min-w-[120px]">
+                      <div className="flex items-center gap-2">
+                        {/* Group Session Indicator */}
+                        {booking.groupSessionId ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 px-3 flex-shrink-0 bg-purple-50 hover:bg-purple-100 border-purple-200 text-purple-700"
+                            onClick={async () => {
+                              setIsLoadingGroupSession(true);
+                              try {
+                                // Fetch group session details
+                                const response = await groupSessionAPI.getById(booking.groupSessionId._id || booking.groupSessionId);
+                                setSelectedGroupSession(response.data.data);
+                                setIsGroupDetailModalOpen(true);
+                              } catch (error) {
+                                console.error("Failed to fetch group session details:", error);
+                                toast({
+                                  title: "Failed to load group session",
+                                  description: "Could not fetch group session details.",
+                                  variant: "destructive",
+                                });
+                              } finally {
+                                setIsLoadingGroupSession(false);
+                              }
+                            }}
+                          >
+                            <div className="flex items-center gap-2">
+                              <div className="w-2 h-2 rounded-full bg-purple-500"></div>
+                              <span className="text-xs font-semibold">View Group</span>
+                            </div>
+                          </Button>
+                        ) : (
+                          <Badge variant="secondary" className="text-xs">
+                            1-on-1
+                          </Badge>
+                        )}
+                      </div>
                     </td>
                     <td className="min-w-[120px]">
                       <div className="flex items-center gap-2">
@@ -1055,6 +1100,225 @@ export default function Bookings({ onStatusConfirmed }: BookingsProps) {
               ) : (
                 "Create Booking"
               )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* GROUP SESSION DETAIL MODAL */}
+      <Dialog open={isGroupDetailModalOpen} onOpenChange={setIsGroupDetailModalOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl">
+              <div className="w-3 h-3 rounded-full bg-purple-500"></div>
+              Group Session Details
+            </DialogTitle>
+          </DialogHeader>
+          
+          {isLoadingGroupSession ? (
+            <div className="flex items-center justify-center py-12">
+              <LoaderCircle className="w-8 h-8 animate-spin text-primary" />
+              <span className="ml-3 text-muted-foreground">Loading group session...</span>
+            </div>
+          ) : selectedGroupSession ? (
+            <div className="space-y-6 py-4">
+              {/* Header Section */}
+              <div className="rounded-lg bg-gradient-to-r from-purple-50 to-indigo-50 p-6 border border-purple-200">
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                      {selectedGroupSession.title}
+                    </h3>
+                    {selectedGroupSession.description && (
+                      <p className="text-sm text-gray-600">{selectedGroupSession.description}</p>
+                    )}
+                  </div>
+                  <Badge className={cn(
+                    "capitalize",
+                    selectedGroupSession.status === "active" ? "bg-green-100 text-green-700" :
+                    selectedGroupSession.status === "completed" ? "bg-blue-100 text-blue-700" :
+                    selectedGroupSession.status === "cancelled" ? "bg-red-100 text-red-700" :
+                    "bg-purple-100 text-purple-700"
+                  )}>
+                    {selectedGroupSession.status}
+                  </Badge>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Calendar className="w-4 h-4 text-purple-600" />
+                    <span className="font-medium">
+                      {new Date(selectedGroupSession.startTime).toLocaleDateString("en-IN", {
+                        day: "numeric",
+                        month: "long",
+                        year: "numeric",
+                      })}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <Clock className="w-4 h-4 text-purple-600" />
+                    <span className="font-medium">
+                      {new Date(selectedGroupSession.startTime).toLocaleTimeString("en-IN", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        hour12: true,
+                      })} - {new Date(selectedGroupSession.endTime).toLocaleTimeString("en-IN", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        hour12: true,
+                      })}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <UserPlus className="w-4 h-4 text-purple-600" />
+                    <span className="font-medium">
+                      {selectedGroupSession.participants?.length || 0} / {selectedGroupSession.maxParticipants} Participants
+                    </span>
+                  </div>
+                  {selectedGroupSession.isActiveCall && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
+                      <span className="font-medium text-red-600">Live Call Active</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Therapist Info */}
+              {/* {selectedGroupSession.therapistId && (
+                <div className="rounded-lg border p-4">
+                  <h4 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                    Therapist
+                  </h4>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-purple-700 font-bold">
+                      {(selectedGroupSession.therapistId?.name?.charAt(0) || "T").toUpperCase()}
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900">
+                        {selectedGroupSession.therapistId?.name || selectedGroupSession.therapistId?.email || "Unknown Therapist"}
+                      </p>
+                      <p className="text-sm text-gray-500">{selectedGroupSession.therapistId.email}</p>
+                    </div>
+                  </div>
+                </div>
+              )} */}
+
+              {/* Participants List */}
+              {selectedGroupSession.participants && selectedGroupSession.participants.length > 0 && (
+                <div className="rounded-lg border p-4">
+                  <h4 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                    Participants ({selectedGroupSession.participants.length})
+                  </h4>
+                  <div className="space-y-2 max-h-64 overflow-y-auto">
+                    {selectedGroupSession.participants.map((participant: any, index: number) => (
+                      <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-sm">
+                            {(participant.userId?.name?.charAt(0) || "P").toUpperCase()}
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900 text-sm">
+                              {participant.userId?.name || participant.userId?.email || "Unknown Participant"}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {participant.userId?.email || participant.bookingId?.clientName}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className={cn(
+                            "text-xs",
+                            participant.status === "accepted" ? "border-green-500 text-green-700 bg-green-50" :
+                            participant.status === "rejected" ? "border-red-500 text-red-700 bg-red-50" :
+                            "border-yellow-500 text-yellow-700 bg-yellow-50"
+                          )}>
+                            {participant.status}
+                          </Badge>
+                          {participant.joinedAt && (
+                            <span className="text-xs text-gray-500">
+                              Joined: {new Date(participant.joinedAt).toLocaleString()}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Current Live Participants (if call is active) */}
+              {selectedGroupSession.currentParticipants && selectedGroupSession.currentParticipants.length > 0 && (
+                <div className="rounded-lg border p-4 bg-green-50 border-green-200">
+                  <h4 className="font-semibold text-green-700 mb-3 flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                    Currently in Call ({selectedGroupSession.currentParticipants.length})
+                  </h4>
+                  <div className="space-y-2">
+                    {selectedGroupSession.currentParticipants.map((participant: any, index: number) => (
+                      <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-white border border-green-200">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-bold text-sm">
+                            {(participant.userId?.name?.charAt(0) || "P").toUpperCase()}
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900 text-sm">
+                              {participant.userId?.name || participant.userId?.email || "Participant"}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs">
+                          {participant.isMuted && (
+                            <Badge variant="outline" className="text-red-600 border-red-300">Muted</Badge>
+                          )}
+                          {participant.isVideoOff && (
+                            <Badge variant="outline" className="text-orange-600 border-orange-300">Video Off</Badge>
+                          )}
+                          <span className="text-gray-500">
+                            Joined: {new Date(participant.joinedAt).toLocaleTimeString()}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Additional Info */}
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="rounded-lg border p-3">
+                  <p className="text-xs text-gray-500 mb-1">Created</p>
+                  <p className="font-medium">
+                    {new Date(selectedGroupSession.createdAt).toLocaleDateString("en-IN", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  </p>
+                </div>
+                <div className="rounded-lg border p-3">
+                  <p className="text-xs text-gray-500 mb-1">Last Updated</p>
+                  <p className="font-medium">
+                    {new Date(selectedGroupSession.updatedAt).toLocaleDateString("en-IN", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-12 text-muted-foreground">
+              No group session details available
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsGroupDetailModalOpen(false)}>
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>
