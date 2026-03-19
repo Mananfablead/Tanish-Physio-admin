@@ -17,7 +17,11 @@ apiClient.interceptors.request.use((config) => {
 
   // Add admin timezone header (always use Asia/Kolkata for admin)
   // This ensures admin always sees their local IST time
-  config.headers['X-Timezone'] = 'Asia/Kolkata';
+  // EXCEPT for availability endpoints - admin should see times as stored in DB
+  const isAvailabilityEndpoint = config.url.includes('/availability');
+  if (!isAvailabilityEndpoint) {
+    config.headers['X-Timezone'] = 'Asia/Kolkata';
+  }
 
   return config;
 });
