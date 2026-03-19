@@ -515,7 +515,7 @@ const LiveSessions = () => {
                     {/* GOOGLE MEET LINK DISPLAY */}
                     {session.googleMeetLink && (
                       <div className="pt-2">
-                        <div className="flex flex-col gap-1">
+                        <div className=" flex-col gap-1">
                           <a
                             href={session.googleMeetLink}
                             target="_blank"

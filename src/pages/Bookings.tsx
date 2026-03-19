@@ -512,23 +512,14 @@ export default function Bookings({ onStatusConfirmed }: BookingsProps) {
                         <div className="flex items-center gap-1">
                           <Calendar className="w-4 h-4 flex-shrink-0 text-muted-foreground" />
                           <span className="font-medium truncate">
-                            {booking.scheduledDate
-                              ? booking.scheduledDate
-                              : booking.date}
+                            {booking.scheduledDate ? booking.scheduledDate : booking.date}  
+                             
                           </span>
                         </div>
                         <div className="flex items-center gap-1 text-sm text-muted-foreground">
                           <Clock className="w-4 h-4 flex-shrink-0" />
                           <span className="truncate">
-                            {booking.scheduledTime
-                              ? booking.scheduledTime
-                              : new Date(
-                                  booking.purchaseDate
-                                ).toLocaleTimeString("en-IN", {
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                  hour12: true,
-                                })}
+                            {booking.timeSlot.start} - {booking.timeSlot.end}
                           </span>
                         </div>
                         {/* <div className="text-xs text-muted-foreground">

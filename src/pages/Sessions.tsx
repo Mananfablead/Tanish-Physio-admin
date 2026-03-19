@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import { Search, MoreHorizontal, Video, Calendar, Clock, User, UserCog, X, RefreshCw, ChevronLeft, ChevronRight, Play, Eye, Copy, Plus, AlertTriangle, Info, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
@@ -243,42 +243,6 @@ export default function Sessions() {
     return { groups, nonGroupSessions };
   };
 
-  // Memoized grouped sessions for live/upcoming tabs
-  const groupedLiveUpcomingSessions = useMemo(() => {
-    if (activeTab !== "live" && activeTab !== "upcoming") return null;
-    
-    const { groups, nonGroupSessions } = getGroupedSessions(filteredSessions);
-    const sessionCards: any[] = [];
-
-    // Add non-group sessions
-    nonGroupSessions.forEach((session: any) => {
-      sessionCards.push(session);
-    });
-
-    // Add group sessions (one entry per group)
-    groups.forEach((groupSessions, groupKey) => {
-      if (groupSessions.length > 0) {
-        sessionCards.push({
-          isGroup: true,
-          groupSessionId: groupSessions[0].groupSessionId,
-          participants: groupSessions,
-          date: groupSessions[0].date,
-          time: groupSessions[0].time,
-          status: groupSessions[0].status,
-          type: 'group',
-          userId: groupSessions[0].userId,
-          therapistId: groupSessions[0].therapistId,
-          googleMeetLink: groupSessions[0].googleMeetLink,
-          googleMeetCode: groupSessions[0].googleMeetCode,
-          bookingId: groupSessions[0].bookingId,
-          sessionType: groupSessions[0].sessionType,
-        });
-      }
-    });
-
-    return sessionCards;
-  }, [filteredSessions, activeTab]);
-
   // State for creating a new session
   const [newSession, setNewSession] = useState({
     bookingId: "",
@@ -320,10 +284,6 @@ export default function Sessions() {
   const [groupSessions, setGroupSessions] = useState<any[]>([]);
   const [loadingGroupSessions, setLoadingGroupSessions] = useState(false);
   const [joiningGroupSessionId, setJoiningGroupSessionId] = useState<string | null>(null);
-  
-  // State for group details dialog
-  const [isGroupDetailsOpen, setIsGroupDetailsOpen] = useState(false);
-  const [selectedGroupSessionId, setSelectedGroupSessionId] = useState<string | null>(null);
 
   // State for users and subscriptions
   const [usersWithActiveSubscriptions, setUsersWithActiveSubscriptions] =
@@ -889,18 +849,6 @@ export default function Sessions() {
     }
   };
 
-  // Handle opening group details dialog
-  const handleOpenGroupDetails = (groupSessionId: string) => {
-    setSelectedGroupSessionId(groupSessionId);
-    setIsGroupDetailsOpen(true);
-  };
-
-  // Get group sessions data for the dialog
-  const getGroupSessionsData = (groupSessionId: string) => {
-    if (!allSessions || allSessions.length === 0) return [];
-    return allSessions.filter((session: any) => session.groupSessionId === groupSessionId);
-  };
-
   const handleDeleteSession = async (sessionId: string) => {
     try {
       await dispatch(deleteSessionById(sessionId)).unwrap();
@@ -1207,12 +1155,13 @@ export default function Sessions() {
         {/* Sessions Content */}
         <TabsContent value={activeTab} className="mt-4">
           {activeTab === "live" || activeTab === "upcoming" ? (
+            /* Live Sessions Grid View */
             <div className="space-y-6">
-              {groupedLiveUpcomingSessions && groupedLiveUpcomingSessions.length > 0 ? (
+              {filteredSessions.length > 0 ? (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {groupedLiveUpcomingSessions.map((session: any) => {
-                    const user = session.isGroup ? session.participants[0]?.userId : session.userId;
-                    const therapist = session.isGroup ? session.participants[0]?.therapistId : session.therapistId;
+                  {filteredSessions.map((session: any) => {
+                    const user = session.userId;
+                    const therapist = session.therapistId;
                     // Calculate timing status for upcoming sessions using currentTime state
                     const now = currentTime; // Use state time instead of new Date()
                     const sessionTime = new Date(
@@ -1281,7 +1230,7 @@ export default function Sessions() {
                               </p>
                             </div>
                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-muted">
-                              {session.isGroup ? 'Group' : session.type}
+                              {session.type}
                             </span>
                           </div>
 
@@ -1300,7 +1249,7 @@ export default function Sessions() {
 
                           <div className="flex gap-3">
                             {/* Show Group Join Button for group sessions */}
-                            {session.isGroup ? (
+                            {session.groupSessionId ? (
                               <Button
                                 className="flex-1 bg-purple-600 hover:bg-purple-700"
                                 onClick={() => handleJoinGroupCall(session.groupSessionId)}
@@ -1314,13 +1263,7 @@ export default function Sessions() {
                                 ) : (
                                   <>
                                     <Video className="w-4 h-4 mr-2" />
-                                    Join Group{" "}
-                                    <Badge
-                                      variant="secondary"
-                                      className="ml-2 bg-purple-800 text-white border-none"
-                                    >
-                                      {session.participants.length}
-                                    </Badge>
+                                    {isJoinEnabled ? "Join Group Call" : "Session Early"}
                                   </>
                                 )}
                               </Button>
@@ -1346,13 +1289,13 @@ export default function Sessions() {
                               size="icon"
                               onClick={() => {
                                 navigator.clipboard.writeText(
-                                  `${window.location.origin}/video-call/${session.isGroup ? `/group-video-call/${session.groupSessionId}` : `/video-call/${session._id}`}`
+                                  `${window.location.origin}/video-call/${session.groupSessionId ? `/group-video-call/${session.groupSessionId}` : `/video-call/${session._id}`}`
                                 );
                               }}
                             >
                               <Copy className="w-4 h-4" />
                             </Button>
-                            {!session.googleMeetLink && !session.isGroup && (
+                            {!session.googleMeetLink && (
                               <Button
                                 variant="outline"
                                 size="icon"
@@ -1498,26 +1441,16 @@ export default function Sessions() {
 
                               {/* TYPE */}
                               <td className="">
-                                {session.type === "group" ? (
-                                  <Button
-                                    variant="link"
-                                    className="text-xs font-semibold p-0 h-auto hover:underline"
-                                    onClick={() => handleOpenGroupDetails(session.groupSessionId)}
-                                  >
-                                    Group
-                                  </Button>
-                                ) : (
-                                  <span className="text-xs font-semibold">
-                                    {session.type || "N/A"}
-                                  </span>
-                                )}
+                                <span className=" text-xs font-semibold">
+                                  {session.type}
+                                </span>
                               </td>
 
                               {/* STATUS */}
                               <td className="px-4 py-3">
-                                {isEditableStatus(session.status || "") ? (
+                                {isEditableStatus(session.status) ? (
                                   <Select
-                                    value={session.status || "scheduled"}
+                                    value={session.status}
                                     disabled={updatingStatusId === session._id}
                                     onValueChange={async (value) => {
                                       setUpdatingStatusId(session._id);
@@ -1532,8 +1465,8 @@ export default function Sessions() {
                                     }}
                                   >
                                     <SelectTrigger
-                                      className={`w-[130px] rounded-full text-xs font-semibold ${statusStyles[session.status || "scheduled"]}
-                                        `}
+                                      className={`w-[130px] rounded-full text-xs font-semibold ${statusStyles[session.status]
+                                        }`}
                                     >
                                       {updatingStatusId === session._id ? (
                                         <div className="flex items-center gap-2">
@@ -1562,8 +1495,8 @@ export default function Sessions() {
                                   </Select>
                                 ) : (
                                   <span
-                                    className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${statusStyles[session.status || "pending"]}
-                                      `}
+                                    className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${statusStyles[session.status]
+                                      }`}
                                   >
                                     {session.status === "pending" ? (
                                       <>
@@ -1755,33 +1688,48 @@ export default function Sessions() {
                                     </div>
                                     <div className="flex items-center gap-1 text-muted-foreground">
                                       <Clock className="h-4 w-4" />
-                                      <span>{session.time}</span>
+                                      <span>
+                                        {(() => {
+                                          // Helper function to format time in 24-hour international format
+                                          const formatTime = (timeStr: string) => {
+                                            if (!timeStr) return "";
+                                            // If it's already in HH:MM format, keep as is
+                                            if (/^\d{1,2}:\d{2}$/.test(timeStr)) {
+                                              return timeStr;
+                                            }
+                                            // If it's an ISO string, convert to HH:MM format
+                                            if (timeStr.includes('T')) {
+                                              return new Date(timeStr).toLocaleTimeString("en-GB", {
+                                                hour: "2-digit",
+                                                minute: "2-digit",
+                                                hour12: false,
+                                              });
+                                            }
+                                            return timeStr;
+                                          };
+                                          
+                                          const startTime = formatTime(session.startTime);
+                                          const endTime = formatTime(session.endTime);
+                                          
+                                          return startTime && endTime ? `${startTime} - ${endTime}` : session.time || startTime || '—';
+                                        })()}
+                                      </span>
                                     </div>
                                   </div>
                                 </td>
 
                                 {/* TYPE */}
                                 <td className="">
-                                  {session.type === "group" ? (
-                                    <Button
-                                      variant="link"
-                                      className="text-xs font-semibold p-0 h-auto hover:underline"
-                                      onClick={() => handleOpenGroupDetails(session.groupSessionId)}
-                                    >
-                                      Group
-                                    </Button>
-                                  ) : (
-                                    <span className="text-xs font-semibold">
-                                      {session.type || "N/A"}
-                                    </span>
-                                  )}
+                                  <span className="text-xs font-semibold">
+                                    {session.type}
+                                  </span>
                                 </td>
 
                                 {/* STATUS */}
                                 <td className="px-4 py-3">
-                                  {isEditableStatus(session.status || "") ? (
+                                  {isEditableStatus(session.status) ? (
                                     <Select
-                                      value={session.status || "scheduled"}
+                                      value={session.status}
                                       disabled={updatingStatusId === session._id}
                                       onValueChange={async (value) => {
                                         setUpdatingStatusId(session._id);
@@ -1796,7 +1744,7 @@ export default function Sessions() {
                                       }}
                                     >
                                       <SelectTrigger
-                                        className={`w-[130px] rounded-full text-xs font-semibold ${statusStyles[session.status || "scheduled"]}`}
+                                        className={`w-[130px] rounded-full text-xs font-semibold ${statusStyles[session.status]}`}
                                       >
                                         {updatingStatusId === session._id ? (
                                           <div className="flex items-center gap-2">
@@ -1824,7 +1772,7 @@ export default function Sessions() {
                                     </Select>
                                   ) : (
                                     <span
-                                      className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${statusStyles[session.status || "pending"]}`}
+                                      className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${statusStyles[session.status]}`}
                                     >
                                       {session.status === "pending" ? (
                                         <>
@@ -1833,7 +1781,7 @@ export default function Sessions() {
                                         </>
                                       ) : (
                                         <>
-                                          {session.status && typeof session.status === "string"
+                                          {typeof session.status === "string"
                                             ? session.status
                                               .charAt(0)
                                               .toUpperCase() +
@@ -3009,155 +2957,6 @@ export default function Sessions() {
           dispatch(fetchSessions());
         }}
       />
-
-      {/* Group Session Details Dialog */}
-      <Dialog open={isGroupDetailsOpen} onOpenChange={setIsGroupDetailsOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
-          <DialogHeader className="flex-shrink-0">
-            <DialogTitle className="flex items-center gap-2">
-              <User className="w-5 h-5" />
-              Group Session Details
-            </DialogTitle>
-            <DialogDescription>
-              View all participants and details for this group session
-            </DialogDescription>
-          </DialogHeader>
-          
-          {selectedGroupSessionId && (
-            <div className="space-y-4 overflow-y-auto flex-1 px-1">
-              {/* Group Session Info */}
-              {(() => {
-                const groupSessions = getGroupSessionsData(selectedGroupSessionId);
-                const firstSession = groupSessions[0];
-                
-                if (!firstSession) {
-                  return (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <AlertTriangle className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                      <p>No group session data found</p>
-                    </div>
-                  );
-                }
-
-                return (
-                  <>
-                    {/* Session Details Card */}
-                    <div className="rounded-lg border bg-card p-4 space-y-3">
-                      <h4 className="font-semibold text-sm text-muted-foreground">Session Information</h4>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="flex items-center gap-2">
-                          <Calendar className="w-4 h-4 text-muted-foreground" />
-                          <span className="text-sm font-medium">{firstSession.date}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Clock className="w-4 h-4 text-muted-foreground" />
-                          <span className="text-sm font-medium">{firstSession.time}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Video className="w-4 h-4 text-muted-foreground" />
-                          <span className="text-sm font-medium">
-                            {firstSession.googleMeetLink ? 'Link Available' : 'No Link'}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant={firstSession.status === 'live' ? 'default' : 'secondary'}>
-                            {firstSession.status?.toUpperCase()}
-                          </Badge>
-                        </div>
-                      </div>
-                      {firstSession.googleMeetLink && (
-                        <div className="pt-2 border-t">
-                          <p className="text-xs text-muted-foreground mb-1">Meeting Link</p>
-                          <a 
-                            href={firstSession.googleMeetLink}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-sm text-blue-600 hover:underline break-all"
-                          >
-                            {firstSession.googleMeetLink}
-                          </a>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Participants List */}
-                    <div className="rounded-lg border bg-card">
-                      <div className="p-4 border-b">
-                        <h4 className="font-semibold text-sm flex items-center gap-2">
-                          <User className="w-4 h-4" />
-                          Participants ({groupSessions.length})
-                        </h4>
-                      </div>
-                      <div className="divide-y">
-                        {groupSessions.map((session: any, idx: number) => (
-                          <div key={session._id} className="p-4 flex items-center justify-between hover:bg-muted/50">
-                            <div className="flex items-center gap-3">
-                              <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                                <User className="h-5 w-5 text-blue-600" />
-                              </div>
-                              <div>
-                                <p className="font-medium text-sm">{session.userId?.name || 'N/A'}</p>
-                                <p className="text-xs text-muted-foreground">{session.userId?.email || ''}</p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Badge variant="outline" className="text-xs">
-                                {session.bookingId ? 'Booking' : 'Subscription'}
-                              </Badge>
-                              {idx === 0 && (
-                                <Badge variant="default" className="bg-purple-600">
-                                  Organizer
-                                </Badge>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Therapist Info */}
-                    <div className="rounded-lg border bg-card p-4">
-                      <h4 className="font-semibold text-sm text-muted-foreground mb-3">Therapist</h4>
-                      <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
-                          <UserCog className="h-5 w-5 text-green-600" />
-                        </div>
-                        <div>
-                          <p className="font-medium">{firstSession.therapistId?.name || 'N/A'}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {firstSession.therapistId?.email || 'N/A'}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </>
-                );
-              })()}
-            </div>
-          )}
-
-          <DialogFooter className="flex-shrink-0 pt-4 border-t">
-            <Button
-              variant="outline"
-              onClick={() => setIsGroupDetailsOpen(false)}
-            >
-              Close
-            </Button>
-            {/* {selectedGroupSessionId && (
-              <Button
-                className="bg-purple-600 hover:bg-purple-700"
-                onClick={() => {
-                  handleJoinGroupCall(selectedGroupSessionId);
-                  setIsGroupDetailsOpen(false);
-                }}
-              >
-                <Video className="w-4 h-4 mr-2" />
-                Join Group Session
-              </Button>
-            )} */}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

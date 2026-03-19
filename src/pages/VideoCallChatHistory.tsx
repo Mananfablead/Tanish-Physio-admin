@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import useSocket from "@/hooks/useSocket";
 import { adminChatApi } from "../lib/adminChatApi";
 import { renderTextWithLinks } from "../utils/linkUtils";
+import { User, UserCheck, Calendar, Clock } from "lucide-react";
 
 interface Attachment {
   type: string;
@@ -392,67 +393,137 @@ const VideoCallChatHistory = () => {
                 />
               </div>
             </div>
-            <div className="overflow-y-auto max-h-[50vh] md:max-h-[calc(100vh-250px)]">
+            <div className="overflow-y-auto max-h-[50vh] md:max-h-[calc(100vh-250px)] scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
               {chats.length > 0 ? (
                 chats.map((chat) => (
                   <div
                     key={chat.sessionId}
-                    className={`p-4 border-b cursor-pointer hover:bg-accent ${
+                    className={`group p-4 border-b border-gray-100 cursor-pointer transition-all duration-200 ${
                       selectedSession && selectedSession.sessionId === chat.sessionId
-                        ? "bg-blue-50 border-l-4 border-l-blue-500"
-                        : ""
+                        ? "bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-l-blue-500 shadow-sm"
+                        : "hover:bg-gray-50 hover:shadow-md border-l-4 border-l-transparent"
                     }`}
                     onClick={() => loadSessionMessages(chat)}
                   >
-                    <div className="flex justify-between">
-                      <h3 className="font-medium text-foreground">
-                        Session: {chat.sessionInfo.type || "Unknown Type"}
-                      </h3>
-                      <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-800">
-                        Video Call
-                      </span>
+                    {/* Header Section */}
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center gap-2 flex-1">
+                        <div className={`p-2 rounded-lg ${
+                          selectedSession && selectedSession.sessionId === chat.sessionId
+                            ? "bg-blue-100 text-blue-600"
+                            : "bg-gray-100 text-gray-600 group-hover:bg-blue-50 group-hover:text-blue-600"
+                        } transition-colors`}>
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                          </svg>
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-foreground text-sm line-clamp-1">
+                            {chat.sessionInfo.type || "Video Call Session"}
+                          </h3>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                              <span className="w-1.5 h-1.5 bg-blue-600 rounded-full mr-1.5 animate-pulse"></span>
+                              Video Call
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              {chat.userMessages.length + chat.therapistMessages.length} messages
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-xs text-gray-500 whitespace-nowrap">
+                          {formatDate(chat.lastMessageTime)}
+                        </span>
+                        {chat.unreadCount > 0 && (
+                          <div className="mt-1 flex items-center justify-end">
+                            <span className="px-2 py-0.5 bg-red-500 text-white text-xs font-semibold rounded-full">
+                              {chat.unreadCount} new
+                            </span>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <div className="mt-2">
-                      <p className="text-sm text-muted-foreground">
-                        <span className="font-medium">👤 User:</span> {chat.sessionInfo.userId.name || "Unknown User"}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        <span className="font-medium">👨‍⚕️ Therapist:</span> {chat.sessionInfo.therapistId.name || "Unknown Therapist"}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        <span className="font-medium">📅 Date:</span> {chat.sessionInfo.date}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        <span className="font-medium">⏰ Time:</span> {chat.sessionInfo.time}
-                      </p>
+
+                    {/* Participants Section */}
+                    <div className="grid grid-cols-2 gap-2 mb-3">
+                      <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg group-hover:bg-white transition-colors">
+                        <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-green-400 to-blue-500 rounded-full flex items-center justify-center">
+                          <User className="w-4 h-4 text-white" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs text-gray-500 font-medium">User</p>
+                          <p className="text-sm font-semibold text-foreground truncate">
+                            {chat.sessionInfo.userId.name || "Unknown User"}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg group-hover:bg-white transition-colors">
+                        <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-purple-400 to-pink-500 rounded-full flex items-center justify-center">
+                          <UserCheck className="w-4 h-4 text-white" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs text-gray-500 font-medium">Therapist</p>
+                          <p className="text-sm font-semibold text-foreground truncate">
+                            {chat.sessionInfo.therapistId.name || "Unknown Therapist"}
+                          </p>
+                        </div>
+                      </div>
                     </div>
-                    <p className="text-sm text-muted-foreground truncate mt-1">
-                      Last: {chat.lastMessage}
-                    </p>
-                    <div className="flex justify-between text-xs text-muted-foreground mt-2">
-                      <span>{formatDate(chat.lastMessageTime)}</span>
-                      <span>Messages: {chat.userMessages.length + chat.therapistMessages.length}</span>
+
+                    {/* Date & Time Section */}
+                    <div className="flex items-center gap-3 mb-3 text-xs">
+                      <div className="flex items-center gap-1.5 text-gray-600">
+                        <Calendar className="w-3.5 h-3.5 text-gray-400" />
+                        <span className="font-medium">{chat.sessionInfo.date}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-gray-600">
+                        <Clock className="w-3.5 h-3.5 text-gray-400" />
+                        <span className="font-medium">{chat.sessionInfo.time}</span>
+                      </div>
+                    </div>
+
+                    {/* Last Message Preview */}
+                    <div className="p-2.5 bg-gray-50 rounded-lg group-hover:bg-white border border-gray-100 transition-colors">
+                      <p className="text-xs text-gray-500 font-medium mb-1">Last Message</p>
+                      <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">
+                        {chat.lastMessage}
+                      </p>
                     </div>
                   </div>
                 ))
               ) : (
-                <div className="p-4 text-center text-muted-foreground">
+                <div className="p-8 text-center text-muted-foreground">
                   {loading ? (
-                    <div className="flex flex-col items-center">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mb-2"></div>
-                      <p>Loading chats...</p>
+                    <div className="flex flex-col items-center py-8">
+                      <div className="relative">
+                        <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-100 border-t-blue-600"></div>
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-600 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                          </svg>
+                        </div>
+                      </div>
+                      <p className="mt-4 text-sm font-medium text-gray-600">Loading chat sessions...</p>
                     </div>
                   ) : (
-                    <div>
-                      <div className="bg-gray-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    <div className="py-8">
+                      <div className="w-20 h-20 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center mx-auto mb-4 shadow-inner">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                         </svg>
                       </div>
-                      <h3 className="text-lg font-medium">No live chats found</h3>
-                      <p className="mt-1 text-muted-foreground">
-                        There are no live chat sessions to display
+                      <h3 className="text-lg font-semibold text-gray-700 mb-2">No live chats found</h3>
+                      <p className="text-sm text-gray-500 max-w-xs mx-auto">
+                        There are no live chat sessions to display at the moment
                       </p>
+                      <button 
+                        onClick={loadChatSessions}
+                        className="mt-4 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+                      >
+                        Refresh List
+                      </button>
                     </div>
                   )}
                 </div>
@@ -464,15 +535,77 @@ const VideoCallChatHistory = () => {
           <div className="w-full md:flex-1 bg-card rounded-lg shadow flex flex-col">
             {selectedSession ? (
               <>
-                <div className="p-4 border-b">
-                  <h2 className="text-lg font-semibold text-foreground">
-                    💬 Session Chat: {selectedSession.sessionInfo.type || "Unknown Type"}
-                  </h2>
-                  <div className="text-sm text-muted-foreground mt-2 space-y-1">
-                    <p><span className="font-medium">👤 User:</span> {selectedSession.sessionInfo.userId.name || "Unknown User"}</p>
-                    <p><span className="font-medium">👨‍⚕️ Therapist:</span> {selectedSession.sessionInfo.therapistId.name || "Unknown Therapist"}</p>
-                    <p><span className="font-medium">📅 Date:</span> {selectedSession.sessionInfo.date}</p>
-                    <p><span className="font-medium">⏰ Time:</span> {selectedSession.sessionInfo.time}</p>
+                <div className="p-5 border-b bg-gradient-to-r from-blue-50 to-indigo-50">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-3 flex-1">
+                      <div className="p-2.5 bg-white rounded-xl shadow-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                        </svg>
+                      </div>
+                      <div>
+                        <h2 className="text-lg font-bold text-foreground">
+                          {selectedSession.sessionInfo.type || "Video Call Session"}
+                        </h2>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
+                            <span className="w-2 h-2 bg-blue-600 rounded-full mr-2 animate-pulse"></span>
+                            Live Chat
+                          </span>
+                          <span className="text-xs text-gray-600 font-medium">
+                            {selectedSession.userMessages.length + selectedSession.therapistMessages.length} total messages
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Participants Grid */}
+                  <div className="grid grid-cols-2 gap-3 mb-4">
+                    <div className="flex items-center gap-2.5 p-3 bg-white rounded-xl shadow-sm border border-blue-100">
+                      <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-green-400 to-blue-500 rounded-full flex items-center justify-center shadow-md">
+                        <User className="w-5 h-5 text-white" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide">User</p>
+                        <p className="text-sm font-bold text-foreground truncate">
+                          {selectedSession.sessionInfo.userId.name || "Unknown User"}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2.5 p-3 bg-white rounded-xl shadow-sm border border-purple-100">
+                      <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-purple-400 to-pink-500 rounded-full flex items-center justify-center shadow-md">
+                        <UserCheck className="w-5 h-5 text-white" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide">Therapist</p>
+                        <p className="text-sm font-bold text-foreground truncate">
+                          {selectedSession.sessionInfo.therapistId.name || "Unknown Therapist"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Date & Time Info */}
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2 px-3 py-2 bg-white rounded-lg border border-gray-200 shadow-sm">
+                      <Calendar className="w-4 h-4 text-blue-600" />
+                      <div>
+                        <p className="text-xs text-gray-500 font-medium">Date</p>
+                        <p className="text-sm font-semibold text-foreground">
+                          {selectedSession.sessionInfo.date}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 px-3 py-2 bg-white rounded-lg border border-gray-200 shadow-sm">
+                      <Clock className="w-4 h-4 text-blue-600" />
+                      <div>
+                        <p className="text-xs text-gray-500 font-medium">Time</p>
+                        <p className="text-sm font-semibold text-foreground">
+                          {selectedSession.sessionInfo.time}
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
