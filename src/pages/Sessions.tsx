@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Search, MoreHorizontal, Video, Calendar, Clock, User, UserCog, X, RefreshCw, ChevronLeft, ChevronRight, Play, Eye, Copy, Plus, AlertTriangle, Info, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
@@ -37,6 +37,17 @@ type SessionStatus =
 export default function Sessions() {
   const navigate = useNavigate();
   const dispatch: any = useDispatch();
+  
+  // Helper function to generate initials from name
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(n => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
   const [currentTime, setCurrentTime] = useState(new Date()); // Track current time in real-time
   const {
     list: bookings,
@@ -495,6 +506,10 @@ export default function Sessions() {
   const [selectedSession, setSelectedSession] = useState<any>(null);
   const [isCreateSessionModalOpen, setIsCreateSessionModalOpen] =
     useState(false);
+  
+  // State for group session details dialog
+  const [isGroupDetailsDialogOpen, setIsGroupDetailsDialogOpen] = useState(false);
+  const [selectedGroupSessionId, setSelectedGroupSessionId] = useState<string | null>(null);
 
   // State for rebooking missed sessions
   const [isRebookModalOpen, setIsRebookModalOpen] = useState(false);
@@ -934,6 +949,18 @@ export default function Sessions() {
         variant: "destructive",
       });
     }
+  };
+
+  // Handle opening group session details dialog
+  const handleOpenGroupDetails = (groupSessionId: string) => {
+    setSelectedGroupSessionId(groupSessionId);
+    setIsGroupDetailsDialogOpen(true);
+  };
+
+  // Handle closing group session details dialog
+  const handleCloseGroupDetails = () => {
+    setIsGroupDetailsDialogOpen(false);
+    setSelectedGroupSessionId(null);
   };
 
   const handleDeleteSession = async (sessionId: string) => {
@@ -1672,16 +1699,6 @@ export default function Sessions() {
                           const groupSessionId = groupSessions[0].groupSessionId;
                           const firstSession = groupSessions[0];
                           const user = firstSession.userId;
-                          
-                          // Generate initials for avatars
-                          const getInitials = (name: string) => {
-                            return name
-                              .split(' ')
-                              .map(n => n[0])
-                              .join('')
-                              .toUpperCase()
-                              .slice(0, 2);
-                          };
 
                           rows.push(
                             <tr
@@ -3082,6 +3099,142 @@ export default function Sessions() {
           dispatch(fetchSessions());
         }}
       />
+
+      {/* Group Session Details Dialog */}
+      <Dialog open={isGroupDetailsDialogOpen} onOpenChange={setIsGroupDetailsDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserCog className="w-5 h-5" />
+              Group Session Details
+            </DialogTitle>
+            <DialogDescription>
+              View all participants in this group session
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedGroupSessionId && (
+            <div className="space-y-4 py-4">
+              {(() => {
+                // Find all sessions for this group
+                const groupSessions = (allSessions || []).filter(
+                  (session: any) => session.groupSessionId === selectedGroupSessionId
+                );
+                
+                if (groupSessions.length === 0) {
+                  return (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <AlertTriangle className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                      <p>No participants found for this group session</p>
+                    </div>
+                  );
+                }
+
+                return (
+                  <>
+                    <div className="flex items-center justify-between bg-muted/50 rounded-lg p-3">
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium">Session Information</p>
+                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                          <div className="flex items-center gap-1">
+                            <Calendar className="w-3 h-3" />
+                            <span>{groupSessions[0]?.date || 'N/A'}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            <span>{groupSessions[0]?.time || 'N/A'}</span>
+                          </div>
+                          <Badge variant={groupSessions[0]?.status === 'live' ? 'default' : 'secondary'}>
+                            {groupSessions[0]?.status || 'N/A'}
+                          </Badge>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-muted-foreground">Participants</p>
+                        <p className="text-lg font-bold">{groupSessions.length}</p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <p className="text-sm font-semibold">Participants List</p>
+                      <div className="grid gap-2">
+                        {groupSessions.map((member: any, index: number) => (
+                          <div
+                            key={member._id}
+                            className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+                          >
+                            <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center border-2 border-white flex-shrink-0">
+                              <span className="text-sm font-semibold text-blue-600">
+                                {getInitials(member.userId?.name || 'User')}
+                              </span>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-sm truncate">
+                                {index + 1}. {member.userId?.name || 'N/A'}
+                              </p>
+                              <p className="text-xs text-muted-foreground truncate">
+                                {member.userId?.email || 'No email'}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {member.status === 'live' && (
+                                <Badge variant="default" className="text-xs">
+                                  <Play className="w-3 h-3 mr-1" />
+                                  Live
+                                </Badge>
+                              )}
+                              {member.status === 'completed' && (
+                                <Badge variant="secondary" className="text-xs">
+                                  Completed
+                                </Badge>
+                              )}
+                              {member.status === 'cancelled' && (
+                                <Badge variant="destructive" className="text-xs">
+                                  Cancelled
+                                </Badge>
+                              )}
+                              {member.status === 'scheduled' && (
+                                <Badge variant="outline" className="text-xs">
+                                  Scheduled
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {groupSessions[0]?.googleMeetLink && (
+                      <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <div className="flex items-start gap-2">
+                          <Info className="w-4 h-4 text-blue-600 mt-0.5" />
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-blue-900">Google Meet Link</p>
+                            <p className="text-xs text-blue-700 mt-1 break-all">
+                              {groupSessions[0].googleMeetLink}
+                            </p>
+                            {groupSessions[0].googleMeetCode && (
+                              <p className="text-xs text-blue-700 mt-1">
+                                Code: <span className="font-mono font-semibold">{groupSessions[0].googleMeetCode}</span>
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCloseGroupDetails}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
