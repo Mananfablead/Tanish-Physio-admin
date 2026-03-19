@@ -59,7 +59,11 @@ const filters = ["All", "Successful", "Failed", "Refunded", "Disputed", "Pending
 export default function Payments() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { payments, loading: isLoading, error } = useSelector((state: any) => state.payments);
+  const {
+    payments,
+    loading: isLoading,
+    error,
+  } = useSelector((state: any) => state.payments);
   console.log(payments);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState("All");
@@ -68,6 +72,11 @@ export default function Payments() {
   const [isDisputeModalOpen, setIsDisputeModalOpen] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
   const [refundReason, setRefundReason] = useState("");
+
+  // Currency symbol based on currency code
+  const getCurrencySymbol = (currency: string) => {
+    return currency === "USD" ? "$" : "₹";
+  };
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -121,37 +130,72 @@ export default function Payments() {
     }
   };
 
-  const filteredPayments = payments?.filter((payment: Payment) => {
-    const matchesSearch =
-      payment.userId?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      payment.userId?.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      payment._id?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      payment.bookingId?.patientName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      payment.bookingId?.patientEmail?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      payment.razorpayPaymentId?.toLowerCase().includes(searchQuery.toLowerCase());
+  const filteredPayments =
+    payments?.filter((payment: Payment) => {
+      const matchesSearch =
+        payment.userId?.name
+          ?.toLowerCase()
+          .includes(searchQuery.toLowerCase()) ||
+        payment.userId?.email
+          ?.toLowerCase()
+          .includes(searchQuery.toLowerCase()) ||
+        payment._id?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        payment.bookingId?.patientName
+          ?.toLowerCase()
+          .includes(searchQuery.toLowerCase()) ||
+        payment.bookingId?.patientEmail
+          ?.toLowerCase()
+          .includes(searchQuery.toLowerCase()) ||
+        payment.razorpayPaymentId
+          ?.toLowerCase()
+          .includes(searchQuery.toLowerCase());
 
-    if (activeFilter === "All") return matchesSearch;
+      if (activeFilter === "All") return matchesSearch;
 
-    // Handle Successful filter which maps to captured, successful, and paid statuses
-    if (activeFilter === "captured" || activeFilter === "successful") {
-      return matchesSearch && (payment.status === "captured" || payment.status === "successful" || payment.status === "paid");
-    }
+      // Handle Successful filter which maps to captured, successful, and paid statuses
+      if (activeFilter === "captured" || activeFilter === "successful") {
+        return (
+          matchesSearch &&
+          (payment.status === "captured" ||
+            payment.status === "successful" ||
+            payment.status === "paid")
+        );
+      }
 
-    return matchesSearch && payment.status.toLowerCase() === activeFilter.toLowerCase();
-  }) || [];
+      return (
+        matchesSearch &&
+        payment.status.toLowerCase() === activeFilter.toLowerCase()
+      );
+    }) || [];
 
   // Pagination logic
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = filteredPayments.slice(indexOfFirstItem, indexOfLastItem);
+  const currentItems = filteredPayments.slice(
+    indexOfFirstItem,
+    indexOfLastItem,
+  );
   const totalPages = Math.ceil(filteredPayments.length / itemsPerPage);
 
   const stats = {
-    total: payments?.reduce((acc: number, p: Payment) => acc + p.amount, 0) || 0,
-    successful: payments?.filter((p: Payment) => p.status === "captured" || p.status === "successful" || p.status === "paid").length || 0,
+    total:
+      payments?.reduce((acc: number, p: Payment) => acc + p.amount, 0) || 0,
+    successful:
+      payments?.filter(
+        (p: Payment) =>
+          p.status === "captured" ||
+          p.status === "successful" ||
+          p.status === "paid",
+      ).length || 0,
     failed: payments?.filter((p: Payment) => p.status === "failed").length || 0,
-    refunded: payments?.filter((p: Payment) => p.status === "refunded").reduce((acc: number, p: Payment) => acc + p.amount, 0) || 0,
-    pending: payments?.filter((p: Payment) => p.status === "pending" || p.status === "created").length || 0,
+    refunded:
+      payments
+        ?.filter((p: Payment) => p.status === "refunded")
+        .reduce((acc: number, p: Payment) => acc + p.amount, 0) || 0,
+    pending:
+      payments?.filter(
+        (p: Payment) => p.status === "pending" || p.status === "created",
+      ).length || 0,
   };
 
   // Function to change page
@@ -183,7 +227,9 @@ export default function Payments() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="page-header">
           <h1 className="page-title">Payment Management</h1>
-          <p className="page-subtitle">Track and manage all platform transactions</p>
+          <p className="page-subtitle">
+            Track and manage all platform transactions
+          </p>
         </div>
         <div className="flex items-center gap-3">
           <Button
@@ -192,7 +238,9 @@ export default function Payments() {
             onClick={() => dispatch(fetchAllPayments())}
             disabled={isLoading}
           >
-            <RefreshIcon className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+            <RefreshIcon
+              className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`}
+            />
             Refresh
           </Button>
           <Button variant="outline" className="gap-2">
@@ -214,7 +262,9 @@ export default function Payments() {
               <DollarSign className="w-5 h-5 text-success" />
             </div>
             <div>
-              <p className="text-2xl font-semibold">₹{stats.total.toLocaleString()}</p>
+              <p className="text-2xl font-semibold">
+                ₹{stats.total.toLocaleString()}
+              </p>
               <p className="text-sm text-muted-foreground">Total Revenue</p>
             </div>
           </div>
@@ -247,7 +297,9 @@ export default function Payments() {
               <RotateCcw className="w-5 h-5 text-warning" />
             </div>
             <div>
-              <p className="text-2xl font-semibold">₹{stats.refunded.toLocaleString()}</p>
+              <p className="text-2xl font-semibold">
+                ₹{stats.refunded.toLocaleString()}
+              </p>
               <p className="text-sm text-muted-foreground">Refunded</p>
             </div>
           </div>
@@ -284,12 +336,17 @@ export default function Payments() {
                 if (filter === "Successful") {
                   setActiveFilter("successful");
                 } else {
-                  setActiveFilter(filter === "All" ? "All" : filter.toLowerCase());
+                  setActiveFilter(
+                    filter === "All" ? "All" : filter.toLowerCase(),
+                  );
                 }
               }}
               className={cn(
                 "filter-button",
-                activeFilter === (filter === "Successful" ? "successful" : filter.toLowerCase()) && "filter-button-active"
+                activeFilter ===
+                  (filter === "Successful"
+                    ? "successful"
+                    : filter.toLowerCase()) && "filter-button-active",
               )}
             >
               {filter}
@@ -332,32 +389,58 @@ export default function Payments() {
                     {/* <td className="font-mono text-sm">{payment._id}</td> */}
                     <td>
                       <div>
-                        <p className="font-medium">{payment.userId?.name || payment?.guestName}</p>
-                        <p className="text-sm text-muted-foreground">{payment.userId?.email || payment?.guestEmail}</p>
+                        <p className="font-medium">
+                          {payment.userId?.name || payment?.guestName}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {payment.userId?.email || payment?.guestEmail}
+                        </p>
                       </div>
                     </td>
                     <td>
                       {payment.isSubscription ? (
                         <div>
-                          <p className="font-medium">{payment.planName || 'Subscription Plan'}</p>
-                          {payment.therapistName && payment.therapistName !== 'N/A' && (
-                            <p className="text-sm text-muted-foreground">Therapist: {payment.therapistName}</p>
-                          )}
+                          <p className="font-medium">
+                            {payment.planName || "Subscription Plan"}
+                          </p>
+                          {payment.therapistName &&
+                            payment.therapistName !== "N/A" && (
+                              <p className="text-sm text-muted-foreground">
+                                Therapist: {payment.therapistName}
+                              </p>
+                            )}
                         </div>
                       ) : (
                         <div>
-                          <p className="font-medium">{payment.serviceName || 'Service Booking'}</p>
-                          {payment.therapistName && payment.therapistName !== 'N/A' && (
-                            <p className="text-sm text-muted-foreground">Therapist: {payment.therapistName}</p>
-                          )}
+                          <p className="font-medium">
+                            {payment.serviceName || "Service Booking"}
+                          </p>
+                          {payment.therapistName &&
+                            payment.therapistName !== "N/A" && (
+                              <p className="text-sm text-muted-foreground">
+                                Therapist: {payment.therapistName}
+                              </p>
+                            )}
                         </div>
                       )}
                     </td>
-                    <td className="font-semibold">₹{payment.amount}</td>
-                    <td className="text-muted-foreground">{payment.paymentMethod}</td>
-                    <td className="text-muted-foreground">{new Date(payment.createdAt).toLocaleDateString()}</td>
+                    <td className="font-semibold">
+                      {getCurrencySymbol(payment.currency)}
+                      {payment.amount}
+                    </td>
+                    <td className="text-muted-foreground">
+                      {payment.paymentMethod}
+                    </td>
+                    <td className="text-muted-foreground">
+                      {new Date(payment.createdAt).toLocaleDateString()}
+                    </td>
                     <td>
-                      <span className={cn("status-badge inline-flex items-center gap-1 capitalize", getStatusBadge(payment.status as PaymentStatus))}>
+                      <span
+                        className={cn(
+                          "status-badge inline-flex items-center gap-1 capitalize",
+                          getStatusBadge(payment.status as PaymentStatus),
+                        )}
+                      >
                         {getStatusIcon(payment.status as PaymentStatus)}
                         {payment.status}
                       </span>
@@ -367,7 +450,9 @@ export default function Payments() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => navigate(`/payment-details/${payment._id}`)}
+                          onClick={() =>
+                            navigate(`/payment-details/${payment._id}`)
+                          }
                         >
                           <Eye className="w-4 h-4" />
                         </Button>
@@ -399,18 +484,26 @@ export default function Payments() {
                     </td>
                   </tr>
                 ))}
-
               </tbody>
             </table>
           </div>
 
           <div className="flex items-center justify-between px-4 py-3 border-t border-border">
             <p className="text-sm text-muted-foreground">
-              Showing <span className="font-medium">{Math.min(indexOfLastItem, filteredPayments.length)}</span> of{" "}
-              <span className="font-medium">{filteredPayments.length}</span> transactions
+              Showing{" "}
+              <span className="font-medium">
+                {Math.min(indexOfLastItem, filteredPayments.length)}
+              </span>{" "}
+              of <span className="font-medium">{filteredPayments.length}</span>{" "}
+              transactions
             </p>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={prevPage} disabled={currentPage <= 1}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={prevPage}
+                disabled={currentPage <= 1}
+              >
                 <ChevronLeft className="w-4 h-4" />
               </Button>
               {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
@@ -440,7 +533,12 @@ export default function Payments() {
                   </Button>
                 );
               })}
-              <Button variant="outline" size="sm" onClick={nextPage} disabled={currentPage >= totalPages}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={nextPage}
+                disabled={currentPage >= totalPages}
+              >
                 <ChevronRight className="w-4 h-4" />
               </Button>
             </div>
@@ -468,7 +566,8 @@ export default function Payments() {
           <DialogHeader>
             <DialogTitle>Issue Refund</DialogTitle>
             <DialogDescription>
-              Process a refund for this transaction. This action cannot be undone.
+              Process a refund for this transaction. This action cannot be
+              undone.
             </DialogDescription>
           </DialogHeader>
 
@@ -478,11 +577,16 @@ export default function Payments() {
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <div>
                     <span className="text-muted-foreground">Transaction:</span>
-                    <span className="ml-2 font-mono">{selectedPayment._id}</span>
+                    <span className="ml-2 font-mono">
+                      {selectedPayment._id}
+                    </span>
                   </div>
                   <div>
                     <span className="text-muted-foreground">Amount:</span>
-                    <span className="ml-2 font-semibold">₹{selectedPayment.amount}</span>
+                    <span className="ml-2 font-semibold">
+                      {getCurrencySymbol(selectedPayment.currency)}
+                      {selectedPayment.amount}
+                    </span>
                   </div>
                   <div>
                     <span className="text-muted-foreground">User:</span>
@@ -490,7 +594,9 @@ export default function Payments() {
                   </div>
                   <div>
                     <span className="text-muted-foreground">Service:</span>
-                    <span className="ml-2">{selectedPayment.bookingId?.serviceName}</span>
+                    <span className="ml-2">
+                      {selectedPayment.bookingId?.serviceName}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -508,10 +614,16 @@ export default function Payments() {
           )}
 
           <DialogFooter className="mt-4">
-            <Button variant="outline" onClick={() => setIsRefundModalOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setIsRefundModalOpen(false)}
+            >
               Cancel
             </Button>
-            <Button variant="destructive" onClick={() => setIsRefundModalOpen(false)}>
+            <Button
+              variant="destructive"
+              onClick={() => setIsRefundModalOpen(false)}
+            >
               Process Refund
             </Button>
           </DialogFooter>
@@ -534,11 +646,16 @@ export default function Payments() {
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <div>
                     <span className="text-muted-foreground">Transaction:</span>
-                    <span className="ml-2 font-mono">{selectedPayment._id}</span>
+                    <span className="ml-2 font-mono">
+                      {selectedPayment._id}
+                    </span>
                   </div>
                   <div>
                     <span className="text-muted-foreground">Amount:</span>
-                    <span className="ml-2 font-semibold">₹{selectedPayment.amount}</span>
+                    <span className="ml-2 font-semibold">
+                      {getCurrencySymbol(selectedPayment.currency)}
+                      {selectedPayment.amount}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -554,13 +671,22 @@ export default function Payments() {
           )}
 
           <DialogFooter className="mt-4 gap-2">
-            <Button variant="outline" onClick={() => setIsDisputeModalOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setIsDisputeModalOpen(false)}
+            >
               Cancel
             </Button>
-            <Button variant="destructive" onClick={() => setIsDisputeModalOpen(false)}>
+            <Button
+              variant="destructive"
+              onClick={() => setIsDisputeModalOpen(false)}
+            >
               Refund & Close
             </Button>
-            <Button className="bg-success hover:bg-success/90" onClick={() => setIsDisputeModalOpen(false)}>
+            <Button
+              className="bg-success hover:bg-success/90"
+              onClick={() => setIsDisputeModalOpen(false)}
+            >
               Accept Payment
             </Button>
           </DialogFooter>
