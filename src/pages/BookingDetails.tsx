@@ -320,9 +320,9 @@ console.log("Health profile:", singleBooking?.booking?.userId?.healthProfile);
                 {typeof booking.serviceName === "string"
                   ? booking.serviceName
                   : booking.serviceName &&
-                    typeof booking.serviceName === "object"
-                  ? booking.serviceName.name || "N/A"
-                  : "N/A"}
+                      typeof booking.serviceName === "object"
+                    ? booking.serviceName.name || "N/A"
+                    : "N/A"}
               </h2>
               {/* <p className="text-muted-foreground">
                 Booking ID:{" "}
@@ -334,7 +334,7 @@ console.log("Health profile:", singleBooking?.booking?.userId?.healthProfile);
             <div className="flex gap-2">
               <Badge
                 className={getStatusBadge(
-                  typeof booking.status === "string" ? booking.status : ""
+                  typeof booking.status === "string" ? booking.status : "",
                 )}
               >
                 {typeof booking.status === "string" ? booking.status : "N/A"}
@@ -503,7 +503,7 @@ console.log("Health profile:", singleBooking?.booking?.userId?.healthProfile);
                             {response.questionType && (
                               <span
                                 className={`text-xs px-2 py-1 rounded-full ${getQuestionTypeBadge(
-                                  response.questionType || "text"
+                                  response.questionType || "text",
                                 )}`}
                               >
                                 {response.questionType || "text"}
@@ -511,7 +511,7 @@ console.log("Health profile:", singleBooking?.booking?.userId?.healthProfile);
                             )}
                             <span
                               className={`text-xs px-2 py-1 rounded-full ${getSourceBadge(
-                                response.source || "unknown"
+                                response.source || "unknown",
                               )}`}
                             >
                               {response.source || "unknown"}
@@ -540,7 +540,7 @@ console.log("Health profile:", singleBooking?.booking?.userId?.healthProfile);
                                 <span className="font-medium text-foreground">
                                   {formatAnswer(
                                     response.answer,
-                                    response.questionType
+                                    response.questionType,
                                   )}
                                 </span>
                               )}
@@ -556,12 +556,12 @@ console.log("Health profile:", singleBooking?.booking?.userId?.healthProfile);
                         <div className="flex items-center gap-2">
                           <span
                             className={`flex items-center gap-1 text-sm px-2 py-1 rounded-full ${getResponseStatusBadge(
-                              !!response.answer
+                              !!response.answer,
                             )}`}
                           >
                             <div
                               className={`w-2 h-2 rounded-full ${getResponseStatusIndicator(
-                                !!response.answer
+                                !!response.answer,
                               )}`}
                             ></div>
                             {getResponseStatusText(!!response.answer)}
@@ -641,7 +641,7 @@ console.log("Health profile:", singleBooking?.booking?.userId?.healthProfile);
                             "additionalNotes",
                             "questionnaireResponses",
                             "questionnaireMetadata",
-                          ].includes(key)
+                          ].includes(key),
                       ).length > 0 && (
                         <div className="mt-4 pt-4 border-t">
                           <details className="text-sm">
@@ -743,8 +743,8 @@ console.log("Health profile:", singleBooking?.booking?.userId?.healthProfile);
               {typeof booking.notes === "string"
                 ? booking.notes
                 : booking.notes && typeof booking.notes === "object"
-                ? JSON.stringify(booking.notes)
-                : "No notes"}
+                  ? JSON.stringify(booking.notes)
+                  : "No notes"}
             </CardContent>
           </Card>
         </div>
@@ -753,8 +753,7 @@ console.log("Health profile:", singleBooking?.booking?.userId?.healthProfile);
         <div className="space-y-6">
           {/* Status */}
 
-          <Card>
-          </Card>
+          <Card></Card>
 
           {/* Service Details */}
           <Card>
@@ -770,9 +769,9 @@ console.log("Health profile:", singleBooking?.booking?.userId?.healthProfile);
                   typeof booking.serviceName === "string"
                     ? booking.serviceName
                     : booking.serviceName &&
-                      typeof booking.serviceName === "object"
-                    ? booking.serviceName.name || "N/A"
-                    : "N/A"
+                        typeof booking.serviceName === "object"
+                      ? booking.serviceName.name || "N/A"
+                      : "N/A"
                 }
               />
               <Row
@@ -784,10 +783,18 @@ console.log("Health profile:", singleBooking?.booking?.userId?.healthProfile);
                 }
               />
               <Row
-                label="Price"
+                label="Price (INR)"
                 value={`₹${
                   booking.serviceId && typeof booking.serviceId === "object"
-                    ? booking.serviceId.price || 0
+                    ? booking.serviceId.priceINR || booking.serviceId.price || 0
+                    : 0
+                }`}
+              />
+              <Row
+                label="Price (USD)"
+                value={`$${
+                  booking.serviceId && typeof booking.serviceId === "object"
+                    ? booking.serviceId.priceUSD || 0
                     : 0
                 }`}
               />
@@ -820,7 +827,7 @@ console.log("Health profile:", singleBooking?.booking?.userId?.healthProfile);
                   className={getPaymentBadge(
                     typeof booking.paymentStatus === "string"
                       ? booking.paymentStatus
-                      : ""
+                      : "",
                   )}
                 >
                   {typeof booking.paymentStatus === "string"
@@ -836,8 +843,8 @@ console.log("Health profile:", singleBooking?.booking?.userId?.healthProfile);
                   typeof booking.amount === "number"
                     ? booking.amount
                     : typeof booking.amount === "object"
-                    ? 0
-                    : parseFloat(booking.amount) || 0
+                      ? 0
+                      : parseFloat(booking.amount) || 0
                 }`}
               />
               <Row
