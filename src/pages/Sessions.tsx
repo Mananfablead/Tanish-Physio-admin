@@ -1688,32 +1688,7 @@ export default function Sessions() {
                                     </div>
                                     <div className="flex items-center gap-1 text-muted-foreground">
                                       <Clock className="h-4 w-4" />
-                                      <span>
-                                        {(() => {
-                                          // Helper function to format time in 24-hour international format
-                                          const formatTime = (timeStr: string) => {
-                                            if (!timeStr) return "";
-                                            // If it's already in HH:MM format, keep as is
-                                            if (/^\d{1,2}:\d{2}$/.test(timeStr)) {
-                                              return timeStr;
-                                            }
-                                            // If it's an ISO string, convert to HH:MM format
-                                            if (timeStr.includes('T')) {
-                                              return new Date(timeStr).toLocaleTimeString("en-GB", {
-                                                hour: "2-digit",
-                                                minute: "2-digit",
-                                                hour12: false,
-                                              });
-                                            }
-                                            return timeStr;
-                                          };
-                                          
-                                          const startTime = formatTime(session.startTime);
-                                          const endTime = formatTime(session.endTime);
-                                          
-                                          return startTime && endTime ? `${startTime} - ${endTime}` : session.time || startTime || '—';
-                                        })()}
-                                      </span>
+                                      <span>{session.startTime}-{session.endTime}</span>
                                     </div>
                                   </div>
                                 </td>
