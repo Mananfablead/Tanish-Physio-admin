@@ -297,7 +297,18 @@ export default function Sessions() {
   }, [filteredSessions, activeTab]);
 
   // State for creating a new session
-  const [newSession, setNewSession] = useState({
+  const [newSession, setNewSession] = useState<{
+    bookingId: string;
+    subscriptionId: string;
+    userId: string;
+    therapistId: string;
+    date: string;
+    time: string;
+    type: string;
+    status: string;
+    notes: string;
+    requiredSessionType: string;
+  }>({
     bookingId: "",
     subscriptionId: "",
     userId: "",
@@ -307,6 +318,7 @@ export default function Sessions() {
     type: "1-on-1",
     status: "pending",
     notes: "",
+    requiredSessionType: "",
   });
 
   // Function to check if a time slot is in the past
@@ -415,7 +427,8 @@ export default function Sessions() {
   const fetchUsersWithActiveSubscriptions = async () => {
     try {
       setLoadingUsers(true);
-      const response = await fetch("/api/users?subscription=active", {
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+      const response = await fetch(`${API_BASE_URL}/users?subscription=active`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("admin_token")}`,
           "Content-Type": "application/json",
@@ -438,7 +451,7 @@ export default function Sessions() {
           data.message
         );
         // As fallback, get all users and their subscription info separately
-        const allUsersResponse = await fetch("/api/users", {
+        const allUsersResponse = await fetch(`${API_BASE_URL}/users`, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("admin_token")}`,
             "Content-Type": "application/json",
@@ -484,6 +497,18 @@ export default function Sessions() {
             !sub.isExpired
         );
         setSelectedUserSubscriptions(userSubs);
+        
+        // Auto-select first subscription if available
+        if (userSubs.length > 0) {
+          const firstSub = userSubs[0];
+          const sessionType = firstSub?.planDetails?.session_type === "group" ? "group" : "one-to-one";
+          setNewSession((prev) => ({
+            ...prev,
+            subscriptionId: firstSub._id,
+            requiredSessionType: sessionType,
+            type: sessionType === "group" ? "group" : "1-on-1"
+          }));
+        }
       } else {
         console.error("Failed to fetch user subscriptions:", data.message);
         setSelectedUserSubscriptions([]);
@@ -754,8 +779,10 @@ export default function Sessions() {
         time: "",
         type: "1-on-1",
         status: "pending",
-        notes: "" as string,
+        notes: "",
+        requiredSessionType: "",
       });
+      
       // Refresh sessions list
       dispatch(fetchSessions());
 
@@ -1271,9 +1298,9 @@ export default function Sessions() {
           {activeTab === "live" || activeTab === "upcoming" ? (
             /* Live Sessions Grid View */
             <div className="space-y-6">
-              {filteredSessions.length > 0 ? (
+              {groupedLiveUpcomingSessions && groupedLiveUpcomingSessions.length > 0 ? (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {filteredSessions.map((session: any) => {
+                  {groupedLiveUpcomingSessions.map((session: any) => {
                     const user = session.userId;
                     const therapist = session.therapistId;
                     // Calculate timing status for upcoming sessions using currentTime state
@@ -1327,14 +1354,16 @@ export default function Sessions() {
 
                     return (
                       <div
-                        key={session._id}
+                        key={session.isGroup ? session.groupSessionId : session._id}
                         className="bg-card rounded-lg border border-border overflow-hidden shadow-sm hover:shadow-md transition-shadow"
                       >
                         <div className="p-6">
                           <div className="flex justify-between items-start mb-4">
                             <div>
                               <h3 className="text-lg font-semibold flex items-center gap-2">
-                                {user?.name || "N/A"}
+                                {session.isGroup 
+                                  ? `${session.participants[0]?.userId?.name || "N/A"} ${session.participants.length > 1 ? `+${session.participants.length - 1} others` : ""}`
+                                  : user?.name || "N/A"}
                                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                   {statusLabel}
                                 </span>
@@ -2744,70 +2773,103 @@ export default function Sessions() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex-1 overflow-y-auto space-y-4 py-4">
-            {/* USER SELECTION */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">User</label>
-              <Select
-                value={newSession.userId}
-                onValueChange={(value) => {
-                  setNewSession({ ...newSession, userId: value });
-                  fetchUserSubscriptions(value); // Fetch subscriptions for the selected user
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a user with active subscription" />
-                </SelectTrigger>
-                <SelectContent>
-                  {usersWithActiveSubscriptions &&
-                    usersWithActiveSubscriptions.length > 0 ? (
-                    usersWithActiveSubscriptions.map((user) => (
-                      <SelectItem key={user._id} value={user._id}>
-                        {user.name} ({user.email})
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <SelectItem value="__no_users__" disabled>
-                      {loadingUsers
-                        ? "Loading users..."
-                        : "No users with active subscriptions"}
-                    </SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-
+         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+  
+  {/* USER SELECTION */}
+  <div className="space-y-2">
+    <label className="text-sm font-medium">User</label>
+    <Select
+      value={newSession.userId}
+      onValueChange={(value) => {
+        setNewSession({ 
+          ...newSession, 
+          userId: value,
+          subscriptionId: "", // Reset subscription when user changes
+          requiredSessionType: "",
+          type: "1-on-1"
+        });
+        fetchUserSubscriptions(value);
+      }}
+    >
+      <SelectTrigger>
+        <SelectValue placeholder="Select user" />
+      </SelectTrigger>
+      <SelectContent>
+        {usersWithActiveSubscriptions?.length > 0 ? (
+          usersWithActiveSubscriptions.map((user) => (
+            <SelectItem key={user._id} value={user._id}>
+              {user.name} ({user.email})
+            </SelectItem>
+          ))
+        ) : (
+          <SelectItem value="__no_users__" disabled>
+            {loadingUsers ? "Loading..." : "No users"}
+          </SelectItem>
+        )}
+      </SelectContent>
+    </Select>
+  </div>
             {/* SUBSCRIPTION SELECTION */}
             {newSession.userId && (
               <div className="space-y-2">
                 <label className="text-sm font-medium">Subscription Plan</label>
-                <Select
-                  value={newSession.subscriptionId}
-                  onValueChange={(value) => {
-                    setNewSession({ ...newSession, subscriptionId: value });
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select an active subscription" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {selectedUserSubscriptions &&
-                      selectedUserSubscriptions.length > 0 ? (
-                      selectedUserSubscriptions.map((sub) => (
-                        <SelectItem key={sub._id} value={sub._id}>
-                          {sub.planName} - {sub.availableSessions?.remaining}{" "}
-                          sessions remaining
+                {loadingSubscriptions ? (
+                  <div className="flex items-center gap-2 p-3 border rounded-lg bg-muted/50">
+                    <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full"></div>
+                    <span className="text-sm text-muted-foreground">Loading subscriptions...</span>
+                  </div>
+                ) : (
+                  <Select
+                    value={newSession.subscriptionId}
+                    onValueChange={(value) => {
+                      const selectedSub = selectedUserSubscriptions?.find(
+                        (s) => s._id === value
+                      );
+                      const sessionType =
+                        selectedSub?.planDetails?.session_type === "group"
+                          ? "group"
+                          : "one-to-one";
+
+                      setNewSession((prev) => ({
+                        ...prev,
+                        subscriptionId: value,
+                        requiredSessionType: sessionType,
+                        type: sessionType === "group" ? "group" : "1-on-1", // Auto-select session type
+                      }));
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select plan" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {selectedUserSubscriptions?.length > 0 ? (
+                        selectedUserSubscriptions.map((sub) => {
+                          const plan = sub.planDetails || {};
+                          const sessions = plan.sessions || sub.availableSessions?.total || 0;
+                          const remaining = sub.availableSessions?.remaining || 0;
+                          return (
+                            <SelectItem key={sub._id} value={sub._id}>
+                              <div className="flex flex-col gap-1">
+                                <span className="font-medium">
+                                  {plan.name || "Plan"} ({plan.session_type || "individual"})
+                                </span>
+                                <span className="text-xs text-muted-foreground">
+                                  {sessions > 0 && sessions !== 'unlimited'
+                                    ? `${remaining}/${sessions} sessions left`
+                                    : `Unlimited sessions`}
+                                </span>
+                              </div>
+                            </SelectItem>
+                          );
+                        })
+                      ) : (
+                        <SelectItem value="__no__" disabled>
+                          No active subscriptions
                         </SelectItem>
-                      ))
-                    ) : (
-                      <SelectItem value="__no_subscriptions__" disabled>
-                        {loadingSubscriptions
-                          ? "Loading subscriptions..."
-                          : "No active subscriptions"}
-                      </SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
+                      )}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
             )}
 
@@ -2911,9 +2973,14 @@ export default function Sessions() {
                       .flatMap((item) =>
                         item.timeSlots
                           .filter(
-                            (slot) =>
-                              slot.status === true ||
-                              slot.status === "available"
+                            (slot) => {
+                              // Check if slot is available
+                              const isAvailable = slot.status === "available";
+                              // Check if slot matches subscription session type
+                              const matchesSubscriptionType = !newSession.requiredSessionType || 
+                                slot.sessionType === newSession.requiredSessionType;
+                              return isAvailable && matchesSubscriptionType;
+                            }
                           )
                           .map((slot) => (
                             <button
@@ -2956,6 +3023,11 @@ export default function Sessions() {
                               </div>
                               <div className="text-xs text-black mt-1">
                                 {slot.duration} min
+                                {slot.sessionType && (
+                                  <span className="block text-xs capitalize">
+                                    ({slot.sessionType})
+                                  </span>
+                                )}
                               </div>
                             </button>
                           ))
@@ -2994,6 +3066,7 @@ export default function Sessions() {
                   onValueChange={(value) =>
                     setNewSession({ ...newSession, type: value })
                   }
+                  disabled={!!newSession.requiredSessionType} // Disable if auto-selected
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -3003,6 +3076,11 @@ export default function Sessions() {
                     <SelectItem value="group">Group</SelectItem>
                   </SelectContent>
                 </Select>
+                {newSession.requiredSessionType && (
+                  <p className="text-xs text-muted-foreground">
+                    ✓ Auto-selected based on subscription
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">

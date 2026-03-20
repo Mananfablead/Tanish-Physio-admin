@@ -45,16 +45,17 @@ const useSocket = (roomId, roomType) => {
 
             // Determine WebSocket server URL based on environment
             let serverUrl;
-            if (import.meta.env.VITE_API_BASE_URL && import.meta.env.VITE_API_BASE_URL.includes('localhost')) {
+            const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+            
+            if (isLocalhost) {
                 // Development environment - use localhost WebSocket server
                 serverUrl = 'http://localhost:5000';
-            } else if (import.meta.env.VITE_API_BASE_URL) {
-                // Production environment - extract WebSocket URL from API URL
-                // For production, remove '/api' and use the base URL for WebSocket
-                serverUrl = import.meta.env.VITE_API_BASE_URL.replace(/\/api$/, '');
+                console.log('🔧 Using DEVELOPMENT WebSocket server:', serverUrl);
             } else {
-                // Fallback to production WebSocket server URL based on project configuration
-                serverUrl = 'https://apitanishvideo.fableadtech.in'; // Production WebSocket server
+                // Production environment - use the same domain as the frontend
+                // Socket.IO will automatically upgrade to wss:// for secure connections
+                serverUrl = `${window.location.protocol}//${window.location.hostname}${window.location.port ? ':' + window.location.port : ''}`;
+                console.log('🔒 Using PRODUCTION WebSocket server:', serverUrl);
             }
             console.log('useSocket: Connecting to server:', serverUrl);
             
@@ -368,12 +369,15 @@ export const useAdminChatSocket = () => {
         };
 
         let serverUrl;
-        if (import.meta.env.VITE_API_BASE_URL && import.meta.env.VITE_API_BASE_URL.includes('localhost')) {
+        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        
+        if (isLocalhost) {
             serverUrl = 'http://localhost:5000';
-        } else if (import.meta.env.VITE_API_BASE_URL) {
-            serverUrl = import.meta.env.VITE_API_BASE_URL.replace(/\/api$/, '');
+            console.log('🔧 Admin chat using DEVELOPMENT WebSocket server:', serverUrl);
         } else {
-            serverUrl = 'https://apitanishvideo.fableadtech.in';
+            // Production environment - use the same domain as the frontend
+            serverUrl = `${window.location.protocol}//${window.location.hostname}${window.location.port ? ':' + window.location.port : ''}`;
+            console.log('🔒 Admin chat using PRODUCTION WebSocket server:', serverUrl);
         }
 
         const newSocket = io(serverUrl, socketOptions);
