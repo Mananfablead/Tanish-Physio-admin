@@ -1298,9 +1298,9 @@ export default function Sessions() {
           {activeTab === "live" || activeTab === "upcoming" ? (
             /* Live Sessions Grid View */
             <div className="space-y-6">
-              {filteredSessions.length > 0 ? (
+              {groupedLiveUpcomingSessions && groupedLiveUpcomingSessions.length > 0 ? (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {filteredSessions.map((session: any) => {
+                  {groupedLiveUpcomingSessions.map((session: any) => {
                     const user = session.userId;
                     const therapist = session.therapistId;
                     // Calculate timing status for upcoming sessions using currentTime state
@@ -1354,14 +1354,16 @@ export default function Sessions() {
 
                     return (
                       <div
-                        key={session._id}
+                        key={session.isGroup ? session.groupSessionId : session._id}
                         className="bg-card rounded-lg border border-border overflow-hidden shadow-sm hover:shadow-md transition-shadow"
                       >
                         <div className="p-6">
                           <div className="flex justify-between items-start mb-4">
                             <div>
                               <h3 className="text-lg font-semibold flex items-center gap-2">
-                                {user?.name || "N/A"}
+                                {session.isGroup 
+                                  ? `${session.participants[0]?.userId?.name || "N/A"} ${session.participants.length > 1 ? `+${session.participants.length - 1} others` : ""}`
+                                  : user?.name || "N/A"}
                                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                   {statusLabel}
                                 </span>
