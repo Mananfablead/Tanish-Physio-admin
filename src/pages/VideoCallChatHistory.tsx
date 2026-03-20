@@ -20,6 +20,17 @@ interface ChatMessage {
     date: string;
     time: string;
     type: string;
+    userId?: {
+      _id: string;
+      name: string;
+      email: string;
+    };
+    therapistId?: {
+      _id: string;
+      name: string;
+      email: string;
+    };
+    status: string;
   } | null;
   senderId: {
     _id: string;
@@ -49,10 +60,12 @@ interface LiveChatSession {
     userId: {
       _id: string;
       name: string;
+      email?: string;
     };
     therapistId: {
       _id: string;
       name: string;
+      email?: string;
     };
     status: string;
   };
@@ -117,9 +130,9 @@ const VideoCallChatHistory = () => {
               date: msg.sessionId?.date || new Date().toISOString(),
               time: msg.sessionId?.time || new Date().toLocaleTimeString(),
               type: msg.sessionId?.type || "video-call",
-              userId: { _id: "", name: "" }, // Will be populated from messages
-              therapistId: { _id: "", name: "" }, // Will be populated from messages
-              status: "completed"
+              userId: msg.sessionId?.userId || { _id: "", name: "" }, // Use populated userId from session
+              therapistId: msg.sessionId?.therapistId || { _id: "", name: "" }, // Use populated therapistId from session
+              status: msg.sessionId?.status || "completed"
             },
             userMessages: [],
             therapistMessages: [],
@@ -131,16 +144,18 @@ const VideoCallChatHistory = () => {
         
         const session = sessionsMap.get(sessionId)!;
         
-        // Capture actual user and therapist names from messages
+        // Update user info if not already set (from session data)
         if (msg.senderType === "user" && !session.sessionInfo.userId.name) {
           session.sessionInfo.userId = {
             _id: msg.senderId._id,
-            name: msg.senderId.name
+            name: msg.senderId.name,
+            email: msg.senderId.email
           };
         } else if (msg.senderType === "therapist" && !session.sessionInfo.therapistId.name) {
           session.sessionInfo.therapistId = {
             _id: msg.senderId._id,
-            name: msg.senderId.name
+            name: msg.senderId.name,
+            email: msg.senderId.email
           };
         }
         
@@ -201,7 +216,23 @@ const VideoCallChatHistory = () => {
         {
           _id: "1",
           messageId: "mock-1",
-          sessionId: session.sessionId ? { _id: session.sessionId, date: "", time: "", type: "" } : null,
+          sessionId: session.sessionId ? { 
+            _id: session.sessionId, 
+            date: "", 
+            time: "", 
+            type: "",
+            status: "completed",
+            userId: session.sessionInfo.userId.name ? {
+              _id: "user123",
+              name: session.sessionInfo.userId.name,
+              email: "user@example.com"
+            } : undefined,
+            therapistId: session.sessionInfo.therapistId.name ? {
+              _id: "therapist123",
+              name: session.sessionInfo.therapistId.name,
+              email: "therapist@example.com"
+            } : undefined
+          } : null,
           message: "Hello! I need help with my appointment.",
           senderId: {
             _id: "user123",
@@ -221,7 +252,23 @@ const VideoCallChatHistory = () => {
         {
           _id: "2",
           messageId: "mock-2",
-          sessionId: session.sessionId ? { _id: session.sessionId, date: "", time: "", type: "" } : null,
+          sessionId: session.sessionId ? { 
+            _id: session.sessionId, 
+            date: "", 
+            time: "", 
+            type: "",
+            status: "completed",
+            userId: session.sessionInfo.userId.name ? {
+              _id: "user123",
+              name: session.sessionInfo.userId.name,
+              email: "user@example.com"
+            } : undefined,
+            therapistId: session.sessionInfo.therapistId.name ? {
+              _id: "therapist123",
+              name: session.sessionInfo.therapistId.name,
+              email: "therapist@example.com"
+            } : undefined
+          } : null,
           message: "Hi there! I'm here to help. What can I assist you with today?",
           senderId: {
             _id: "therapist123",
@@ -263,7 +310,23 @@ const VideoCallChatHistory = () => {
       const replyMessage: ChatMessage = {
         _id: Date.now().toString(),
         messageId: "admin-reply-" + Date.now(),
-        sessionId: selectedSession.sessionId ? { _id: selectedSession.sessionId, date: "", time: "", type: "" } : null,
+        sessionId: selectedSession.sessionId ? { 
+          _id: selectedSession.sessionId, 
+          date: "", 
+          time: "", 
+          type: "",
+          status: "completed",
+          userId: selectedSession.sessionInfo.userId.name ? {
+            _id: selectedSession.sessionInfo.userId._id,
+            name: selectedSession.sessionInfo.userId.name,
+            email: selectedSession.sessionInfo.userId.email || ""
+          } : undefined,
+          therapistId: selectedSession.sessionInfo.therapistId.name ? {
+            _id: selectedSession.sessionInfo.therapistId._id,
+            name: selectedSession.sessionInfo.therapistId.name,
+            email: selectedSession.sessionInfo.therapistId.email || ""
+          } : undefined
+        } : null,
         message: newReply,
         senderId: {
           _id: "admin123",
@@ -393,7 +456,7 @@ const VideoCallChatHistory = () => {
                 />
               </div>
             </div>
-            <div className="overflow-y-auto max-h-[50vh] md:max-h-[calc(100vh-250px)] scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+            <div className="overflow-y-auto max-h-[50vh] md:max-h-[90vh] scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
               {chats.length > 0 ? (
                 chats.map((chat) => (
                   <div
@@ -405,89 +468,30 @@ const VideoCallChatHistory = () => {
                     }`}
                     onClick={() => loadSessionMessages(chat)}
                   >
-                    {/* Header Section */}
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center gap-2 flex-1">
-                        <div className={`p-2 rounded-lg ${
-                          selectedSession && selectedSession.sessionId === chat.sessionId
-                            ? "bg-blue-100 text-blue-600"
-                            : "bg-gray-100 text-gray-600 group-hover:bg-blue-50 group-hover:text-blue-600"
-                        } transition-colors`}>
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                          </svg>
-                        </div>
-                        <div>
-                          <h3 className="font-semibold text-foreground text-sm line-clamp-1">
-                            {chat.sessionInfo.type || "Video Call Session"}
-                          </h3>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                              <span className="w-1.5 h-1.5 bg-blue-600 rounded-full mr-1.5 animate-pulse"></span>
-                              Video Call
-                            </span>
-                            <span className="text-xs text-gray-500">
-                              {chat.userMessages.length + chat.therapistMessages.length} messages
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-xs text-gray-500 whitespace-nowrap">
-                          {formatDate(chat.lastMessageTime)}
+                    {/* User Name */}
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-10 h-10 bg-gradient-to-br from-green-400 to-blue-500 rounded-full flex items-center justify-center">
+                        <span className="text-white font-bold text-sm">
+                          {(chat.sessionInfo.userId.name || "Unknown User").charAt(0).toUpperCase()}
                         </span>
-                        {chat.unreadCount > 0 && (
-                          <div className="mt-1 flex items-center justify-end">
-                            <span className="px-2 py-0.5 bg-red-500 text-white text-xs font-semibold rounded-full">
-                              {chat.unreadCount} new
-                            </span>
-                          </div>
-                        )}
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-foreground text-base">
+                          {chat.sessionInfo.userId.name || "Unknown User"}
+                        </h3>
                       </div>
                     </div>
 
-                    {/* Participants Section */}
-                    <div className="grid grid-cols-2 gap-2 mb-3">
-                      <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg group-hover:bg-white transition-colors">
-                        <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-green-400 to-blue-500 rounded-full flex items-center justify-center">
-                          <User className="w-4 h-4 text-white" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs text-gray-500 font-medium">User</p>
-                          <p className="text-sm font-semibold text-foreground truncate">
-                            {chat.sessionInfo.userId.name || "Unknown User"}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg group-hover:bg-white transition-colors">
-                        <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-purple-400 to-pink-500 rounded-full flex items-center justify-center">
-                          <UserCheck className="w-4 h-4 text-white" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs text-gray-500 font-medium">Therapist</p>
-                          <p className="text-sm font-semibold text-foreground truncate">
-                            {chat.sessionInfo.therapistId.name || "Unknown Therapist"}
-                          </p>
-                        </div>
-                      </div>
+                    {/* Date & Time */}
+                    <div className="flex items-center gap-3 mb-2 text-xs text-gray-600">
+                      <span className="font-medium">{chat.sessionInfo.date}</span>
+                      <span>•</span>
+                      <span className="font-medium">{chat.sessionInfo.time}</span>
                     </div>
 
-                    {/* Date & Time Section */}
-                    <div className="flex items-center gap-3 mb-3 text-xs">
-                      <div className="flex items-center gap-1.5 text-gray-600">
-                        <Calendar className="w-3.5 h-3.5 text-gray-400" />
-                        <span className="font-medium">{chat.sessionInfo.date}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 text-gray-600">
-                        <Clock className="w-3.5 h-3.5 text-gray-400" />
-                        <span className="font-medium">{chat.sessionInfo.time}</span>
-                      </div>
-                    </div>
-
-                    {/* Last Message Preview */}
-                    <div className="p-2.5 bg-gray-50 rounded-lg group-hover:bg-white border border-gray-100 transition-colors">
-                      <p className="text-xs text-gray-500 font-medium mb-1">Last Message</p>
-                      <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">
+                    {/* Last Message */}
+                    <div className="mt-2">
+                      <p className="text-sm text-muted-foreground line-clamp-2">
                         {chat.lastMessage}
                       </p>
                     </div>
@@ -535,7 +539,7 @@ const VideoCallChatHistory = () => {
           <div className="w-full md:flex-1 bg-card rounded-lg shadow flex flex-col">
             {selectedSession ? (
               <>
-                <div className="p-5 border-b bg-gradient-to-r from-blue-50 to-indigo-50">
+                <div className="ps-4 py-2 border-b bg-gradient-to-r from-blue-50 to-indigo-50">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-3 flex-1">
                       <div className="p-2.5 bg-white rounded-xl shadow-sm">
@@ -561,7 +565,7 @@ const VideoCallChatHistory = () => {
                   </div>
 
                   {/* Participants Grid */}
-                  <div className="grid grid-cols-2 gap-3 mb-4">
+                  {/* <div className="grid grid-cols-2 gap-3 mb-4">
                     <div className="flex items-center gap-2.5 p-3 bg-white rounded-xl shadow-sm border border-blue-100">
                       <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-green-400 to-blue-500 rounded-full flex items-center justify-center shadow-md">
                         <User className="w-5 h-5 text-white" />
@@ -584,10 +588,10 @@ const VideoCallChatHistory = () => {
                         </p>
                       </div>
                     </div>
-                  </div>
+                  </div> */}
 
                   {/* Date & Time Info */}
-                  <div className="flex items-center gap-4">
+                  {/* <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2 px-3 py-2 bg-white rounded-lg border border-gray-200 shadow-sm">
                       <Calendar className="w-4 h-4 text-blue-600" />
                       <div>
@@ -606,7 +610,7 @@ const VideoCallChatHistory = () => {
                         </p>
                       </div>
                     </div>
-                  </div>
+                  </div> */}
                 </div>
 
                 {/* Messages Area - WhatsApp-like display */}
