@@ -85,6 +85,15 @@ const GroupVideoCall = ({
   // Local state for tracking if call has started (used for UI purposes)
   const [callHasStarted, setCallHasStarted] = useState(false);
 
+  // Stop media streams cleanup function
+  const stopMediaStreams = useCallback(() => {
+    if (localStream) {
+      localStream.getTracks().forEach((track) => {
+        track.stop();
+      });
+    }
+  }, [localStream]);
+
   // Load chat messages when joining call
   useEffect(() => {
     const loadChatMessages = async () => {
@@ -415,8 +424,16 @@ const GroupVideoCall = ({
     };
 
     const groupCallEndedListener = (data) => {
+      console.log("🛑 Group call ended event received:", data);
+      console.log("Group call ended by:", data.endedBy);
+      
+      // Stop media streams
+      stopMediaStreams();
+      
       setCallActive(false);
       setCallHasStarted(false);
+      
+      // Navigate away from the call page
       if (onEndCall) onEndCall();
     };
 
@@ -480,6 +497,7 @@ const GroupVideoCall = ({
     setParticipants,
     user,
     onEndCall,
+    stopMediaStreams,
   ]);
 
   // Toggle audio
@@ -633,6 +651,32 @@ const GroupVideoCall = ({
       setIsUploading(false);
       // Reset file input
       if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  // Handle end session - emit socket event to end for all users
+  const handleEndSession = async () => {
+    try {
+      console.log("🛑 Admin ending group session:", groupSessionId);
+      
+      // Emit group-call-end socket event to notify all participants
+      if (socket && connected) {
+        socket.emit("group-call-end", {
+          groupSessionId: groupSessionId,
+        });
+        console.log("✅ Emitted group-call-end event");
+      }
+      
+      // Call the original onEndCall to navigate away
+      if (onEndCall) {
+        onEndCall();
+      }
+    } catch (error) {
+      console.error("❌ Error ending session:", error);
+      // Still navigate even if there's an error
+      if (onEndCall) {
+        onEndCall();
+      }
     }
   };
 
@@ -807,7 +851,7 @@ const GroupVideoCall = ({
           <Button
             variant="destructive"
             size="sm"
-            onClick={onEndCall}
+            onClick={handleEndSession}
             className="flex items-center gap-2"
           >
             <PhoneOff className="h-4 w-4" />
@@ -1078,14 +1122,14 @@ const GroupVideoCall = ({
             )}
           </Button>
 
-          <Button
+          {/* <Button
             size="lg"
             variant={screenSharing ? "default" : "secondary"}
             className="rounded-full h-12 w-12"
             onClick={toggleScreenShareHandler}
           >
             <Share className="h-5 w-5" />
-          </Button>
+          </Button> */}
         </div>
       </div>
     </div>
