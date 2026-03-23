@@ -2092,7 +2092,7 @@ const VideoCall = ({
               )}
             </Button>
 
-            <Button
+            {/* <Button
               variant={screenSharing ? "default" : "secondary"}
               size="icon"
               className={`rounded-2xl md:w-14 md:h-14 w-12 h-12 border-slate-700 min-w-[48px] ${
@@ -2103,7 +2103,7 @@ const VideoCall = ({
               onClick={toggleScreenShareHandler}
             >
               <Share className="h-5 w-5" />
-            </Button>
+            </Button> */}
 
             {/* {userRole === "admin" && (
               <Button
