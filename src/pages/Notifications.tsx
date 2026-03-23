@@ -43,8 +43,6 @@ import { useSelector, useDispatch } from "react-redux";
 import { io } from "socket.io-client";
 import {
   fetchNotifications,
-  removeNotification,
-  clearAllNotifications,
   markNotificationAsRead,
   sendNotification,
   deleteNotification,
@@ -160,6 +158,12 @@ export default function Notifications() {
     inApp: true,
   });
   const [sendResults, setSendResults] = useState<any[]>([]);
+  const getNotificationId = (notification: any) =>
+    notification?._id || notification?.id;
+  const isLocalOnlyNotification = (notification: any) => {
+    const id = String(getNotificationId(notification) || "");
+    return id.startsWith("rt_");
+  };
 
   useEffect(() => {
     dispatch(fetchNotifications());
@@ -342,18 +346,35 @@ export default function Notifications() {
     }
   };
 
-  const handleDeleteNotification = (id: string) => {
-    dispatch(deleteNotification(id));
+  const handleMarkAsRead = (notification: any) => {
+    const id = getNotificationId(notification);
+    if (!id) return;
+    if (isLocalOnlyNotification(notification)) {
+      setRealTimeNotifications((prev) =>
+        prev.map((n: any) =>
+          getNotificationId(n) === id ? { ...n, read: true } : n
+        )
+      );
+    } else {
+      dispatch(markNotificationAsRead(id));
+    }
+  };
+
+  const handleDeleteNotification = (notification: any) => {
+    const id = getNotificationId(notification);
+    if (!id) return;
+    if (isLocalOnlyNotification(notification)) {
+      setRealTimeNotifications((prev) =>
+        prev.filter((n: any) => getNotificationId(n) !== id)
+      );
+    } else {
+      dispatch(deleteNotification(id));
+    }
     setNotificationToDelete(null);
   };
 
   const handleDeleteAllNotifications = () => {
     dispatch(deleteAllNotifications());
-    setShowDeleteAllConfirmation(false);
-  };
-
-  const deleteAllNotifications = () => {
-    dispatch(clearAllNotifications());
     setShowDeleteAllConfirmation(false);
   };
 
@@ -482,10 +503,27 @@ export default function Notifications() {
             <Button
               variant="outline"
               onClick={() => {
-                allNotifications
-                  .filter((n: any) => !n.read)
+                const unreadNotifications = allNotifications.filter(
+                  (n: any) => !n.read
+                );
+                const unreadLocalIds = new Set(
+                  unreadNotifications
+                    .filter((n: any) => isLocalOnlyNotification(n))
+                    .map((n: any) => getNotificationId(n))
+                );
+                if (unreadLocalIds.size > 0) {
+                  setRealTimeNotifications((prev) =>
+                    prev.map((n: any) =>
+                      unreadLocalIds.has(getNotificationId(n))
+                        ? { ...n, read: true }
+                        : n
+                    )
+                  );
+                }
+                unreadNotifications
+                  .filter((n: any) => !isLocalOnlyNotification(n))
                   .forEach((notification: any) => {
-                    dispatch(markNotificationAsRead(notification._id || notification.id));
+                    dispatch(markNotificationAsRead(getNotificationId(notification)));
                   });
               }}
               className="flex items-center gap-2"
@@ -615,13 +653,7 @@ export default function Notifications() {
                             <Button
                               size="sm"
                               variant="ghost"
-                              onClick={() =>
-                                dispatch(
-                                  markNotificationAsRead(
-                                    notification._id || notification.id
-                                  )
-                                )
-                              }
+                              onClick={() => handleMarkAsRead(notification)}
                               disabled={notification.read}
                               title={notification.read ? "Already read" : "Mark as read"}
                             >
@@ -630,9 +662,7 @@ export default function Notifications() {
                             <Button
                               size="sm"
                               variant="ghost"
-                              onClick={() =>
-                                handleDeleteNotification(notification._id || notification.id)
-                              }
+                              onClick={() => handleDeleteNotification(notification)}
                               title="Delete notification"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -732,13 +762,7 @@ export default function Notifications() {
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                onClick={() =>
-                                  dispatch(
-                                    markNotificationAsRead(
-                                      notification._id || notification.id
-                                    )
-                                  )
-                                }
+                                onClick={() => handleMarkAsRead(notification)}
                                 title={notification.read ? "Already read" : "Mark as read"}
                               >
                                 <Check className="w-4 h-4" />
@@ -746,9 +770,7 @@ export default function Notifications() {
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                onClick={() =>
-                                  handleDeleteNotification(notification._id || notification.id)
-                                }
+                                onClick={() => handleDeleteNotification(notification)}
                                 title="Delete notification"
                               >
                                 <Trash2 className="w-4 h-4" />
@@ -879,13 +901,7 @@ export default function Notifications() {
                                     <Button
                                       size="sm"
                                       variant="ghost"
-                                      onClick={() =>
-                                        dispatch(
-                                          markNotificationAsRead(
-                                            notification._id || notification.id
-                                          )
-                                        )
-                                      }
+                                      onClick={() => handleMarkAsRead(notification)}
                                       disabled={notification.read}
                                       title={notification.read ? "Already read" : "Mark as read"}
                                     >
@@ -894,9 +910,7 @@ export default function Notifications() {
                                     <Button
                                       size="sm"
                                       variant="ghost"
-                                      onClick={() =>
-                                        handleDeleteNotification(notification._id || notification.id)
-                                      }
+                                      onClick={() => handleDeleteNotification(notification)}
                                       title="Delete notification"
                                     >
                                       <Trash2 className="w-4 h-4" />

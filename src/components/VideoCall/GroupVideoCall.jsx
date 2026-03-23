@@ -57,6 +57,7 @@ const GroupVideoCall = ({
   const chatContainerRef = useRef(null);
   const [groupSessionDetails, setGroupSessionDetails] = useState(null);
   const [callDuration, setCallDuration] = useState(0);
+  const recordingTimerRef = useRef(null);
 
   const {
     localStream,
@@ -80,6 +81,14 @@ const GroupVideoCall = ({
     remoteVideoRefs,
     setCallActive,
     setParticipants,
+    callLogId,
+    setCallLogId,
+    // Recording
+    isRecording,
+    recordingStatus,
+    recordingTime,
+    startRecording,
+    stopRecording,
   } = useWebRTC(groupSessionId, socket, userRole);
 
   // Local state for tracking if call has started (used for UI purposes)
@@ -254,6 +263,52 @@ const GroupVideoCall = ({
     return () => clearInterval(interval);
   }, [callActive]);
 
+  // Ensure callLogId is available when call is active (for recording)
+  useEffect(() => {
+    const ensureCallLogId = async () => {
+      if (callActive && !callLogId) {
+        console.log('⚠️ Call is active but callLogId is missing, attempting to create/fetch...');
+        
+        try {
+          // Try to create a CallLog via API immediately
+          const response = await adminVideoCallApi.createCallLog(
+            undefined, // sessionId (not needed for group)
+            groupSessionId,
+            'group',
+            participants.map(p => ({ userId: p.userId, joinedAt: p.joinedAt }))
+          );
+          
+          if (response.callLog?._id) {
+            console.log('✅ CallLog created successfully:', response.callLog._id);
+            setCallLogId(response.callLog._id);
+          } else {
+            console.error('❌ API response missing callLog ID');
+          }
+        } catch (error) {
+          console.error('❌ Failed to create CallLog:', error);
+          // Fallback: try to fetch existing CallLogs
+          try {
+            const logsResponse = await adminVideoCallApi.getCallLogs({ groupSessionId });
+            if (logsResponse.callLogs && logsResponse.callLogs.length > 0) {
+              const activeLog = logsResponse.callLogs.find(log => log.status === 'active') || logsResponse.callLogs[0];
+              console.log('✅ Found existing CallLog:', activeLog._id);
+              setCallLogId(activeLog._id);
+            }
+          } catch (fetchError) {
+            console.error('❌ Could not fetch CallLogs:', fetchError);
+          }
+        }
+      } else if (callLogId) {
+        console.log('✅ callLogId already available:', callLogId);
+      }
+    };
+
+    // Execute immediately when call becomes active, don't wait
+    if (callActive && socket && connected) {
+      ensureCallLogId();
+    }
+  }, [callActive, callLogId, groupSessionId, socket, connected, setCallLogId, participants]);
+
   // Format call duration
   const formatDuration = (seconds) => {
     const hrs = Math.floor(seconds / 3600);
@@ -349,6 +404,61 @@ const GroupVideoCall = ({
 
     fetchSessionDetails();
   }, [groupSessionId]);
+
+  // Create CallLog immediately when socket is connected and joined (CRITICAL for recording)
+  useEffect(() => {
+    const createCallLogOnJoin = async () => {
+      if (!socket || !connected || !joinedCall) {
+        return;
+      }
+      
+      // Only create if we don't have a callLogId yet
+      if (callLogId) {
+        console.log('✅ CallLog already exists:', callLogId);
+        return;
+      }
+
+      console.log('🚀 Creating CallLog immediately on join...');
+      
+      try {
+        // Wait a moment for participants to populate
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        const response = await adminVideoCallApi.createCallLog(
+          undefined, // sessionId (not needed for group)
+          groupSessionId,
+          'group',
+          participants.length > 0 
+            ? participants.map(p => ({ userId: p.userId, joinedAt: p.joinedAt || new Date().toISOString() }))
+            : [{ userId: user?._id || socket.user?.userId, joinedAt: new Date().toISOString() }]
+        );
+        
+        if (response.callLog?._id) {
+          console.log('✅ CallLog created successfully on join:', response.callLog._id);
+          setCallLogId(response.callLog._id);
+        } else {
+          console.error('❌ API response missing callLog ID:', response);
+        }
+      } catch (error) {
+        console.error('❌ Failed to create CallLog on join:', error);
+        // Try to fetch existing as fallback
+        try {
+          const logsResponse = await adminVideoCallApi.getCallLogs({ groupSessionId });
+          if (logsResponse.callLogs && logsResponse.callLogs.length > 0) {
+            const activeLog = logsResponse.callLogs.find(log => log.status === 'active') || logsResponse.callLogs[0];
+            console.log('✅ Found existing CallLog:', activeLog._id);
+            setCallLogId(activeLog._id);
+          }
+        } catch (fetchError) {
+          console.error('❌ Could not fetch CallLogs:', fetchError);
+        }
+      }
+    };
+
+    if (socket && connected && joinedCall && !callLogId) {
+      createCallLogOnJoin();
+    }
+  }, [socket, connected, joinedCall, groupSessionId, setCallLogId, participants, user, callLogId]);
 
   // Socket event handlers
   useEffect(() => {
@@ -459,6 +569,15 @@ const GroupVideoCall = ({
 
     };
 
+    // Listen for call log initialization (important for recording)
+    const callLogInitializedListener = (data) => {
+      console.log('📋 CallLog initialized event received:', data);
+      if (data.callLogId) {
+        setCallLogId(data.callLogId);
+        console.log('✅ CallLogId set from call-log-initialized event:', data.callLogId);
+      }
+    };
+
     // Add listeners
     on("offer", offerListener);
     on("answer", answerListener);
@@ -469,6 +588,7 @@ const GroupVideoCall = ({
     on("group-call-ended", groupCallEndedListener);
     on("participant-status-changed", participantStatusChangedListener);
     on("participant-screen-sharing", participantScreenSharingListener);
+    on("call-log-initialized", callLogInitializedListener);
 
     return () => {
       socket.off("offer", offerListener);
@@ -486,6 +606,7 @@ const GroupVideoCall = ({
         "participant-screen-sharing",
         participantScreenSharingListener
       );
+      socket.off("call-log-initialized", callLogInitializedListener);
     };
   }, [
     socket,
@@ -498,6 +619,7 @@ const GroupVideoCall = ({
     user,
     onEndCall,
     stopMediaStreams,
+    setCallLogId,
   ]);
 
   // Toggle audio
@@ -1122,14 +1244,42 @@ const GroupVideoCall = ({
             )}
           </Button>
 
-          {/* <Button
-            size="lg"
-            variant={screenSharing ? "default" : "secondary"}
-            className="rounded-full h-12 w-12"
-            onClick={toggleScreenShareHandler}
-          >
-            <Share className="h-5 w-5" />
-          </Button> */}
+          {/* Recording Button - Admin only */}
+          <div className="flex flex-col items-center">
+            <Button
+              variant={isRecording ? "destructive" : "secondary"}
+              size="icon"
+              className={`rounded-2xl md:w-16 md:h-16 w-14 h-12 border-2 min-w-[56px] flex items-center justify-center gap-1 ${
+                isRecording
+                  ? "bg-red-600 text-white animate-pulse border-red-400 shadow-lg shadow-red-500/30"
+                  : "bg-slate-800 text-slate-300 hover:bg-slate-700 border-slate-600"
+              }`}
+              onClick={isRecording ? stopRecording : startRecording}
+              disabled={!connected || recordingStatus === "starting"}
+              title={isRecording ? "Stop Recording" : "Start Recording"}
+            >
+              {recordingStatus === "starting" ? (
+                <div className="h-6 w-6">
+                  <div className="animate-spin rounded-full h-full w-full border-b-2 border-white"></div>
+                </div>
+              ) : isRecording ? (
+                <>
+                  <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
+                  <span className="text-xs font-mono font-bold">
+                    {Math.floor(recordingTime / 60)
+                      .toString()
+                      .padStart(2, "0")}
+                    :{(recordingTime % 60).toString().padStart(2, "0")}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <div className="h-3 w-3 rounded-full bg-red-500" />
+                  <span className="text-sm font-bold">REC</span>
+                </>
+              )}
+            </Button>
+          </div>
         </div>
       </div>
     </div>
