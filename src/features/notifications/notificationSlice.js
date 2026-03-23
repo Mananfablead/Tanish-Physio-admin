@@ -99,6 +99,16 @@ const notificationSlice = createSlice({
         notification._id !== action.payload && notification.id !== action.payload
       );
     },
+    // Local-only mark-as-read (used for real-time notifications without backend id)
+    markNotificationReadLocal: (state, action) => {
+      const targetId = action.payload;
+      const index = state.list.findIndex(notification =>
+        notification._id === targetId || notification.id === targetId
+      );
+      if (index !== -1) {
+        state.list[index] = { ...state.list[index], read: true };
+      }
+    },
     // Add a reducer to clear all notifications
     clearAllNotifications: (state) => {
       state.list = [];
@@ -135,8 +145,10 @@ const notificationSlice = createSlice({
       // Mark notification as read
       .addCase(markNotificationAsRead.fulfilled, (state, action) => {
         state.loading = false;
+        const payloadId = action.payload?._id || action.payload?.id;
+        const targetId = payloadId || action.meta?.arg;
         const index = state.list.findIndex(notification =>
-          notification._id === action.payload._id || notification.id === action.payload.id
+          notification._id === targetId || notification.id === targetId
         );
         if (index !== -1) {
           state.list[index] = { ...state.list[index], read: true };
@@ -180,5 +192,5 @@ const notificationSlice = createSlice({
   },
 });
 
-export const { clearError, prependNotification, removeNotification, clearAllNotifications } = notificationSlice.actions;
+export const { clearError, prependNotification, removeNotification, markNotificationReadLocal, clearAllNotifications } = notificationSlice.actions;
 export default notificationSlice.reducer;

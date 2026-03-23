@@ -22,7 +22,7 @@ import {
 } from "@/features/auth/authSlice";
 import { io } from "socket.io-client";
 import { toast } from "sonner";
-import { fetchNotifications, prependNotification, markNotificationAsRead, removeNotification } from "@/features/notifications/notificationSlice";
+import { fetchNotifications, prependNotification, markNotificationAsRead, removeNotification, deleteNotification, markNotificationReadLocal } from "@/features/notifications/notificationSlice";
 interface AdminLayoutProps {
   children: ReactNode;
 }
@@ -32,6 +32,11 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   const dispatch = useDispatch();
   const { user, loading, token } = useSelector((state: any) => state.auth);
   const storedNotifications = useSelector((state: any) => state.notifications?.list || []);
+  const notificationsTargetPath = "/bookings-and-sessions";
+  const isLocalOnlyNotification = (notification: any) => {
+    const id = String(notification?._id || notification?.id || "");
+    return id.startsWith("rt_");
+  };
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -217,7 +222,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                         <div className="flex items-start justify-between w-full mb-2">
                           <div 
                             className="flex items-center gap-2 flex-1 cursor-pointer"
-                            onClick={() => navigate("/notifications")}
+                            onClick={() => navigate(notificationsTargetPath)}
                           >
                             {/* Icon based on type */}
                             {notification.type === "booking" && (
@@ -308,7 +313,12 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                dispatch(markNotificationAsRead(notification._id || notification.id));
+                                const id = notification._id || notification.id;
+                                if (isLocalOnlyNotification(notification)) {
+                                  dispatch(markNotificationReadLocal(id));
+                                } else {
+                                  dispatch(markNotificationAsRead(id));
+                                }
                               }}
                               className="p-1 hover:bg-muted rounded transition-colors"
                               title={notification.read ? "Already read" : "Mark as read"}
@@ -318,7 +328,12 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                dispatch(removeNotification(notification._id || notification.id));
+                                const id = notification._id || notification.id;
+                                if (isLocalOnlyNotification(notification)) {
+                                  dispatch(removeNotification(id));
+                                } else {
+                                  dispatch(deleteNotification(id));
+                                }
                               }}
                               className="p-1 hover:bg-destructive/10 rounded transition-colors"
                               title="Delete notification"
@@ -382,7 +397,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                   <div className="border-t p-3">
                     <DropdownMenuItem
                       className="flex items-center justify-center p-2 cursor-pointer text-primary hover:text-primary"
-                      onClick={() => navigate("/notifications")}
+                      onClick={() => navigate(notificationsTargetPath)}
                     >
                       <span className="text-sm font-medium">
                         View all notifications
