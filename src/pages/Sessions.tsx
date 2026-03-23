@@ -1394,7 +1394,7 @@ export default function Sessions() {
                             {/* Show Group Join Button for group sessions */}
                             {session.groupSessionId ? (
                               <Button
-                                className="flex-1 bg-purple-600 hover:bg-purple-700"
+                                className="flex-1 bg-primary hover:bg-primary-700"
                                 onClick={() => handleJoinGroupCall(session.groupSessionId)}
                                 disabled={joiningGroupSessionId === session.groupSessionId || !isJoinEnabled}
                               >
@@ -1754,7 +1754,7 @@ export default function Sessions() {
                                       </Badge>
                                       <Badge
                                         variant="default"
-                                        className="ml-2 bg-purple-600"
+                                        className="ml-2 bg-primary-600"
                                       >
                                         Group
                                       </Badge>
@@ -1780,7 +1780,7 @@ export default function Sessions() {
                                         </Badge>
                                         <Badge
                                           variant="default"
-                                          className="ml-2 bg-purple-600"
+                                          className="ml-2 bg-primary-600"
                                         >
                                           Group
                                         </Badge>
@@ -1821,10 +1821,10 @@ export default function Sessions() {
                                       ))}
                                       {groupSessions.length > 4 && (
                                         <div
-                                          className="h-8 w-8 rounded-full bg-purple-100 flex items-center justify-center border-2 border-white"
+                                          className="h-8 w-8 rounded-full bg-primary-100 flex items-center justify-center border-2 border-white"
                                           title={`${groupSessions.length - 4} more members`}
                                         >
-                                          <span className="text-xs font-semibold text-purple-600">
+                                          <span className="text-xs font-semibold text-primary-600">
                                             +{groupSessions.length - 4}
                                           </span>
                                         </div>
@@ -1947,7 +1947,7 @@ export default function Sessions() {
                                     </span>
                                     <Badge
                                       variant="outline"
-                                      className="text-xs bg-purple-50 text-purple-700 border-purple-200"
+                                      className="text-xs bg-primary-50 text-primary-700 border-primary-200"
                                     >
                                       {groupSessions.length} members · updates all
                                     </Badge>
@@ -2090,7 +2090,7 @@ export default function Sessions() {
                                     <Button
                                       variant="default"
                                       size="sm"
-                                      className="bg-purple-600 hover:bg-purple-700 text-white font-semibold px-4 py-2 rounded-lg shadow-md hover:shadow-lg transition-all ml-2"
+                                      className="bg-primary-600 hover:bg-primary-700 text-white font-semibold px-4 py-2 rounded-lg shadow-md hover:shadow-lg transition-all ml-2"
                                       onClick={() =>
                                         handleJoinGroupCall(groupSessionId)
                                       }
@@ -2110,7 +2110,7 @@ export default function Sessions() {
                                           Join Group{" "}
                                           <Badge
                                             variant="secondary"
-                                            className="ml-2 bg-purple-800 text-white border-none"
+                                            className="ml-2 bg-primary-800 text-white border-none"
                                           >
                                             {groupSessions.length}
                                           </Badge>

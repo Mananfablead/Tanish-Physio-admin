@@ -300,7 +300,7 @@ export default function Bookings({ onStatusConfirmed }: BookingsProps) {
         }
         return "bg-warning/15 text-warning";
       case "scheduled":
-        return "bg-purple-500/15 text-purple-600";
+        return "bg-primary-500/15 text-primary-600";
       case "completed":
         return "bg-green-500/15 text-green-600";
       case "cancelled":
@@ -550,13 +550,13 @@ export default function Bookings({ onStatusConfirmed }: BookingsProps) {
                             Expired
                           </span>
                         ) : booking.serviceExpiryDate ? (
-                          <span className="px-2 py-1 rounded-full text-xs font-semibold text-purple-600 bg-purple-100 whitespace-nowrap">
+                          <span className="px-2 py-1 rounded-full text-xs font-semibold text-primary-600 bg-primary-100 whitespace-nowrap">
                             {new Date(
                               booking.serviceExpiryDate
                             ).toLocaleDateString()}
                           </span>
                         ) : (
-                          <span className="px-2 py-1 rounded-full text-xs font-semibold text-purple-600 bg-purple-100 whitespace-nowrap">
+                          <span className="px-2 py-1 rounded-full text-xs font-semibold text-primary-600 bg-primary-100 whitespace-nowrap">
                             Free Consultation
                           </span>
                         )
@@ -709,7 +709,7 @@ export default function Bookings({ onStatusConfirmed }: BookingsProps) {
                           <Button
                             size="sm"
                             variant="outline"
-                            className="h-8 px-3 flex-shrink-0 bg-purple-50 hover:bg-purple-100 border-purple-200 text-purple-700"
+                            className="h-8 px-3 flex-shrink-0 bg-primary-50 hover:bg-primary-100 border-primary-200 text-primary-700"
                             onClick={async () => {
                               setIsLoadingGroupSession(true);
                               try {
@@ -730,7 +730,7 @@ export default function Bookings({ onStatusConfirmed }: BookingsProps) {
                             }}
                           >
                             <div className="flex items-center gap-2">
-                              <div className="w-2 h-2 rounded-full bg-purple-500"></div>
+                              <div className="w-2 h-2 rounded-full bg-primary-500"></div>
                               <span className="text-xs font-semibold">View Group</span>
                             </div>
                           </Button>
@@ -1110,7 +1110,7 @@ export default function Bookings({ onStatusConfirmed }: BookingsProps) {
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-xl">
-              <div className="w-3 h-3 rounded-full bg-purple-500"></div>
+              <div className="w-3 h-3 rounded-full bg-primary-500"></div>
               Group Session Details
             </DialogTitle>
           </DialogHeader>
@@ -1123,7 +1123,7 @@ export default function Bookings({ onStatusConfirmed }: BookingsProps) {
           ) : selectedGroupSession ? (
             <div className="space-y-6 py-4">
               {/* Header Section */}
-              <div className="rounded-lg bg-gradient-to-r from-purple-50 to-indigo-50 p-6 border border-purple-200">
+              <div className="rounded-lg bg-gradient-to-r from-primary-50 to-indigo-50 p-6 border border-primary-200">
                 <div className="flex items-start justify-between mb-4">
                   <div>
                     <h3 className="text-2xl font-bold text-gray-900 mb-2">
@@ -1138,7 +1138,7 @@ export default function Bookings({ onStatusConfirmed }: BookingsProps) {
                     selectedGroupSession.status === "active" ? "bg-green-100 text-green-700" :
                     selectedGroupSession.status === "completed" ? "bg-blue-100 text-blue-700" :
                     selectedGroupSession.status === "cancelled" ? "bg-red-100 text-red-700" :
-                    "bg-purple-100 text-purple-700"
+                    "bg-primary-100 text-primary-700"
                   )}>
                     {selectedGroupSession.status}
                   </Badge>
@@ -1146,7 +1146,7 @@ export default function Bookings({ onStatusConfirmed }: BookingsProps) {
                 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="flex items-center gap-2 text-sm">
-                    <Calendar className="w-4 h-4 text-purple-600" />
+                    <Calendar className="w-4 h-4 text-primary-600" />
                     <span className="font-medium">
                       {new Date(selectedGroupSession.startTime).toLocaleDateString("en-IN", {
                         day: "numeric",
@@ -1156,7 +1156,7 @@ export default function Bookings({ onStatusConfirmed }: BookingsProps) {
                     </span>
                   </div>
                   <div className="flex items-center gap-2 text-sm">
-                    <Clock className="w-4 h-4 text-purple-600" />
+                    <Clock className="w-4 h-4 text-primary-600" />
                     <span className="font-medium">
                       {new Date(selectedGroupSession.startTime).toLocaleTimeString("en-IN", {
                         hour: "2-digit",
@@ -1170,7 +1170,7 @@ export default function Bookings({ onStatusConfirmed }: BookingsProps) {
                     </span>
                   </div>
                   <div className="flex items-center gap-2 text-sm">
-                    <UserPlus className="w-4 h-4 text-purple-600" />
+                    <UserPlus className="w-4 h-4 text-primary-600" />
                     <span className="font-medium">
                       {selectedGroupSession.participants?.length || 0} / {selectedGroupSession.maxParticipants} Participants
                     </span>
@@ -1192,7 +1192,7 @@ export default function Bookings({ onStatusConfirmed }: BookingsProps) {
                     Therapist
                   </h4>
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-purple-700 font-bold">
+                    <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-bold">
                       {(selectedGroupSession.therapistId?.name?.charAt(0) || "T").toUpperCase()}
                     </div>
                     <div>
