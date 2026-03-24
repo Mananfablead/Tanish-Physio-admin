@@ -38,7 +38,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { io } from "socket.io-client";
 import {
@@ -122,9 +122,7 @@ export default function Notifications() {
     error,
   } = useSelector((state: any) => state.notifications);
 
-  // Combine stored notifications with real-time notifications
-  const [realTimeNotifications, setRealTimeNotifications] = useState([]);
-  const [token] = useSelector((state: any) => [state.auth.token]);
+  const token = useSelector((state: any) => state.auth.token);
 
   const [showDeleteAllConfirmation, setShowDeleteAllConfirmation] =
     useState(false);
@@ -169,67 +167,9 @@ export default function Notifications() {
     dispatch(fetchNotifications());
   }, [dispatch]);
 
-  // Setup real-time notifications
-  useEffect(() => {
-    if (!token) return;
-
-    // Connect to notification socket
-    const API_BASE_URL =
-      import.meta.env.VITE_API_BASE_URL || "https://tanishphysiofitness.in/api";
-    const serverUrl = API_BASE_URL.replace(/\/api$/, "");
-    console.log("🔌 Connecting admin notification socket to:", serverUrl);
-
-    const socket = io(serverUrl, {
-      auth: { token },
-      transports: ["websocket", "polling"],
-    });
-
-    socket.on("connect", () => {
-      console.log(
-        "Connected to admin notification socket for Notifications page"
-      );
-      socket.emit("join-admin-notifications", {});
-    });
-
-    socket.on("admin-notification", (data) => {
-      console.log("Notifications page received:", data);
-
-      const newNotification = {
-        _id: `rt_${Date.now()}`,
-        title: data.title || "New Notification",
-        message: data.message || "You have a new notification",
-        type: data.type || "system",
-        userId: null,
-        read: false,
-        createdAt: data.timestamp || new Date().toISOString(),
-        updatedAt: data.timestamp || new Date().toISOString(),
-      };
-
-      setRealTimeNotifications((prev) => [newNotification, ...prev]);
-    });
-
-    return () => {
-      socket.disconnect();
-    };
-  }, [token]);
-
-  // Combine stored and real-time notifications (avoid duplicates by _id/id)
-  const allNotifications = useMemo(() => {
-    const out: any[] = [];
-    const seen = new Set<string>();
-
-    const add = (n: any) => {
-      const id = String(n?._id || n?.id || "");
-      if (id && seen.has(id)) return;
-      if (id) seen.add(id);
-      out.push(n);
-    };
-
-    realTimeNotifications.forEach(add);
-    storedNotifications.forEach(add);
-
-    return out;
-  }, [realTimeNotifications, storedNotifications]);
+  // Note: Real-time notifications are handled globally in AdminLayout.tsx
+  // This component reads from Redux store only
+  const allNotifications = storedNotifications;
 
   // Fetch users when specific user is selected
   useEffect(() => {
@@ -349,27 +289,15 @@ export default function Notifications() {
   const handleMarkAsRead = (notification: any) => {
     const id = getNotificationId(notification);
     if (!id) return;
-    if (isLocalOnlyNotification(notification)) {
-      setRealTimeNotifications((prev) =>
-        prev.map((n: any) =>
-          getNotificationId(n) === id ? { ...n, read: true } : n
-        )
-      );
-    } else {
-      dispatch(markNotificationAsRead(id));
-    }
+    // All notifications now come from Redux store, so always use dispatch
+    dispatch(markNotificationAsRead(id));
   };
 
   const handleDeleteNotification = (notification: any) => {
     const id = getNotificationId(notification);
     if (!id) return;
-    if (isLocalOnlyNotification(notification)) {
-      setRealTimeNotifications((prev) =>
-        prev.filter((n: any) => getNotificationId(n) !== id)
-      );
-    } else {
-      dispatch(deleteNotification(id));
-    }
+    // All notifications now come from Redux store, so always use dispatch
+    dispatch(deleteNotification(id));
     setNotificationToDelete(null);
   };
 
@@ -506,25 +434,10 @@ export default function Notifications() {
                 const unreadNotifications = allNotifications.filter(
                   (n: any) => !n.read
                 );
-                const unreadLocalIds = new Set(
-                  unreadNotifications
-                    .filter((n: any) => isLocalOnlyNotification(n))
-                    .map((n: any) => getNotificationId(n))
-                );
-                if (unreadLocalIds.size > 0) {
-                  setRealTimeNotifications((prev) =>
-                    prev.map((n: any) =>
-                      unreadLocalIds.has(getNotificationId(n))
-                        ? { ...n, read: true }
-                        : n
-                    )
-                  );
-                }
-                unreadNotifications
-                  .filter((n: any) => !isLocalOnlyNotification(n))
-                  .forEach((notification: any) => {
-                    dispatch(markNotificationAsRead(getNotificationId(notification)));
-                  });
+                // Mark all unread notifications as read via Redux
+                unreadNotifications.forEach((notification: any) => {
+                  dispatch(markNotificationAsRead(getNotificationId(notification)));
+                });
               }}
               className="flex items-center gap-2"
             >
