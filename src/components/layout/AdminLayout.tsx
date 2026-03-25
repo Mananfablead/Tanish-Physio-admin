@@ -70,7 +70,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       serverUrl = import.meta.env.VITE_API_BASE_URL.replace(/\/api$/, "");
     } else {
       // Fallback to production WebSocket server URL
-      serverUrl = "https://apitanishvideo.fableadtech.in";
+      serverUrl = "https://tanishphysiofitness.in/api";
     }
 
     // Connect to notification socket

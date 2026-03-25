@@ -464,11 +464,10 @@ const GroupVideoCall = ({
   useEffect(() => {
     if (!socket) return;
 
-    const offerListener = (data) => handleOffer(data.offer, data.senderId);
-    const answerListener = (data) => handleAnswer(data.answer, data.senderId);
-    const iceCandidateListener = (data) =>
-      handleIceCandidate(data.candidate, data.senderId);
-
+    // FIX: Removed duplicate offer/answer/ice-candidate listeners
+    // These are now handled internally in useWebRTC.js via webrtc-offer-received events
+    // Keeping both causes double peer creation which destroys the first peer
+    
     const participantJoinedListener = (data) => {
       console.log('🎉 ADMIN: Participant joined event:', data);
       setParticipants((prev) => {
@@ -579,9 +578,6 @@ const GroupVideoCall = ({
     };
 
     // Add listeners
-    on("offer", offerListener);
-    on("answer", answerListener);
-    on("ice-candidate", iceCandidateListener);
     on("participant-joined", participantJoinedListener);
     on("participant-left", participantLeftListener);
     on("group-call-started", groupCallStartedListener);
@@ -591,9 +587,6 @@ const GroupVideoCall = ({
     on("call-log-initialized", callLogInitializedListener);
 
     return () => {
-      socket.off("offer", offerListener);
-      socket.off("answer", answerListener);
-      socket.off("ice-candidate", iceCandidateListener);
       socket.off("participant-joined", participantJoinedListener);
       socket.off("participant-left", participantLeftListener);
       socket.off("group-call-started", groupCallStartedListener);
@@ -780,6 +773,9 @@ const GroupVideoCall = ({
   const handleEndSession = async () => {
     try {
       console.log("🛑 Admin ending group session:", groupSessionId);
+      
+      // Stop local media streams immediately
+      stopMediaStreams();
       
       // Emit group-call-end socket event to notify all participants
       if (socket && connected) {

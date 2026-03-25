@@ -617,12 +617,17 @@ const useWebRTC = (roomId, socket, userRole = 'admin') => {
                     roomId,
                     candidate: data,
                     senderId: socket.id,
-                    targetId: socketId
+                    targetId: socketId  // ✅ CORRECT: parameter is named 'socketId' in admin createPeer
                 });
             }
         });
 
         peer.on('close', () => {
+            console.log('🔌 ADMIN Peer connection closed for socketId:', socketId, '(userId:', streamTrackingId, ')');
+            
+            // Mark peer as destroying to prevent ICE candidate processing
+            peer._destroying = true;
+            
             // Stop and remove remote stream tracks for this peer - use streamTrackingId
             try {
                 setRemoteStreams(prev => {
@@ -842,66 +847,32 @@ const useWebRTC = (roomId, socket, userRole = 'admin') => {
         } else {
             console.log("⚠️ ADMIN: No peer connection found for senderId:", senderId, "(userId:", actualUserId, ")");
             // Create peer connection if not exists and handle the answer
-            if (!localStream) {
-                await initLocalMedia();
-            }
-            const peer = createPeer(senderId, false, localStream, actualUserId);
-            if (!peer) {
-                console.error("❌ ADMIN: Failed to create peer connection for senderId:", senderId);
-                return;
-            }
+            let peer = peerRefs.current[senderId];
             
-            // Ensure audio track state is properly synchronized after connection
-            if (localStream) {
-                const audioTracks = localStream.getAudioTracks();
-                if (audioTracks.length > 0) {
-                    const audioTrack = audioTracks[0];
-                    
-                    // Update peer connection with current audio state
-                    const updateAudioTrack = () => {
-                        if (peer && peer._pc && peer._pc.getSenders) {
-                            const senders = peer._pc.getSenders();
-                            let audioSenderFound = false;
-                            
-                            senders.forEach(async (sender) => {
-                                if (sender.track && sender.track.kind === 'audio') {
-                                    audioSenderFound = true;
-                                    try {
-                                        sender.track.enabled = audioTrack.enabled;
-                                        console.log('✅ Audio track state updated for peer after new connection:', senderId);
-                                    } catch (error) {
-                                        console.error('Error updating audio track after new connection:', error);
-                                    }
-                                }
-                            });
-                            
-                            // If no audio sender was found, try to add the track
-                            if (!audioSenderFound && audioTrack) {
-                                try {
-                                    peer._pc.addTrack(audioTrack, localStream);
-                                    console.log('✅ Audio track added to peer connection after new connection:', senderId);
-                                } catch (addError) {
-                                    console.error('Error adding audio track after new connection:', addError);
-                                }
-                            }
-                        }
-                    };
-                    
-                    // Try to update immediately and then again after delays
-                    updateAudioTrack();
-                    setTimeout(updateAudioTrack, 100);
-                    setTimeout(updateAudioTrack, 500);
+            // FIX: If peer is destroyed or missing, recreate it before signaling
+            if (!peer || peer.destroyed) {
+                console.log('⚠️ ADMIN: Peer destroyed or missing for:', senderId, '- recreating');
+                if (peer) {
+                    try { peer.destroy(); } catch(e) {}
+                    delete peerRefs.current[senderId];
                 }
+                if (!localStreamRef.current) await initLocalMedia();
+                peer = createPeer(senderId, true, localStreamRef.current, actualUserId);
+                if (!peer) {
+                    console.error('❌ ADMIN: Failed to recreate peer for:', senderId);
+                    return;
+                }
+                peerRefs.current[senderId] = peer;
             }
             
             try {
                 await peer.signal(answer);
-                console.log("✅ ADMIN: Answer handled with new peer connection");
+                console.log('✅ ADMIN: Answer handled successfully for:', senderId);
             } catch (error) {
-                console.error("❌ ADMIN: Error handling answer with new peer:", error);
+                console.error('❌ ADMIN: Error handling answer:', error);
             }
         }
-    }, [localStream, initLocalMedia, createPeer, participants]);
+    }, [localStreamRef, initLocalMedia, createPeer, participants, localStream]);
 
     // Handle ICE candidate
     const handleIceCandidate = async (candidate, senderId) => {
@@ -910,10 +881,27 @@ const useWebRTC = (roomId, socket, userRole = 'admin') => {
         const actualUserId = participant?.userId || senderId;
         console.log("📡 ADMIN: Handling ICE candidate from senderId:", senderId, "(userId:", actualUserId, ")");
         
-        if (peerRefs.current[senderId]) {
-            await peerRefs.current[senderId].signal(candidate);
-        } else {
+        // FIX: Check if peer exists and is not destroyed/destroying before signaling
+        const peer = peerRefs.current[senderId];
+        if (!peer) {
             console.warn("⚠️ ADMIN: No peer found for ICE candidate from senderId:", senderId);
+            return;
+        }
+        
+        if (peer.destroyed || peer._destroying) {
+            console.warn("⚠️ ADMIN: Peer already destroyed/destroying for senderId:", senderId, "- ignoring ICE candidate");
+            return; // Don't try to signal on destroyed or destroying peer!
+        }
+        
+        try {
+            await peer.signal(candidate);
+        } catch (error) {
+            // Ignore errors if peer was destroyed during signaling
+            if (error.message && error.message.includes('cannot signal after peer is destroyed')) {
+                console.warn("⚠️ ADMIN: Peer destroyed during ICE candidate signaling for senderId:", senderId);
+            } else {
+                console.error("❌ ADMIN: Error signaling ICE candidate:", error);
+            }
         }
     };
 
@@ -1220,6 +1208,21 @@ const useWebRTC = (roomId, socket, userRole = 'admin') => {
                 console.log('ADMIN: Patient joined, creating offer');
                 console.log('ADMIN: Creating peer with socketId:', data.socketId, 'for userId:', data.userId);
                 setTimeout(async () => {
+                    // FIX: Use 2000ms delay to avoid race with duplicate offer events
+                    
+                    // Check again inside timeout — peer may have been created by offer handler already
+                    if (peerRefs.current[data.socketId]) {
+                        const state = peerRefs.current[data.socketId]._pc?.connectionState;
+                        if (state === 'connected' || state === 'connecting') {
+                            console.log('✅ ADMIN: Peer already connected for:', data.socketId, '- skipping duplicate creation');
+                            return; // Don't disrupt active connections!
+                        }
+                        // If it exists but not connected, destroy and recreate
+                        console.log('🧹 ADMIN: Existing peer is in state:', state, '- will recreate');
+                        try { existingPeer.destroy(); } catch(e) {}
+                        delete peerRefs.current[data.socketId];
+                    }
+                    
                     // Use the ref to get the current localStream value
                     let currentLocalStream = localStreamRef.current;
 
@@ -1244,7 +1247,7 @@ const useWebRTC = (roomId, socket, userRole = 'admin') => {
                         return;
                     }
                     console.log('ADMIN: Created offer for patient socketId:', data.socketId, 'userId:', data.userId);
-                }, 1000); // Increased timeout to ensure media is ready
+                }, 2000); // increased from 1000ms to 2000ms
             }
 
             // If the participant is an admin/therapist and this is client joining admin's perspective, handle appropriately
