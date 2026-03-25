@@ -368,7 +368,7 @@ const useWebRTC = (roomId, socket, userRole = 'admin') => {
 
             peer = new Peer({
                 initiator,
-                trickle: false, // Set to false for more reliable connection
+                trickle: true, // Set to false for more reliable connection
                 stream: finalStream,
                 config: {
                     iceServers: [
@@ -617,7 +617,7 @@ const useWebRTC = (roomId, socket, userRole = 'admin') => {
                     roomId,
                     candidate: data,
                     senderId: socket.id,
-                    targetId: userId
+                    targetId: socketId
                 });
             }
         });
