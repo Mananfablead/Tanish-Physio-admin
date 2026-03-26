@@ -10,8 +10,6 @@ import { useDispatch, useSelector } from 'react-redux';
 import { fetchAllPayments } from '@/features/payments/paymentSlice';
 import { useNavigate } from 'react-router-dom';
 
-// API Base URL - Update this to your backend URL
-const API_BASE_URL = "http://localhost:3000";
 
 interface Payment {
   _id: string;

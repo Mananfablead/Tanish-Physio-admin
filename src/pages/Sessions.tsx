@@ -73,27 +73,84 @@ export default function Sessions() {
   const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
 
   // Update current time every second for real-time button updates
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
+ useEffect(() => {
+   const timer = setInterval(() => {
+     setCurrentTime(new Date());
+   }, 1000);
 
-    return () => clearInterval(timer);
-  }, []);
-  useEffect(() => {
-    if (!allSessions || allSessions.length === 0) return;
+   return () => clearInterval(timer);
+ }, []);
 
-    allSessions.forEach((session) => {
-      if (session.status === "live" && session.endTime) {
-        const end = new Date(session.endTime);
-        const now = new Date();
+ useEffect(() => {
+   if (!allSessions || allSessions.length === 0) return;
 
-        if (now >= end) {
-          handleUpdateSessionStatus(session._id, "completed");
-        }
-      }
-    });
-  }, [currentTime, allSessions]);
+   allSessions.forEach((session) => {
+     if (session.status !== "live") return;
+
+     let end;
+
+     // ✅ Case 1: backend se endTime mil gaya
+     if (session.endTime) {
+       end = new Date(session.endTime);
+     }
+     // ✅ Case 2: duration available hai toh startTime + duration use karo
+     else if (session.duration && session.duration > 0 && session.startTime) {
+       const start = new Date(session.startTime);
+       end = new Date(start);
+       end.setMinutes(end.getMinutes() + session.duration);
+     }
+     // ✅ Case 3: subscriptionId.timeSlot se calculate
+     else if (session.subscriptionId?.timeSlot) {
+       const start = new Date(session.startTime);
+
+       const [startHour, startMin] = session.subscriptionId.timeSlot.start
+         .split(":")
+         .map(Number);
+
+       const [endHour, endMin] = session.subscriptionId.timeSlot.end
+         .split(":")
+         .map(Number);
+
+       const duration = endHour * 60 + endMin - (startHour * 60 + startMin);
+
+       end = new Date(start);
+       end.setMinutes(end.getMinutes() + duration);
+     }
+     // ✅ Case 4: time field se calculate (agar time format HH:MM hai)
+     else if (session.time && session.startTime) {
+       const start = new Date(session.startTime);
+
+       // Parse the time field (e.g., "16:00")
+       const [timeHour, timeMin] = session.time.split(":").map(Number);
+
+       // If we have a timeSlot end, use it, otherwise default to 45 minutes
+       if (session.subscriptionId?.timeSlot?.end) {
+         const [endHour, endMin] = session.subscriptionId.timeSlot.end
+           .split(":")
+           .map(Number);
+         const duration = endHour * 60 + endMin - (timeHour * 60 + timeMin);
+         end = new Date(start);
+         end.setMinutes(end.getMinutes() + duration);
+       } else {
+         // Default 45 minutes
+         end = new Date(start);
+         end.setMinutes(end.getMinutes() + 45);
+       }
+     }
+     // ✅ Case 5: fallback default (45 minutes)
+     else {
+       const start = new Date(session.startTime);
+       end = new Date(start);
+       end.setMinutes(end.getMinutes() + 45);
+     }
+
+     const now = new Date();
+
+     if (now >= end) {
+       handleUpdateSessionStatus(session._id, "completed");
+     }
+   });
+ }, [currentTime, allSessions]);
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10; // Set to 10 items per page as requested
