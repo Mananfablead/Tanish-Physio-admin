@@ -41,6 +41,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const unreadCount = storedNotifications.filter((n: any) => !n?.read).length;
 
   useEffect(() => {
@@ -189,7 +190,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           </div>
 
           <div className="flex items-center gap-4">
-            <DropdownMenu>
+            <DropdownMenu open={notificationsOpen} onOpenChange={setNotificationsOpen}>
               <DropdownMenuTrigger asChild>
                 <button className="relative p-2 rounded-lg hover:bg-muted transition-colors">
                   <Bell className="w-5 h-5 text-muted-foreground" />
@@ -395,9 +396,13 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                 </div>
                 {storedNotifications.length > 0 && (
                   <div className="border-t p-3">
-                    <DropdownMenuItem
+                    <div
                       className="flex items-center justify-center p-2 cursor-pointer text-primary hover:text-primary"
-                      onClick={() => navigate(notificationsTargetPath)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setNotificationsOpen(false);
+                        navigate("/notifications");
+                      }}
                     >
                       <span className="text-sm font-medium">
                         View all notifications
@@ -415,7 +420,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                           d="M9 5l7 7-7 7"
                         />
                       </svg>
-                    </DropdownMenuItem>
+                    </div>
                   </div>
                 )}
               </DropdownMenuContent>

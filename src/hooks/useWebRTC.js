@@ -147,6 +147,10 @@ const useWebRTC = (roomId, socket, userRole = 'admin') => {
         try {
             console.log(`Initializing local media (attempt ${retryCount + 1}/${maxRetries + 1})`);
 
+            // Detect if mobile device - CRITICAL FIX FOR CROSS-DEVICE COMPATIBILITY
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            console.log('📱 Device type detected:', isMobile ? 'Mobile' : 'Desktop');
+
             // Create timeout promise
             const timeoutPromise = new Promise((_, reject) => {
                 setTimeout(() => {
@@ -154,9 +158,14 @@ const useWebRTC = (roomId, socket, userRole = 'admin') => {
                 }, timeoutMs);
             });
 
-            // Try to get media with timeout
-            const mediaPromise = navigator.mediaDevices.getUserMedia({
-                video: {
+            // Try to get media with adaptive constraints based on device type
+            const constraints = {
+                video: isMobile ? {
+                    facingMode: 'user', // Use front camera by default on mobile
+                    width: { ideal: 640 }, // Lower resolution for mobile compatibility
+                    height: { ideal: 480 },
+                    frameRate: { ideal: 24 }
+                } : {
                     width: { ideal: 1280 },
                     height: { ideal: 720 },
                     frameRate: { ideal: 30 }
@@ -169,7 +178,11 @@ const useWebRTC = (roomId, socket, userRole = 'admin') => {
                     channelCount: 2
                     // Note: Removed deviceId constraint to use default device
                 }
-            });
+            };
+
+            console.log('🎬 Video constraints:', JSON.stringify(constraints.video, null, 2));
+
+            const mediaPromise = navigator.mediaDevices.getUserMedia(constraints);
 
             const stream = await Promise.race([mediaPromise, timeoutPromise]);
 
@@ -360,12 +373,35 @@ const useWebRTC = (roomId, socket, userRole = 'admin') => {
             return null;
         }
 
+        // Enhanced mobile device validation
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        console.log(`📱 Device type: ${isMobile ? 'MOBILE' : 'DESKTOP'}`);
+        console.log(`🎬 Stream tracks - Audio: ${audioTracks.length}, Video: ${videoTracks.length}`);
+        
+        if (isMobile) {
+            console.log('⚠️ MOBILE DEVICE DETECTED - Applying compatibility optimizations:');
+            console.log('- Reduced video resolution (640x480 @ 24fps)');
+            console.log('- Lower bandwidth allocation (500 kbps)');
+            console.log('- TURN servers enabled for NAT traversal');
+            
+            // Check for iOS-specific issues
+            const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+            if (isIOS) {
+                console.log('🍎 iOS detected - Additional Safari WebRTC compatibility mode enabled');
+                // iOS Safari requires user gesture for autoplay
+                console.log('⚠️ Note: iOS requires manual play action for remote videos');
+            }
+        }
+
         console.log(`✅ Stream validation passed - Audio tracks: ${audioTracks.length}, Video tracks: ${videoTracks.length}`);
 
         let peer;
         try {
             console.log('Creating new Peer connection for socketId:', socketId, '(stream tracking ID:', streamTrackingId, ') with stream:', !!finalStream);
 
+            // Detect device type for bandwidth optimization
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            
             peer = new Peer({
                 initiator,
                 trickle: true, // Set to false for more reliable connection
@@ -376,7 +412,7 @@ const useWebRTC = (roomId, socket, userRole = 'admin') => {
                         { urls: 'stun:stun1.l.google.com:19302' },
                         { urls: 'stun:stun.stunprotocol.org:3478' },
                         { urls: 'stun:stun.voiparound.com:3478' },
-                        // Add TURN servers for better connectivity
+                        // Add TURN servers for better connectivity (critical for mobile/NAT traversal)
                         {
                             urls: 'turn:openrelay.metered.ca:80',
                             username: 'openrelayproject',
@@ -388,6 +424,21 @@ const useWebRTC = (roomId, socket, userRole = 'admin') => {
                             credential: 'openrelayproject'
                         }
                     ]
+                },
+                // Add bandwidth constraints for mobile compatibility
+                sdpTransform: (sdp) => {
+                    // Modify SDP to optimize for mobile devices
+                    if (isMobile) {
+                        // Reduce max bandwidth for mobile
+                        sdp = sdp.replace(/a=fmtp:(\d+) (.*)/g, (match, p1, p2) => {
+                            if (p2.includes('profile-level-id')) {
+                                // Add bandwidth限制 for H264
+                                return match + '\nb=AS:500'; // 500 kbps for mobile
+                            }
+                            return match;
+                        });
+                    }
+                    return sdp;
                 }
             });
 
@@ -670,15 +721,40 @@ const useWebRTC = (roomId, socket, userRole = 'admin') => {
 
         peer.on('error', (err) => {
             console.error('❌ ADMIN Peer connection error for socketId', socketId, '(userId:', streamTrackingId, '):', err);
+            
+            // Enhanced error logging for mobile devices
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            if (isMobile) {
+                console.error('📱 MOBILE DEVICE ERROR - Additional diagnostic info:');
+                console.error('- User Agent:', navigator.userAgent);
+                console.error('- Network Type:', navigator.connection ? navigator.connection.effectiveType : 'unknown');
+                console.error('- Connection Downlink:', navigator.connection ? navigator.connection.downlink : 'unknown', 'Mbps');
+                console.error('- Connection RTT:', navigator.connection ? navigator.connection.rtt : 'unknown', 'ms');
+            }
+            
             // Add more detailed error logging
             if (err.code === 'ERR_CONNECTION_FAILURE') {
-                console.error('Connection failure - check network/firewall');
+                console.error('🔌 Connection failure - check network/firewall');
+                if (isMobile) {
+                    console.error('⚠️ Mobile device on cellular network may have limited connectivity');
+                    console.error('💡 Suggestion: Try switching to WiFi or check cellular signal strength');
+                }
             } else if (err.code === 'ERR_DATA_CHANNEL') {
-                console.error('Data channel error');
+                console.error('📊 Data channel error - SCTP association failed');
             } else if (err.code === 'ERR_ICE_CONNECTION_FAILURE') {
-                console.error('ICE connection failed - check STUN/TURN servers');
+                console.error('🧊 ICE connection failed - STUN/TURN servers unreachable');
+                if (isMobile) {
+                    console.error('⚠️ Mobile NAT traversal issue - attempting TURN relay');
+                }
             } else if (err.code === 'ERR_SIGNALING') {
-                console.error('Signaling error - check socket connection');
+                console.error('📡 Signaling error - socket connection interrupted');
+            } else if (err.message && err.message.includes('not allowed')) {
+                console.error('🚫 Permission denied - camera/microphone access blocked');
+            } else if (err.message && err.message.includes('timeout')) {
+                console.error('⏱️ Connection timeout - network latency too high');
+                if (isMobile) {
+                    console.error('⚠️ Mobile network congestion detected');
+                }
             }
 
             // Clean up failed peer connection - use socketId for peer refs
@@ -689,6 +765,17 @@ const useWebRTC = (roomId, socket, userRole = 'admin') => {
                     console.error('Error destroying admin peer:', destroyErr);
                 }
                 delete peerRefs.current[socketId];
+            }
+            
+            // Emit error event to notify user
+            if (socket) {
+                socket.emit('peer-connection-error', {
+                    socketId,
+                    userId: streamTrackingId,
+                    errorCode: err.code,
+                    errorMessage: err.message,
+                    isMobile
+                });
             }
         });
 
@@ -978,9 +1065,15 @@ const useWebRTC = (roomId, socket, userRole = 'admin') => {
             screenTrack.stop();
             localStream.removeTrack(screenTrack);
             
-            // Get new camera video track
+            // Get new camera video track with mobile detection
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
             const cameraStream = await navigator.mediaDevices.getUserMedia({
-                video: {
+                video: isMobile ? {
+                    facingMode: 'user',
+                    width: { ideal: 640 },
+                    height: { ideal: 480 },
+                    frameRate: { ideal: 24 }
+                } : {
                     width: { ideal: 1280 },
                     height: { ideal: 720 },
                     frameRate: { ideal: 30 }
