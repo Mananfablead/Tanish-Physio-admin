@@ -232,7 +232,7 @@ const filteredSubscriptions = Array.isArray(userSubscriptions)
 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-        <div 
+        <div
           className="stat-card cursor-pointer transition-all hover:shadow-lg"
           onClick={() => setActiveTab("plans")}
         >
@@ -248,7 +248,7 @@ const filteredSubscriptions = Array.isArray(userSubscriptions)
             </div>
           </div>
         </div>
-        <div 
+        <div
           className="stat-card cursor-pointer transition-all hover:shadow-lg"
           onClick={() => setActiveTab("subscriptions")}
         >
@@ -264,9 +264,9 @@ const filteredSubscriptions = Array.isArray(userSubscriptions)
             </div>
           </div>
         </div>
-        <div 
+        <div
           className="stat-card cursor-pointer transition-all hover:shadow-lg"
-          onClick={() => navigate('/payments')}
+          onClick={() => navigate("/payments")}
         >
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-info/10">
@@ -276,7 +276,7 @@ const filteredSubscriptions = Array.isArray(userSubscriptions)
               <p className="text-2xl font-semibold">
                 ₹{totalRevenue.toLocaleString()}
               </p>
-              <p className="text-sm text-muted-foreground">Monthly Revenue</p>
+              <p className="text-sm text-muted-foreground">Total Revenue</p>
             </div>
           </div>
         </div>
@@ -287,8 +287,12 @@ const filteredSubscriptions = Array.isArray(userSubscriptions)
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
           <div className="overflow-x-auto pb-2 -mb-2">
             <TabsList className="inline-flex min-w-max">
-              <TabsTrigger value="plans" className="whitespace-nowrap">Subscription Plans</TabsTrigger>
-              <TabsTrigger value="subscriptions" className="whitespace-nowrap">User Subscriptions</TabsTrigger>
+              <TabsTrigger value="plans" className="whitespace-nowrap">
+                Subscription Plans
+              </TabsTrigger>
+              <TabsTrigger value="subscriptions" className="whitespace-nowrap">
+                User Subscriptions
+              </TabsTrigger>
             </TabsList>
           </div>
           <div className="sm:ml-auto">
@@ -309,7 +313,7 @@ const filteredSubscriptions = Array.isArray(userSubscriptions)
                 <div
                   className={cn(
                     "bg-card rounded-lg border p-5 transition-all duration-200 animate-fade-in",
-                    "border-border hover:border-primary/30 hover:shadow-md"
+                    "border-border hover:border-primary/30 hover:shadow-md",
                   )}
                 >
                   <div className="flex items-start justify-between mb-4">
@@ -324,7 +328,7 @@ const filteredSubscriptions = Array.isArray(userSubscriptions)
                         "px-2 py-1 rounded-full text-xs font-medium",
                         plan.status === "active"
                           ? "bg-green-100 text-green-800"
-                          : "bg-red-100 text-red-800"
+                          : "bg-red-100 text-red-800",
                       )}
                     >
                       {plan.status === "active" ? "Active" : "Inactive"}
@@ -341,35 +345,48 @@ const filteredSubscriptions = Array.isArray(userSubscriptions)
                     {plan.sessions !== undefined && plan.sessions > 0 && (
                       <div className="mt-2">
                         <div className="flex items-center justify-between text-xs">
-                          <span className="text-muted-foreground">Sessions:</span>
-                          <span className="font-medium">{plan.sessions} total</span>
+                          <span className="text-muted-foreground">
+                            Sessions:
+                          </span>
+                          <span className="font-medium">
+                            {plan.sessions} total
+                          </span>
                         </div>
                       </div>
                     )}
                   </div>
 
                   <div className="space-y-2 text-sm mb-4">
-                  <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between">
                       <span className="text-black font-bold">Plan Type</span>
-                      <span className="font-bold uppercase">{plan.planId || 'N/A'}</span>
+                      <span className="font-bold uppercase">
+                        {plan.planId || "N/A"}
+                      </span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-muted-foreground">Subscribers</span>
-                      <span className="font-medium">{plan.subscriberCount || 0}</span>
+                      <span className="font-medium">
+                        {plan.subscriberCount || 0}
+                      </span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-muted-foreground">Sessions</span>
-                      <span className="font-medium">{plan.sessions || 'Unlimited'}</span>
+                      <span className="font-medium">
+                        {plan.sessions || "Unlimited"}
+                      </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Total Services</span>
-                      <span className="font-medium">{plan.totalService || 0}</span>
+                      <span className="text-muted-foreground">
+                        Total Services
+                      </span>
+                      <span className="font-medium">
+                        {plan.totalService || 0}
+                      </span>
                     </div>
                     {/* <div className="flex items-center justify-between">
                       <span className="text-muted-foreground">Duration</span>
                       <span className="font-medium">{plan.duration || 'N/A'}</span>
                     </div> */}
-                    
                   </div>
 
                   <div className="flex gap-2 justify-end">
@@ -385,11 +402,7 @@ const filteredSubscriptions = Array.isArray(userSubscriptions)
                       </Link>
                     </Button>
                     {/* EDIT */}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      asChild
-                    >
+                    <Button variant="outline" size="sm" asChild>
                       <Link to={`/subscriptions/edit/${plan._id || plan.id}`}>
                         <Edit2 className="w-4 h-4" />
                       </Link>
@@ -403,7 +416,11 @@ const filteredSubscriptions = Array.isArray(userSubscriptions)
                         handleDeletePlan(plan._id || plan.id);
                       }}
                       disabled={loading || hasSubscribers(plan._id || plan.id)}
-                      title={hasSubscribers(plan._id || plan.id) ? "Cannot delete plan with active subscribers" : "Delete plan"}
+                      title={
+                        hasSubscribers(plan._id || plan.id)
+                          ? "Cannot delete plan with active subscribers"
+                          : "Delete plan"
+                      }
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
@@ -415,8 +432,12 @@ const filteredSubscriptions = Array.isArray(userSubscriptions)
                 <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
                   <CreditCard className="w-8 h-8 text-muted-foreground" />
                 </div>
-                <h3 className="text-lg font-medium mb-2">No Subscription Plans</h3>
-                <p className="text-muted-foreground mb-4">Get started by creating your first subscription plan.</p>
+                <h3 className="text-lg font-medium mb-2">
+                  No Subscription Plans
+                </h3>
+                <p className="text-muted-foreground mb-4">
+                  Get started by creating your first subscription plan.
+                </p>
                 <Button asChild>
                   <Link to="/add-subscription">
                     <Plus className="w-4 h-4 mr-2" />
@@ -433,7 +454,11 @@ const filteredSubscriptions = Array.isArray(userSubscriptions)
           <div className="relative max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder={filteredSubscriptions.length > 0 ? "Search by user or email..." : "No subscriptions available"}
+              placeholder={
+                filteredSubscriptions.length > 0
+                  ? "Search by user or email..."
+                  : "No subscriptions available"
+              }
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"
@@ -460,14 +485,13 @@ const filteredSubscriptions = Array.isArray(userSubscriptions)
                   </thead>
                   <tbody>
                     {filteredSubscriptions.map((sub, index) => {
-
                       return (
                         <tr key={sub._id}>
                           {/* USER */}
                           <td>
                             <div>
                               <p className="font-bold">
-                                {sub.userId?.name ||sub.guestName}
+                                {sub.userId?.name || sub.guestName}
                               </p>
                               <p className="text-sm text-medium">
                                 {sub.userId?.email || sub.guestEmail}
@@ -498,7 +522,8 @@ const filteredSubscriptions = Array.isArray(userSubscriptions)
                             {sub.availableSessions ? (
                               <div className="text-center">
                                 <span className="font-medium">
-                                  {sub.availableSessions.used}/{sub.availableSessions.total}
+                                  {sub.availableSessions.used}/
+                                  {sub.availableSessions.total}
                                 </span>
                                 <p className="text-xs text-muted-foreground">
                                   {sub.availableSessions.remaining} left
@@ -516,7 +541,7 @@ const filteredSubscriptions = Array.isArray(userSubscriptions)
                                 "px-2 py-1 rounded-full text-xs font-medium capitalize",
                                 sub.status === "active"
                                   ? "bg-green-100 text-green-800"
-                                  : "bg-red-100 text-red-800"
+                                  : "bg-red-100 text-red-800",
                               )}
                             >
                               {sub.status}
@@ -556,8 +581,12 @@ const filteredSubscriptions = Array.isArray(userSubscriptions)
                   <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
                     <Users className="w-8 h-8 text-muted-foreground" />
                   </div>
-                  <h3 className="text-lg font-medium mb-2">No User Subscriptions</h3>
-                  <p className="text-muted-foreground">No users have subscribed to any plans yet.</p>
+                  <h3 className="text-lg font-medium mb-2">
+                    No User Subscriptions
+                  </h3>
+                  <p className="text-muted-foreground">
+                    No users have subscribed to any plans yet.
+                  </p>
                 </div>
               )}
             </div>

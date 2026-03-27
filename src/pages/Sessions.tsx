@@ -1,5 +1,24 @@
-import React, { useState, useEffect, useMemo } from "react";
-import { Search, MoreHorizontal, Video, Calendar, Clock, User, UserCog, X, RefreshCw, ChevronLeft, ChevronRight, Play, Eye, Copy, Plus, AlertTriangle, Info, Loader2 } from "lucide-react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import {
+  Search,
+  MoreHorizontal,
+  Video,
+  Calendar,
+  Clock,
+  User,
+  UserCog,
+  X,
+  RefreshCw,
+  ChevronLeft,
+  ChevronRight,
+  Play,
+  Eye,
+  Copy,
+  Plus,
+  AlertTriangle,
+  Info,
+  Loader2,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -9,18 +28,40 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useSelector, useDispatch } from "react-redux";
-import { fetchSessions, createSession, updateSession, deleteSession, rescheduleSession, deleteSessionById, updateSessionStatus, fetchAllUpcomingSessions, acceptSession, rejectSession } from "@/features/sessions/sessionSlice";
-import { fetchBookings } from "@/features/bookings/bookingSlice";
 import {
-  getAllAvailability,
-} from '@/features/availability/availabilitySlice';
+  fetchSessions,
+  createSession,
+  updateSession,
+  deleteSession,
+  rescheduleSession,
+  deleteSessionById,
+  updateSessionStatus,
+  fetchAllUpcomingSessions,
+  acceptSession,
+  rejectSession,
+} from "@/features/sessions/sessionSlice";
+import { fetchBookings } from "@/features/bookings/bookingSlice";
+import { getAllAvailability } from "@/features/availability/availabilitySlice";
 import { toast } from "@/hooks/use-toast";
 import GenerateGoogleMeetModal from "@/components/VideoCall/GenerateGoogleMeetModal";
 import EditGoogleMeetModal from "@/components/VideoCall/EditGoogleMeetModal";
@@ -37,13 +78,13 @@ type SessionStatus =
 export default function Sessions() {
   const navigate = useNavigate();
   const dispatch: any = useDispatch();
-  
+
   // Helper function to generate initials from name
   const getInitials = (name: string) => {
     return name
-      .split(' ')
-      .map(n => n[0])
-      .join('')
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
       .toUpperCase()
       .slice(0, 2);
   };
@@ -72,104 +113,68 @@ export default function Sessions() {
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
 
-  // Update current time every second for real-time button updates
- useEffect(() => {
-   const timer = setInterval(() => {
-     setCurrentTime(new Date());
-   }, 1000);
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
 
-   return () => clearInterval(timer);
- }, []);
+    return () => clearInterval(timer);
+  }, []);
+  useEffect(() => {
+    if (!allSessions || allSessions.length === 0) return;
 
- useEffect(() => {
-   if (!allSessions || allSessions.length === 0) return;
+    const now = new Date();
 
-   allSessions.forEach((session) => {
-     if (session.status !== "live") return;
+    allSessions.forEach((session) => {
+      console.log("session", session.status);
+      if (session.status !== "live") return;
 
-     let end;
+      let endTime = null;
 
-     // ✅ Case 1: backend se endTime mil gaya
-     if (session.endTime) {
-       end = new Date(session.endTime);
-     }
-     // ✅ Case 2: duration available hai toh startTime + duration use karo
-     else if (session.duration && session.duration > 0 && session.startTime) {
-       const start = new Date(session.startTime);
-       end = new Date(start);
-       end.setMinutes(end.getMinutes() + session.duration);
-     }
-     // ✅ Case 3: subscriptionId.timeSlot se calculate
-     else if (session.subscriptionId?.timeSlot) {
-       const start = new Date(session.startTime);
+      // ✅ Priority 1: backend endTime
+      if (session.endTime) {
+        endTime = new Date(session.endTime);
+      }
 
-       const [startHour, startMin] = session.subscriptionId.timeSlot.start
-         .split(":")
-         .map(Number);
+      // ✅ Priority 2: calculate from startTime + duration
+      else if (session.startTime && session.duration) {
+        endTime = new Date(session.startTime);
+        endTime.setMinutes(endTime.getMinutes() + session.duration);
+      }
 
-       const [endHour, endMin] = session.subscriptionId.timeSlot.end
-         .split(":")
-         .map(Number);
+      // ❌ fallback (optional if needed)
+      else if (session.timeSlot?.end && session.date) {
+        endTime = new Date(`${session.date}T${session.timeSlot.end}`);
+      }
 
-       const duration = endHour * 60 + endMin - (startHour * 60 + startMin);
+      if (!endTime) return;
 
-       end = new Date(start);
-       end.setMinutes(end.getMinutes() + duration);
-     }
-     // ✅ Case 4: time field se calculate (agar time format HH:MM hai)
-     else if (session.time && session.startTime) {
-       const start = new Date(session.startTime);
-
-       // Parse the time field (e.g., "16:00")
-       const [timeHour, timeMin] = session.time.split(":").map(Number);
-
-       // If we have a timeSlot end, use it, otherwise default to 45 minutes
-       if (session.subscriptionId?.timeSlot?.end) {
-         const [endHour, endMin] = session.subscriptionId.timeSlot.end
-           .split(":")
-           .map(Number);
-         const duration = endHour * 60 + endMin - (timeHour * 60 + timeMin);
-         end = new Date(start);
-         end.setMinutes(end.getMinutes() + duration);
-       } else {
-         // Default 45 minutes
-         end = new Date(start);
-         end.setMinutes(end.getMinutes() + 45);
-       }
-     }
-     // ✅ Case 5: fallback default (45 minutes)
-     else {
-       const start = new Date(session.startTime);
-       end = new Date(start);
-       end.setMinutes(end.getMinutes() + 45);
-     }
-
-     const now = new Date();
-
-     if (now >= end) {
-       handleUpdateSessionStatus(session._id, "completed");
-     }
-   });
- }, [currentTime, allSessions]);
+      // ✅ Compare
+      if (now >= endTime) {
+        console.log("Session completed:", session._id);
+        handleUpdateSessionStatus(session._id, "completed");
+      }
+    });
+  }, [currentTime, allSessions]);
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10; // Set to 10 items per page as requested
   // Count sessions by status for tabs
   const scheduledCount = (allSessions || []).filter(
-    (session: any) => session.status === "scheduled"
+    (session: any) => session.status === "scheduled",
   ).length;
   const allCount = (allSessions || []).length;
   const liveCount = (allSessions || []).filter(
-    (session: any) => session.status === "live"
+    (session: any) => session.status === "live",
   ).length;
   const completedCount = (allSessions || []).filter(
-    (session: any) => session.status === "completed"
+    (session: any) => session.status === "completed",
   ).length;
   const cancelledCount = (allSessions || []).filter(
-    (session: any) => session.status === "cancelled"
+    (session: any) => session.status === "cancelled",
   ).length;
   const pendingCount = (allSessions || []).filter(
-    (session: any) => session.status === "pending"
+    (session: any) => session.status === "pending",
   ).length;
   const upcomingCount = (upcomingSessions || []).length;
   // Note: "missed" and "no-show" statuses are automatically set by the backend
@@ -297,7 +302,7 @@ export default function Sessions() {
     const nonGroupSessions: any[] = [];
 
     sessions.forEach((session) => {
-      if (session.groupSessionId && session.sessionType === 'group') {
+      if (session.groupSessionId && session.sessionType === "group") {
         const key = `${session.groupSessionId}_${session.date}_${session.time}`;
         if (!groups.has(key)) {
           groups.set(key, []);
@@ -320,7 +325,7 @@ export default function Sessions() {
   // Memoized grouped sessions for live/upcoming tabs
   const groupedLiveUpcomingSessions = useMemo(() => {
     if (activeTab !== "live" && activeTab !== "upcoming") return null;
-    
+
     const { groups, nonGroupSessions } = getGroupedSessions(filteredSessions);
     const sessionCards: any[] = [];
 
@@ -339,7 +344,7 @@ export default function Sessions() {
           date: groupSessions[0].date,
           time: groupSessions[0].time,
           status: groupSessions[0].status,
-          type: 'group',
+          type: "group",
           userId: groupSessions[0].userId,
           therapistId: groupSessions[0].therapistId,
           googleMeetLink: groupSessions[0].googleMeetLink,
@@ -405,13 +410,15 @@ export default function Sessions() {
   // State for group video calls
   const [groupSessions, setGroupSessions] = useState<any[]>([]);
   const [loadingGroupSessions, setLoadingGroupSessions] = useState(false);
-  const [joiningGroupSessionId, setJoiningGroupSessionId] = useState<string | null>(null);
+  const [joiningGroupSessionId, setJoiningGroupSessionId] = useState<
+    string | null
+  >(null);
 
   // State for users and subscriptions
   const [usersWithActiveSubscriptions, setUsersWithActiveSubscriptions] =
     useState([]);
   const [selectedUserSubscriptions, setSelectedUserSubscriptions] = useState(
-    []
+    [],
   );
   const [selectedUser, setSelectedUser] = useState("");
   const [loadingUsers, setLoadingUsers] = useState(false);
@@ -426,11 +433,14 @@ export default function Sessions() {
         const token = tokenUtils.getAdminToken(); // Get admin token properly
 
         if (token) {
-          const socket = io(import.meta.env.VITE_API_BASE_URL || "http://localhost:5000", {
-            // Adjust URL as needed
-            auth: { token },
-            transports: ["websocket", "polling"],
-          });
+          const socket = io(
+            import.meta.env.VITE_API_BASE_URL || "http://localhost:5000",
+            {
+              // Adjust URL as needed
+              auth: { token },
+              transports: ["websocket", "polling"],
+            },
+          );
 
           socket.on("connect", () => {
             console.log("Admin connected to notification socket");
@@ -485,12 +495,15 @@ export default function Sessions() {
     try {
       setLoadingUsers(true);
       const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
-      const response = await fetch(`${API_BASE_URL}/users?subscription=active`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("admin_token")}`,
-          "Content-Type": "application/json",
+      const response = await fetch(
+        `${API_BASE_URL}/users?subscription=active`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("admin_token")}`,
+            "Content-Type": "application/json",
+          },
         },
-      });
+      );
       const data = await response.json();
 
       if (data.success) {
@@ -499,13 +512,13 @@ export default function Sessions() {
           (user) =>
             user.subscriptionInfo &&
             user.subscriptionInfo.status === "active" &&
-            !user.subscriptionInfo.isExpired
+            !user.subscriptionInfo.isExpired,
         );
         setUsersWithActiveSubscriptions(usersWithActiveSubs);
       } else {
         console.error(
           "Failed to fetch users with active subscriptions:",
-          data.message
+          data.message,
         );
         // As fallback, get all users and their subscription info separately
         const allUsersResponse = await fetch(`${API_BASE_URL}/users`, {
@@ -522,7 +535,7 @@ export default function Sessions() {
             (user) =>
               user.subscriptionInfo &&
               user.subscriptionInfo.status === "active" &&
-              !user.subscriptionInfo.isExpired
+              !user.subscriptionInfo.isExpired,
           );
           setUsersWithActiveSubscriptions(usersWithActiveSubs);
         } else {
@@ -551,19 +564,22 @@ export default function Sessions() {
             sub.userId &&
             sub.userId._id === userId &&
             sub.status === "active" &&
-            !sub.isExpired
+            !sub.isExpired,
         );
         setSelectedUserSubscriptions(userSubs);
-        
+
         // Auto-select first subscription if available
         if (userSubs.length > 0) {
           const firstSub = userSubs[0];
-          const sessionType = firstSub?.planDetails?.session_type === "group" ? "group" : "one-to-one";
+          const sessionType =
+            firstSub?.planDetails?.session_type === "group"
+              ? "group"
+              : "one-to-one";
           setNewSession((prev) => ({
             ...prev,
             subscriptionId: firstSub._id,
             requiredSessionType: sessionType,
-            type: sessionType === "group" ? "group" : "1-on-1"
+            type: sessionType === "group" ? "group" : "1-on-1",
           }));
         }
       } else {
@@ -588,10 +604,13 @@ export default function Sessions() {
   const [selectedSession, setSelectedSession] = useState<any>(null);
   const [isCreateSessionModalOpen, setIsCreateSessionModalOpen] =
     useState(false);
-  
+
   // State for group session details dialog
-  const [isGroupDetailsDialogOpen, setIsGroupDetailsDialogOpen] = useState(false);
-  const [selectedGroupSessionId, setSelectedGroupSessionId] = useState<string | null>(null);
+  const [isGroupDetailsDialogOpen, setIsGroupDetailsDialogOpen] =
+    useState(false);
+  const [selectedGroupSessionId, setSelectedGroupSessionId] = useState<
+    string | null
+  >(null);
 
   // State for rebooking missed sessions
   const [isRebookModalOpen, setIsRebookModalOpen] = useState(false);
@@ -605,7 +624,7 @@ export default function Sessions() {
 
       // Set default therapist to admin when modal opens
       const adminTherapist = availability.find(
-        (item) => item.therapistId && item.therapistId.role === "admin"
+        (item) => item.therapistId && item.therapistId.role === "admin",
       );
 
       if (adminTherapist) {
@@ -623,7 +642,7 @@ export default function Sessions() {
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   const selectedDay = availability?.find(
-    (item) => item.date === rescheduleDate
+    (item) => item.date === rescheduleDate,
   );
 
   const timeSlots = selectedDay?.timeSlots || [];
@@ -639,7 +658,7 @@ export default function Sessions() {
   // Get today's date for highlighting
   const today = new Date();
   const todayStr = `${today.getFullYear()}-${String(
-    today.getMonth() + 1
+    today.getMonth() + 1,
   ).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
 
   // Function to check if a date is in the past
@@ -669,12 +688,12 @@ export default function Sessions() {
       const day = i + 1;
       const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(
         2,
-        "0"
+        "0",
       )}-${String(day).padStart(2, "0")}`;
 
       // Find availability for this date
       const availabilityForDate = availability.find(
-        (item) => item.date === dateStr
+        (item) => item.date === dateStr,
       );
 
       // Determine status based on time slots
@@ -683,10 +702,10 @@ export default function Sessions() {
         const slots = availabilityForDate.timeSlots;
         const bookedSlots = slots.filter((slot) => slot.status === "booked");
         const unavailableSlots = slots.filter(
-          (slot) => slot.status === "unavailable"
+          (slot) => slot.status === "unavailable",
         );
         const availableSlots = slots.filter(
-          (slot) => slot.status === "available"
+          (slot) => slot.status === "available",
         );
 
         if (bookedSlots.length > 0) {
@@ -734,7 +753,7 @@ export default function Sessions() {
     if (date) {
       // Find existing availability for this date
       const existingAvailability = availability.find(
-        (item) => item.date === date
+        (item) => item.date === date,
       );
 
       if (existingAvailability) {
@@ -824,7 +843,7 @@ export default function Sessions() {
 
       // Reset form with admin as default therapist
       const adminTherapist = availability.find(
-        (item) => item.therapistId && item.therapistId.role === "admin"
+        (item) => item.therapistId && item.therapistId.role === "admin",
       );
 
       setNewSession({
@@ -839,7 +858,7 @@ export default function Sessions() {
         notes: "",
         requiredSessionType: "",
       });
-      
+
       // Refresh sessions list
       dispatch(fetchSessions());
 
@@ -918,7 +937,7 @@ export default function Sessions() {
 
   const handleUpdateSessionStatus = async (
     sessionId: string,
-    status: string
+    status: string,
   ) => {
     try {
       await dispatch(
@@ -926,7 +945,7 @@ export default function Sessions() {
           id: sessionId,
           status: status,
           notes: `Status updated to ${status}`,
-        })
+        }),
       ).unwrap();
 
       toast({
@@ -951,11 +970,11 @@ export default function Sessions() {
   const handleUpdateGroupSessionStatus = async (
     groupSessionId: string,
     status: string,
-    memberSessions: any[]
+    memberSessions: any[],
   ) => {
     try {
       setUpdatingStatusId(groupSessionId);
-      
+
       // Update status for each member in the group
       for (const memberSession of memberSessions) {
         try {
@@ -964,10 +983,13 @@ export default function Sessions() {
               id: memberSession._id,
               status: status,
               notes: `Group session status updated to ${status}`,
-            })
+            }),
           ).unwrap();
         } catch (error) {
-          console.error(`Failed to update status for member ${memberSession.userId?.name}:`, error);
+          console.error(
+            `Failed to update status for member ${memberSession.userId?.name}:`,
+            error,
+          );
           // Continue with other members even if one fails
         }
       }
@@ -999,7 +1021,7 @@ export default function Sessions() {
           id: sessionId,
           status: "cancelled",
           notes: "Session cancelled by admin",
-        })
+        }),
       ).unwrap();
 
       toast({
@@ -1105,7 +1127,7 @@ export default function Sessions() {
           type: selectedSession.type || "1-on-1",
           status: "scheduled",
           duration: selectedSession.duration || 30,
-        })
+        }),
       ).unwrap();
 
       toast({
@@ -1203,11 +1225,25 @@ export default function Sessions() {
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
         <div
           className="stat-card cursor-pointer hover:shadow-md transition-shadow"
-          onClick={() => setStatusFilter(statusFilter === "pending" ? null : "pending")}
+          onClick={() =>
+            setStatusFilter(statusFilter === "pending" ? null : "pending")
+          }
         >
           <div className="flex items-center gap-3">
-            <div className={cn("p-2 rounded-lg", statusFilter === "pending" ? "bg-warning text-white" : "bg-warning/10")}>
-              <UserCog className={cn("w-5 h-5", statusFilter === "pending" ? "text-white" : "text-warning")} />
+            <div
+              className={cn(
+                "p-2 rounded-lg",
+                statusFilter === "pending"
+                  ? "bg-warning text-white"
+                  : "bg-warning/10",
+              )}
+            >
+              <UserCog
+                className={cn(
+                  "w-5 h-5",
+                  statusFilter === "pending" ? "text-white" : "text-warning",
+                )}
+              />
             </div>
             <div>
               <p className="text-2xl font-semibold">{pendingCount}</p>
@@ -1217,11 +1253,25 @@ export default function Sessions() {
         </div>
         <div
           className="stat-card cursor-pointer hover:shadow-md transition-shadow"
-          onClick={() => setStatusFilter(statusFilter === "scheduled" ? null : "scheduled")}
+          onClick={() =>
+            setStatusFilter(statusFilter === "scheduled" ? null : "scheduled")
+          }
         >
           <div className="flex items-center gap-3">
-            <div className={cn("p-2 rounded-lg", statusFilter === "scheduled" ? "bg-info text-white" : "bg-info/10")}>
-              <Calendar className={cn("w-5 h-5", statusFilter === "scheduled" ? "text-white" : "text-info")} />
+            <div
+              className={cn(
+                "p-2 rounded-lg",
+                statusFilter === "scheduled"
+                  ? "bg-info text-white"
+                  : "bg-info/10",
+              )}
+            >
+              <Calendar
+                className={cn(
+                  "w-5 h-5",
+                  statusFilter === "scheduled" ? "text-white" : "text-info",
+                )}
+              />
             </div>
             <div>
               <p className="text-2xl font-semibold">{scheduledCount}</p>
@@ -1231,11 +1281,25 @@ export default function Sessions() {
         </div>
         <div
           className="stat-card cursor-pointer hover:shadow-md transition-shadow"
-          onClick={() => setStatusFilter(statusFilter === "live" ? null : "live")}
+          onClick={() =>
+            setStatusFilter(statusFilter === "live" ? null : "live")
+          }
         >
           <div className="flex items-center gap-3">
-            <div className={cn("p-2 rounded-lg", statusFilter === "live" ? "bg-success text-white" : "bg-success/10")}>
-              <Play className={cn("w-5 h-5", statusFilter === "live" ? "text-white" : "text-success")} />
+            <div
+              className={cn(
+                "p-2 rounded-lg",
+                statusFilter === "live"
+                  ? "bg-success text-white"
+                  : "bg-success/10",
+              )}
+            >
+              <Play
+                className={cn(
+                  "w-5 h-5",
+                  statusFilter === "live" ? "text-white" : "text-success",
+                )}
+              />
             </div>
             <div>
               <p className="text-2xl font-semibold">{liveCount}</p>
@@ -1245,11 +1309,25 @@ export default function Sessions() {
         </div>
         <div
           className="stat-card cursor-pointer hover:shadow-md transition-shadow"
-          onClick={() => setStatusFilter(statusFilter === "completed" ? null : "completed")}
+          onClick={() =>
+            setStatusFilter(statusFilter === "completed" ? null : "completed")
+          }
         >
           <div className="flex items-center gap-3">
-            <div className={cn("p-2 rounded-lg", statusFilter === "completed" ? "bg-primary text-white" : "bg-primary/10")}>
-              <Video className={cn("w-5 h-5", statusFilter === "completed" ? "text-white" : "text-primary")} />
+            <div
+              className={cn(
+                "p-2 rounded-lg",
+                statusFilter === "completed"
+                  ? "bg-primary text-white"
+                  : "bg-primary/10",
+              )}
+            >
+              <Video
+                className={cn(
+                  "w-5 h-5",
+                  statusFilter === "completed" ? "text-white" : "text-primary",
+                )}
+              />
             </div>
             <div>
               <p className="text-2xl font-semibold">{completedCount}</p>
@@ -1259,11 +1337,25 @@ export default function Sessions() {
         </div>
         <div
           className="stat-card cursor-pointer hover:shadow-md transition-shadow"
-          onClick={() => setStatusFilter(statusFilter === "cancelled" ? null : "cancelled")}
+          onClick={() =>
+            setStatusFilter(statusFilter === "cancelled" ? null : "cancelled")
+          }
         >
           <div className="flex items-center gap-3">
-            <div className={cn("p-2 rounded-lg", statusFilter === "cancelled" ? "bg-warning text-white" : "bg-warning/10")}>
-              <X className={cn("w-5 h-5", statusFilter === "cancelled" ? "text-white" : "text-warning")} />
+            <div
+              className={cn(
+                "p-2 rounded-lg",
+                statusFilter === "cancelled"
+                  ? "bg-warning text-white"
+                  : "bg-warning/10",
+              )}
+            >
+              <X
+                className={cn(
+                  "w-5 h-5",
+                  statusFilter === "cancelled" ? "text-white" : "text-warning",
+                )}
+              />
             </div>
             <div>
               <p className="text-2xl font-semibold">{cancelledCount}</p>
@@ -1355,7 +1447,8 @@ export default function Sessions() {
           {activeTab === "live" || activeTab === "upcoming" ? (
             /* Live Sessions Grid View */
             <div className="space-y-6">
-              {groupedLiveUpcomingSessions && groupedLiveUpcomingSessions.length > 0 ? (
+              {groupedLiveUpcomingSessions &&
+              groupedLiveUpcomingSessions.length > 0 ? (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   {groupedLiveUpcomingSessions.map((session: any) => {
                     const user = session.userId;
@@ -1363,11 +1456,11 @@ export default function Sessions() {
                     // Calculate timing status for upcoming sessions using currentTime state
                     const now = currentTime; // Use state time instead of new Date()
                     const sessionTime = new Date(
-                      `${session.date}T${session.time}`
+                      `${session.date}T${session.time}`,
                     );
                     const timeDiff = sessionTime.getTime() - now.getTime();
                     const minutesUntilSession = Math.floor(
-                      timeDiff / (1000 * 60)
+                      timeDiff / (1000 * 60),
                     );
 
                     let statusLabel = "";
@@ -1411,14 +1504,16 @@ export default function Sessions() {
 
                     return (
                       <div
-                        key={session.isGroup ? session.groupSessionId : session._id}
+                        key={
+                          session.isGroup ? session.groupSessionId : session._id
+                        }
                         className="bg-card rounded-lg border border-border overflow-hidden shadow-sm hover:shadow-md transition-shadow"
                       >
                         <div className="p-6">
                           <div className="flex justify-between items-start mb-4">
                             <div>
                               <h3 className="text-lg font-semibold flex items-center gap-2">
-                                {session.isGroup 
+                                {session.isGroup
                                   ? `${session.participants[0]?.userId?.name || "N/A"} ${session.participants.length > 1 ? `+${session.participants.length - 1} others` : ""}`
                                   : user?.name || "N/A"}
                                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
@@ -1452,10 +1547,16 @@ export default function Sessions() {
                             {session.groupSessionId ? (
                               <Button
                                 className="flex-1 bg-primary hover:bg-primary-700"
-                                onClick={() => handleJoinGroupCall(session.groupSessionId)}
-                                disabled={joiningGroupSessionId === session.groupSessionId || !isJoinEnabled}
+                                onClick={() =>
+                                  handleJoinGroupCall(session.groupSessionId)
+                                }
+                                disabled={
+                                  joiningGroupSessionId ===
+                                    session.groupSessionId || !isJoinEnabled
+                                }
                               >
-                                {joiningGroupSessionId === session.groupSessionId ? (
+                                {joiningGroupSessionId ===
+                                session.groupSessionId ? (
                                   <>
                                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                                     Joining...
@@ -1463,7 +1564,9 @@ export default function Sessions() {
                                 ) : (
                                   <>
                                     <Video className="w-4 h-4 mr-2" />
-                                    {isJoinEnabled ? "Join Group Call" : "Session Early"}
+                                    {isJoinEnabled
+                                      ? "Join Group Call"
+                                      : "Session Early"}
                                   </>
                                 )}
                               </Button>
@@ -1489,7 +1592,7 @@ export default function Sessions() {
                               size="icon"
                               onClick={() => {
                                 navigator.clipboard.writeText(
-                                  `${window.location.origin}/video-call/${session.groupSessionId ? `/group-video-call/${session.groupSessionId}` : `/video-call/${session._id}`}`
+                                  `${window.location.origin}/video-call/${session.groupSessionId ? `/group-video-call/${session.groupSessionId}` : `/video-call/${session._id}`}`,
                                 );
                               }}
                             >
@@ -1525,289 +1628,387 @@ export default function Sessions() {
                   </h3>
                   <p className="text-muted-foreground">
                     {searchQuery
-                      ? `No ${activeTab === "live" ? "live" : "upcoming"
-                      } sessions match your search criteria.`
-                      : `There are no ${activeTab === "live" ? "live" : "upcoming"
-                      } sessions.`}
+                      ? `No ${
+                          activeTab === "live" ? "live" : "upcoming"
+                        } sessions match your search criteria.`
+                      : `There are no ${
+                          activeTab === "live" ? "live" : "upcoming"
+                        } sessions.`}
                   </p>
                 </div>
               )}
             </div>
           ) : /* Regular Table View for other tabs including 'all' */
-            filteredSessions.length > 0 ? (
-              <div className="bg-card rounded-lg border border-border overflow-hidden animate-fade-in">
-                <div className="overflow-x-auto">
-                  <table className="data-table">
-                    <thead>
-                      <tr>
-                        <th>Booking/Subscription Info</th>
-                        <th>User</th>
-                        <th>Date & Time</th>
-                        <th>Type</th>
-                        <th>Status</th>
-                        {activeTab === "live" && <th>Google Meet</th>}
-                        <th>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(() => {
-                        const { groups, nonGroupSessions } = getGroupedSessions(filteredSessions);
-                        const rows: JSX.Element[] = [];
+          filteredSessions.length > 0 ? (
+            <div className="bg-card rounded-lg border border-border overflow-hidden animate-fade-in">
+              <div className="overflow-x-auto">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Booking/Subscription Info</th>
+                      <th>User</th>
+                      <th>Date & Time</th>
+                      <th>Type</th>
+                      <th>Status</th>
+                      {activeTab === "live" && <th>Google Meet</th>}
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(() => {
+                      const { groups, nonGroupSessions } =
+                        getGroupedSessions(filteredSessions);
+                      const rows: JSX.Element[] = [];
 
-                        // Render non-group sessions normally
-                        nonGroupSessions.forEach((session: any) => {
-                          const booking = session.bookingId;
-                          const user = session.userId;
-                          rows.push(
-                            <tr
-                              key={session._id}
-                              className="hover:bg-muted/40 transition"
-                            >
-                              {/* BOOKING/SUBSCRIPTION INFO */}
-                              <td className="px-4 py-3">
-                                <div className="space-y-2">
-                                  {session.bookingId ? (
-                                    <div>
-                                      <p className="font-medium">
-                                        {booking?.serviceName || "N/A"}
-                                      </p>
-                                      <Badge variant="secondary" className="mt-1">
-                                        Booking Session
-                                      </Badge>
-                                    </div>
-                                  ) : session.subscriptionId ? (
-                                    <div>
-                                      <p className="font-medium">
-                                        {session.subscriptionId?.planName || "N/A"}
-                                      </p>
-                                      <div className="flex items-center gap-2 mt-1">
-                                        <Badge
-                                          variant="default"
-                                          className="bg-blue-100 text-blue-800"
-                                        >
-                                          Subscription Session
-                                        </Badge>
-                                        <Badge
-                                          variant="outline"
-                                          className="text-xs"
-                                        >
-                                          {session.subscriptionId?.status || "N/A"}
-                                        </Badge>
-                                      </div>
-                                    </div>
-                                  ) : (
-                                    <div>
-                                      <p className="font-medium text-muted-foreground">
-                                        No Booking/Subscription
-                                      </p>
-                                      <Badge variant="destructive" className="mt-1">
-                                        Invalid Session
-                                      </Badge>
-                                    </div>
-                                  )}
-                                </div>
-                              </td>
-
-                              {/* USER */}
-                              <td className="px-4 py-3">
-                                <div className="flex items-center gap-2">
-                                  <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
-                                    <User className="h-4 w-4 text-blue-600" />
-                                  </div>
+                      // Render non-group sessions normally
+                      nonGroupSessions.forEach((session: any) => {
+                        const booking = session.bookingId;
+                        const user = session.userId;
+                        rows.push(
+                          <tr
+                            key={session._id}
+                            className="hover:bg-muted/40 transition"
+                          >
+                            {/* BOOKING/SUBSCRIPTION INFO */}
+                            <td className="px-4 py-3">
+                              <div className="space-y-2">
+                                {session.bookingId ? (
                                   <div>
                                     <p className="font-medium">
-                                      {user?.name || "N/A"}
+                                      {booking?.serviceName || "N/A"}
                                     </p>
-                                    <p className="text-xs text-muted-foreground">
-                                      {user?.email || ""}
+                                    <Badge variant="secondary" className="mt-1">
+                                      Booking Session
+                                    </Badge>
+                                  </div>
+                                ) : session.subscriptionId ? (
+                                  <div>
+                                    <p className="font-medium">
+                                      {session.subscriptionId?.planName ||
+                                        "N/A"}
                                     </p>
+                                    <div className="flex items-center gap-2 mt-1">
+                                      <Badge
+                                        variant="default"
+                                        className="bg-blue-100 text-blue-800"
+                                      >
+                                        Subscription Session
+                                      </Badge>
+                                      <Badge
+                                        variant="outline"
+                                        className="text-xs"
+                                      >
+                                        {session.subscriptionId?.status ||
+                                          "N/A"}
+                                      </Badge>
+                                    </div>
                                   </div>
-                                </div>
-                              </td>
-
-                              {/* DATE & TIME */}
-                              <td className="px-4 py-3">
-                                <div className="space-y-0.5">
-                                  <div className="flex items-center gap-1">
-                                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                                    <span>{session.date}</span>
-                                  </div>
-                                  <div className="flex items-center gap-1 text-muted-foreground">
-                                    <Clock className="h-4 w-4" />
-                                    <span>{session.time}</span>
-                                  </div>
-                                </div>
-                              </td>
-
-                              {/* TYPE */}
-                              <td className="">
-                                <span className=" text-xs font-semibold">
-                                  {session.type}
-                                </span>
-                              </td>
-
-                              {/* STATUS */}
-                              <td className="px-4 py-3">
-                                {isEditableStatus(session.status) ? (
-                                  <Select
-                                    value={session.status}
-                                    disabled={updatingStatusId === session._id}
-                                    onValueChange={async (value) => {
-                                      setUpdatingStatusId(session._id);
-                                      try {
-                                        await handleUpdateSessionStatus(
-                                          session._id,
-                                          value
-                                        );
-                                      } finally {
-                                        setUpdatingStatusId(null);
-                                      }
-                                    }}
-                                  >
-                                    <SelectTrigger
-                                      className={`w-[130px] rounded-full text-xs font-semibold ${statusStyles[session.status]
-                                        }`}
-                                    >
-                                      {updatingStatusId === session._id ? (
-                                        <div className="flex items-center gap-2">
-                                          <Loader2 className="w-3 h-3 animate-spin" />
-                                          <span>Updating...</span>
-                                        </div>
-                                      ) : (
-                                        <SelectValue />
-                                      )}
-                                    </SelectTrigger>
-
-                                    <SelectContent>
-                                      {session.status !== "live" && (
-                                        <SelectItem value="scheduled">
-                                          Scheduled
-                                        </SelectItem>
-                                      )}
-                                      <SelectItem value="live">Live</SelectItem>
-                                      <SelectItem value="completed">
-                                        Completed
-                                      </SelectItem>
-                                      <SelectItem value="cancelled">
-                                        Cancelled
-                                      </SelectItem>
-                                    </SelectContent>
-                                  </Select>
                                 ) : (
-                                  <span
-                                    className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${statusStyles[session.status]
-                                      }`}
-                                  >
-                                    {session.status === "pending" ? (
-                                      <>
-                                        <UserCog className="w-3 h-3 mr-1" />
-                                        Pending Review
-                                      </>
-                                    ) : (
-                                      <>
-                                        {session.status &&
-                                          typeof session.status === "string"
-                                          ? session.status.charAt(0).toUpperCase() +
-                                          session.status.slice(1)
-                                          : "Unknown"}
-                                      </>
-                                    )}
-                                  </span>
+                                  <div>
+                                    <p className="font-medium text-muted-foreground">
+                                      No Booking/Subscription
+                                    </p>
+                                    <Badge
+                                      variant="destructive"
+                                      className="mt-1"
+                                    >
+                                      Invalid Session
+                                    </Badge>
+                                  </div>
                                 )}
-                              </td>
+                              </div>
+                            </td>
 
-                              {/* ACTIONS - Simplified for non-group sessions */}
-                              <td className="px-4 py-3 text-right">
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                                      <MoreHorizontal className="h-4 w-4" />
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end" className="w-48">
-                                    {session.status === "pending" && (
-                                      <>
-                                        <DropdownMenuItem
-                                          className="text-success"
-                                          onClick={async () => {
-                                            if (session.bookingId?.status === "pending") {
-                                              toast({
-                                                title: "Action not allowed",
-                                                description: "Please confirm the booking before accepting the session.",
-                                                variant: "destructive",
-                                              });
-                                              return;
-                                            }
+                            {/* USER */}
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-2">
+                                <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
+                                  <User className="h-4 w-4 text-blue-600" />
+                                </div>
+                                <div>
+                                  <p className="font-medium">
+                                    {user?.name || "N/A"}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {user?.email || ""}
+                                  </p>
+                                </div>
+                              </div>
+                            </td>
 
-                                            await handleAcceptSession(session._id);
-                                          }}
-                                        >
-                                          <User className="h-4 w-4 mr-2" /> Accept Session
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem className="text-destructive" onClick={async () => { await handleRejectSession(session._id); }}>
-                                          <X className="h-4 w-4 mr-2" /> Reject Session
-                                        </DropdownMenuItem>
-                                      </>
+                            {/* DATE & TIME */}
+                            <td className="px-4 py-3">
+                              <div className="space-y-0.5">
+                                <div className="flex items-center gap-1">
+                                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                                  <span>{session.date}</span>
+                                </div>
+                                <div className="flex items-center gap-1 text-muted-foreground">
+                                  <Clock className="h-4 w-4" />
+                                  <span>{session.time}</span>
+                                </div>
+                              </div>
+                            </td>
+
+                            {/* TYPE */}
+                            <td className="">
+                              <span className=" text-xs font-semibold">
+                                {session.type}
+                              </span>
+                            </td>
+
+                            {/* STATUS */}
+                            <td className="px-4 py-3">
+                              {isEditableStatus(session.status) ? (
+                                <Select
+                                  value={session.status}
+                                  disabled={updatingStatusId === session._id}
+                                  onValueChange={async (value) => {
+                                    setUpdatingStatusId(session._id);
+                                    try {
+                                      await handleUpdateSessionStatus(
+                                        session._id,
+                                        value,
+                                      );
+                                    } finally {
+                                      setUpdatingStatusId(null);
+                                    }
+                                  }}
+                                >
+                                  <SelectTrigger
+                                    className={`w-[130px] rounded-full text-xs font-semibold ${
+                                      statusStyles[session.status]
+                                    }`}
+                                  >
+                                    {updatingStatusId === session._id ? (
+                                      <div className="flex items-center gap-2">
+                                        <Loader2 className="w-3 h-3 animate-spin" />
+                                        <span>Updating...</span>
+                                      </div>
+                                    ) : (
+                                      <SelectValue />
                                     )}
-                                    {(activeTab === "scheduled" || activeTab === "all") && session.status !== "pending" && (
+                                  </SelectTrigger>
+
+                                  <SelectContent>
+                                    {session.status !== "live" && (
+                                      <SelectItem value="scheduled">
+                                        Scheduled
+                                      </SelectItem>
+                                    )}
+                                    <SelectItem value="live">Live</SelectItem>
+                                    <SelectItem value="completed">
+                                      Completed
+                                    </SelectItem>
+                                    <SelectItem value="cancelled">
+                                      Cancelled
+                                    </SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              ) : (
+                                <span
+                                  className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
+                                    statusStyles[session.status]
+                                  }`}
+                                >
+                                  {session.status === "pending" ? (
+                                    <>
+                                      <UserCog className="w-3 h-3 mr-1" />
+                                      Pending Review
+                                    </>
+                                  ) : (
+                                    <>
+                                      {session.status &&
+                                      typeof session.status === "string"
+                                        ? session.status
+                                            .charAt(0)
+                                            .toUpperCase() +
+                                          session.status.slice(1)
+                                        : "Unknown"}
+                                    </>
+                                  )}
+                                </span>
+                              )}
+                            </td>
+
+                            {/* ACTIONS - Simplified for non-group sessions */}
+                            <td className="px-4 py-3 text-right">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8"
+                                  >
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent
+                                  align="end"
+                                  className="w-48"
+                                >
+                                  {session.status === "pending" && (
+                                    <>
+                                      <DropdownMenuItem
+                                        className="text-success"
+                                        onClick={async () => {
+                                          if (
+                                            session.bookingId?.status ===
+                                            "pending"
+                                          ) {
+                                            toast({
+                                              title: "Action not allowed",
+                                              description:
+                                                "Please confirm the booking before accepting the session.",
+                                              variant: "destructive",
+                                            });
+                                            return;
+                                          }
+
+                                          await handleAcceptSession(
+                                            session._id,
+                                          );
+                                        }}
+                                      >
+                                        <User className="h-4 w-4 mr-2" /> Accept
+                                        Session
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem
+                                        className="text-destructive"
+                                        onClick={async () => {
+                                          await handleRejectSession(
+                                            session._id,
+                                          );
+                                        }}
+                                      >
+                                        <X className="h-4 w-4 mr-2" /> Reject
+                                        Session
+                                      </DropdownMenuItem>
+                                    </>
+                                  )}
+                                  {(activeTab === "scheduled" ||
+                                    activeTab === "all") &&
+                                    session.status !== "pending" && (
                                       <>
                                         {!session.googleMeetLink ? (
-                                          <DropdownMenuItem className="text-blue-600" onClick={() => { setSelectedSessionForMeet(session); setIsGoogleMeetModalOpen(true); }}>
-                                            <Video className="h-4 w-4 mr-2" /> Generate Google Meet/Zoom Link
+                                          <DropdownMenuItem
+                                            className="text-blue-600"
+                                            onClick={() => {
+                                              setSelectedSessionForMeet(
+                                                session,
+                                              );
+                                              setIsGoogleMeetModalOpen(true);
+                                            }}
+                                          >
+                                            <Video className="h-4 w-4 mr-2" />{" "}
+                                            Generate Google Meet/Zoom Link
                                           </DropdownMenuItem>
                                         ) : (
-                                          <DropdownMenuItem className="text-blue-600" onClick={() => { setSelectedSessionForEditMeet(session); setIsEditGoogleMeetModalOpen(true); }}>
-                                            <Video className="h-4 w-4 mr-2" /> Edit Google Meet/Zoom Link
+                                          <DropdownMenuItem
+                                            className="text-blue-600"
+                                            onClick={() => {
+                                              setSelectedSessionForEditMeet(
+                                                session,
+                                              );
+                                              setIsEditGoogleMeetModalOpen(
+                                                true,
+                                              );
+                                            }}
+                                          >
+                                            <Video className="h-4 w-4 mr-2" />{" "}
+                                            Edit Google Meet/Zoom Link
                                           </DropdownMenuItem>
                                         )}
-                                        <DropdownMenuItem className="text-destructive" onClick={() => handleCancelSession(session._id)}>
-                                          <X className="h-4 w-4 mr-2" /> Cancel Session
+                                        <DropdownMenuItem
+                                          className="text-destructive"
+                                          onClick={() =>
+                                            handleCancelSession(session._id)
+                                          }
+                                        >
+                                          <X className="h-4 w-4 mr-2" /> Cancel
+                                          Session
                                         </DropdownMenuItem>
-                                        <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteSession(session._id)}>
-                                          <X className="h-4 w-4 mr-2" /> Delete Session
+                                        <DropdownMenuItem
+                                          className="text-destructive"
+                                          onClick={() =>
+                                            handleDeleteSession(session._id)
+                                          }
+                                        >
+                                          <X className="h-4 w-4 mr-2" /> Delete
+                                          Session
                                         </DropdownMenuItem>
                                       </>
                                     )}
-                                    {activeTab === "live" && (
-                                      <DropdownMenuItem onClick={() => navigate(`/video-call/${session._id}`)}>
-                                        <Video className="h-4 w-4 mr-2" /> Join Session
-                                      </DropdownMenuItem>
-                                    )}
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              </td>
-                            </tr>
-                          );
-                        });
+                                  {activeTab === "live" && (
+                                    <DropdownMenuItem
+                                      onClick={() =>
+                                        navigate(`/video-call/${session._id}`)
+                                      }
+                                    >
+                                      <Video className="h-4 w-4 mr-2" /> Join
+                                      Session
+                                    </DropdownMenuItem>
+                                  )}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </td>
+                          </tr>,
+                        );
+                      });
 
-                        // Render group sessions as COLLAPSED single rows
-                        groups.forEach((groupSessions, groupKey) => {
-                          const groupSessionId = groupSessions[0].groupSessionId;
-                          const firstSession = groupSessions[0];
-                          const user = firstSession.userId;
+                      // Render group sessions as COLLAPSED single rows
+                      groups.forEach((groupSessions, groupKey) => {
+                        const groupSessionId = groupSessions[0].groupSessionId;
+                        const firstSession = groupSessions[0];
+                        const user = firstSession.userId;
 
-                          rows.push(
-                            <tr
-                              key={`group-${groupSessionId}`}
-                              className="hover:bg-muted/40 transition"
-                              style={{
-                                borderLeft: "3px solid #7F77DD",
-                                background: "#FAFAFE"
-                              }}
-                            >
-                              {/* BOOKING/SUBSCRIPTION INFO */}
-                              <td className="px-4 py-3">
-                                <div className="space-y-2">
-                                  {firstSession.bookingId ? (
-                                    <div>
-                                      <p className="font-medium">
-                                        {firstSession.bookingId?.serviceName || "N/A"}
-                                      </p>
+                        rows.push(
+                          <tr
+                            key={`group-${groupSessionId}`}
+                            className="hover:bg-muted/40 transition"
+                            style={{
+                              borderLeft: "3px solid #7F77DD",
+                              background: "#FAFAFE",
+                            }}
+                          >
+                            {/* BOOKING/SUBSCRIPTION INFO */}
+                            <td className="px-4 py-3">
+                              <div className="space-y-2">
+                                {firstSession.bookingId ? (
+                                  <div>
+                                    <p className="font-medium">
+                                      {firstSession.bookingId?.serviceName ||
+                                        "N/A"}
+                                    </p>
+                                    <Badge variant="secondary" className="mt-1">
+                                      Booking Session
+                                    </Badge>
+                                    <Badge
+                                      variant="default"
+                                      className="ml-2 bg-primary-600"
+                                    >
+                                      Group
+                                    </Badge>
+                                  </div>
+                                ) : firstSession.subscriptionId ? (
+                                  <div>
+                                    <p className="font-medium">
+                                      {firstSession.subscriptionId?.planName ||
+                                        "N/A"}
+                                    </p>
+                                    <div className="flex items-center gap-2 mt-1">
                                       <Badge
-                                        variant="secondary"
-                                        className="mt-1"
+                                        variant="default"
+                                        className="bg-blue-100 text-blue-800"
                                       >
-                                        Booking Session
+                                        Subscription
+                                      </Badge>
+                                      <Badge
+                                        variant="outline"
+                                        className="text-xs"
+                                      >
+                                        {firstSession.subscriptionId?.status ||
+                                          "N/A"}
                                       </Badge>
                                       <Badge
                                         variant="default"
@@ -1816,415 +2017,431 @@ export default function Sessions() {
                                         Group
                                       </Badge>
                                     </div>
-                                  ) : firstSession.subscriptionId ? (
-                                    <div>
-                                      <p className="font-medium">
-                                        {firstSession.subscriptionId?.planName ||
-                                          "N/A"}
-                                      </p>
-                                      <div className="flex items-center gap-2 mt-1">
-                                        <Badge
-                                          variant="default"
-                                          className="bg-blue-100 text-blue-800"
-                                        >
-                                          Subscription
-                                        </Badge>
-                                        <Badge
-                                          variant="outline"
-                                          className="text-xs"
-                                        >
-                                          {firstSession.subscriptionId?.status || "N/A"}
-                                        </Badge>
-                                        <Badge
-                                          variant="default"
-                                          className="ml-2 bg-primary-600"
-                                        >
-                                          Group
-                                        </Badge>
-                                      </div>
-                                    </div>
-                                  ) : (
-                                    <div>
-                                      <p className="font-medium text-muted-foreground">
-                                        No Booking/Subscription
-                                      </p>
-                                      <Badge
-                                        variant="destructive"
-                                        className="mt-1"
-                                      >
-                                        Invalid
-                                      </Badge>
-                                    </div>
-                                  )}
-                                </div>
-                              </td>
-
-                              {/* USER - Collapsed with stacked avatars */}
-                              <td className="px-4 py-3">
-                                <div className="space-y-2">
-                                  {/* Primary user with stacked avatars */}
-                                  <div className="flex items-center gap-2">
-                                    <div className="flex -space-x-2">
-                                      {groupSessions.slice(0, 4).map((member: any, idx: number) => (
-                                        <div
-                                          key={member._id}
-                                          className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center border-2 border-white"
-                                          title={member.userId?.name || 'Member'}
-                                        >
-                                          <span className="text-xs font-semibold text-blue-600">
-                                            {getInitials(member.userId?.name || 'User')}
-                                          </span>
-                                        </div>
-                                      ))}
-                                      {groupSessions.length > 4 && (
-                                        <div
-                                          className="h-8 w-8 rounded-full bg-primary-100 flex items-center justify-center border-2 border-white"
-                                          title={`${groupSessions.length - 4} more members`}
-                                        >
-                                          <span className="text-xs font-semibold text-primary-600">
-                                            +{groupSessions.length - 4}
-                                          </span>
-                                        </div>
-                                      )}
-                                    </div>
-                                    <div className="flex-1">
-                                      <p className="font-medium">
-                                        {user?.name || "N/A"}
-                                        {groupSessions.length > 1 && (
-                                          <span className="text-xs text-muted-foreground ml-1">
-                                            +{groupSessions.length - 1}
-                                          </span>
-                                        )}
-                                      </p>
-                                      <p className="text-xs text-muted-foreground">
-                                        {user?.email || ""}
-                                      </p>
-                                    </div>
                                   </div>
-                                  
-                                  {/* Dot-list of all member names/emails */}
-                                  <div className="flex flex-wrap gap-1 text-xs">
-                                    {groupSessions.map((member: any, idx: number) => (
-                                      <React.Fragment key={member._id}>
-                                        {idx > 0 && <span className="text-muted-foreground">·</span>}
-                                        <span className="text-muted-foreground" title={member.userId?.email || ''}>
-                                          {member.userId?.name || `Member ${idx + 1}`}
-                                        </span>
-                                      </React.Fragment>
-                                    ))}
-                                  </div>
-                                </div>
-                              </td>
-
-                              {/* DATE & TIME */}
-                              <td className="px-4 py-3">
-                                <div className="space-y-0.5">
-                                  <div className="flex items-center gap-1">
-                                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                                    <span>{firstSession.date}</span>
-                                  </div>
-                                  <div className="flex items-center gap-1 text-muted-foreground">
-                                    <Clock className="h-4 w-4" />
-                                    <span>{firstSession.time}</span>
-                                  </div>
-                                </div>
-                              </td>
-
-                              {/* TYPE */}
-                              <td className="">
-                                <Button
-                                  variant="link"
-                                  className="text-xs font-semibold p-0 h-auto hover:underline"
-                                  onClick={() => handleOpenGroupDetails(groupSessionId)}
-                                >
-                                  Group
-                                </Button>
-                              </td>
-
-                              {/* STATUS - Updates all members */}
-                              <td className="px-4 py-3">
-                                {isEditableStatus(firstSession.status || "") ? (
-                                  <Select
-                                    value={firstSession.status || "scheduled"}
-                                    disabled={updatingStatusId === groupSessionId}
-                                    onValueChange={async (value) => {
-                                      await handleUpdateGroupSessionStatus(
-                                        groupSessionId,
-                                        value,
-                                        groupSessions
-                                      );
-                                    }}
-                                  >
-                                    <SelectTrigger
-                                      className={`w-[130px] rounded-full text-xs font-semibold ${statusStyles[firstSession.status || "scheduled"]}`}
-                                    >
-                                      {updatingStatusId === groupSessionId ? (
-                                        <div className="flex items-center gap-2">
-                                          <Loader2 className="w-3 h-3 animate-spin" />
-                                          <span>Updating...</span>
-                                        </div>
-                                      ) : (
-                                        <SelectValue />
-                                      )}
-                                    </SelectTrigger>
-
-                                    <SelectContent>
-                                      {firstSession.status !== "live" && (
-                                        <SelectItem value="scheduled">
-                                          Scheduled
-                                        </SelectItem>
-                                      )}
-                                      <SelectItem value="live">Live</SelectItem>
-                                      <SelectItem value="completed">
-                                        Completed
-                                      </SelectItem>
-                                      <SelectItem value="cancelled">
-                                        Cancelled
-                                      </SelectItem>
-                                    </SelectContent>
-                                  </Select>
                                 ) : (
-                                  <div className="flex items-center gap-2">
-                                    <span
-                                      className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${statusStyles[firstSession.status || "pending"]}`}
-                                    >
-                                      {firstSession.status === "pending" ? (
-                                        <>
-                                          <UserCog className="w-3 h-3 mr-1" />
-                                          Pending Review
-                                        </>
-                                      ) : (
-                                        <>
-                                          {firstSession.status && typeof firstSession.status === "string"
-                                            ? firstSession.status.charAt(0).toUpperCase() +
-                                            firstSession.status.slice(1)
-                                            : "Unknown"}
-                                        </>
-                                      )}
-                                    </span>
+                                  <div>
+                                    <p className="font-medium text-muted-foreground">
+                                      No Booking/Subscription
+                                    </p>
                                     <Badge
-                                      variant="outline"
-                                      className="text-xs bg-primary-50 text-primary-700 border-primary-200"
+                                      variant="destructive"
+                                      className="mt-1"
                                     >
-                                      {groupSessions.length} members · updates all
+                                      Invalid
                                     </Badge>
                                   </div>
                                 )}
-                              </td>
+                              </div>
+                            </td>
 
-                              {/* ACTIONS */}
-                              <td className="px-4 py-3 text-right">
-                                {firstSession.status === "completed" ||
-                                  firstSession.status === "cancelled" ? (
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8 opacity-50 cursor-not-allowed"
-                                    disabled
-                                  >
-                                    <MoreHorizontal className="h-4 w-4" />
-                                  </Button>
-                                ) : (
-                                  <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-8 w-8"
+                            {/* USER - Collapsed with stacked avatars */}
+                            <td className="px-4 py-3">
+                              <div className="space-y-2">
+                                {/* Primary user with stacked avatars */}
+                                <div className="flex items-center gap-2">
+                                  <div className="flex -space-x-2">
+                                    {groupSessions
+                                      .slice(0, 4)
+                                      .map((member: any, idx: number) => (
+                                        <div
+                                          key={member._id}
+                                          className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center border-2 border-white"
+                                          title={
+                                            member.userId?.name || "Member"
+                                          }
+                                        >
+                                          <span className="text-xs font-semibold text-blue-600">
+                                            {getInitials(
+                                              member.userId?.name || "User",
+                                            )}
+                                          </span>
+                                        </div>
+                                      ))}
+                                    {groupSessions.length > 4 && (
+                                      <div
+                                        className="h-8 w-8 rounded-full bg-primary-100 flex items-center justify-center border-2 border-white"
+                                        title={`${groupSessions.length - 4} more members`}
                                       >
-                                        <MoreHorizontal className="h-4 w-4" />
-                                      </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent
-                                      align="end"
-                                      className="w-48"
-                                    >
-                                      {/* Pending actions for all members */}
-                                      {firstSession.status === "pending" && (
-                                        <>
-                                          <DropdownMenuItem
-                                            className="text-success"
-                                            onClick={async () => {
-                                              for (const memberSession of groupSessions) {
-                                                if (memberSession.bookingId?.status === "pending") {
-                                                  toast({
-                                                    title: "Action not allowed",
-                                                    description: "Please confirm the booking before accepting the session.",
-                                                    variant: "destructive",
-                                                  });
-                                                  return;
-                                                }
-                                              }
-                                              for (const memberSession of groupSessions) {
-                                                await handleAcceptSession(memberSession._id);
-                                              }
-                                            }}
-                                          >
-                                            <UserCog className="h-4 w-4 mr-2" />{" "}
-                                            Accept All ({groupSessions.length})
-                                          </DropdownMenuItem>
-                                          <DropdownMenuItem
-                                            className="text-destructive"
-                                            onClick={async () => {
-                                              for (const memberSession of groupSessions) {
-                                                await handleRejectSession(memberSession._id);
-                                              }
-                                            }}
-                                          >
-                                            <X className="h-4 w-4 mr-2" />{" "}
-                                            Reject All ({groupSessions.length})
-                                          </DropdownMenuItem>
-                                        </>
+                                        <span className="text-xs font-semibold text-primary-600">
+                                          +{groupSessions.length - 4}
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className="flex-1">
+                                    <p className="font-medium">
+                                      {user?.name || "N/A"}
+                                      {groupSessions.length > 1 && (
+                                        <span className="text-xs text-muted-foreground ml-1">
+                                          +{groupSessions.length - 1}
+                                        </span>
                                       )}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {user?.email || ""}
+                                    </p>
+                                  </div>
+                                </div>
 
-                                      {/* Google Meet/Zoom Link */}
-                                      {firstSession.status !== "pending" && (
-                                        <>
-                                          {!firstSession.googleMeetLink ? (
-                                            <DropdownMenuItem
-                                              className="text-blue-600 font-medium"
-                                              onClick={() => {
-                                                setSelectedSessionForMeet(firstSession);
-                                                setIsGoogleMeetModalOpen(true);
-                                              }}
-                                            >
-                                              <Video className="h-4 w-4 mr-2" />{" "}
-                                              Generate Google Meet/Zoom Link
-                                            </DropdownMenuItem>
-                                          ) : (
-                                            <DropdownMenuItem
-                                              className="text-blue-600 font-medium"
-                                              onClick={() => {
-                                                setSelectedSessionForEditMeet(firstSession);
-                                                setIsEditGoogleMeetModalOpen(true);
-                                              }}
-                                            >
-                                              <Video className="h-4 w-4 mr-2" />{" "}
-                                              View Meet Link
-                                            </DropdownMenuItem>
-                                          )}
-                                        </>
-                                      )}
-
-                                      {/* Cancel/Delete */}
-                                      {(activeTab === "scheduled" ||
-                                        activeTab === "all") && (
-                                        <>
-                                          <DropdownMenuItem
-                                            className="text-destructive"
-                                            onClick={async () => {
-                                              for (const memberSession of groupSessions) {
-                                                await handleCancelSession(memberSession._id);
-                                              }
-                                            }}
-                                          >
-                                            <X className="h-4 w-4 mr-2" />{" "}
-                                            Cancel All ({groupSessions.length})
-                                          </DropdownMenuItem>
-                                          <DropdownMenuItem
-                                            className="text-destructive"
-                                            onClick={async () => {
-                                              for (const memberSession of groupSessions) {
-                                                await handleDeleteSession(memberSession._id);
-                                              }
-                                            }}
-                                          >
-                                            <X className="h-4 w-4 mr-2" />{" "}
-                                            Delete All ({groupSessions.length})
-                                          </DropdownMenuItem>
-                                        </>
-                                      )}
-                                    </DropdownMenuContent>
-                                  </DropdownMenu>
-                                )}
-
-                                {/* Join Group Button - In LIVE and UPCOMING tabs */}
-                                {(activeTab === "live" ||
-                                  activeTab === "upcoming") &&
-                                  groupSessionId &&
-                                  firstSession.status !== "completed" &&
-                                  firstSession.status !== "cancelled" && (
-                                    <Button
-                                      variant="default"
-                                      size="sm"
-                                      className="bg-primary-600 hover:bg-primary-700 text-white font-semibold px-4 py-2 rounded-lg shadow-md hover:shadow-lg transition-all ml-2"
-                                      onClick={() =>
-                                        handleJoinGroupCall(groupSessionId)
-                                      }
-                                      disabled={
-                                        joiningGroupSessionId === groupSessionId
-                                      }
-                                    >
-                                      {joiningGroupSessionId ===
-                                        groupSessionId ? (
-                                        <>
-                                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                          Joining...
-                                        </>
-                                      ) : (
-                                        <>
-                                          <Video className="w-4 h-4 mr-2" />
-                                          Join Group{" "}
-                                          <Badge
-                                            variant="secondary"
-                                            className="ml-2 bg-primary-800 text-white border-none"
-                                          >
-                                            {groupSessions.length}
-                                          </Badge>
-                                        </>
-                                      )}
-                                    </Button>
+                                {/* Dot-list of all member names/emails */}
+                                <div className="flex flex-wrap gap-1 text-xs">
+                                  {groupSessions.map(
+                                    (member: any, idx: number) => (
+                                      <React.Fragment key={member._id}>
+                                        {idx > 0 && (
+                                          <span className="text-muted-foreground">
+                                            ·
+                                          </span>
+                                        )}
+                                        <span
+                                          className="text-muted-foreground"
+                                          title={member.userId?.email || ""}
+                                        >
+                                          {member.userId?.name ||
+                                            `Member ${idx + 1}`}
+                                        </span>
+                                      </React.Fragment>
+                                    ),
                                   )}
-                              </td>
-                            </tr>,
-                          );
-                        });
+                                </div>
+                              </div>
+                            </td>
 
-                        return rows;
-                      })()}
-                    </tbody>
-                  </table>
-                </div>
+                            {/* DATE & TIME */}
+                            <td className="px-4 py-3">
+                              <div className="space-y-0.5">
+                                <div className="flex items-center gap-1">
+                                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                                  <span>{firstSession.date}</span>
+                                </div>
+                                <div className="flex items-center gap-1 text-muted-foreground">
+                                  <Clock className="h-4 w-4" />
+                                  <span>{firstSession.time}</span>
+                                </div>
+                              </div>
+                            </td>
 
-                <div className="flex items-center justify-between px-4 py-3 border-t border-border">
-                  <p className="text-sm text-muted-foreground">
-                    Showing{" "}
-                    <span className="font-medium">{getDisplayCount(filteredSessions)}</span>{" "}
-                    {activeTab === "upcoming" ? "upcoming sessions" : "sessions"}
-                    {filteredSessions.length !== getDisplayCount(filteredSessions) && (
-                      <span className="text-xs ml-1">
-                        ({filteredSessions.length} total, groups collapsed)
-                      </span>
-                    )}
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" disabled>
-                      <ChevronLeft className="w-4 h-4" />
-                    </Button>
-                    <Button variant="outline" size="sm" className="min-w-[32px]">
-                      1
-                    </Button>
-                    <Button variant="outline" size="sm">
-                      <ChevronRight className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
+                            {/* TYPE */}
+                            <td className="">
+                              <Button
+                                variant="link"
+                                className="text-xs font-semibold p-0 h-auto hover:underline"
+                                onClick={() =>
+                                  handleOpenGroupDetails(groupSessionId)
+                                }
+                              >
+                                Group
+                              </Button>
+                            </td>
+
+                            {/* STATUS - Updates all members */}
+                            <td className="px-4 py-3">
+                              {isEditableStatus(firstSession.status || "") ? (
+                                <Select
+                                  value={firstSession.status || "scheduled"}
+                                  disabled={updatingStatusId === groupSessionId}
+                                  onValueChange={async (value) => {
+                                    await handleUpdateGroupSessionStatus(
+                                      groupSessionId,
+                                      value,
+                                      groupSessions,
+                                    );
+                                  }}
+                                >
+                                  <SelectTrigger
+                                    className={`w-[130px] rounded-full text-xs font-semibold ${statusStyles[firstSession.status || "scheduled"]}`}
+                                  >
+                                    {updatingStatusId === groupSessionId ? (
+                                      <div className="flex items-center gap-2">
+                                        <Loader2 className="w-3 h-3 animate-spin" />
+                                        <span>Updating...</span>
+                                      </div>
+                                    ) : (
+                                      <SelectValue />
+                                    )}
+                                  </SelectTrigger>
+
+                                  <SelectContent>
+                                    {firstSession.status !== "live" && (
+                                      <SelectItem value="scheduled">
+                                        Scheduled
+                                      </SelectItem>
+                                    )}
+                                    <SelectItem value="live">Live</SelectItem>
+                                    <SelectItem value="completed">
+                                      Completed
+                                    </SelectItem>
+                                    <SelectItem value="cancelled">
+                                      Cancelled
+                                    </SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                  <span
+                                    className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${statusStyles[firstSession.status || "pending"]}`}
+                                  >
+                                    {firstSession.status === "pending" ? (
+                                      <>
+                                        <UserCog className="w-3 h-3 mr-1" />
+                                        Pending Review
+                                      </>
+                                    ) : (
+                                      <>
+                                        {firstSession.status &&
+                                        typeof firstSession.status === "string"
+                                          ? firstSession.status
+                                              .charAt(0)
+                                              .toUpperCase() +
+                                            firstSession.status.slice(1)
+                                          : "Unknown"}
+                                      </>
+                                    )}
+                                  </span>
+                                  <Badge
+                                    variant="outline"
+                                    className="text-xs bg-primary-50 text-primary-700 border-primary-200"
+                                  >
+                                    {groupSessions.length} members · updates all
+                                  </Badge>
+                                </div>
+                              )}
+                            </td>
+
+                            {/* ACTIONS */}
+                            <td className="px-4 py-3 text-right">
+                              {firstSession.status === "completed" ||
+                              firstSession.status === "cancelled" ? (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 opacity-50 cursor-not-allowed"
+                                  disabled
+                                >
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              ) : (
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8"
+                                    >
+                                      <MoreHorizontal className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent
+                                    align="end"
+                                    className="w-48"
+                                  >
+                                    {/* Pending actions for all members */}
+                                    {firstSession.status === "pending" && (
+                                      <>
+                                        <DropdownMenuItem
+                                          className="text-success"
+                                          onClick={async () => {
+                                            for (const memberSession of groupSessions) {
+                                              if (
+                                                memberSession.bookingId
+                                                  ?.status === "pending"
+                                              ) {
+                                                toast({
+                                                  title: "Action not allowed",
+                                                  description:
+                                                    "Please confirm the booking before accepting the session.",
+                                                  variant: "destructive",
+                                                });
+                                                return;
+                                              }
+                                            }
+                                            for (const memberSession of groupSessions) {
+                                              await handleAcceptSession(
+                                                memberSession._id,
+                                              );
+                                            }
+                                          }}
+                                        >
+                                          <UserCog className="h-4 w-4 mr-2" />{" "}
+                                          Accept All ({groupSessions.length})
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                          className="text-destructive"
+                                          onClick={async () => {
+                                            for (const memberSession of groupSessions) {
+                                              await handleRejectSession(
+                                                memberSession._id,
+                                              );
+                                            }
+                                          }}
+                                        >
+                                          <X className="h-4 w-4 mr-2" /> Reject
+                                          All ({groupSessions.length})
+                                        </DropdownMenuItem>
+                                      </>
+                                    )}
+
+                                    {/* Google Meet/Zoom Link */}
+                                    {firstSession.status !== "pending" && (
+                                      <>
+                                        {!firstSession.googleMeetLink ? (
+                                          <DropdownMenuItem
+                                            className="text-blue-600 font-medium"
+                                            onClick={() => {
+                                              setSelectedSessionForMeet(
+                                                firstSession,
+                                              );
+                                              setIsGoogleMeetModalOpen(true);
+                                            }}
+                                          >
+                                            <Video className="h-4 w-4 mr-2" />{" "}
+                                            Generate Google Meet/Zoom Link
+                                          </DropdownMenuItem>
+                                        ) : (
+                                          <DropdownMenuItem
+                                            className="text-blue-600 font-medium"
+                                            onClick={() => {
+                                              setSelectedSessionForEditMeet(
+                                                firstSession,
+                                              );
+                                              setIsEditGoogleMeetModalOpen(
+                                                true,
+                                              );
+                                            }}
+                                          >
+                                            <Video className="h-4 w-4 mr-2" />{" "}
+                                            View Meet Link
+                                          </DropdownMenuItem>
+                                        )}
+                                      </>
+                                    )}
+
+                                    {/* Cancel/Delete */}
+                                    {(activeTab === "scheduled" ||
+                                      activeTab === "all") && (
+                                      <>
+                                        <DropdownMenuItem
+                                          className="text-destructive"
+                                          onClick={async () => {
+                                            for (const memberSession of groupSessions) {
+                                              await handleCancelSession(
+                                                memberSession._id,
+                                              );
+                                            }
+                                          }}
+                                        >
+                                          <X className="h-4 w-4 mr-2" /> Cancel
+                                          All ({groupSessions.length})
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                          className="text-destructive"
+                                          onClick={async () => {
+                                            for (const memberSession of groupSessions) {
+                                              await handleDeleteSession(
+                                                memberSession._id,
+                                              );
+                                            }
+                                          }}
+                                        >
+                                          <X className="h-4 w-4 mr-2" /> Delete
+                                          All ({groupSessions.length})
+                                        </DropdownMenuItem>
+                                      </>
+                                    )}
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              )}
+
+                              {/* Join Group Button - In LIVE and UPCOMING tabs */}
+                              {(activeTab === "live" ||
+                                activeTab === "upcoming") &&
+                                groupSessionId &&
+                                firstSession.status !== "completed" &&
+                                firstSession.status !== "cancelled" && (
+                                  <Button
+                                    variant="default"
+                                    size="sm"
+                                    className="bg-primary-600 hover:bg-primary-700 text-white font-semibold px-4 py-2 rounded-lg shadow-md hover:shadow-lg transition-all ml-2"
+                                    onClick={() =>
+                                      handleJoinGroupCall(groupSessionId)
+                                    }
+                                    disabled={
+                                      joiningGroupSessionId === groupSessionId
+                                    }
+                                  >
+                                    {joiningGroupSessionId ===
+                                    groupSessionId ? (
+                                      <>
+                                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                        Joining...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Video className="w-4 h-4 mr-2" />
+                                        Join Group{" "}
+                                        <Badge
+                                          variant="secondary"
+                                          className="ml-2 bg-primary-800 text-white border-none"
+                                        >
+                                          {groupSessions.length}
+                                        </Badge>
+                                      </>
+                                    )}
+                                  </Button>
+                                )}
+                            </td>
+                          </tr>,
+                        );
+                      });
+
+                      return rows;
+                    })()}
+                  </tbody>
+                </table>
               </div>
-            ) : (
-              <div className="border rounded-lg p-12 text-center">
-                <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
-                  <Calendar className="w-8 h-8 text-muted-foreground" />
-                </div>
-                <h3 className="text-lg font-medium mb-2">No Sessions Found</h3>
-                <p className="text-muted-foreground">
-                  {searchQuery
-                    ? "No sessions match your search criteria."
-                    : activeTab === "upcoming"
-                      ? "No upcoming sessions found in the system."
-                      : `No ${activeTab} sessions found in the system.`}
+
+              <div className="flex items-center justify-between px-4 py-3 border-t border-border">
+                <p className="text-sm text-muted-foreground">
+                  Showing{" "}
+                  <span className="font-medium">
+                    {getDisplayCount(filteredSessions)}
+                  </span>{" "}
+                  {activeTab === "upcoming" ? "upcoming sessions" : "sessions"}
+                  {filteredSessions.length !==
+                    getDisplayCount(filteredSessions) && (
+                    <span className="text-xs ml-1">
+                      ({filteredSessions.length} total, groups collapsed)
+                    </span>
+                  )}
                 </p>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" disabled>
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
+                  <Button variant="outline" size="sm" className="min-w-[32px]">
+                    1
+                  </Button>
+                  <Button variant="outline" size="sm">
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
-            )}
+            </div>
+          ) : (
+            <div className="border rounded-lg p-12 text-center">
+              <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+                <Calendar className="w-8 h-8 text-muted-foreground" />
+              </div>
+              <h3 className="text-lg font-medium mb-2">No Sessions Found</h3>
+              <p className="text-muted-foreground">
+                {searchQuery
+                  ? "No sessions match your search criteria."
+                  : activeTab === "upcoming"
+                    ? "No upcoming sessions found in the system."
+                    : `No ${activeTab} sessions found in the system.`}
+              </p>
+            </div>
+          )}
         </TabsContent>
       </Tabs>
 
@@ -2388,7 +2605,7 @@ export default function Sessions() {
                         <span className="text-sm font-medium px-2">
                           {new Date(currentYear, currentMonth).toLocaleString(
                             "default",
-                            { month: "short", year: "numeric" }
+                            { month: "short", year: "numeric" },
                           )}
                         </span>
 
@@ -2427,7 +2644,7 @@ export default function Sessions() {
                           new Date(new Date().setHours(0, 0, 0, 0));
 
                         const dayAvailability = availability.find(
-                          (a) => a.date === day.date
+                          (a) => a.date === day.date,
                         );
 
                         const hasAvailable = dayAvailability?.timeSlots;
@@ -2448,7 +2665,7 @@ export default function Sessions() {
                               if (hasAvailable) {
                                 const firstSlot =
                                   dayAvailability.timeSlots.find(
-                                    (s) => s.status === "available"
+                                    (s) => s.status === "available",
                                   );
                                 if (firstSlot) {
                                   handleTimeSlotClick(day.date, firstSlot);
@@ -2458,10 +2675,11 @@ export default function Sessions() {
                             className={`
                         h-8 w-8 rounded-full text-xs flex items-center justify-center
                         ${statusColor}
-                        ${rescheduleDate === day.date
-                                ? "ring-2 ring-primary bg-primary text-white"
-                                : ""
-                              }
+                        ${
+                          rescheduleDate === day.date
+                            ? "ring-2 ring-primary bg-primary text-white"
+                            : ""
+                        }
                         ${isPast ? "opacity-50 cursor-not-allowed" : ""}
                       `}
                           >
@@ -2492,14 +2710,16 @@ export default function Sessions() {
                               }
                               className={`
                           w-full text-left p-2 border rounded-lg text-sm
-                          ${slot.status === "available"
-                                  ? "hover:bg-green-50 border-green-200"
-                                  : "opacity-50 border-gray-200"
-                                }
-                          ${rescheduleTime === slot.start
-                                  ? "ring-2 ring-primary bg-primary/10"
-                                  : ""
-                                }
+                          ${
+                            slot.status === "available"
+                              ? "hover:bg-green-50 border-green-200"
+                              : "opacity-50 border-gray-200"
+                          }
+                          ${
+                            rescheduleTime === slot.start
+                              ? "ring-2 ring-primary bg-primary/10"
+                              : ""
+                          }
                         `}
                             >
                               {formatTime(slot.start)} - {formatTime(slot.end)}
@@ -2537,7 +2757,7 @@ export default function Sessions() {
                       time: rescheduleTime,
                       status: "scheduled",
                     },
-                  })
+                  }),
                 );
                 setIsRescheduleModalOpen(false);
                 setRescheduleDate("");
@@ -2585,14 +2805,14 @@ export default function Sessions() {
                       <span className="font-medium">
                         {selectedSession.date
                           ? new Date(selectedSession.date).toLocaleDateString(
-                            "en-US",
-                            {
-                              weekday: "long",
-                              year: "numeric",
-                              month: "long",
-                              day: "numeric",
-                            }
-                          )
+                              "en-US",
+                              {
+                                weekday: "long",
+                                year: "numeric",
+                                month: "long",
+                                day: "numeric",
+                              },
+                            )
                           : "N/A"}
                       </span>
                     </p>
@@ -2603,11 +2823,11 @@ export default function Sessions() {
                       <span className="font-medium">
                         {selectedSession.startTime
                           ? new Date(
-                            selectedSession.startTime
-                          ).toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })
+                              selectedSession.startTime,
+                            ).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })
                           : selectedSession.time || "N/A"}
                       </span>
                     </p>
@@ -2653,7 +2873,7 @@ export default function Sessions() {
                             {
                               month: "long",
                               year: "numeric",
-                            }
+                            },
                           )}
                         </span>
                         <button
@@ -2697,7 +2917,7 @@ export default function Sessions() {
                               (item) =>
                                 item.date === dateStr &&
                                 item.timeSlots &&
-                                item.timeSlots.length > 0
+                                item.timeSlots.length > 0,
                             );
 
                             return (
@@ -2708,15 +2928,15 @@ export default function Sessions() {
                                 className={cn(
                                   "aspect-square p-1 text-xs rounded-md transition-colors",
                                   isSelected &&
-                                  "bg-primary text-white font-bold",
+                                    "bg-primary text-white font-bold",
                                   !isSelected &&
-                                  !isPast &&
-                                  hasAvailability &&
-                                  "hover:bg-accent",
+                                    !isPast &&
+                                    hasAvailability &&
+                                    "hover:bg-accent",
                                   isPast && "opacity-30 cursor-not-allowed",
                                   !isPast &&
-                                  !hasAvailability &&
-                                  "opacity-50 cursor-not-allowed"
+                                    !hasAvailability &&
+                                    "opacity-50 cursor-not-allowed",
                                 )}
                                 onClick={() => {
                                   setRebookDate(dateStr);
@@ -2725,7 +2945,7 @@ export default function Sessions() {
                                 {dayData.day}
                               </button>
                             );
-                          })
+                          }),
                         )}
                       </div>
                     </div>
@@ -2740,7 +2960,7 @@ export default function Sessions() {
                       {rebookDate ? (
                         (() => {
                           const dayAvailability = availability.find(
-                            (item) => item.date === rebookDate
+                            (item) => item.date === rebookDate,
                           );
 
                           if (
@@ -2763,14 +2983,14 @@ export default function Sessions() {
                                   "w-full py-2 px-3 rounded-md text-xs font-medium transition-colors",
                                   rebookTime === slot.start
                                     ? "bg-primary text-white"
-                                    : "bg-background hover:bg-accent border"
+                                    : "bg-background hover:bg-accent border",
                                 )}
                                 onClick={() => setRebookTime(slot.start)}
                               >
                                 {formatTime(slot.start)} -{" "}
                                 {formatTime(slot.end)}
                               </button>
-                            )
+                            ),
                           );
                         })()
                       ) : (
@@ -2830,42 +3050,41 @@ export default function Sessions() {
             </DialogDescription>
           </DialogHeader>
 
-         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-  
-  {/* USER SELECTION */}
-  <div className="space-y-2">
-    <label className="text-sm font-medium">User</label>
-    <Select
-      value={newSession.userId}
-      onValueChange={(value) => {
-        setNewSession({ 
-          ...newSession, 
-          userId: value,
-          subscriptionId: "", // Reset subscription when user changes
-          requiredSessionType: "",
-          type: "1-on-1"
-        });
-        fetchUserSubscriptions(value);
-      }}
-    >
-      <SelectTrigger>
-        <SelectValue placeholder="Select user" />
-      </SelectTrigger>
-      <SelectContent>
-        {usersWithActiveSubscriptions?.length > 0 ? (
-          usersWithActiveSubscriptions.map((user) => (
-            <SelectItem key={user._id} value={user._id}>
-              {user.name} ({user.email})
-            </SelectItem>
-          ))
-        ) : (
-          <SelectItem value="__no_users__" disabled>
-            {loadingUsers ? "Loading..." : "No users"}
-          </SelectItem>
-        )}
-      </SelectContent>
-    </Select>
-  </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* USER SELECTION */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">User</label>
+              <Select
+                value={newSession.userId}
+                onValueChange={(value) => {
+                  setNewSession({
+                    ...newSession,
+                    userId: value,
+                    subscriptionId: "", // Reset subscription when user changes
+                    requiredSessionType: "",
+                    type: "1-on-1",
+                  });
+                  fetchUserSubscriptions(value);
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select user" />
+                </SelectTrigger>
+                <SelectContent>
+                  {usersWithActiveSubscriptions?.length > 0 ? (
+                    usersWithActiveSubscriptions.map((user) => (
+                      <SelectItem key={user._id} value={user._id}>
+                        {user.name} ({user.email})
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="__no_users__" disabled>
+                      {loadingUsers ? "Loading..." : "No users"}
+                    </SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
             {/* SUBSCRIPTION SELECTION */}
             {newSession.userId && (
               <div className="space-y-2">
@@ -2873,14 +3092,16 @@ export default function Sessions() {
                 {loadingSubscriptions ? (
                   <div className="flex items-center gap-2 p-3 border rounded-lg bg-muted/50">
                     <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full"></div>
-                    <span className="text-sm text-muted-foreground">Loading subscriptions...</span>
+                    <span className="text-sm text-muted-foreground">
+                      Loading subscriptions...
+                    </span>
                   </div>
                 ) : (
                   <Select
                     value={newSession.subscriptionId}
                     onValueChange={(value) => {
                       const selectedSub = selectedUserSubscriptions?.find(
-                        (s) => s._id === value
+                        (s) => s._id === value,
                       );
                       const sessionType =
                         selectedSub?.planDetails?.session_type === "group"
@@ -2902,16 +3123,19 @@ export default function Sessions() {
                       {selectedUserSubscriptions?.length > 0 ? (
                         selectedUserSubscriptions.map((sub) => {
                           const plan = sub.planDetails || {};
-                          const sessions = plan.sessions || sub.availableSessions?.total || 0;
-                          const remaining = sub.availableSessions?.remaining || 0;
+                          const sessions =
+                            plan.sessions || sub.availableSessions?.total || 0;
+                          const remaining =
+                            sub.availableSessions?.remaining || 0;
                           return (
                             <SelectItem key={sub._id} value={sub._id}>
                               <div className="flex flex-col gap-1">
                                 <span className="font-medium">
-                                  {plan.name || "Plan"} ({plan.session_type || "individual"})
+                                  {plan.name || "Plan"} (
+                                  {plan.session_type || "individual"})
                                 </span>
                                 <span className="text-xs text-muted-foreground">
-                                  {sessions > 0 && sessions !== 'unlimited'
+                                  {sessions > 0 && sessions !== "unlimited"
                                     ? `${remaining}/${sessions} sessions left`
                                     : `Unlimited sessions`}
                                 </span>
@@ -2958,8 +3182,8 @@ export default function Sessions() {
                           item.timeSlots.some(
                             (slot) =>
                               slot.status === true ||
-                              slot.status === "available"
-                          )
+                              slot.status === "available",
+                          ),
                       ) ? (
                         <div
                           className="w-3 h-3 rounded-full bg-green-500"
@@ -2976,15 +3200,15 @@ export default function Sessions() {
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {newSession.date &&
-                    availability.some(
-                      (item) =>
-                        item.date === newSession.date &&
-                        item.therapistId._id === newSession.therapistId &&
-                        item.timeSlots.some(
-                          (slot) =>
-                            slot.status === true || slot.status === "available"
-                        )
-                    )
+                  availability.some(
+                    (item) =>
+                      item.date === newSession.date &&
+                      item.therapistId._id === newSession.therapistId &&
+                      item.timeSlots.some(
+                        (slot) =>
+                          slot.status === true || slot.status === "available",
+                      ),
+                  )
                     ? "✓ Available time slots found for this date"
                     : newSession.date
                       ? "⚠ No available time slots for this date"
@@ -3006,14 +3230,14 @@ export default function Sessions() {
                           .filter(
                             (item) =>
                               item.date === newSession.date &&
-                              item.therapistId._id === newSession.therapistId
+                              item.therapistId._id === newSession.therapistId,
                           )
                           .flatMap((item) =>
                             item.timeSlots.filter(
                               (slot) =>
                                 slot.status === true ||
-                                slot.status === "available"
-                            )
+                                slot.status === "available",
+                            ),
                           ).length
                       }{" "}
                       slots
@@ -3025,20 +3249,20 @@ export default function Sessions() {
                       .filter(
                         (item) =>
                           item.date === newSession.date &&
-                          item.therapistId._id === newSession.therapistId
+                          item.therapistId._id === newSession.therapistId,
                       )
                       .flatMap((item) =>
                         item.timeSlots
-                          .filter(
-                            (slot) => {
-                              // Check if slot is available
-                              const isAvailable = slot.status === "available";
-                              // Check if slot matches subscription session type
-                              const matchesSubscriptionType = !newSession.requiredSessionType || 
-                                slot.sessionType === newSession.requiredSessionType;
-                              return isAvailable && matchesSubscriptionType;
-                            }
-                          )
+                          .filter((slot) => {
+                            // Check if slot is available
+                            const isAvailable = slot.status === "available";
+                            // Check if slot matches subscription session type
+                            const matchesSubscriptionType =
+                              !newSession.requiredSessionType ||
+                              slot.sessionType ===
+                                newSession.requiredSessionType;
+                            return isAvailable && matchesSubscriptionType;
+                          })
                           .map((slot) => (
                             <button
                               key={`${item.date}-${slot.start}`}
@@ -3047,7 +3271,7 @@ export default function Sessions() {
                                 // Only allow selecting if the slot is available and not in the past
                                 const isPastSlot = isTimeSlotPast(
                                   item.date,
-                                  slot.start
+                                  slot.start,
                                 );
                                 const isAvailable = slot.status === "available";
 
@@ -3064,14 +3288,16 @@ export default function Sessions() {
                               }
                               className={`
                                 p-3 text-center rounded-lg border transition-all
-                                ${newSession.time === slot.start
-                                  ? "border-primary bg-primary text-primary-foreground shadow-md"
-                                  : "border-border hover:border-primary hover:bg-primary/5"
+                                ${
+                                  newSession.time === slot.start
+                                    ? "border-primary bg-primary text-primary-foreground shadow-md"
+                                    : "border-border hover:border-primary hover:bg-primary/5"
                                 }
-                                ${slot.status !== "available" ||
+                                ${
+                                  slot.status !== "available" ||
                                   isTimeSlotPast(item.date, slot.start)
-                                  ? "opacity-50 cursor-not-allowed"
-                                  : "hover:border-primary hover:bg-primary/5"
+                                    ? "opacity-50 cursor-not-allowed"
+                                    : "hover:border-primary hover:bg-primary/5"
                                 }
                               `}
                             >
@@ -3087,28 +3313,28 @@ export default function Sessions() {
                                 )}
                               </div>
                             </button>
-                          ))
+                          )),
                       )}
 
                     {availability
                       .filter(
                         (item) =>
                           item.date === newSession.date &&
-                          item.therapistId._id === newSession.therapistId
+                          item.therapistId._id === newSession.therapistId,
                       )
                       .flatMap((item) =>
                         item.timeSlots.filter(
                           (slot) =>
-                            slot.status === true || slot.status === "available"
-                        )
+                            slot.status === true || slot.status === "available",
+                        ),
                       ).length === 0 && (
-                        <div className="col-span-full text-center py-8 text-muted-foreground">
-                          <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                          <p className="text-sm">
-                            No available time slots for this date
-                          </p>
-                        </div>
-                      )}
+                      <div className="col-span-full text-center py-8 text-muted-foreground">
+                        <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <p className="text-sm">
+                          No available time slots for this date
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -3204,16 +3430,16 @@ export default function Sessions() {
         sessionInfo={
           selectedSessionForMeet
             ? {
-              userName: selectedSessionForMeet.userId?.name || "N/A",
-              therapistName:
-                selectedSessionForMeet.therapistId?.name || "N/A",
-              date: selectedSessionForMeet.date,
-              time: selectedSessionForMeet.time,
-              serviceName:
-                selectedSessionForMeet.bookingId?.serviceName ||
-                selectedSessionForMeet.subscriptionId?.planName ||
-                "Session",
-            }
+                userName: selectedSessionForMeet.userId?.name || "N/A",
+                therapistName:
+                  selectedSessionForMeet.therapistId?.name || "N/A",
+                date: selectedSessionForMeet.date,
+                time: selectedSessionForMeet.time,
+                serviceName:
+                  selectedSessionForMeet.bookingId?.serviceName ||
+                  selectedSessionForMeet.subscriptionId?.planName ||
+                  "Session",
+              }
             : undefined
         }
         onSuccess={() => {
@@ -3236,7 +3462,10 @@ export default function Sessions() {
       />
 
       {/* Group Session Details Dialog */}
-      <Dialog open={isGroupDetailsDialogOpen} onOpenChange={setIsGroupDetailsDialogOpen}>
+      <Dialog
+        open={isGroupDetailsDialogOpen}
+        onOpenChange={setIsGroupDetailsDialogOpen}
+      >
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -3247,15 +3476,16 @@ export default function Sessions() {
               View all participants in this group session
             </DialogDescription>
           </DialogHeader>
-          
+
           {selectedGroupSessionId && (
             <div className="space-y-4 py-4">
               {(() => {
                 // Find all sessions for this group
                 const groupSessions = (allSessions || []).filter(
-                  (session: any) => session.groupSessionId === selectedGroupSessionId
+                  (session: any) =>
+                    session.groupSessionId === selectedGroupSessionId,
                 );
-                
+
                 if (groupSessions.length === 0) {
                   return (
                     <div className="text-center py-8 text-muted-foreground">
@@ -3269,24 +3499,36 @@ export default function Sessions() {
                   <>
                     <div className="flex items-center justify-between bg-muted/50 rounded-lg p-3">
                       <div className="space-y-1">
-                        <p className="text-sm font-medium">Session Information</p>
+                        <p className="text-sm font-medium">
+                          Session Information
+                        </p>
                         <div className="flex items-center gap-4 text-xs text-muted-foreground">
                           <div className="flex items-center gap-1">
                             <Calendar className="w-3 h-3" />
-                            <span>{groupSessions[0]?.date || 'N/A'}</span>
+                            <span>{groupSessions[0]?.date || "N/A"}</span>
                           </div>
                           <div className="flex items-center gap-1">
                             <Clock className="w-3 h-3" />
-                            <span>{groupSessions[0]?.time || 'N/A'}</span>
+                            <span>{groupSessions[0]?.time || "N/A"}</span>
                           </div>
-                          <Badge variant={groupSessions[0]?.status === 'live' ? 'default' : 'secondary'}>
-                            {groupSessions[0]?.status || 'N/A'}
+                          <Badge
+                            variant={
+                              groupSessions[0]?.status === "live"
+                                ? "default"
+                                : "secondary"
+                            }
+                          >
+                            {groupSessions[0]?.status || "N/A"}
                           </Badge>
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="text-xs text-muted-foreground">Participants</p>
-                        <p className="text-lg font-bold">{groupSessions.length}</p>
+                        <p className="text-xs text-muted-foreground">
+                          Participants
+                        </p>
+                        <p className="text-lg font-bold">
+                          {groupSessions.length}
+                        </p>
                       </div>
                     </div>
 
@@ -3300,35 +3542,38 @@ export default function Sessions() {
                           >
                             <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center border-2 border-white flex-shrink-0">
                               <span className="text-sm font-semibold text-blue-600">
-                                {getInitials(member.userId?.name || 'User')}
+                                {getInitials(member.userId?.name || "User")}
                               </span>
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="font-medium text-sm truncate">
-                                {index + 1}. {member.userId?.name || 'N/A'}
+                                {index + 1}. {member.userId?.name || "N/A"}
                               </p>
                               <p className="text-xs text-muted-foreground truncate">
-                                {member.userId?.email || 'No email'}
+                                {member.userId?.email || "No email"}
                               </p>
                             </div>
                             <div className="flex items-center gap-2">
-                              {member.status === 'live' && (
+                              {member.status === "live" && (
                                 <Badge variant="default" className="text-xs">
                                   <Play className="w-3 h-3 mr-1" />
                                   Live
                                 </Badge>
                               )}
-                              {member.status === 'completed' && (
+                              {member.status === "completed" && (
                                 <Badge variant="secondary" className="text-xs">
                                   Completed
                                 </Badge>
                               )}
-                              {member.status === 'cancelled' && (
-                                <Badge variant="destructive" className="text-xs">
+                              {member.status === "cancelled" && (
+                                <Badge
+                                  variant="destructive"
+                                  className="text-xs"
+                                >
                                   Cancelled
                                 </Badge>
                               )}
-                              {member.status === 'scheduled' && (
+                              {member.status === "scheduled" && (
                                 <Badge variant="outline" className="text-xs">
                                   Scheduled
                                 </Badge>
@@ -3344,13 +3589,18 @@ export default function Sessions() {
                         <div className="flex items-start gap-2">
                           <Info className="w-4 h-4 text-blue-600 mt-0.5" />
                           <div className="flex-1">
-                            <p className="text-sm font-medium text-blue-900">Google Meet Link</p>
+                            <p className="text-sm font-medium text-blue-900">
+                              Google Meet Link
+                            </p>
                             <p className="text-xs text-blue-700 mt-1 break-all">
                               {groupSessions[0].googleMeetLink}
                             </p>
                             {groupSessions[0].googleMeetCode && (
                               <p className="text-xs text-blue-700 mt-1">
-                                Code: <span className="font-mono font-semibold">{groupSessions[0].googleMeetCode}</span>
+                                Code:{" "}
+                                <span className="font-mono font-semibold">
+                                  {groupSessions[0].googleMeetCode}
+                                </span>
                               </p>
                             )}
                           </div>
