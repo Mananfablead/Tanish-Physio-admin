@@ -427,7 +427,7 @@ export default function Payments() {
                       {payment.amount}
                     </td>
                     <td className="text-muted-foreground">
-                      {payment.paymentMethod}
+                      {payment.paymentMethod || payment.method || "N/A"}
                     </td>
                     <td className="text-muted-foreground">
                       {new Date(payment.createdAt).toLocaleDateString()}

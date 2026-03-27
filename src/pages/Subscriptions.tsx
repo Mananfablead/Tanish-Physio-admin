@@ -65,6 +65,8 @@ interface SubscriptionPlan {
   id?: string;
   name: string;
   price: number;
+  price_inr?: number;
+  price_usd?: number;
   description: string;
   features: string[];
   status?: string;
@@ -77,6 +79,19 @@ interface SubscriptionPlan {
   autoRenew?: boolean;
   subscribers?: number;
   subscriberCount?: number;
+}
+
+interface UserSubscription {
+  _id?: string;
+  amount?: number | string;
+  finalAmount?: number | string;
+  currency?: string;
+  planId?: {
+    price?: number | string;
+    price_inr?: number | string;
+    price_usd?: number | string;
+    currency?: string;
+  };
 }
 
 export default function Subscriptions() {
@@ -119,10 +134,33 @@ const filteredSubscriptions = Array.isArray(userSubscriptions)
       (sub) => sub.status?.toLowerCase() === "active"
     ).length || 0;
 
-  const totalRevenue = plans.reduce(
-    (acc: number, plan: SubscriptionPlan) => acc + plan.price,
-    0
-  ); // Using actual plan prices
+  const toNumber = (value: unknown) => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+
+  const subscriberRevenue = (Array.isArray(userSubscriptions)
+    ? userSubscriptions
+    : []
+  ).reduce(
+    (acc: { inr: number; usd: number }, sub: UserSubscription) => {
+      const currency = String(
+        sub.currency || sub.planId?.currency || "INR"
+      ).toUpperCase();
+      const directAmount = toNumber(sub.amount ?? sub.finalAmount);
+      const planAmount =
+        currency === "USD"
+          ? toNumber(sub.planId?.price_usd ?? sub.planId?.price)
+          : toNumber(sub.planId?.price_inr ?? sub.planId?.price);
+      const amountToUse = directAmount || planAmount;
+
+      if (currency === "USD") acc.usd += amountToUse;
+      else acc.inr += amountToUse;
+
+      return acc;
+    },
+    { inr: 0, usd: 0 }
+  );
 
   const initializeRazorpayPayment = (orderData: any) => {
     // This function would initialize the Razorpay checkout
@@ -231,8 +269,8 @@ const filteredSubscriptions = Array.isArray(userSubscriptions)
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-        <div
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div 
           className="stat-card cursor-pointer transition-all hover:shadow-lg"
           onClick={() => setActiveTab("plans")}
         >
@@ -266,17 +304,43 @@ const filteredSubscriptions = Array.isArray(userSubscriptions)
         </div>
         <div
           className="stat-card cursor-pointer transition-all hover:shadow-lg"
-          onClick={() => navigate("/payments")}
+          onClick={() => setActiveTab("subscriptions")}
         >
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-info/10">
-              <TrendingUp className="w-5 h-5 text-info" />
+            <div className="p-2 rounded-lg bg-warning/10">
+              <TrendingUp className="w-5 h-5 text-warning" />
             </div>
             <div>
               <p className="text-2xl font-semibold">
-                ₹{totalRevenue.toLocaleString()}
+                ₹
+                {subscriberRevenue.inr.toLocaleString("en-IN", {
+                  maximumFractionDigits: 2,
+                })}
               </p>
-              <p className="text-sm text-muted-foreground">Total Revenue</p>
+              <p className="text-sm text-muted-foreground">
+                Subscribers Revenue INR
+              </p>
+            </div>
+          </div>
+        </div>
+        <div
+          className="stat-card cursor-pointer transition-all hover:shadow-lg"
+          onClick={() => setActiveTab("subscriptions")}
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-warning/10">
+              <TrendingUp className="w-5 h-5 text-warning" />
+            </div>
+            <div>
+              <p className="text-2xl font-semibold">
+                $
+                {subscriberRevenue.usd.toLocaleString("en-US", {
+                  maximumFractionDigits: 2,
+                })}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Subscribers Revenue USD
+              </p>
             </div>
           </div>
         </div>
@@ -336,7 +400,20 @@ const filteredSubscriptions = Array.isArray(userSubscriptions)
                   </div>
 
                   <div className="mb-4">
-                    <p className="text-3xl font-bold">₹{plan.price}</p>
+                    <p className="text-3xl font-bold">
+                      ₹
+                      {toNumber(plan.price_inr ?? plan.price).toLocaleString(
+                        "en-IN",
+                        { maximumFractionDigits: 2 }
+                      )}
+                    </p>
+                    <p className="text-sm font-medium text-foreground/80">
+                      $
+                      {toNumber(plan.price_usd).toLocaleString("en-US", {
+                        maximumFractionDigits: 2,
+                      })}{" "}
+                      USD
+                    </p>
                     <p className="text-sm text-muted-foreground">
                       {plan.features && plan.features.length > 0
                         ? `${plan.features.length} features`
