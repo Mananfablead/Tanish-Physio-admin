@@ -1435,7 +1435,6 @@ const VideoCall = ({
     <div className="h-screen bg-black flex flex-col">
       {/* Waiting Room Notification */}
       {WaitingNotificationMemo}
-
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-center justify-between px-4 sm:px-8 py-4 bg-slate-900 border-b border-slate-800 gap-3 sm:gap-0">
         <div className="flex items-center gap-3 sm:gap-6">
@@ -1502,7 +1501,6 @@ const VideoCall = ({
           </Button>
         </div>
       </div>
-
       {/* Main Video Area */}
       <div className="flex-1 relative bg-slate-950 flex overflow-hidden">
         {/* Main Video Area - Remote Stream Display */}
@@ -1625,16 +1623,16 @@ const VideoCall = ({
                                 {participantData.role === "admin"
                                   ? "Admin"
                                   : participantData.role === "therapist" ||
-                                    participantData.role === "staff"
-                                  ? "Staff"
-                                  : "Patient"}
+                                      participantData.role === "staff"
+                                    ? "Staff"
+                                    : "Patient"}
                               </Badge>
                             )}
                           </div>
                           <p className="text-slate-500 text-xs">
                             {participantData.joinedAt
                               ? `Joined: ${new Date(
-                                  participantData.joinedAt
+                                  participantData.joinedAt,
                                 ).toLocaleTimeString()}`
                               : ""}
                           </p>
@@ -1874,7 +1872,7 @@ const VideoCall = ({
                           }`}
                         >
                           {new Date(
-                            message.timestamp || message.createdAt
+                            message.timestamp || message.createdAt,
                           ).toLocaleTimeString([], {
                             hour: "2-digit",
                             minute: "2-digit",
@@ -2031,7 +2029,7 @@ const VideoCall = ({
                   } catch (err) {
                     console.error(
                       "Error assigning admin local video srcObject:",
-                      err
+                      err,
                     );
                   }
                 }
@@ -2052,9 +2050,8 @@ const VideoCall = ({
           )}
         </div>
       </div>
-
-      {/* Controls */}
-      <div className="bg-slate-900 px-4 py-4 md:px-8 md:py-8 border-t border-slate-800 md:relative fixed bottom-0 left-0 right-0 z-40">
+      ;{/* Controls */}
+      <div className="bg-slate-900 px-3 py-3 md:px-8 md:py-4 border-t border-slate-800 md:relative fixed bottom-0 left-0 right-0 z-40">
         <div className="max-w-screen-xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 sm:gap-0">
           <div className="w-24 sm:w-32 hidden md:flex items-center gap-2">
             {/* <Badge
@@ -2193,8 +2190,7 @@ const VideoCall = ({
           </div>
         </div>
       </div>
-
-      {/* Settings Modal */}
+      ;{/* Settings Modal */}
       {showSettings && (
         <div className="absolute inset-0 bg-black bg-opacity-50 flex items-end md:items-center justify-center z-50">
           <div className="bg-slate-900 border border-slate-800 rounded-t-3xl md:rounded-3xl w-full md:w-96 max-w-md mx-4 mb-0 md:mb-auto animate-in slide-in-from-bottom md:slide-in-from-top duration-300">
@@ -2274,7 +2270,6 @@ const VideoCall = ({
           </div>
         </div>
       )}
-
       {localError && (
         <div className="fixed top-4 right-4 bg-rose-500 text-white p-4 rounded-xl z-50 max-w-md border border-rose-400 shadow-lg shadow-rose-500/20">
           <div className="flex items-start gap-3">
@@ -2299,7 +2294,7 @@ const VideoCall = ({
                       .catch((err) => {
                         setLocalError(
                           err.message ||
-                            "Failed to access camera and microphone. Please check permissions and refresh the page."
+                            "Failed to access camera and microphone. Please check permissions and refresh the page.",
                         );
                       });
                   }}

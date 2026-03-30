@@ -1684,8 +1684,7 @@ export default function Sessions() {
                                 ) : session.subscriptionId ? (
                                   <div>
                                     <p className="font-medium">
-                                      {session.subscriptionId?.planName ||
-                                        "N/A"}
+                                      {session.subscriptionId?.planName}
                                     </p>
                                     <div className="flex items-center gap-2 mt-1">
                                       <Badge
@@ -1698,8 +1697,7 @@ export default function Sessions() {
                                         variant="outline"
                                         className="text-xs"
                                       >
-                                        {session.subscriptionId?.status ||
-                                          "N/A"}
+                                        {session.subscriptionId?.status}
                                       </Badge>
                                     </div>
                                   </div>
@@ -1984,7 +1982,7 @@ export default function Sessions() {
                                       Booking Session
                                     </Badge>
                                     <Badge
-                                      variant="default"
+                                      variant="outline"
                                       className="ml-2 bg-primary-600"
                                     >
                                       Group
