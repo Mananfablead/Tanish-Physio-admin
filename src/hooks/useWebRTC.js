@@ -654,7 +654,8 @@ const useWebRTC = (roomId, socket, userRole = 'admin') => {
                 socket.emit('offer', {
                     roomId,
                     offer: data,
-                    senderId: socket.id
+                    senderId: socket.id,
+                    targetId: socketId
                 });
             } else if (data.type === 'answer') {
                 socket.emit('answer', {
