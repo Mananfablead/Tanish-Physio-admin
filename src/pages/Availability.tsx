@@ -18,12 +18,14 @@ import {
   setSelectedAvailability,
   clearSelectedAvailability
 } from '@/features/availability/availabilitySlice';
+import { fetchServices } from "@/features/services/serviceSlice";
 
 
 const Availability = () => {
   const dispatch = useDispatch();
   const { availability, loading: isLoading, error } = useSelector((state: RootState) => state.availability);
   const { user: currentUser } = useSelector((state: RootState) => state.auth);
+  const { list: services } = useSelector((state: any) => state.services);
 
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [startTime, setStartTime] = useState('10:00');
@@ -32,6 +34,7 @@ const Availability = () => {
   const [slotBookingType, setSlotBookingType] = useState<'regular' | 'free-consultation' | ''>(); // Default to all types
   const [slotSessionType, setSlotSessionType] = useState<'one-to-one' | 'group'>('one-to-one');
   const [slotMaxParticipants, setSlotMaxParticipants] = useState<number>(5);
+  const [slotServiceId, setSlotServiceId] = useState<string>("");
   const [viewMode, setViewMode] = useState<'day' | 'week' | 'month'>('month');
   const [minimumNoticePeriod, setMinimumNoticePeriod] = useState<number>(15); // Default 15 minutes
 
@@ -52,6 +55,7 @@ const Availability = () => {
   >("one-to-one");
   const [editSlotMaxParticipants, setEditSlotMaxParticipants] =
     useState<number>(5);
+  const [editSlotServiceId, setEditSlotServiceId] = useState<string>("");
 
   // State for bulk apply preview
   const [bulkApplyPreview, setBulkApplyPreview] = useState<boolean>(false);
@@ -92,6 +96,10 @@ const Availability = () => {
   // Fetch availability data from Redux store
   useEffect(() => {
     dispatch(getAllAvailability());
+  }, [dispatch]);
+
+  useEffect(() => {
+    dispatch(fetchServices());
   }, [dispatch]);
 
   // Memoize the calendar weeks to avoid regenerating on every render
@@ -228,6 +236,7 @@ const Availability = () => {
                 duration: slotDuration,
                 bookingType: slotBookingType || "regular",
                 sessionType: slotSessionType,
+                serviceId: slotSessionType === "group" ? slotServiceId || null : null,
                 maxParticipants: slotMaxParticipants,
               },
             ];
@@ -416,6 +425,7 @@ const Availability = () => {
                 duration: slotDuration,
                 bookingType: slotBookingType || "regular",
                 sessionType: slotSessionType,
+                serviceId: slotSessionType === "group" ? slotServiceId || null : null,
                 maxParticipants: slotMaxParticipants,
               },
             ];
@@ -1377,6 +1387,39 @@ const Availability = () => {
                                       className="text-xs h-9"
                                     />
                                   </div>
+                                  <div className="col-span-12 flex flex-col gap-1">
+                                    <Label className="text-xs text-muted-foreground">
+                                      Group Service
+                                    </Label>
+                                    <select
+                                      value={editSlotServiceId}
+                                      onChange={(e) =>
+                                        setEditSlotServiceId(e.target.value)
+                                      }
+                                      disabled={editSlotSessionType !== "group"}
+                                      className="w-full h-9 text-sm border border-input rounded-md px-2 bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary disabled:opacity-60"
+                                    >
+                                      <option value="">
+                                        {editSlotSessionType === "group"
+                                          ? "Select Service (required for group)"
+                                          : "Service (only for group)"}
+                                      </option>
+                                      {(services || [])
+                                        .filter(
+                                          (s: any) =>
+                                            s?.status === "active" ||
+                                            s?.status === true,
+                                        )
+                                        .map((s: any) => (
+                                          <option
+                                            key={s._id || s.id}
+                                            value={s._id || s.id}
+                                          >
+                                            {s.name}
+                                          </option>
+                                        ))}
+                                    </select>
+                                  </div>
                                 </div>
                                 <div className="flex gap-2 justify-end pt-1">
                                   <Button
@@ -1443,6 +1486,19 @@ const Availability = () => {
                                         return;
                                       }
 
+                                      if (
+                                        editSlotSessionType === "group" &&
+                                        !editSlotServiceId
+                                      ) {
+                                        toast({
+                                          title: "Error",
+                                          description:
+                                            "Please select a service for group sessions",
+                                          variant: "destructive",
+                                        });
+                                        return;
+                                      }
+
                                       // Update the slot
                                       const updatedSlots = [...customSlots];
                                       updatedSlots[index] = {
@@ -1453,6 +1509,10 @@ const Availability = () => {
                                         duration: editSlotDuration,
                                         bookingType: editSlotBookingType,
                                         sessionType: editSlotSessionType,
+                                        serviceId:
+                                          editSlotSessionType === "group"
+                                            ? editSlotServiceId || null
+                                            : null,
                                         maxParticipants: editSlotMaxParticipants,
                                       };
                                       setCustomSlots(updatedSlots);
@@ -1557,6 +1617,7 @@ const Availability = () => {
                                       setEditSlotMaxParticipants(
                                         slot.maxParticipants || 1,
                                       );
+                                      setEditSlotServiceId(slot.serviceId || "");
                                     }}
                                   >
                                     <svg
@@ -1771,6 +1832,34 @@ const Availability = () => {
                           className="text-sm h-10"
                         />
                       </div>
+                      <div className="col-span-12">
+                        <Label
+                          htmlFor="slotServiceId"
+                          className="text-xs text-muted-foreground"
+                        >
+                          Group Service
+                        </Label>
+                        <select
+                          id="slotServiceId"
+                          value={slotServiceId}
+                          onChange={(e) => setSlotServiceId(e.target.value)}
+                          disabled={slotSessionType !== "group"}
+                          className="w-full h-10 text-sm border border-input rounded-md px-2 bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary disabled:opacity-60"
+                        >
+                          <option value="">
+                            {slotSessionType === "group"
+                              ? "Select Service (required for group)"
+                              : "Service (only for group)"}
+                          </option>
+                          {(services || [])
+                            .filter((s: any) => s?.status === "active" || s?.status === true)
+                            .map((s: any) => (
+                              <option key={s._id || s.id} value={s._id || s.id}>
+                                {s.name}
+                              </option>
+                            ))}
+                        </select>
+                      </div>
                       <div className="col-span-12 pt-3">
                         <Button
                           type="button"
@@ -1841,6 +1930,16 @@ const Availability = () => {
                               return;
                             }
 
+                            if (slotSessionType === "group" && !slotServiceId) {
+                              toast({
+                                title: "Error",
+                                description:
+                                  "Please select a service for group sessions",
+                                variant: "destructive",
+                              });
+                              return;
+                            }
+
                             // Add new slot
                             setCustomSlots([
                               ...customSlots,
@@ -1851,6 +1950,10 @@ const Availability = () => {
                                 duration: slotDuration,
                                 bookingType: slotBookingType || "regular",
                                 sessionType: slotSessionType,
+                                serviceId:
+                                  slotSessionType === "group"
+                                    ? slotServiceId
+                                    : null,
                                 maxParticipants: slotMaxParticipants,
                               },
                             ]);
