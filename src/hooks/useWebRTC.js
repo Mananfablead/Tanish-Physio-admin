@@ -1453,9 +1453,13 @@ const useWebRTC = (roomId, socket, userRole = 'admin') => {
         };
 
         // Add WebRTC signaling listeners
+        // Support both legacy `webrtc-*` events and canonical events.
         socket.on('webrtc-offer-received', handleWebRTCOffer);
         socket.on('webrtc-answer-received', handleWebRTCAnswer);
         socket.on('webrtc-ice-candidate-received', handleWebRTCIceCandidate);
+        socket.on('offer', handleWebRTCOffer);
+        socket.on('answer', handleWebRTCAnswer);
+        socket.on('ice-candidate', handleWebRTCIceCandidate);
 
         // Add participant listeners
         socket.on('participant-joined', handleParticipantJoined);
@@ -1470,6 +1474,9 @@ const useWebRTC = (roomId, socket, userRole = 'admin') => {
             socket.off('webrtc-offer-received', handleWebRTCOffer);
             socket.off('webrtc-answer-received', handleWebRTCAnswer);
             socket.off('webrtc-ice-candidate-received', handleWebRTCIceCandidate);
+            socket.off('offer', handleWebRTCOffer);
+            socket.off('answer', handleWebRTCAnswer);
+            socket.off('ice-candidate', handleWebRTCIceCandidate);
             socket.off('participant-joined', handleParticipantJoined);
             socket.off('participant-left', handleParticipantLeft);
             socket.off('joined-call', handleJoinedCall);
