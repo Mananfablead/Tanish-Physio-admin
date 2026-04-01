@@ -310,6 +310,16 @@ export default function Bookings({ onStatusConfirmed }: BookingsProps) {
     }
   };
 
+  // Helper function for slot label
+  const getSlotLabel = (slot: any, services: any[]) => {
+    if (slot.sessionType === "group") {
+      const serviceName = slot.serviceId ? (services.find(s => (s._id || s.id) === slot.serviceId)?.name || 'Service') : '';
+      return `Group Session${serviceName ? ` - ${serviceName}` : ''}`;
+    }
+    if (slot.bookingType === "free-consultation") return "(Free)";
+    return "(Regular)";
+  };
+
   if (bookingsLoading || !bookings) {
     return <PageLoader text="Loading bookings..." />;
   }
@@ -857,7 +867,7 @@ export default function Bookings({ onStatusConfirmed }: BookingsProps) {
       )}
       {/* EDIT/CREATE BOOKING MODAL */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {isEditing ? "Edit Booking" : "Create New Booking"}
@@ -920,34 +930,50 @@ export default function Bookings({ onStatusConfirmed }: BookingsProps) {
                 <label className="text-sm font-medium">Time Slot</label>
                 {availableTimeSlots.length > 0 ? (
                   <div className="space-y-2">
-                    <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto">
-                      {availableTimeSlots.map((slot, index) => (
-                        <button
-                          key={index}
-                          type="button"
-                          onClick={() => {
-                            setBookingForm({
-                              ...bookingForm,
-                              time: `${slot.start}-${slot.end}`,
-                            });
-                          }}
-                          className={cn(
-                            "p-2 rounded-lg border text-sm font-medium transition-all",
-                            bookingForm.time === `${slot.start}-${slot.end}`
-                              ? "bg-primary text-primary-foreground border-primary"
-                              : "border-gray-200 hover:bg-gray-50"
-                          )}
-                        >
-                          <div>
-                            {slot.start} - {slot.end}
+                    <div className="space-y-4 max-h-60 overflow-y-auto">
+                      {Object.entries(
+                        availableTimeSlots.reduce((acc: any, slot: any) => {
+                          const key = slot.therapistId;
+                          if (!acc[key]) {
+                            acc[key] = {
+                              therapistName: slot.therapistName,
+                              slots: []
+                            };
+                          }
+                          acc[key].slots.push(slot);
+                          return acc;
+                        }, {})
+                      ).map(([therapistId, { therapistName, slots }]: any) => (
+                        <div key={therapistId} className="space-y-2">
+                          <h4 className="text-sm font-medium text-primary">{therapistName}</h4>
+                          <div className="grid grid-cols-2 gap-2">
+                            {slots.map((slot: any, index: number) => (
+                              <button
+                                key={index}
+                                type="button"
+                                onClick={() => {
+                                  setBookingForm({
+                                    ...bookingForm,
+                                    time: `${slot.start}-${slot.end}`,
+                                  });
+                                }}
+                                className={cn(
+                                  "p-2 rounded-lg border text-sm font-medium transition-all",
+                                  bookingForm.time === `${slot.start}-${slot.end}`
+                                    ? "bg-primary text-primary-foreground border-primary hover:text-black"
+                                    : "border-gray-200 hover:bg-gray-50 text-muted-foreground"
+                                )}
+                              >
+                                <div>
+                                  {slot.start} - {slot.end}
+                                </div>
+                                <div className="text-xs mt-1">
+                                  {slot.duration} min {getSlotLabel(slot, services)}
+                                </div>
+                              </button>
+                            ))}
                           </div>
-                          <div className="text-xs text-muted-foreground mt-1">
-                            {slot.duration} min{" "}
-                            {slot.bookingType === "free-consultation"
-                              ? "(Free)"
-                              : "(Regular)"}
-                          </div>
-                        </button>
+                        </div>
                       ))}
                     </div>
                     {isLoadingAvailability && (
@@ -978,8 +1004,7 @@ export default function Bookings({ onStatusConfirmed }: BookingsProps) {
                     />
                     {bookingForm.time && (
                       <div className="text-sm text-muted-foreground">
-                        Duration: 45 minutes (ends at{" "}
-                        {bookingForm.time.split("-")[1]})
+                        Duration: 45 minutes (ends at {bookingForm.time.split("-")[1]})
                       </div>
                     )}
                     {selectedDate &&
