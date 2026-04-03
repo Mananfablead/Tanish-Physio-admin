@@ -658,15 +658,36 @@ const GroupVideoCall = ({
   // Mute participant (admin only)
   const handleMuteParticipant = (userId) => {
     if (userRole === "admin") {
+      console.log('🔇 Admin muting participant:', userId);
+      
+      // Call the WebRTC mute function
       muteUser(userId);
 
-      if (socket) {
-        socket.emit("participant-muted", {
+      // Emit socket event to notify all participants
+      if (socket && connected) {
+        socket.emit("participant-status-changed", {
           groupSessionId,
           userId,
           isMuted: true,
+          isVideoOff: false, // Video status unchanged
         });
+        console.log('📡 Emitted participant-status-changed for mute');
       }
+
+      // Update local state immediately for UI feedback
+      setParticipants((prev) =>
+        prev.map((p) =>
+          p.userId === userId
+            ? { ...p, isMuted: true }
+            : p
+        )
+      );
+
+      // Update audio status
+      setParticipantAudioStatus(prev => ({
+        ...prev,
+        [userId]: false // Audio disabled
+      }));
     }
   };
 
@@ -818,19 +839,18 @@ const GroupVideoCall = ({
       );
     }
 
-    // Grid layout based on participant count
+    // Determine grid class based on participant count
     let gridClass = "grid gap-2 w-full h-full";
-
     if (participantKeys.length === 1) {
       gridClass += " grid-cols-1";
     } else if (participantKeys.length === 2) {
-      gridClass += " grid-cols-2 grid-rows-1";
+      gridClass += " grid-cols-1 md:grid-cols-2"; // Stacked on mobile, side by side on larger screens
     } else if (participantKeys.length <= 4) {
-      gridClass += " grid-cols-2 grid-rows-2";
+      gridClass += " grid-cols-2";
     } else if (participantKeys.length <= 6) {
-      gridClass += " grid-cols-3 grid-rows-2";
+      gridClass += " grid-cols-3";
     } else {
-      gridClass += " grid-cols-3 grid-rows-3";
+      gridClass += " grid-cols-3";
     }
 
     return (
@@ -840,7 +860,7 @@ const GroupVideoCall = ({
           return (
             <div
               key={userId}
-              className="relative bg-black rounded-lg overflow-hidden border border-slate-700"
+              className="relative bg-black rounded-xl overflow-hidden border border-slate-700 flex flex-col items-center justify-center min-h-0 min-w-0"
             >
               <video
                 ref={(el) => (remoteVideoRefs.current[userId] = el)}
@@ -876,14 +896,14 @@ const GroupVideoCall = ({
               {/* Admin controls for each participant */}
               {userRole === "admin" && !participant?.isSelf && (
                 <div className="absolute top-2 right-2 flex gap-1">
-                  <Button
+                  {/* <Button
                     size="sm"
                     variant="secondary"
                     className="h-6 w-6 p-0 bg-red-500/20 hover:bg-red-500/30"
                     onClick={() => handleMuteParticipant(userId)}
                   >
                     <VolumeX className="h-3 w-3" />
-                  </Button>
+                  </Button> */}
                 </div>
               )}
             </div>
@@ -1042,7 +1062,7 @@ const GroupVideoCall = ({
                       )}
                     </div>
                   </div>
-                  {userRole === "admin" && !participant.isSelf && (
+                  {/* {userRole === "admin" && !participant.isSelf && (
                     <Button
                       size="sm"
                       variant="destructive"
@@ -1051,7 +1071,7 @@ const GroupVideoCall = ({
                     >
                       <VolumeX className="h-3 w-3" />
                     </Button>
-                  )}
+                  )} */}
                 </div>
               ))}
             </div>

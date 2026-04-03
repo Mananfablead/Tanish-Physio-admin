@@ -62,6 +62,7 @@ import {
 } from "@/features/sessions/sessionSlice";
 import { fetchBookings } from "@/features/bookings/bookingSlice";
 import { getAllAvailability } from "@/features/availability/availabilitySlice";
+import { fetchServices } from "@/features/services/serviceSlice";
 import { toast } from "@/hooks/use-toast";
 import GenerateGoogleMeetModal from "@/components/VideoCall/GenerateGoogleMeetModal";
 import EditGoogleMeetModal from "@/components/VideoCall/EditGoogleMeetModal";
@@ -108,6 +109,11 @@ export default function Sessions() {
     loading,
     error,
   } = useSelector((state: any) => state.sessions);
+  const {
+    list: services,
+    loading: servicesLoading,
+    error: servicesError,
+  } = useSelector((state: any) => state.services);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("all");
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
@@ -272,6 +278,7 @@ export default function Sessions() {
     }
     dispatch(fetchBookings());
     dispatch(getAllAvailability());
+    dispatch(fetchServices());
   }, [dispatch, activeTab]);
 
   // Calculate total pages for pagination
@@ -3288,7 +3295,7 @@ export default function Sessions() {
                                 p-3 text-center rounded-lg border transition-all
                                 ${
                                   newSession.time === slot.start
-                                    ? "border-primary bg-primary text-primary-foreground shadow-md"
+                                    ? "border-primary bg-primary text-primary-foreground shadow-md hover:text-black"
                                     : "border-border hover:border-primary hover:bg-primary/5"
                                 }
                                 ${
@@ -3302,9 +3309,13 @@ export default function Sessions() {
                               <div className="font-medium text-sm">
                                 {formatTime(slot.start)}
                               </div>
-                              <div className="text-xs text-black mt-1">
+                              <div className="text-xs mt-1">
                                 {slot.duration} min
-                                {slot.sessionType && (
+                                {slot.sessionType === "group" ? (
+                                  <span className="block text-xs">
+                                    Group - {services.find(s => (s._id || s.id) === slot.serviceId)?.name || 'Service'}
+                                  </span>
+                                ) : slot.sessionType && (
                                   <span className="block text-xs capitalize">
                                     ({slot.sessionType})
                                   </span>
