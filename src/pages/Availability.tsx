@@ -31,12 +31,16 @@ const Availability = () => {
   const [startTime, setStartTime] = useState('10:00');
   const [endTime, setEndTime] = useState('10:45'); // Default to 45-minute slot
   const [slotDuration, setSlotDuration] = useState<number>(45); // Default to 45 minutes
-  const [slotBookingType, setSlotBookingType] = useState<'regular' | 'free-consultation' | ''>(); // Default to all types
+  const [slotBookingType, setSlotBookingType] = useState<'regular' | 'free-consultation' | ''>('regular'); // Default to regular for new slots
   const [slotSessionType, setSlotSessionType] = useState<'one-to-one' | 'group'>('one-to-one');
   const [slotMaxParticipants, setSlotMaxParticipants] = useState<number>(5);
   const [slotServiceId, setSlotServiceId] = useState<string>("");
   const [viewMode, setViewMode] = useState<'day' | 'week' | 'month'>('month');
   const [minimumNoticePeriod, setMinimumNoticePeriod] = useState<number>(15); // Default 15 minutes
+
+  // Filter states (independent from new slot form)
+  const [filterSlotDuration, setFilterSlotDuration] = useState<number>(0); // Default to 0 (All)
+  const [filterBookingType, setFilterBookingType] = useState<'regular' | 'free-consultation' | ''>('');
 
   // State for managing custom time slots
   const [customSlots, setCustomSlots] = useState<any[]>([]);
@@ -67,13 +71,15 @@ const Availability = () => {
   // State for saving
   const [saving, setSaving] = useState(false);
   const [bulkSaving, setBulkSaving] = useState(false);
+  const [copyTargetDate, setCopyTargetDate] = useState<string>('');
+  const [isCopying, setIsCopying] = useState(false);
 
   const { toast } = useToast();
 
   // Filter custom slots based on selected duration and booking type
   const filteredCustomSlots = customSlots.filter((slot) => {
-    const durationMatch = slot.duration === slotDuration;
-    const typeMatch = !slotBookingType || slot.bookingType === slotBookingType;
+    const durationMatch = filterSlotDuration === 0 || slot.duration === filterSlotDuration;
+    const typeMatch = !filterBookingType || slot.bookingType === filterBookingType;
     return durationMatch && typeMatch;
   });
 
@@ -178,6 +184,18 @@ const Availability = () => {
         (item) => item.date === date,
       );
 
+      // Determine initial start time: current time if today, else 10:00
+      let initialStartTime = "10:00";
+      if (date === todayStr) {
+        const now = new Date();
+        const minutes = now.getMinutes();
+        // Round up to next 15-minute increment
+        const next15 = Math.ceil(minutes / 15) * 15;
+        now.setMinutes(next15);
+        now.setSeconds(0);
+        initialStartTime = now.toTimeString().substring(0, 5);
+      }
+
       if (existingAvailability) {
         // Load existing availability data from time slots
         const allSlots = existingAvailability.timeSlots || [];
@@ -185,14 +203,17 @@ const Availability = () => {
         if (allSlots.length > 0) {
           // Set custom slots to all existing slots
           setCustomSlots(allSlots);
-
-          // Use first slot start time and calculate 45 minutes after as end time
-          setStartTime(allSlots[0].start);
-          const startDate = new Date(`1970-01-01T${allSlots[0].start}`);
-          startDate.setMinutes(startDate.getMinutes() + 45);
+          // Default new slot form to either current time (if today) or first slot start
+          setStartTime(initialStartTime);
+          const startDate = new Date(`1970-01-01T${initialStartTime}`);
+          startDate.setMinutes(startDate.getMinutes() + slotDuration);
           setEndTime(startDate.toTimeString().substring(0, 5));
         } else {
           setCustomSlots([]);
+          setStartTime(initialStartTime);
+          const startDate = new Date(`1970-01-01T${initialStartTime}`);
+          startDate.setMinutes(startDate.getMinutes() + slotDuration);
+          setEndTime(startDate.toTimeString().substring(0, 5));
         }
 
         // Load minimum notice period if it exists
@@ -201,14 +222,11 @@ const Availability = () => {
         } else {
           setMinimumNoticePeriod(15); // Default
         }
-
-        // No need to set holiday/available states - custom slots handle this
       } else {
         setCustomSlots([]);
-        // Initialize with 45-minute default slot
-        setStartTime("10:00");
-        const startDate = new Date("1970-01-01T10:00");
-        startDate.setMinutes(startDate.getMinutes() + 45);
+        setStartTime(initialStartTime);
+        const startDate = new Date(`1970-01-01T${initialStartTime}`);
+        startDate.setMinutes(startDate.getMinutes() + slotDuration);
         setEndTime(startDate.toTimeString().substring(0, 5));
         setMinimumNoticePeriod(15); // Default
       }
@@ -332,6 +350,114 @@ const Availability = () => {
     }
   };
 
+  const handleCopyToDate = async () => {
+    if (!copyTargetDate) {
+      toast({
+        title: "Date Required",
+        description: "Please select a target date to copy slots to.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (isPastDate(copyTargetDate)) {
+      toast({
+        title: "Invalid Date",
+        description: "Cannot copy availability to a past date.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (copyTargetDate === selectedDate) {
+      toast({
+        title: "Invalid Date",
+        description: "Target date cannot be the same as the selected date.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setIsCopying(true);
+
+      const timeSlots =
+        customSlots.length > 0
+          ? [...customSlots]
+          : [
+              {
+                start: startTime,
+                end: endTime,
+                status: "available",
+                duration: slotDuration,
+                bookingType: slotBookingType || "regular",
+                sessionType: slotSessionType,
+                serviceId: slotSessionType === "group" ? slotServiceId || null : null,
+                maxParticipants: slotMaxParticipants,
+              },
+            ];
+
+      // Validate time slots
+      for (const slot of timeSlots) {
+        const startParts = slot.start.split(":");
+        const endParts = slot.end.split(":");
+        const startMinutes = parseInt(startParts[0]) * 60 + parseInt(startParts[1]);
+        const endMinutes = parseInt(endParts[0]) * 60 + parseInt(endParts[1]);
+        const duration = endMinutes - startMinutes;
+
+        if (duration % 15 !== 0) {
+          toast({
+            title: "Error",
+            description: `Slot ${slot.start}-${slot.end} must be in 15-minute increments`,
+            variant: "destructive",
+          });
+          setIsCopying(false);
+          return;
+        }
+      }
+
+      const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const payload = {
+        therapistId: currentUser?._id,
+        date: copyTargetDate,
+        timeSlots,
+        timezone: userTimezone,
+      };
+
+      const existingAvailability = availability.find(
+        (item: any) => item.date === copyTargetDate,
+      );
+
+      if (existingAvailability) {
+        await dispatch(
+          updateAvailability({
+            id: existingAvailability._id,
+            availabilityData: payload,
+          }),
+        );
+      } else {
+        await dispatch(createAvailability(payload));
+      }
+
+      toast({
+        title: "Success",
+        description: `Availability from ${selectedDate} copied to ${copyTargetDate} successfully`,
+      });
+
+      await dispatch(getAllAvailability());
+      setCopyTargetDate('');
+    } catch (error) {
+      console.error("Error copy availability:", error);
+      toast({
+        title: "Error",
+        description: "Failed to copy availability",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCopying(false);
+    }
+  };
+
   // Function to handle bulk apply
   const handleBulkApply = () => {
     // Get all dates in current month view that don't have availability set
@@ -429,6 +555,28 @@ const Availability = () => {
                 maxParticipants: slotMaxParticipants,
               },
             ];
+
+      // Validate time slots for today if today is included in bulk update
+      if (bulkApplyDates.includes(todayStr)) {
+        const now = new Date();
+        const currentMinutes = now.getHours() * 60 + now.getMinutes();
+        
+        const hasPastSlots = timeSlots.some(slot => {
+          const [startHours, startMins] = slot.start.split(':').map(Number);
+          const totalStartMinutes = startHours * 60 + startMins;
+          return totalStartMinutes < currentMinutes;
+        });
+
+        if (hasPastSlots) {
+          toast({
+            title: "Error",
+            description: "Some time slots have already passed for today. Please adjust your selection.",
+            variant: "destructive",
+          });
+          setBulkSaving(false);
+          return;
+        }
+      }
 
       // Get user's timezone
       const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -1177,12 +1325,13 @@ const Availability = () => {
                         </Label>
                         <select
                           id="filter-duration"
-                          value={slotDuration}
+                          value={filterSlotDuration}
                           onChange={(e) =>
-                            setSlotDuration(Number(e.target.value))
+                            setFilterSlotDuration(Number(e.target.value))
                           }
                           className="h-8 text-xs border border-input rounded-md px-2 bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary"
                         >
+                          <option value={0}>All</option>
                           <option value={15}>15 min</option>
                           <option value={45}>45 min</option>
                         </select>
@@ -1196,13 +1345,9 @@ const Availability = () => {
                         </Label>
                         <select
                           id="filter-type"
-                          value={slotBookingType || ""}
+                          value={filterBookingType}
                           onChange={(e) =>
-                            setSlotBookingType(
-                              e.target.value === ""
-                                ? (undefined as any)
-                                : (e.target.value as any),
-                            )
+                            setFilterBookingType(e.target.value as any)
                           }
                           className="h-8 text-xs border border-input rounded-md px-2 bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary"
                         >
@@ -1439,6 +1584,33 @@ const Availability = () => {
                                         return;
                                       }
 
+                                      // Prevent editing to past time slots for today
+                                      if (selectedDate === todayStr) {
+                                        const now = new Date();
+                                        const currentMinutes = now.getHours() * 60 + now.getMinutes();
+                                        const [startHours, startMins] = editSlotStart.split(':').map(Number);
+                                        const totalStartMinutes = startHours * 60 + startMins;
+
+                                        if (totalStartMinutes < currentMinutes) {
+                                          toast({
+                                            title: "Cannot Update to Past Slot",
+                                            description: "The start time has already passed for today.",
+                                            variant: "destructive",
+                                          });
+                                          return;
+                                        }
+                                      }
+
+                                      // Prevent 15-minute duration for group sessions
+                                      if (editSlotSessionType === "group" && editSlotDuration === 15) {
+                                        toast({
+                                          title: "Validation Error",
+                                          description: "Group sessions cannot be 15 minutes long.",
+                                          variant: "destructive",
+                                        });
+                                        return;
+                                      }
+
                                       // Validate time intervals (15, 30, 45, 60 minutes)
                                       const startParts =
                                         editSlotStart.split(":");
@@ -1670,15 +1842,15 @@ const Availability = () => {
                         <p className="text-xs mt-1">
                           Add your first slot below
                         </p>
-                        {customSlots.length > 0 && (
+                        {customSlots.length > 0 && filterSlotDuration !== 0 && (
                           <p className="text-xs mt-1 text-muted-foreground">
-                            Showing {slotDuration}min slots only
+                            Showing {filterSlotDuration}min slots only
                           </p>
                         )}
-                        {slotBookingType && customSlots.length > 0 && (
+                        {filterBookingType && customSlots.length > 0 && (
                           <p className="text-xs mt-1 text-muted-foreground">
                             Showing{" "}
-                            {slotBookingType === "free-consultation"
+                            {filterBookingType === "free-consultation"
                               ? "Free Consultation"
                               : "Regular"}{" "}
                             slots only
@@ -1747,6 +1919,14 @@ const Availability = () => {
                           onChange={(e) => {
                             const selectedDuration = Number(e.target.value);
                             setSlotDuration(selectedDuration);
+                            
+                            // Automatically set booking type based on duration
+                            if (selectedDuration === 45) {
+                              setSlotBookingType('regular');
+                            } else if (selectedDuration === 15) {
+                              setSlotBookingType('free-consultation');
+                            }
+
                             // Automatically calculate end time based on selected start time and new duration
                             if (selectedDuration && startTime) {
                               const start = new Date(`1970-01-01T${startTime}`);
@@ -1878,6 +2058,33 @@ const Availability = () => {
                               return;
                             }
 
+                            // Prevent adding past time slots for today
+                            if (selectedDate === todayStr) {
+                              const now = new Date();
+                              const currentMinutes = now.getHours() * 60 + now.getMinutes();
+                              const [startHours, startMins] = startTime.split(':').map(Number);
+                              const totalStartMinutes = startHours * 60 + startMins;
+
+                              if (totalStartMinutes < currentMinutes) {
+                                toast({
+                                  title: "Cannot Add Past Slot",
+                                  description: "The start time has already passed for today.",
+                                  variant: "destructive",
+                                });
+                                return;
+                              }
+                            }
+
+                            // Prevent 15-minute duration for group sessions
+                            if (slotSessionType === "group" && slotDuration === 15) {
+                              toast({
+                                title: "Validation Error",
+                                description: "Group sessions cannot be 15 minutes long.",
+                                variant: "destructive",
+                              });
+                              return;
+                            }
+
                             // Validate time intervals (15, 30, 45, 60 minutes)
                             const startParts = startTime.split(":");
                             const endParts = endTime.split(":");
@@ -1981,6 +2188,49 @@ const Availability = () => {
                       will auto-populate.
                     </p>
                   </div>
+
+                  {/* Copy to Another Date Section */}
+                  {!bulkApplyPreview && (
+                    <div className="pt-4 border-t border-border">
+                      <div className="flex flex-col gap-2 p-3 bg-secondary/50 rounded-lg border border-secondary">
+                        <Label
+                          htmlFor="copy-target-date"
+                          className="text-xs font-bold uppercase tracking-wider text-muted-foreground"
+                        >
+                          Copy slots to another date
+                        </Label>
+                        <div className="flex gap-2">
+                          <Input
+                            id="copy-target-date"
+                            type="date"
+                            value={copyTargetDate}
+                            onChange={(e) => setCopyTargetDate(e.target.value)}
+                            min={todayStr}
+                            className="h-9 text-xs bg-background"
+                          />
+                          <Button
+                            variant="secondary"
+                            onClick={handleCopyToDate}
+                            disabled={
+                              isCopying ||
+                              !copyTargetDate ||
+                              customSlots.length === 0
+                            }
+                            className="h-9 text-xs px-3 shadow-sm hover:shadow-md transition-all font-semibold"
+                          >
+                            {isCopying ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              "Copy & Save"
+                            )}
+                          </Button>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground italic leading-tight">
+                          * Clicking this will overwrite all slots on the target date with current setup.
+                        </p>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="space-y-3 pt-4 border-t border-border">
                     {!bulkApplyPreview ? (
